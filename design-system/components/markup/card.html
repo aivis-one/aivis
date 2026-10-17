@@ -1,0 +1,17 @@
+<!-- AIVIS Card (K07): variants outlined (default), flat, elevated; sizes data-size="sm|md|lg" (md when absent);
+     slots head, body, foot. A card that opens something has ONE link in its title (.ds-card__link) which stretches over the card;
+     never a click handler on the container. The decorative tick belongs to elements/README.md, not to this component. -->
+<article class="ds-card">
+  <header class="ds-card__head"><h3 class="ds-card__title">Portfolio</h3></header>
+  <div class="ds-card__body">Three positions, one pending payout.</div>
+  <footer class="ds-card__foot"><button type="button" class="ds-button ds-button--secondary" data-size="sm"><span>Export</span></button></footer>
+</article>
+
+<article class="ds-card ds-card--flat"><div class="ds-card__body">Flat: a quiet panel on the page ground.</div></article>
+
+<article class="ds-card ds-card--elevated"><div class="ds-card__body">Elevated: raised by --shadow-1.</div></article>
+
+<article class="ds-card ds-card--interactive">
+  <header class="ds-card__head"><h3 class="ds-card__title"><a class="ds-card__link" href="#company">Brenner Logistik GmbH</a></h3></header>
+  <div class="ds-card__body">Open the company page.</div>
+</article>

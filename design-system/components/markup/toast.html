@@ -1,0 +1,14 @@
+<!-- AIVIS Toast (K16, kit fix: live region). The region exists in the page from the start and stays; a toast is inserted into it, so it is announced.
+     The region is aria-live="polite"; a danger toast has role="alert" instead. A toast has a dismiss button; auto-hide is the app's, never shorter than the time to read it. -->
+<div class="ds-toast-region" aria-live="polite" aria-atomic="false">
+  <div class="ds-toast ds-toast--success" role="status">
+    <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+    <div class="ds-alert__content"><p class="ds-alert__text">Link copied.</p></div>
+    <button type="button" class="ds-alert__close" aria-label="Dismiss"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="ds-toast ds-toast--danger" role="alert">
+    <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield-alert"/></svg></span>
+    <div class="ds-alert__content"><p class="ds-alert__text">Could not save.</p></div>
+    <button type="button" class="ds-alert__close" aria-label="Dismiss"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+  </div>
+</div>

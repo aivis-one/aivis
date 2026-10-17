@@ -1,0 +1,10 @@
+<!-- AIVIS Tabs (K12): role tablist / tab / tabpanel. One tab is in the tab order (tabindex 0), the others -1; Left and Right, Home and End move
+     between tabs (components.js), Tab enters the panel. The selected tab is marked by colour AND by the underline. -->
+<div class="ds-tabs" role="tablist" aria-label="Portfolio sections">
+  <button class="ds-tab" role="tab" id="t1" aria-selected="true" aria-controls="p1" type="button">Overview</button>
+  <button class="ds-tab" role="tab" id="t2" aria-selected="false" aria-controls="p2" tabindex="-1" type="button">Documents <span class="ds-badge">3</span></button>
+  <button class="ds-tab" role="tab" id="t3" aria-selected="false" aria-controls="p3" tabindex="-1" aria-disabled="true" type="button">Reports</button>
+</div>
+<div class="ds-tabpanel" role="tabpanel" id="p1" aria-labelledby="t1" tabindex="0">Overview content.</div>
+<div class="ds-tabpanel" role="tabpanel" id="p2" aria-labelledby="t2" tabindex="0" hidden>Documents content.</div>
+<div class="ds-tabpanel" role="tabpanel" id="p3" aria-labelledby="t3" tabindex="0" hidden>Reports content.</div>

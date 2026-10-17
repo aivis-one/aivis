@@ -50,3 +50,11 @@ Every line below is a decision of the owner, a measurement, or a value of the fo
 | brand marks | the colour logo is unchanged; the mark drawn in lines has no inner facet lines | the owner's decision of 2026-10-17 (Q 148jakgc) |
 | decoration | pattern, mark on the grid, divider, cube hexagon and card tick as in `../elements/README.md`; line weight 1 px by day and 1.5 px by night, divider 1 px in both | P4 |
 | ground under decoration | primary and secondary text only on a pattern or the mark | P4 |
+| button looks | `primary`, `accent`, `secondary` (bordered, `--border-input`), `ghost` (no border; the quiet and the link-style action), `danger`, and `telegram` (the brand exception); no other name | the owner's answer of 2026-10-17, question 9hfk3qb0 C; question m5twqis7 A |
+| button and field sizes | `sm` 32, `md` 38, `lg` 44 on `--control-height-*`; every interactive part is at least `--touch-min` high at the 480 width; an icon-only button is kept and takes an `aria-label` | the owner's decision of 2026-10-17 (P5.1 small points a, b, c; row 95 HIS WORD 2026-10-17T19:49Z) |
+| status names | `danger` and `info` in the badge, the alert and the toast (the progress carries success, warning and danger); there is no `error` status and no status called `primary` (the field's invalid-message part keeps the part name `.ds-field__error`) | the owner's answer of 2026-10-17, question 6l62oz7k C |
+| text on info and warning | `--on-info` (`#FFFFFF` day, `#04243E` night); `--on-warning` is `--on-accent` | the owner's decision of 2026-10-17 (P5.1 small points d, e) |
+| input hover border | `--border-input-hover`: `#6B7785` day, `#9BA8B6` night | the owner's decision of 2026-10-17 (P5.1 small point h) |
+| badge radius | `--radius-sm` | the owner's decision of 2026-10-17 (P5.1 small point i) |
+| tabs | the focus is an outline outside the tab at `--focus-offset`, with the strip's padding; on a phone the strip scrolls sideways | the owner's decision of 2026-10-17 (P5.1 small points j, k) |
+| the Telegram button | kept as the cabinet has it, bound to `--telegram`, `--telegram-hover`, `--on-telegram`; the one brand exception | the owner's answer of 2026-10-17, question m5twqis7 A; `refusals.md` |

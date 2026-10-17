@@ -1256,6 +1256,182 @@
    "ratio": 2.81,
    "threshold": 3.0,
    "verdict": "fail"
+  },
+  {
+   "pair": "on-info on info",
+   "foreground": "--on-info",
+   "background": "--info",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#16669F",
+   "ratio": 6.11,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-info on info",
+   "foreground": "--on-info",
+   "background": "--info",
+   "theme": "dark",
+   "foreground_value": "#04243E",
+   "background_value": "#37A6E6",
+   "ratio": 5.85,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-warning on warning",
+   "foreground": "--on-warning",
+   "background": "--warning",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#B1581B",
+   "ratio": 4.91,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-warning on warning",
+   "foreground": "--on-warning",
+   "background": "--warning",
+   "theme": "dark",
+   "foreground_value": "#3A1905",
+   "background_value": "#F2913A",
+   "ratio": 6.73,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-telegram on telegram",
+   "foreground": "--on-telegram",
+   "background": "--telegram",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#2AABEE",
+   "ratio": 2.57,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "on-telegram on telegram",
+   "foreground": "--on-telegram",
+   "background": "--telegram",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#2AABEE",
+   "ratio": 2.57,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "on-telegram on telegram-hover",
+   "foreground": "--on-telegram",
+   "background": "--telegram-hover",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#229ED9",
+   "ratio": 3.02,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "on-telegram on telegram-hover",
+   "foreground": "--on-telegram",
+   "background": "--telegram-hover",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#229ED9",
+   "ratio": 3.02,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "border-input-hover against surface",
+   "foreground": "--border-input-hover",
+   "background": "--bg-surface",
+   "theme": "light",
+   "foreground_value": "#6B7785",
+   "background_value": "#FFFFFF",
+   "ratio": 4.56,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input-hover against surface",
+   "foreground": "--border-input-hover",
+   "background": "--bg-surface",
+   "theme": "dark",
+   "foreground_value": "#9BA8B6",
+   "background_value": "#10161D",
+   "ratio": 7.51,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input-hover against page",
+   "foreground": "--border-input-hover",
+   "background": "--bg-page",
+   "theme": "light",
+   "foreground_value": "#6B7785",
+   "background_value": "#F6F8FA",
+   "ratio": 4.29,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input-hover against page",
+   "foreground": "--border-input-hover",
+   "background": "--bg-page",
+   "theme": "dark",
+   "foreground_value": "#9BA8B6",
+   "background_value": "#070A0E",
+   "ratio": 8.19,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input-hover against card ground",
+   "foreground": "--border-input-hover",
+   "background": "--bg-subtle",
+   "theme": "light",
+   "foreground_value": "#6B7785",
+   "background_value": "#EDF1F5",
+   "ratio": 4.02,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "border-input-hover against card ground",
+   "foreground": "--border-input-hover",
+   "background": "--bg-subtle",
+   "theme": "dark",
+   "foreground_value": "#9BA8B6",
+   "background_value": "#161D26",
+   "ratio": 7.0,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "toggle-knob against border-input",
+   "foreground": "--toggle-knob",
+   "background": "--border-input",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#7F97AE",
+   "ratio": 3.03,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "toggle-knob against border-input",
+   "foreground": "--toggle-knob",
+   "background": "--border-input",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#506579",
+   "ratio": 6.04,
+   "threshold": 3.0,
+   "verdict": "pass"
   }
  ]
 }

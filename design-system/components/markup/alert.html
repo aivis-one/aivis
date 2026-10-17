@@ -1,0 +1,21 @@
+<!-- AIVIS Alert (K09): severity info, success, warning, danger.
+     role="status" for info and success; role="alert" for warning and danger. The meaning is carried by the icon disc, the start bar and the title text, not by colour alone.
+     Dismissible alerts add .ds-alert__close; its aria-label comes from the translation tables. -->
+<div class="ds-alert ds-alert--info" role="status">
+  <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span>
+  <div class="ds-alert__content"><p class="ds-alert__title">Verification takes one day</p><p class="ds-alert__text">We will write when your documents are checked.</p></div>
+</div>
+<div class="ds-alert ds-alert--success" role="status">
+  <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <div class="ds-alert__content"><p class="ds-alert__title">Payment received</p><p class="ds-alert__text">Your balance is updated.</p></div>
+  <button type="button" class="ds-alert__close" aria-label="Dismiss"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+</div>
+<div class="ds-alert ds-alert--warning" role="alert">
+  <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span>
+  <div class="ds-alert__content"><p class="ds-alert__title">Document expires soon</p><p class="ds-alert__text">Upload a new one before the end of the month.</p>
+    <div class="ds-alert__actions"><button type="button" class="ds-button ds-button--secondary" data-size="sm"><span>Upload</span></button></div></div>
+</div>
+<div class="ds-alert ds-alert--danger" role="alert">
+  <span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield-alert"/></svg></span>
+  <div class="ds-alert__content"><p class="ds-alert__title">Payment failed</p><p class="ds-alert__text">The card was declined. Try another one.</p></div>
+</div>

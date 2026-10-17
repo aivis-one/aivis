@@ -1,0 +1,37 @@
+<!-- AIVIS Button (K01). Style ../components.css. Icons: inline ../icons/icons.svg once, then <use href="#i-key"/>.
+     Looks: primary, accent, secondary, ghost, danger, telegram. Sizes by data-size="sm|md|lg" (md when absent); at the 480 width every button is at least --touch-min high.
+     States: rest, hover, pressed (:active), focus (:focus-visible), disabled (disabled or aria-disabled), loading (aria-busy="true", label kept). -->
+
+<!-- primary, md: rest | hover | pressed | focus -->
+<button type="button" class="ds-button ds-button--primary"><span>Invest</span></button>
+
+<!-- accent, with an icon before the label (the rocket from 24 px up) -->
+<button type="button" class="ds-button ds-button--accent"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-rocket"/></svg><span>Start</span></button>
+
+<!-- secondary: bordered, quiet -->
+<button type="button" class="ds-button ds-button--secondary"><span>Cancel</span></button>
+
+<!-- ghost: no border; also the link-style action -->
+<button type="button" class="ds-button ds-button--ghost"><span>Forgot password?</span></button>
+
+<!-- danger -->
+<button type="button" class="ds-button ds-button--danger"><span>Delete</span></button>
+
+<!-- telegram: the one brand exception (reference/refusals.md); no Telegram icon exists in the set -->
+<button type="button" class="ds-button ds-button--telegram"><span>Continue with Telegram</span></button>
+
+<!-- sizes -->
+<button type="button" class="ds-button ds-button--primary" data-size="sm"><span>Small</span></button>
+<button type="button" class="ds-button ds-button--primary" data-size="lg"><span>Large</span></button>
+
+<!-- full width -->
+<button type="submit" class="ds-button ds-button--primary ds-button--block"><span>Sign in</span></button>
+
+<!-- disabled -->
+<button type="button" class="ds-button ds-button--primary" disabled><span>Invest</span></button>
+
+<!-- loading: the label stays in the tree, the button announces itself and keeps its width -->
+<button type="button" class="ds-button ds-button--primary" aria-busy="true"><span class="ds-button__spinner" aria-hidden="true"></span><span>Saving</span></button>
+
+<!-- icon-only: aria-label is required and comes from the translation tables -->
+<button type="button" class="ds-button ds-button--secondary ds-button--icon" aria-label="Copy link"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg></button>

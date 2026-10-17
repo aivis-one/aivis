@@ -85,6 +85,7 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--border-default` | `#C5D0DA` | `#2E3A46` | landing/site/assets/ds/aivis-tokens.css:45; night landing/site/assets/ds/aivis-tokens.css:184 | frontend/src/styles/variables.css:110 same |
 | `--border-strong` | `#9BA8B6` | `#41505E` | landing/site/assets/ds/aivis-tokens.css:46; night landing/site/assets/ds/aivis-tokens.css:185 |  |
 | `--border-input` | `#7F97AE` | `#506579` | the owner's decision of 2026-10-17 (small point 4d): day `#7F97AE` as decided; night `#506579`, measured 3.01 against the night surface `#10161D` (3.29 on the page, 2.81 on the card ground) by the formula of `tokens/contrast.json` |  |
+| `--border-input-hover` | `#6B7785` | `#9BA8B6` | the owner's decision of 2026-10-17 (P5.1 small point h, by his delegation; row 95 HIS WORD 2026-10-17T19:49Z): day neutral-500, night neutral-400; measured 4.56 and 7.51 against the surface by the formula of `tokens/contrast.json` |  |
 | `--primary` | `#0B4F86` | `#37A6E6` | landing/site/assets/ds/aivis-tokens.css:48; night landing/site/assets/ds/aivis-tokens.css:187 | frontend/src/styles/variables.css:111 same |
 | `--primary-hover` | `#083B64` | `#6DBDED` | landing/site/assets/ds/aivis-tokens.css:49; night landing/site/assets/ds/aivis-tokens.css:188 | frontend/src/styles/variables.css:112 same |
 | `--primary-active` | `#062A48` | `#ADD9F5` | landing/site/assets/ds/aivis-tokens.css:50; night landing/site/assets/ds/aivis-tokens.css:189 | frontend/src/styles/variables.css:113 same |
@@ -103,9 +104,11 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--info` | `#16669F` | `#37A6E6` | landing/site/assets/ds/aivis-tokens.css:65; night landing/site/assets/ds/aivis-tokens.css:204 |  |
 | `--info-subtle` | `#EAF4FC` | `rgba(55,166,230,.14)` | landing/site/assets/ds/aivis-tokens.css:66; night landing/site/assets/ds/aivis-tokens.css:205 |  |
 | `--info-subtle-text` | `#083B64` | `#6DBDED` | landing/site/assets/ds/aivis-tokens.css:67; night landing/site/assets/ds/aivis-tokens.css:206 |  |
+| `--on-info` | `#FFFFFF` | `#04243E` | the owner's decision of 2026-10-17 (P5.1 small point d; row 95 HIS WORD 2026-10-17T19:49Z): the `--on-primary` pair; measured 6.11 and 5.85 |  |
 | `--warning` | `#B1581B` | `#F2913A` | landing/site/assets/ds/aivis-tokens.css:69; night landing/site/assets/ds/aivis-tokens.css:208 | frontend/src/styles/variables.css:155 differs: #9a4410 / night #f2913a |
 | `--warning-subtle` | `#FCF1E4` | `rgba(242,145,58,.16)` | landing/site/assets/ds/aivis-tokens.css:70; night landing/site/assets/ds/aivis-tokens.css:209 | frontend/src/styles/variables.css:156 same |
 | `--warning-subtle-text` | `#652C0A` | `#F5AE6D` | landing/site/assets/ds/aivis-tokens.css:71; night landing/site/assets/ds/aivis-tokens.css:210 |  |
+| `--on-warning` | `#FFFFFF` | `#3A1905` | the owner's decision of 2026-10-17 (P5.1 small point e; row 95 HIS WORD 2026-10-17T19:49Z): an alias of `--on-accent` in both themes, since `--warning` equals `--accent`; measured 4.91 and 6.73 |  |
 | `--danger` | `#9C231E` | `#E5645D` | landing/site/assets/ds/aivis-tokens.css:73; night landing/site/assets/ds/aivis-tokens.css:212 | frontend/src/styles/variables.css:140 same |
 | `--danger-hover` | `#7A1A16` | `#EE9893` | landing/site/assets/ds/aivis-tokens.css:74; night landing/site/assets/ds/aivis-tokens.css:213 |  |
 | `--danger-subtle` | `#FCEBEA` | `rgba(214,62,55,.16)` | landing/site/assets/ds/aivis-tokens.css:75; night landing/site/assets/ds/aivis-tokens.css:214 | frontend/src/styles/variables.css:141 same |
@@ -118,6 +121,9 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--icon-secondary` | `#4C5763` | `#A7B4C2` | landing/site/assets/site.css:46; night landing/site/assets/site.css:69 |  |
 | `--icon-disabled` | `#9BA8B6` | `#41505E` | landing/site/assets/site.css:47; night landing/site/assets/site.css:70 |  |
 | `--icon-brand` | `#0B4F86` | `#37A6E6` | landing/site/assets/site.css:48; night landing/site/assets/site.css:71 |  |
+| `--telegram` | `#2AABEE` | `#2AABEE` | the owner's answer of 2026-10-17, question m5twqis7 option A (row 95 HIS WORD 2026-10-17T19:49Z); frontend/src/styles/variables.css:386; the same in both themes | the cabinet only |
+| `--telegram-hover` | `#229ED9` | `#229ED9` | question m5twqis7 option A; frontend/src/styles/variables.css:387 (named `--telegram-dark` there); the same in both themes | the cabinet only |
+| `--on-telegram` | `#FFFFFF` | `#FFFFFF` | question m5twqis7 option A; frontend/src/styles/variables.css:395; white on `#2AABEE` measures 2.57 and on `#229ED9` 3.02, kept as the one brand exception of `refusals.md` | the cabinet only |
 | `--grad-azure` | `linear-gradient(135deg,#37A6E6,#0B4F86)` |  | landing/site/assets/ds/aivis-tokens.css:82 |  |
 | `--grad-emerald` | `linear-gradient(135deg,#34D17E,#0E6E45)` |  | landing/site/assets/ds/aivis-tokens.css:83 |  |
 | `--grad-amber` | `linear-gradient(135deg,#F2913A,#9A4410)` |  | landing/site/assets/ds/aivis-tokens.css:84 |  |

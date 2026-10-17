@@ -1,0 +1,53 @@
+<!-- AIVIS Text field (K03): input, textarea, select. Style ../components.css.
+     The invalid state is wired: aria-invalid="true" on the control, aria-describedby naming the hint and the message, the message carries an icon and text.
+     Sizes by data-size="sm|md|lg" on .ds-field or on the control (md when absent). -->
+
+<!-- rest | hover | focus -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-name">Full name</label>
+  <input class="ds-input" id="f-name" type="text" autocomplete="name" aria-describedby="f-name-hint">
+  <p class="ds-field__hint" id="f-name-hint">As in your passport.</p>
+</div>
+
+<!-- invalid -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-mail">E-mail</label>
+  <input class="ds-input" id="f-mail" type="email" autocomplete="email" value="anna@" aria-invalid="true" aria-describedby="f-mail-err">
+  <p class="ds-field__error" id="f-mail-err"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg><span>Enter an address like name@example.com.</span></p>
+</div>
+
+<!-- disabled -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-id">Investor number</label>
+  <input class="ds-input" id="f-id" type="text" value="INV-20418" disabled>
+</div>
+
+<!-- amount: figures in the mono family -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-amt">Amount</label>
+  <input class="ds-input ds-input--num" id="f-amt" type="text" inputmode="decimal" value="4820.00">
+</div>
+
+<!-- password with reveal; the button's name switches between data-label-show and data-label-hide, both from the translation tables -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-pw">Password</label>
+  <div class="ds-input-wrap">
+    <input class="ds-input ds-input--reveal" id="f-pw" type="password" autocomplete="current-password">
+    <button type="button" class="ds-input-reveal" aria-label="Show password" data-label-show="Show password" data-label-hide="Hide password"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-eye"/></svg></button>
+  </div>
+</div>
+
+<!-- textarea -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-note">Note <span class="ds-field__optional">(optional)</span></label>
+  <textarea class="ds-input" id="f-note" rows="3"></textarea>
+</div>
+
+<!-- select: native control, the chevron is the icon of the set -->
+<div class="ds-field">
+  <label class="ds-field__label" for="f-cur">Currency</label>
+  <div class="ds-select">
+    <select class="ds-input" id="f-cur"><option>USDT</option><option>EUR</option></select>
+    <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>
+  </div>
+</div>

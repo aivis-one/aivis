@@ -31,6 +31,14 @@ A prohibition without a replacement sends work back to guessing, so every row na
 | draw the focus ring in azure-300 by day | `--focus-ring`, azure-500 `#217AB6` by day (4.09 at the lowest) | azure-300 measures 2.38 to 2.71 by day, under the 3:1 floor for a focus indicator | Q xja37czs A; M |
 | draw the focus indicator as a halo (`--shadow-focus`) | the 2 px outline: `outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset)` | the focus indicator is an outline, with no halo | the owner's decision of 2026-10-17 (small points on the focus and border page) |
 | draw an input border of a width other than 1 px | `--border-input-width` | the input border is 1 px | the owner's decision of 2026-10-17 (small points on the focus and border page) |
+| draw the hover border of an input in another colour than `--border-input-hover` | `--border-input-hover` (`#6B7785` day, `#9BA8B6` night) | one hover colour for every input and for the controls that read as inputs | the owner's decision of 2026-10-17 (P5.1 small point h) |
+| draw the secondary button, the filter chip or the toggle track on hover with `--border-strong` or `--border-default` | `--border-input` | these controls read as inputs and the border must reach 3:1 (3.03 day, 3.01 night) | the owner's decision of 2026-10-17 (P5.1 small point g) |
+
+## Brand exception
+
+| Do not | Instead | Why | Source |
+|---|---|---|---|
+| restyle the Telegram button, or hold it to the 4.5 text floor | the `telegram` button variant, bound to `--telegram`, `--telegram-hover` and `--on-telegram` as they stand: the one brand exception of the system | white on `#2AABEE` is 2.57 and on `#229ED9` 3.02, under 4.5; kept because Telegram's brand is not ours to restyle; no other component carries a brand colour | the owner's answer of 2026-10-17, question m5twqis7 A; frontend/src/styles/variables.css:386, 387, 395 |
 
 ## Typefaces
 

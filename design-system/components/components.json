@@ -1,0 +1,666 @@
+[
+ {
+  "id": "K01",
+  "name": "Button",
+  "status": "built",
+  "markup": "markup/button.html",
+  "class_root": ".ds-button",
+  "variants": {
+   "looks": [
+    "primary",
+    "accent",
+    "secondary",
+    "ghost",
+    "danger",
+    "telegram"
+   ],
+   "icon_only": "--icon (aria-label required)",
+   "modifiers": [
+    "--block"
+   ]
+  },
+  "sizes": [
+   "sm 32",
+   "md 38 (default)",
+   "lg 44"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "disabled",
+   "loading (aria-busy)"
+  ],
+  "tokens": [
+   "--accent",
+   "--accent-hover",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input",
+   "--border-input-width",
+   "--control-height-lg",
+   "--control-height-md",
+   "--control-height-sm",
+   "--danger",
+   "--danger-hover",
+   "--dur-fast",
+   "--dur-slower",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-body",
+   "--fs-sm",
+   "--fs-xs",
+   "--icon-size-sm",
+   "--lh-tight",
+   "--on-accent",
+   "--on-danger",
+   "--on-primary",
+   "--on-telegram",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--primary-subtle",
+   "--radius-control",
+   "--radius-pill",
+   "--shadow-inset-hex",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--telegram",
+   "--telegram-hover",
+   "--text-primary"
+  ],
+  "accessibility": "A real button element. Loading keeps the label in the tree and sets aria-busy=\"true\". Disabled uses the disabled attribute, or aria-disabled=\"true\" when the reason must stay announceable. An icon-only button needs aria-label from the translation tables. At the 480 width every button is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. The telegram label (white on #2AABEE, 2.57) is under the 4.5 text floor by the one brand exception of reference/refusals.md.",
+  "purpose": "An action the user starts.",
+  "usage": "One primary per view; accent for a deliberate second action; secondary for the quiet alternative; ghost for the link-style action; danger for irreversible actions, which confirm. telegram is the one brand exception and appears only where the Telegram sign-in or WebApp action is offered. A link that navigates is an anchor, not a button.",
+  "notes": ""
+ },
+ {
+  "id": "K03",
+  "name": "Text field",
+  "status": "built",
+  "markup": "markup/text-field.html",
+  "class_root": ".ds-field, .ds-input, .ds-select, .ds-input-wrap",
+  "variants": {
+   "shared": [
+    "text input",
+    "textarea",
+    "select",
+    "password with reveal",
+    "amount (--num, mono figures)"
+   ]
+  },
+  "sizes": [
+   "sm 32",
+   "md 38 (default)",
+   "lg 44"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "focus",
+   "invalid (aria-invalid)",
+   "disabled",
+   "read-only"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input",
+   "--border-input-hover",
+   "--border-input-width",
+   "--control-height-lg",
+   "--control-height-md",
+   "--control-height-sm",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-mono",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--primary-subtle",
+   "--radius-control",
+   "--size-2xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--text-tertiary",
+   "--touch-min"
+  ],
+  "accessibility": "Every control has a visible label bound by for and id. The hint and the message are linked by aria-describedby; an invalid value sets aria-invalid=\"true\" on the control and shows a message with an icon and text, never colour alone. The reveal button does not carry aria-pressed: its accessible name switches between the show and the hide label (data-label-show and data-label-hide, from the translation tables). Fields are 16 px text at the 480 width so phones do not zoom. Border: --border-input at --border-input-width; --border-input-hover on hover.",
+  "purpose": "Text entry.",
+  "usage": "One field per label; format hints in the hint line, not in the placeholder; amounts take --num.",
+  "notes": ""
+ },
+ {
+  "id": "K05",
+  "name": "Radio",
+  "status": "built",
+  "markup": "markup/radio.html",
+  "class_root": ".ds-radio",
+  "variants": {
+   "shared": [
+    "single"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "unselected",
+   "hover",
+   "pressed",
+   "selected",
+   "focus",
+   "disabled",
+   "invalid"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-input",
+   "--border-input-hover",
+   "--border-input-width",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--primary",
+   "--primary-subtle",
+   "--radius-pill",
+   "--size-2xs",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "A native radio input inside a label, grouped in a fieldset with a legend; the arrow keys move inside the group, Tab leaves it. The ring uses --border-input. The row is at least --touch-min high at the 480 width.",
+  "purpose": "One choice from a short list.",
+  "usage": "Two to five options visible together; more than five use a select.",
+  "notes": ""
+ },
+ {
+  "id": "K06",
+  "name": "Toggle",
+  "status": "built",
+  "markup": "markup/toggle.html",
+  "class_root": ".ds-toggle",
+  "variants": {
+   "shared": [
+    "single"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "off",
+   "on",
+   "hover",
+   "pressed",
+   "focus",
+   "disabled"
+  ],
+  "tokens": [
+   "--border-input",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--on-primary",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--radius-pill",
+   "--size-2xs",
+   "--size-3xl",
+   "--size-xl",
+   "--size-xs",
+   "--space-1",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--toggle-knob",
+   "--toggle-track"
+  ],
+  "accessibility": "A native checkbox with role=\"switch\". The state is carried by the knob position and the track colour, and announced by the switch role. The knob uses --on-primary on the primary track so it keeps 3:1 at night. The row is at least --touch-min high at the 480 width.",
+  "purpose": "A setting that takes effect at once.",
+  "usage": "Statements (\"E-mail notifications\"); a choice that needs a Save button is a checkbox.",
+  "notes": ""
+ },
+ {
+  "id": "K07",
+  "name": "Card",
+  "status": "built",
+  "markup": "markup/card.html",
+  "class_root": ".ds-card",
+  "variants": {
+   "shared": [
+    "outlined (default)",
+    "flat",
+    "elevated",
+    "interactive"
+   ]
+  },
+  "sizes": [
+   "sm",
+   "md (default)",
+   "lg"
+  ],
+  "states": [
+   "rest",
+   "hover (interactive)",
+   "pressed (interactive)",
+   "focus (interactive)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-h4",
+   "--fs-sm",
+   "--lh-normal",
+   "--lh-snug",
+   "--radius-card",
+   "--shadow-1",
+   "--shadow-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-6",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-tight"
+  ],
+  "accessibility": "An interactive card holds exactly one link in its title; the link stretches over the card and takes the focus outline for the whole card. No click handler on the container. The title is a heading whose level fits the page.",
+  "purpose": "A bounded group of related content.",
+  "usage": "The decorative tick is placed by elements/README.md and is not part of this component; a card keeps --border-subtle.",
+  "notes": ""
+ },
+ {
+  "id": "K08",
+  "name": "Badge",
+  "status": "built",
+  "markup": "markup/badge.html",
+  "class_root": ".ds-badge",
+  "variants": {
+   "shared": [
+    "neutral",
+    "success",
+    "warning",
+    "danger",
+    "info"
+   ]
+  },
+  "sizes": [
+   "one size (text --fs-xs)"
+  ],
+  "states": [
+   "rest"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--border-subtle",
+   "--danger-subtle",
+   "--danger-subtle-text",
+   "--fs-xs",
+   "--info-subtle",
+   "--info-subtle-text",
+   "--lh-tight",
+   "--radius-sm",
+   "--space-1",
+   "--space-2",
+   "--success-subtle",
+   "--success-subtle-text",
+   "--text-secondary",
+   "--warning-subtle",
+   "--warning-subtle-text"
+  ],
+  "accessibility": "A badge always carries text; meaning is never colour alone. Badges use the status subtle ground and subtle text (7.12 and better). A decorative badge is aria-hidden.",
+  "purpose": "A short status label.",
+  "usage": "One to two words; the status text, not an action.",
+  "notes": ""
+ },
+ {
+  "id": "K09",
+  "name": "Alert",
+  "status": "built",
+  "markup": "markup/alert.html",
+  "class_root": ".ds-alert",
+  "variants": {
+   "shared": [
+    "info",
+    "success",
+    "warning",
+    "danger"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "rest",
+   "dismissible",
+   "with actions"
+  ],
+  "tokens": [
+   "--danger",
+   "--danger-subtle",
+   "--danger-subtle-text",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--info",
+   "--info-subtle",
+   "--info-subtle-text",
+   "--lh-normal",
+   "--lh-snug",
+   "--on-danger",
+   "--on-info",
+   "--on-success",
+   "--on-warning",
+   "--radius-control",
+   "--radius-md",
+   "--radius-pill",
+   "--size-md",
+   "--size-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--success",
+   "--success-subtle",
+   "--success-subtle-text",
+   "--text-primary",
+   "--text-secondary",
+   "--warning",
+   "--warning-subtle",
+   "--warning-subtle-text"
+  ],
+  "accessibility": "role=\"status\" for info and success, role=\"alert\" for warning and danger (the skill rule). The severity is carried by the icon disc, the start bar and the title text. The dismiss button is a real button whose aria-label comes from the translation tables. The tick is never placed on an alert (refusals.md).",
+  "purpose": "A message the user must see in context.",
+  "usage": "Short title plus one sentence; an action is a button inside .ds-alert__actions.",
+  "notes": ""
+ },
+ {
+  "id": "K12",
+  "name": "Tabs",
+  "status": "built",
+  "markup": "markup/tabs.html",
+  "class_root": ".ds-tabs, .ds-tab, .ds-tabpanel",
+  "variants": {
+   "shared": [
+    "horizontal"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "selected",
+   "focus",
+   "disabled"
+  ],
+  "tokens": [
+   "--border-default",
+   "--border-input-width",
+   "--border-subtle",
+   "--control-height-lg",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-sm",
+   "--primary",
+   "--primary-subtle",
+   "--radius-xs",
+   "--space-1",
+   "--space-2",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "role tablist, tab and tabpanel with aria-selected and aria-controls; one tab is in the tab order, Left and Right, Home and End move between tabs (components.js, direction aware), Tab enters the panel. The selected tab is marked by colour and by the underline. The strip scrolls sideways on a phone and each tab is at least --touch-min high.",
+  "purpose": "Switch between sibling views of one subject.",
+  "usage": "Two to six tabs; a tab changes the view in place, not the page. Five shell tabs are navigation, not this component.",
+  "notes": ""
+ },
+ {
+  "id": "K13",
+  "name": "Filter chip",
+  "status": "built",
+  "markup": "markup/filter-chip.html",
+  "class_root": ".ds-chip",
+  "variants": {
+   "shared": [
+    "toggle",
+    "removable"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "selected (aria-pressed)",
+   "focus",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input",
+   "--border-subtle",
+   "--control-height-sm",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-tight",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-pill",
+   "--size-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "A button with aria-pressed; a selected chip also shows the check icon so colour is not alone. A group is a role=\"group\" with an aria-label. A removable chip has a remove button with its own aria-label. The border is --border-input (3.03 day, 3.01 night).",
+  "purpose": "Filter a list by one value.",
+  "usage": "A row of chips above a list; the count is mono figures.",
+  "notes": ""
+ },
+ {
+  "id": "K16",
+  "name": "Toast",
+  "status": "built",
+  "markup": "markup/toast.html",
+  "class_root": ".ds-toast, .ds-toast-region",
+  "variants": {
+   "shared": [
+    "info",
+    "success",
+    "warning",
+    "danger"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "enter",
+   "rest",
+   "dismissed"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--danger",
+   "--danger-subtle",
+   "--danger-subtle-text",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--info",
+   "--info-subtle",
+   "--info-subtle-text",
+   "--lh-normal",
+   "--lh-snug",
+   "--on-danger",
+   "--on-info",
+   "--on-success",
+   "--on-warning",
+   "--radius-control",
+   "--radius-md",
+   "--radius-pill",
+   "--shadow-3",
+   "--size-md",
+   "--size-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-safe-bottom",
+   "--success",
+   "--success-subtle",
+   "--success-subtle-text",
+   "--text-primary",
+   "--text-secondary",
+   "--warning",
+   "--warning-subtle",
+   "--warning-subtle-text"
+  ],
+  "accessibility": "Kit fix: the region is aria-live=\"polite\" and present from the start; a toast is inserted into it. A danger toast has role=\"alert\". A dismiss button is present. The toast ground is opaque (the subtle tint over --bg-surface) so the page behind never shows through.",
+  "purpose": "A short confirmation that needs no decision.",
+  "usage": "Never the only place a failure shows; auto-hide is the app's and never shorter than the time to read it.",
+  "notes": ""
+ },
+ {
+  "id": "K18",
+  "name": "Progress",
+  "status": "built",
+  "markup": "markup/progress.html",
+  "class_root": ".ds-progress",
+  "variants": {
+   "shared": [
+    "primary",
+    "success",
+    "warning",
+    "danger",
+    "indeterminate"
+   ]
+  },
+  "sizes": [],
+  "states": [
+   "determinate",
+   "indeterminate"
+  ],
+  "tokens": [
+   "--border-default",
+   "--danger",
+   "--dur-base",
+   "--dur-slower",
+   "--ease-standard",
+   "--fs-sm",
+   "--primary",
+   "--radius-pill",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--success",
+   "--text-secondary",
+   "--warning"
+  ],
+  "accessibility": "Kit fix: the track has role=\"progressbar\" with aria-valuenow, aria-valuemin, aria-valuemax and an accessible name (aria-labelledby or aria-label); indeterminate omits aria-valuenow. The fill width is the custom property --value. Indeterminate motion stops under reduced motion.",
+  "purpose": "How far a long operation has come.",
+  "usage": "Show the figure as text beside it.",
+  "notes": ""
+ },
+ {
+  "id": "K20",
+  "name": "Loader",
+  "status": "built",
+  "markup": "markup/loader.html",
+  "class_root": ".ds-loader",
+  "variants": {
+   "shared": [
+    "ring"
+   ]
+  },
+  "sizes": [
+   "sm",
+   "md (default)"
+  ],
+  "states": [
+   "spinning"
+  ],
+  "tokens": [
+   "--border-default",
+   "--border-input-width",
+   "--dur-slower",
+   "--fs-sm",
+   "--primary",
+   "--radius-pill",
+   "--size-md",
+   "--size-xs",
+   "--space-2",
+   "--text-secondary"
+  ],
+  "accessibility": "Kit fix: the wrapper has role=\"status\" and a text (visible or .ds-sr-only) so the busy state is announced. The ring is aria-hidden. Under reduced motion it turns four times slower.",
+  "purpose": "A wait of unknown length.",
+  "usage": "Prefer a skeleton for content (batch 2); a loader for a section or a page.",
+  "notes": ""
+ },
+ {
+  "id": "K40",
+  "name": "Language and theme controls (CAppControls)",
+  "status": "contract only",
+  "markup": null,
+  "class_root": null,
+  "variants": {},
+  "sizes": [],
+  "states": [],
+  "tokens": [],
+  "accessibility": "No component is built here: the cabinet code is not changed by this batch. The contract is in components.md, section \"K40 contract\".",
+  "purpose": "Switch language and theme.",
+  "usage": "See components.md.",
+  "notes": "Labels come from i18n keys, never from English literals in the template."
+ }
+]

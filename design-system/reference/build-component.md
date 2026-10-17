@@ -11,7 +11,7 @@
 
 **Output:** the component's markup and style, bound to tokens, with its states and both themes covered.
 
-This tree holds tokens, fonts, brand, icons and decorative elements; it holds no component catalogue yet. A component is therefore authored from tokens alone, as follows.
+The catalogue of components is `../components/components.json` (one entry per component: variants, sizes, states, tokens, accessibility), `../components/components.md` (how to choose and use each) and `../components/markup/` (the markup of each), styled by `../components/components.css` and shown in `../examples/components-1.html`. A new component is authored from tokens alone, as follows, and added to all of them.
 
 ## Gate-in
 

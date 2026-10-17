@@ -18,6 +18,7 @@
   --border-default: #2E3A46;
   --border-strong: #41505E;
   --border-input: #506579;
+  --border-input-hover: #9BA8B6;
   --primary: var(--azure-300);
   --primary-hover: var(--azure-200);
   --primary-active: var(--azure-100);
@@ -36,9 +37,11 @@
   --info: var(--azure-300);
   --info-subtle: rgba(55,166,230,.14);
   --info-subtle-text: var(--azure-200);
+  --on-info: #04243E;
   --warning: var(--amber-300);
   --warning-subtle: rgba(242,145,58,.16);
   --warning-subtle-text: var(--amber-200);
+  --on-warning: var(--on-accent);
   --danger: var(--red-300);
   --danger-hover: var(--red-200);
   --danger-subtle: rgba(214,62,55,.16);
@@ -84,6 +87,7 @@
     --border-default: #2E3A46;
     --border-strong: #41505E;
     --border-input: #506579;
+    --border-input-hover: #9BA8B6;
     --primary: var(--azure-300);
     --primary-hover: var(--azure-200);
     --primary-active: var(--azure-100);
@@ -102,9 +106,11 @@
     --info: var(--azure-300);
     --info-subtle: rgba(55,166,230,.14);
     --info-subtle-text: var(--azure-200);
+    --on-info: #04243E;
     --warning: var(--amber-300);
     --warning-subtle: rgba(242,145,58,.16);
     --warning-subtle-text: var(--amber-200);
+    --on-warning: var(--on-accent);
     --danger: var(--red-300);
     --danger-hover: var(--red-200);
     --danger-subtle: rgba(214,62,55,.16);

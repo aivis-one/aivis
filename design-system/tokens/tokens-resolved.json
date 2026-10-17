@@ -154,6 +154,11 @@
   "light": "#7F97AE",
   "dark": "#506579"
  },
+ "--border-input-hover": {
+  "layer": "semantic",
+  "light": "#6B7785",
+  "dark": "#9BA8B6"
+ },
  "--border-input-width": {
   "layer": "scale",
   "light": "1px",
@@ -744,6 +749,11 @@
   "light": "#FFFFFF",
   "dark": "#360B09"
  },
+ "--on-info": {
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "dark": "#04243E"
+ },
  "--on-primary": {
   "layer": "semantic",
   "light": "#FFFFFF",
@@ -753,6 +763,16 @@
   "layer": "semantic",
   "light": "#FFFFFF",
   "dark": "#06321F"
+ },
+ "--on-telegram": {
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "dark": "#FFFFFF"
+ },
+ "--on-warning": {
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "dark": "#3A1905"
  },
  "--primary": {
   "layer": "semantic",
@@ -1088,6 +1108,16 @@
   "layer": "scale",
   "light": "44px",
   "dark": "44px"
+ },
+ "--telegram": {
+  "layer": "semantic",
+  "light": "#2AABEE",
+  "dark": "#2AABEE"
+ },
+ "--telegram-hover": {
+  "layer": "semantic",
+  "light": "#229ED9",
+  "dark": "#229ED9"
  },
  "--text-inverse": {
   "layer": "semantic",

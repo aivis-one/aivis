@@ -1,0 +1,8 @@
+<!-- AIVIS Filter chip (K13): a toggle button, aria-pressed carries the state; the pressed chip also shows a check icon, so colour is not alone.
+     A group of chips is a labelled group. Removable chip: a label plus a remove button with its own aria-label. -->
+<div class="ds-chip-row" role="group" aria-label="Status filter">
+  <button type="button" class="ds-chip" aria-pressed="true"><svg class="ds-icon ds-chip__check" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>All</span><span class="ds-chip__count">12</span></button>
+  <button type="button" class="ds-chip" aria-pressed="false"><svg class="ds-icon ds-chip__check" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Paid</span><span class="ds-chip__count">7</span></button>
+  <button type="button" class="ds-chip" aria-pressed="false" disabled><svg class="ds-icon ds-chip__check" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Archived</span></button>
+</div>
+<span class="ds-chip ds-chip--removable"><span>2026</span><button type="button" class="ds-chip__remove" aria-label="Remove filter 2026"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></span>

@@ -5,7 +5,7 @@
 
 # Tokens
 
-246 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
+252 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
 
 ## Layers
 
@@ -36,7 +36,8 @@
 | `--border-subtle` | hairlines and card borders; card borders are unchanged |
 | `--border-default` | borders of dividers and of parts that are not inputs; it was the input border before `--border-input` |
 | `--border-strong` | borders that must read |
-| `--border-input` | the border of every input: `#7F97AE` by day, `#506579` by night; inputs only |
+| `--border-input` | the border of every input: `#7F97AE` by day, `#506579` by night; inputs only, and the controls that read as inputs: the secondary button, the filter chip and the toggle track on hover |
+| `--border-input-hover` | the border of an input on hover: `#6B7785` by day, `#9BA8B6` by night (4.56 and 7.51 against the surface) |
 | `--primary` | the brand action colour (azure) |
 | `--primary-hover` | its hover |
 | `--primary-active` | its pressed state |
@@ -55,9 +56,11 @@
 | `--info` | information status |
 | `--info-subtle` | tinted ground |
 | `--info-subtle-text` | text on it |
+| `--on-info` | text on info: `#FFFFFF` by day, `#04243E` by night (the `--on-primary` pair; 6.11 and 5.85) |
 | `--warning` | warning status; as text it follows the accent: never on the card ground |
 | `--warning-subtle` | tinted ground |
 | `--warning-subtle-text` | text on it |
+| `--on-warning` | text on warning: an alias of `--on-accent` in both themes (`#FFFFFF` by day, `#3A1905` by night; 4.91 and 6.73) |
 | `--danger` | error and destructive status |
 | `--danger-hover` | its hover |
 | `--danger-subtle` | tinted ground |
@@ -70,6 +73,8 @@
 | `--icon-secondary` | icon supporting |
 | `--icon-disabled` | icon disabled |
 | `--icon-brand` | icon in the brand colour |
+| `--telegram`, `--telegram-hover` | the Telegram button's fill and its hover: `#2AABEE` and `#229ED9`, the same in both themes; the one brand exception (`../reference/refusals.md`) |
+| `--on-telegram` | text on the Telegram button: `#FFFFFF` in both themes |
 
 The tinted grounds (`*-subtle`) are opaque in the day theme and translucent in the night theme.
 
