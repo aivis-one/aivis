@@ -1,0 +1,13 @@
+<!-- AIVIS Accordion (K27): native details and summary, no script. Each item is details.ds-accordion__item with summary.ds-accordion__summary (the title and the chevron-down icon)
+     and a div.ds-accordion__panel. The summary is the button: Enter and Space toggle it; the open state is the details open attribute. To let one item open at a time give the
+     details the same name attribute. The chevron turns when open. A first item may carry open. -->
+<div class="ds-accordion">
+  <details class="ds-accordion__item" open>
+    <summary class="ds-accordion__summary"><span>How is the fee charged?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary>
+    <div class="ds-accordion__panel"><p>The fee is taken once, at the purchase, and is shown before you confirm.</p></div>
+  </details>
+  <details class="ds-accordion__item">
+    <summary class="ds-accordion__summary"><span>Can I cancel a purchase?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary>
+    <div class="ds-accordion__panel"><p>Until it is confirmed, yes. After that, write to support.</p></div>
+  </details>
+</div>

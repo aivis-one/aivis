@@ -1,4 +1,4 @@
-/* AIVIS design system -- components, batch 1 (P5.1).
+/* AIVIS design system -- components, batches 1 (P5.1) and 2 (P5.2); batch 2 starts at its own banner below.
    Button, Text field, Radio, Toggle, Card, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader.
    Every value is a token of ../tokens/tokens.css (day) and ../tokens/tokens-dark.css (night): no hex, no rgb, no pixel
    size below (the only numbers are the widths in the media queries, which a custom property cannot hold).
@@ -663,4 +663,645 @@ textarea.ds-input {
   .ds-card, .ds-tab, .ds-chip, .ds-progress__fill, .ds-toast { transition: none; animation: none; }
   .ds-button__spinner, .ds-loader__ring { animation-duration: calc(var(--dur-slower) * 4); }
   .ds-progress--indeterminate .ds-progress__fill { animation: none; inline-size: 40%; }
+}
+
+/* =====================================================================================================
+   AIVIS design system -- components, batch 2 (P5.2).
+   K25 App shell and navigation, K15 Tooltip, K17 Pager, K19 Skeleton, K23 Row list, K24 Table,
+   K27 Accordion, K31 Segmented control, K34 Nav tile.
+   Same rules as batch 1: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
+   ===================================================================================================== */
+
+/* ===== Shared: focus of the batch 2 parts ===== */
+:is(.ds-navitem, .ds-tooltip-trigger, .ds-pager__item, .ds-accordion__summary, .ds-navtile, .ds-table__link, .ds-table-wrap):focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.ds-row__link:focus-visible { outline: none; }
+.ds-row:has(.ds-row__link:focus-visible) {
+  z-index: 1;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.ds-segmented__input:focus-visible { outline: none; }
+.ds-segmented__option:has(.ds-segmented__input:focus-visible) {
+  z-index: 1;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ===== K25 App shell and navigation (tab bar, side rail, header) ===== */
+/* The shell is one grid of header, main and nav. The nav is ONE element: below the rail tier it is the tab bar,
+   from the rail tier up it is the side rail. The tier follows the viewport (question ej1wo930 A): the tab bar below
+   880 (--bp-lg), the icon rail from 880, the labelled rail from 1120 (--bp-xl); a media query writes the number.
+   The attribute data-tier on .ds-shell (bar, rail or wide) forces a tier in a specimen only (never on a product screen), for a shell drawn narrower than
+   the window; the media queries below act on a shell that has no data-tier. */
+.ds-shell {
+  --_pad: calc(var(--focus-width) + var(--focus-offset));
+  --_rail: calc(var(--size-4xl) + var(--space-4));
+  --_rail-wide: calc(var(--size-4xl) * 4 + var(--space-2));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "header" "main" "nav";
+  min-block-size: 100dvh;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+.ds-shell--framed { min-block-size: 0; block-size: 100%; }
+.ds-shell[data-tier="rail"],
+.ds-shell[data-tier="wide"] {
+  grid-template-columns: var(--_rail) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "nav header" "nav main";
+}
+.ds-shell[data-tier="wide"] { grid-template-columns: var(--_rail-wide) minmax(0, 1fr); }
+.ds-shell__main {
+  grid-area: main;
+  min-inline-size: 0;
+  padding-block: var(--space-5);
+  padding-inline: var(--space-gutter-mobile);
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+}
+.ds-shell[data-tier="rail"] .ds-shell__main,
+.ds-shell[data-tier="wide"] .ds-shell__main { padding-inline: var(--space-gutter-web); }
+
+/* header */
+.ds-header {
+  grid-area: header;
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--header-height);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-gutter-mobile);
+  padding-block-start: calc(var(--space-2) + var(--space-safe-top));
+  background: var(--bg-surface);
+  border-block-end: thin solid var(--border-subtle);
+}
+.ds-shell[data-tier="rail"] .ds-header,
+.ds-shell[data-tier="wide"] .ds-header { padding-inline: var(--space-gutter-web); }
+.ds-header__title {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+.ds-header__actions { display: flex; align-items: center; gap: var(--space-1); margin-inline-start: auto; }
+
+/* nav: the tab bar (default) */
+.ds-nav {
+  grid-area: nav;
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  padding: var(--_pad);
+  padding-block-end: calc(var(--_pad) + var(--space-safe-bottom));
+  padding-inline: calc(var(--_pad) + var(--space-safe-left)) calc(var(--_pad) + var(--space-safe-right));
+  background: var(--bg-surface);
+  border-block-start: thin solid var(--border-subtle);
+}
+.ds-nav__list { display: flex; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.ds-nav__list > li { flex: 1 1 0; min-inline-size: 0; }
+.ds-navitem {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  inline-size: 100%;
+  min-block-size: var(--size-4xl);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.ds-navitem__label { min-inline-size: 0; overflow-wrap: anywhere; }
+.ds-navitem:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.ds-navitem:active { background: var(--primary-subtle); }
+.ds-navitem[aria-current="page"] { color: var(--primary); }
+.ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-navitem[aria-current="page"] { background: var(--primary-subtle); }
+.ds-navitem[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset-block-end: var(--space-1);
+  inset-inline: 0;
+  margin-inline: auto;
+  inline-size: var(--space-1);
+  block-size: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.ds-navitem[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; background: transparent; }
+
+/* nav: the rail and the labelled rail */
+.ds-shell[data-tier="rail"] .ds-nav,
+.ds-shell[data-tier="wide"] .ds-nav {
+  position: static;
+  padding-block-end: var(--_pad);
+  padding-inline: var(--_pad);
+  border-block-start: 0;
+  border-inline-end: thin solid var(--border-subtle);
+}
+.ds-shell[data-tier="rail"] .ds-nav__list,
+.ds-shell[data-tier="wide"] .ds-nav__list {
+  position: sticky;
+  inset-block-start: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+}
+.ds-shell[data-tier="rail"] .ds-navitem,
+.ds-shell[data-tier="wide"] .ds-navitem { min-block-size: var(--size-3xl); }
+.ds-shell[data-tier="rail"] .ds-navitem[aria-current="page"]::before,
+.ds-shell[data-tier="wide"] .ds-navitem[aria-current="page"]::before {
+  inset-block: var(--space-2);
+  inset-inline: auto;
+  inset-inline-start: 0;
+  inline-size: calc(var(--border-input-width) * 2);
+  block-size: auto;
+  margin-inline: 0;
+  background: var(--primary);
+}
+/* the icon rail shows the icon; the label stays as the accessible name */
+.ds-shell[data-tier="rail"] .ds-navitem__label {
+  position: absolute;
+  inline-size: thin;
+  block-size: thin;
+  margin: calc(var(--border-input-width) * -1);
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ds-shell[data-tier="wide"] .ds-navitem {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  padding-inline: var(--space-3);
+  font-size: var(--fs-sm);
+  text-align: start;
+}
+
+/* the tiers by viewport width, for a shell with no data-tier */
+@media (min-width: 880px) {
+  .ds-shell:not([data-tier]) {
+    grid-template-columns: var(--_rail) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "nav header" "nav main";
+  }
+  .ds-shell:not([data-tier]) .ds-shell__main,
+  .ds-shell:not([data-tier]) .ds-header { padding-inline: var(--space-gutter-web); }
+  .ds-shell:not([data-tier]) .ds-navitem[aria-current="page"] { background: var(--primary-subtle); }
+  .ds-shell:not([data-tier]) .ds-nav {
+    position: static;
+    padding-block-end: var(--_pad);
+    padding-inline: var(--_pad);
+    border-block-start: 0;
+    border-inline-end: thin solid var(--border-subtle);
+  }
+  .ds-shell:not([data-tier]) .ds-nav__list {
+    position: sticky;
+    inset-block-start: var(--space-3);
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-block: var(--space-3);
+  }
+  .ds-shell:not([data-tier]) .ds-navitem { min-block-size: var(--size-3xl); }
+  .ds-shell:not([data-tier]) .ds-navitem[aria-current="page"]::before {
+    inset-block: var(--space-2);
+    inset-inline: auto;
+    inset-inline-start: 0;
+    inline-size: calc(var(--border-input-width) * 2);
+    block-size: auto;
+    margin-inline: 0;
+    background: var(--primary);
+  }
+  .ds-shell:not([data-tier]) .ds-navitem__label {
+    position: absolute;
+    inline-size: thin;
+    block-size: thin;
+    margin: calc(var(--border-input-width) * -1);
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1120px) {
+  .ds-shell:not([data-tier]) { grid-template-columns: var(--_rail-wide) minmax(0, 1fr); }
+  .ds-shell:not([data-tier]) .ds-navitem {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding-inline: var(--space-3);
+    font-size: var(--fs-sm);
+    text-align: start;
+  }
+  .ds-shell:not([data-tier]) .ds-navitem__label {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+}
+
+/* ===== K15 Tooltip (hover-free: a tap opens it on a phone) ===== */
+/* A tooltip is a short hint on one part. The trigger is a real button or link that carries aria-describedby naming the
+   tooltip; it opens on hover (a pointer that can hover), on focus, and on a tap (components.js sets data-open);
+   Escape closes it. It holds no link, no button and no field: that is a popover, not a tooltip. */
+.ds-tooltip-anchor { position: relative; display: inline-flex; }
+.ds-tooltip {
+  --_gap: var(--space-2);
+  position: absolute;
+  z-index: 30;
+  box-sizing: border-box;
+  inline-size: max-content;
+  max-inline-size: var(--center-lg);
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2);
+  border: 0 solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-emphasis);
+  background-clip: padding-box;
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  text-align: start;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard), visibility 0s linear;
+}
+/* the transparent border bridges the gap, so the pointer can reach the tooltip and it stays while it is hovered */
+.ds-tooltip[data-pos="top"], .ds-tooltip:not([data-pos]) { inset-block-end: 100%; border-block-end-width: var(--_gap); }
+.ds-tooltip[data-pos="bottom"] { inset-block-start: 100%; border-block-start-width: var(--_gap); }
+.ds-tooltip[data-pos="start"] { inset-inline-end: 100%; border-inline-end-width: var(--_gap); inset-block-start: 50%; translate: 0 -50%; }
+.ds-tooltip[data-pos="end"] { inset-inline-start: 100%; border-inline-start-width: var(--_gap); inset-block-start: 50%; translate: 0 -50%; }
+.ds-tooltip:is([data-pos="top"], [data-pos="bottom"], :not([data-pos])) { inset-inline-start: 50%; translate: -50% 0; }
+.ds-tooltip:is([data-pos="top"], [data-pos="bottom"], :not([data-pos])):dir(rtl) { translate: 50% 0; }
+.ds-tooltip[data-align="start"]:is([data-pos="top"], [data-pos="bottom"], :not([data-pos])) { inset-inline-start: 0; translate: none; }
+.ds-tooltip[data-align="end"]:is([data-pos="top"], [data-pos="bottom"], :not([data-pos])) { inset-inline-start: auto; inset-inline-end: 0; translate: none; }
+.ds-tooltip-anchor:focus-within .ds-tooltip,
+.ds-tooltip-anchor[data-open="true"] .ds-tooltip { opacity: 1; visibility: visible; }
+@media (hover: hover) {
+  .ds-tooltip-anchor:hover .ds-tooltip { opacity: 1; visibility: visible; }
+}
+.ds-tooltip-anchor[data-dismissed="true"] .ds-tooltip { opacity: 0; visibility: hidden; }
+
+/* ===== K17 Pager ===== */
+.ds-pager { display: block; }
+.ds-pager__list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: calc(var(--focus-width) + var(--focus-offset));
+  list-style: none;
+}
+.ds-pager__item {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-inline-size: var(--control-height-md);
+  min-block-size: var(--control-height-md);
+  padding-inline: var(--space-2);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
+}
+.ds-pager__item:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.ds-pager__item:active { background: var(--primary-subtle); border-color: var(--primary); }
+.ds-pager__item[aria-current="page"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); cursor: default; }
+.ds-pager__item[aria-current="page"]:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.ds-pager__item[aria-current="page"]:active { background: var(--primary-active); border-color: var(--primary-active); }
+.ds-pager__item[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; background: var(--bg-surface); border-color: var(--border-default); }
+.ds-pager__gap { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--control-height-md); min-block-size: var(--control-height-md); color: var(--text-secondary); }
+
+/* ===== K19 Skeleton ===== */
+/* A placeholder for content that is loading. The skeleton parts are aria-hidden; the loading region carries aria-busy="true"
+   and one status text for assistive technology (.ds-sr-only); both go when the content arrives. */
+.ds-skeleton {
+  display: block;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-inset) 37%, var(--bg-subtle) 63%);
+  background-size: 400% 100%;
+  border-radius: var(--radius-xs);
+  animation: ds-shimmer calc(var(--dur-slower) * 2.5) var(--ease-standard) infinite;
+}
+@keyframes ds-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.ds-skeleton--text { block-size: var(--space-3); inline-size: 100%; }
+.ds-skeleton--title { block-size: var(--space-5); inline-size: 60%; }
+.ds-skeleton--avatar { inline-size: var(--size-3xl); block-size: var(--size-3xl); border-radius: var(--radius-pill); flex: none; }
+.ds-skeleton--block { block-size: var(--center-md); inline-size: 100%; border-radius: var(--radius-card); }
+.ds-skeleton-stack { display: grid; gap: var(--space-2); inline-size: 100%; min-inline-size: 0; }
+.ds-skeleton-row { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-3); min-block-size: var(--size-3xl); padding: var(--space-3); border: thin solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+
+/* ===== K23 Row list ===== */
+.ds-rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ds-row {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--size-3xl);
+  padding: var(--space-3);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.ds-row:has(.ds-row__link) { cursor: pointer; }
+.ds-row:has(.ds-row__link):hover { border-color: var(--border-default); }
+.ds-row:has(.ds-row__link):active { border-color: var(--border-input-hover); }
+.ds-row__link { color: inherit; text-decoration: none; }
+.ds-row__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.ds-row__lead {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--size-xl);
+  block-size: var(--size-xl);
+  border-radius: var(--radius-md);
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-text);
+}
+.ds-row__body { flex: 1; min-inline-size: 0; display: grid; gap: calc(var(--space-1) / 2); }
+.ds-row__title { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ds-row__meta { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-tertiary); }
+.ds-row__trail { display: flex; align-items: center; gap: var(--space-2); flex: none; color: var(--text-secondary); }
+.ds-row__value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.ds-row[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.ds-row[aria-disabled="true"]:hover { border-color: var(--border-subtle); }
+
+/* ===== K24 Table ===== */
+.ds-table-wrap {
+  overflow-x: auto;
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+.ds-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+.ds-table__caption {
+  caption-side: top;
+  padding-block: var(--space-4) var(--space-3);
+  padding-inline: var(--space-4);
+  text-align: start;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ds-table th, .ds-table td {
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+  text-align: start;
+  vertical-align: middle;
+  border-block-end: thin solid var(--border-subtle);
+}
+.ds-table thead th { background: var(--bg-subtle); color: var(--text-secondary); font-size: var(--fs-xs); font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; white-space: nowrap; }
+.ds-table tbody th { font-weight: 600; color: var(--text-primary); }
+.ds-table tbody tr:last-child > * { border-block-end: 0; }
+.ds-table tbody tr:hover > * { background: var(--bg-subtle); }
+.ds-table .ds-table__num { text-align: end; }
+.ds-table td.ds-table__num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.ds-table__link { color: var(--primary); font-weight: 600; text-decoration: underline; }
+.ds-table__link:hover { color: var(--primary-hover); }
+.ds-table tr[aria-disabled="true"] { opacity: 0.55; }
+/* How a table looks on a phone (the 480 width and below): it collapses to rows:
+   .ds-table--phone-stack turns each row into a block, the row header its title, each cell a label and value pair.
+   The markup carries explicit ARIA roles because a table turned to blocks loses its semantics in some browsers. */
+@media (max-width: 480px) {
+  .ds-table--phone-stack thead {
+    position: absolute;
+    inline-size: thin;
+    block-size: thin;
+    margin: calc(var(--border-input-width) * -1);
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ds-table--phone-stack, .ds-table--phone-stack tbody, .ds-table--phone-stack tr,
+  .ds-table--phone-stack th, .ds-table--phone-stack td { display: block; }
+  .ds-table--phone-stack tbody tr { padding-block: var(--space-3); padding-inline: var(--space-4); border-block-end: thin solid var(--border-subtle); }
+  .ds-table--phone-stack tbody tr:last-child { border-block-end: 0; }
+  .ds-table--phone-stack tbody tr:hover > * { background: transparent; }
+  .ds-table--phone-stack th, .ds-table--phone-stack td { padding-inline: 0; border-block-end: 0; }
+  .ds-table--phone-stack tbody th { padding-block: 0 var(--space-2); font-size: var(--fs-body); }
+  .ds-table--phone-stack td { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); padding-block: var(--space-1); text-align: end; }
+  .ds-table--phone-stack td::before { content: attr(data-label); flex: none; text-align: start; font-family: var(--font-body); font-weight: 600; color: var(--text-secondary); }
+}
+
+/* ===== K27 Accordion (native details) ===== */
+.ds-accordion { display: grid; gap: var(--space-component-md); }
+.ds-accordion__item {
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: box-shadow var(--dur-fast) var(--ease-standard);
+}
+.ds-accordion__item[open] { box-shadow: var(--shadow-1); }
+.ds-accordion__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-block-size: var(--touch-comfortable);
+  padding-block: var(--space-4);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-card);
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-tight);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.ds-accordion__summary::-webkit-details-marker { display: none; }
+.ds-accordion__summary:hover { background: var(--bg-subtle); }
+.ds-accordion__summary:active { background: var(--bg-inset); }
+.ds-accordion__chev { flex: none; color: var(--icon-secondary); transition: rotate var(--dur-base) var(--ease-standard); }
+.ds-accordion__item[open] > .ds-accordion__summary .ds-accordion__chev { rotate: 180deg; }
+.ds-accordion__panel {
+  padding-inline: var(--space-5);
+  padding-block: 0 var(--space-5);
+  max-inline-size: var(--maxw-prose);
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+}
+.ds-accordion__panel > :first-child { margin-block-start: 0; }
+.ds-accordion__panel > :last-child { margin-block-end: 0; }
+
+/* ===== K31 Segmented control (a radio group) ===== */
+/* fieldset.ds-segmented, a visible or .ds-sr-only legend, and one label.ds-segmented__option per choice holding a native
+   radio: the arrow keys move and choose, the group is one tab stop. A control that switches panels is Tabs (K12).
+   The look is a quiet track with the chosen one raised and edged in the brand colour. */
+.ds-segmented {
+  --_h: var(--control-height-md);
+  display: inline-flex;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ds-segmented[data-size="sm"] { --_h: var(--control-height-sm); }
+.ds-segmented[data-size="lg"] { --_h: var(--control-height-lg); }
+.ds-segmented__option {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: var(--_h);
+  padding-inline: var(--space-4);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.ds-segmented__input { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.ds-segmented__option:has(.ds-segmented__input:disabled) { opacity: 0.55; cursor: not-allowed; }
+.ds-segmented {
+  box-sizing: border-box;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: thin solid var(--border-input);
+  border-radius: var(--radius-control);
+  background: var(--bg-subtle);
+}
+.ds-segmented .ds-segmented__option { border: thin solid transparent; border-radius: var(--radius-sm); }
+.ds-segmented .ds-segmented__option:hover:not(:has(:disabled)) { background: color-mix(in srgb, var(--bg-surface) 60%, transparent); }
+.ds-segmented .ds-segmented__option:active:not(:has(:disabled)) { background: var(--primary-subtle); }
+.ds-segmented .ds-segmented__option:has(.ds-segmented__input:checked) {
+  background: var(--bg-surface);
+  border-color: var(--primary);
+  color: var(--primary-subtle-text);
+  box-shadow: var(--shadow-1);
+}
+
+/* ===== K34 Nav tile ===== */
+/* A tile that is one link to a screen: the hub (More, a dashboard's quick actions). The whole tile is the link.
+   The tile is wide: the icon at the start, the title and one line of text, the chevron at the end; one column on a phone. */
+.ds-navtiles { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(min(var(--tile-max), 100%), 1fr)); }
+.ds-navtile {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: var(--touch-min);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
+}
+.ds-navtile:hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
+.ds-navtile:active { box-shadow: var(--shadow-1); background: var(--bg-inset); }
+.ds-navtile[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; box-shadow: none; background: var(--bg-surface); border-color: var(--border-subtle); }
+.ds-navtile__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--size-3xl);
+  block-size: var(--size-3xl);
+  border-radius: var(--radius-md);
+  background: var(--primary-subtle);
+  color: var(--primary-subtle-text);
+}
+.ds-navtile__text { display: grid; gap: calc(var(--space-1) / 2); min-inline-size: 0; }
+.ds-navtile__title { font-size: var(--fs-body); font-weight: 600; line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.ds-navtile__desc { font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ds-navtile__badge { flex: none; margin-inline-start: auto; }
+.ds-navtile__badge + .ds-navtile__go { margin-inline-start: 0; }
+.ds-navtile__go { flex: none; margin-inline-start: auto; align-self: center; color: var(--icon-secondary); }
+
+/* ===== Phone (the 480 width) and touch, batch 2 ===== */
+@media (max-width: 480px) {
+  .ds-navitem { min-block-size: var(--touch-comfortable); }
+  .ds-pager__item, .ds-pager__gap { min-inline-size: var(--touch-min); min-block-size: var(--touch-min); }
+  .ds-segmented, .ds-segmented[data-size] { --_h: var(--touch-min); }
+  .ds-accordion__summary { padding-inline: var(--space-4); }
+  .ds-accordion__panel { padding-inline: var(--space-4); }
+  .ds-row { min-block-size: var(--touch-min); padding-inline: var(--space-3); }
+  .ds-navtile { padding: var(--space-3); }
+  .ds-table__link { display: inline-flex; align-items: center; min-block-size: var(--touch-min); }
+}
+
+/* ===== Reduced motion, batch 2 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .ds-navitem, .ds-tooltip, .ds-pager__item, .ds-row, .ds-accordion__item, .ds-accordion__summary, .ds-accordion__chev,
+  .ds-segmented__option, .ds-navtile { transition: none; }
+  .ds-skeleton { animation: none; }
 }

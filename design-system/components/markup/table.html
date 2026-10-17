@@ -1,0 +1,16 @@
+<!-- AIVIS Table (K24): a real table in .ds-table-wrap (the wrap scrolls sideways when it must and is a focusable region with a name).
+     A caption names the table (visible, .ds-table__caption). Column headers are th scope="col"; the first cell of a row is th scope="row"; numbers are right-aligned
+     at the end with .ds-table__num (mono figures). On a phone (the 480 width and below) the table collapses to rows: add ds-table--phone-stack to the table.
+     Every td carries data-label (the column name) so the phone stack can print it; the explicit roles are for that stack, where the table is turned to blocks. -->
+<div class="ds-table-wrap" role="region" aria-labelledby="tbl-cap" tabindex="0">
+  <table class="ds-table ds-table--phone-stack" role="table">
+    <caption class="ds-table__caption" id="tbl-cap">Commissions, October</caption>
+    <thead role="rowgroup">
+      <tr role="row"><th scope="col" role="columnheader">Referral</th><th scope="col" role="columnheader">Date</th><th scope="col" role="columnheader">Status</th><th scope="col" role="columnheader" class="ds-table__num">Amount</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+      <tr role="row"><th scope="row" role="rowheader">A. Smith</th><td role="cell" data-label="Date">12 Oct</td><td role="cell" data-label="Status"><span class="ds-badge ds-badge--success">Paid</span></td><td role="cell" data-label="Amount" class="ds-table__num">120.00</td></tr>
+      <tr role="row"><th scope="row" role="rowheader">B. Jones</th><td role="cell" data-label="Date">9 Oct</td><td role="cell" data-label="Status"><span class="ds-badge ds-badge--warning">Pending</span></td><td role="cell" data-label="Amount" class="ds-table__num">64.50</td></tr>
+    </tbody>
+  </table>
+</div>

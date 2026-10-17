@@ -1,0 +1,19 @@
+<!-- AIVIS Row list (K23): a ul of li.ds-row. A row that opens a screen holds ONE a.ds-row__link on its title (it stretches over the whole row); a row with no link is plain.
+     Slots: __lead (icon box), __body (__title, __meta), __trail (__value, a badge, the chevron). aria-disabled="true" on the li dims a row that cannot be opened.
+     Text colours: title text-primary, meta text-tertiary on the row's white surface (never amber). The chevron is decorative (aria-hidden). -->
+<ul class="ds-rows">
+  <li class="ds-row">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-to-line"/></svg></span>
+    <span class="ds-row__body"><a class="ds-row__link" href="/transactions/1"><span class="ds-row__title">Deposit</span></a><span class="ds-row__meta">12 Oct 2026, USDT</span></span>
+    <span class="ds-row__trail"><span class="ds-row__value">+1,200.00</span><span class="ds-badge ds-badge--success">Paid</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shopping-cart"/></svg></span>
+    <span class="ds-row__body"><a class="ds-row__link" href="/transactions/2"><span class="ds-row__title">Purchase of 4 units</span></a><span class="ds-row__meta">9 Oct 2026, Product A</span></span>
+    <span class="ds-row__trail"><span class="ds-row__value">-480.00</span><span class="ds-badge ds-badge--warning">Pending</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span>
+  </li>
+  <li class="ds-row" aria-disabled="true">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span>
+    <span class="ds-row__body"><span class="ds-row__title">Archive</span><span class="ds-row__meta">Not available yet</span></span>
+  </li>
+</ul>

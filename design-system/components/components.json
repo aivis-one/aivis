@@ -509,6 +509,59 @@
   "notes": ""
  },
  {
+  "id": "K15",
+  "name": "Tooltip",
+  "status": "built",
+  "markup": "markup/tooltip.html",
+  "class_root": ".ds-tooltip-anchor, .ds-tooltip, .ds-tooltip-trigger",
+  "variants": {
+   "position": [
+    "top (default)",
+    "bottom",
+    "start",
+    "end"
+   ],
+   "align": [
+    "center (default)",
+    "start",
+    "end"
+   ]
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "rest",
+   "hover (the trigger's, and the tooltip opens)",
+   "pressed (the trigger's)",
+   "focus (opens the tooltip)",
+   "open by tap (data-open)",
+   "dismissed by Escape (data-dismissed)",
+   "disabled (a disabled trigger cannot open it)"
+  ],
+  "tokens": [
+   "--bg-emphasis",
+   "--center-lg",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-xs",
+   "--lh-snug",
+   "--radius-sm",
+   "--shadow-2",
+   "--space-1",
+   "--space-2",
+   "--text-inverse"
+  ],
+  "accessibility": "The trigger is a real button or link with class ds-tooltip-trigger and aria-describedby naming the tooltip; the tooltip is role=\"tooltip\", holds text only (no link, button or field: that is a popover) and stays in the tree while hidden so the description resolves. It opens at once, with no delay, on hover (only a pointer that can hover), on keyboard focus and on a tap (components.js toggles data-open; a tap elsewhere closes it); Escape closes it and it stays closed until the pointer or the focus leaves. A transparent border bridges the gap, so the tooltip stays while it is hovered. An icon-only trigger needs aria-label. Ground: --bg-emphasis with --text-inverse (17 or better in both themes). At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A short hint on one part: what an icon means, why a value is what it is.",
+  "usage": "Use for a hint of one sentence that no one needs in order to act; a longer text, a link or an action belongs in the page or a popover. The trigger is a ghost icon button (info icon) or the part itself. On a phone nothing opens by hover: the tap is the only way, so the hint is never the only place a needed fact lives. Put data-align on a tooltip near the edge of a screen so it stays in view.",
+  "notes": ""
+ },
+ {
   "id": "K16",
   "name": "Toast",
   "status": "built",
@@ -573,6 +626,59 @@
   "notes": ""
  },
  {
+  "id": "K17",
+  "name": "Pager",
+  "status": "built",
+  "markup": "markup/pager.html",
+  "class_root": ".ds-pager, .ds-pager__list, .ds-pager__item, .ds-pager__gap",
+  "variants": {
+   "items": [
+    "page number",
+    "previous",
+    "next",
+    "gap"
+   ]
+  },
+  "sizes": [
+   "one size (md height, touch-min on a phone)"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "current (aria-current=\"page\")",
+   "disabled (aria-disabled)"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-default",
+   "--border-strong",
+   "--control-height-md",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-sm",
+   "--on-primary",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--primary-subtle",
+   "--radius-control",
+   "--space-1",
+   "--space-2",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "A nav landmark with an aria-label; a list of links; the current page has aria-current=\"page\" and is filled (not by colour alone: the fill is the brand colour with --on-primary text); each number carries aria-label \"Page n\", previous and next carry their own aria-label; a disabled end has aria-disabled=\"true\" and no href; the gap is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "Moves between pages of a list or a table.",
+  "usage": "Use when a list has pages; show the first, the last, the current and its neighbours with a gap between. Links, not buttons: a page is an address. Do not use for steps of a flow (a stepper) or for panels (Tabs).",
+  "notes": "The chevron icons are not mirrored for right-to-left now (nothing is mirrored)."
+ },
+ {
   "id": "K18",
   "name": "Progress",
   "status": "built",
@@ -614,6 +720,57 @@
   "notes": ""
  },
  {
+  "id": "K19",
+  "name": "Skeleton",
+  "status": "built",
+  "markup": "markup/skeleton.html",
+  "class_root": ".ds-skeleton, .ds-skeleton-stack, .ds-skeleton-row",
+  "variants": {
+   "shapes": [
+    "text",
+    "title",
+    "avatar",
+    "block"
+   ],
+   "composition": [
+    ".ds-skeleton-stack",
+    ".ds-skeleton-row"
+   ]
+  },
+  "sizes": [
+   "by shape"
+  ],
+  "states": [
+   "loading (shimmer)",
+   "reduced motion (no shimmer)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-subtle",
+   "--center-md",
+   "--dur-fast",
+   "--dur-slower",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--radius-card",
+   "--radius-md",
+   "--radius-pill",
+   "--radius-xs",
+   "--size-3xl",
+   "--space-2",
+   "--space-3",
+   "--space-5"
+  ],
+  "accessibility": "The skeleton parts are aria-hidden; the region that will hold the content carries aria-busy=\"true\" and one .ds-sr-only role=\"status\" text (the page's own word for loading); when the content arrives the skeletons and the status go and aria-busy is removed. The shimmer stops under prefers-reduced-motion. The fill is decorative and carries no text.",
+  "purpose": "Holds the place of content that is loading, in the shape of what will come.",
+  "usage": "Use for a list, a card or a table that takes more than a moment to arrive; match the shape and the count of the real content. A short wait or a single action uses the Loader (K20); a button uses its own busy state.",
+  "notes": ""
+ },
+ {
   "id": "K20",
   "name": "Loader",
   "status": "built",
@@ -646,6 +803,363 @@
   "accessibility": "Kit fix: the wrapper has role=\"status\" and a text (visible or .ds-sr-only) so the busy state is announced. The ring is aria-hidden. Under reduced motion it turns four times slower.",
   "purpose": "A wait of unknown length.",
   "usage": "Prefer a skeleton for content (batch 2); a loader for a section or a page.",
+  "notes": ""
+ },
+ {
+  "id": "K23",
+  "name": "Row list",
+  "status": "built",
+  "markup": "markup/row-list.html",
+  "class_root": ".ds-rows, .ds-row",
+  "variants": {
+   "row": [
+    "plain",
+    "linked (one a.ds-row__link stretched over the row)"
+   ],
+   "slots": [
+    "lead",
+    "body (title, meta)",
+    "trail (value, badge, chevron)"
+   ]
+  },
+  "sizes": [
+   "one size (touch-min on a phone)"
+  ],
+  "states": [
+   "rest",
+   "hover (linked rows)",
+   "pressed (linked rows)",
+   "focus (outline around the row)",
+   "disabled (aria-disabled)"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-default",
+   "--border-input-hover",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-md",
+   "--size-3xl",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--text-tertiary"
+  ],
+  "accessibility": "A ul of li. A linked row holds one anchor on its title; its ::after stretches the hit area over the whole row (the row, not the 26 px anchor, is the touch target); the focus outline is drawn around the row at --focus-offset. Title text-primary, meta text-tertiary on the white --bg-surface of the row only (his SP 4b; a row never takes a fill); the figure is mono and tabular. A disabled row has aria-disabled=\"true\" and no link. The chevron is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A list of records one under another: transactions, documents, notifications, referrals.",
+  "usage": "Use for a list read top to bottom with one main fact per row and an optional status; use a table (K24) when the reader compares columns. Do not put two links or a button inside a linked row.",
+  "notes": "No tick (rule 3 of the tick: a list of rows is not a list of cards)."
+ },
+ {
+  "id": "K24",
+  "name": "Table",
+  "status": "built",
+  "markup": "markup/table.html",
+  "class_root": ".ds-table-wrap, .ds-table",
+  "variants": {
+   "cells": [
+    "row header (th scope=row)",
+    "text",
+    "number (--num, mono, end-aligned)",
+    "link (--link)"
+   ],
+   "phone": "--phone-stack: rows on a phone"
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "rest",
+   "row hover",
+   "link: rest, hover, focus",
+   "disabled row (aria-disabled)",
+   "focus of the scroll region"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input-width",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-display",
+   "--font-mono",
+   "--fs-body",
+   "--fs-h4",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--primary",
+   "--primary-hover",
+   "--radius-card",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-wide"
+  ],
+  "accessibility": "A real table: a visible caption (.ds-table__caption) names it, column headers are th scope=\"col\", the first cell of a row is th scope=\"row\"; numbers are end-aligned in mono. The wrapper is a role=\"region\" with aria-labelledby the caption and tabindex=\"0\" so a sideways scroll is reachable by keyboard. Every td carries data-label (the column name) for the phone stack; the stack turns table parts to blocks, so its markup carries explicit table roles. Header text is --text-secondary on --bg-subtle (the card ground: secondary stands there). At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "Compares records across columns.",
+  "usage": "Use for three or more columns the reader compares or sorts (transactions, commissions, users). Under three columns, or one fact per record, use a Row list (K23). Keep the number of columns low enough for the phone rows.",
+  "notes": ""
+ },
+ {
+  "id": "K25",
+  "name": "App shell and navigation",
+  "status": "built",
+  "markup": "markup/app-shell.html",
+  "class_root": ".ds-shell, .ds-header, .ds-nav, .ds-navitem",
+  "variants": {
+   "tier": [
+    "bar (tab bar)",
+    "rail (icon rail)",
+    "wide (labelled rail)"
+   ],
+   "tier_widths": "bar below 880, rail from 880, wide from 1120 (media queries on a shell with no data-tier; question ej1wo930 A); data-tier forces a tier in a specimen only, never on a product screen"
+  },
+  "sizes": [
+   "tab bar item 56 (48 minimum on a phone), rail item 48"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "current (aria-current=\"page\" with a mark)",
+   "disabled (aria-disabled)"
+  ],
+  "tokens": [
+   "--accent",
+   "--bg-page",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input-width",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-display",
+   "--fs-h4",
+   "--fs-sm",
+   "--fs-xs",
+   "--header-height",
+   "--lh-snug",
+   "--lh-tight",
+   "--primary",
+   "--primary-subtle",
+   "--radius-control",
+   "--radius-pill",
+   "--size-3xl",
+   "--size-4xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-gutter-mobile",
+   "--space-gutter-web",
+   "--space-safe-bottom",
+   "--space-safe-left",
+   "--space-safe-right",
+   "--space-safe-top",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-tight"
+  ],
+  "accessibility": "Three landmarks: header, main, and one nav with an aria-label; the nav items are links and the current one has aria-current=\"page\" (in the tab bar --primary text with the kit's --accent dot below, in the rails a --primary-subtle tint with a 2 line --primary bar at the start: not colour alone), they are not role=\"tab\". In the icon rail the label stays in the tree as the accessible name (visually hidden). The header holds one h1; its icon buttons carry aria-label. Safe-area insets pad the bar. The nav padding keeps the focus outline inside the nav. Current item text --primary on --bg-surface in the tab bar (8.48 day, 6.72 night) and on --primary-subtle in the rails (7.61, 5.46); others --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "The frame of every cabinet screen: where the user is and where else they can go.",
+  "usage": "One shell per role, five nav items at most; the tier follows the viewport (bar below 880, rail from 880, wide from 1120); data-tier on .ds-shell forces one only in a specimen (a shell drawn inside a page narrower than the tier it shows); a product screen never sets it. A screen is the content of .ds-shell__main; a screen title is the header's h1. Use the Tabs (K12) to change a view in place, never for navigation between screens.",
+  "notes": ""
+ },
+ {
+  "id": "K27",
+  "name": "Accordion",
+  "status": "built",
+  "markup": "markup/accordion.html",
+  "class_root": ".ds-accordion, .ds-accordion__item, .ds-accordion__summary, .ds-accordion__panel",
+  "variants": {
+   "behaviour": [
+    "independent",
+    "exclusive (the same name attribute on the details)"
+   ]
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "closed",
+   "hover",
+   "pressed",
+   "focus",
+   "expanded (open)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-subtle",
+   "--dur-base",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-body",
+   "--fs-h4",
+   "--icon-secondary",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw-prose",
+   "--radius-card",
+   "--shadow-1",
+   "--space-4",
+   "--space-5",
+   "--space-component-md",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-comfortable",
+   "--tracking-tight"
+  ],
+  "accessibility": "Native details and summary: the summary is the button (Enter and Space toggle it, the open state is announced by the browser), no script. The chevron is aria-hidden and turns 180 degrees when open (as the site FAQ does). The summary is at least --touch-comfortable high. Title --text-primary on --bg-surface, panel --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "Shows many short answers or settings groups without a long page: FAQ, settings sections.",
+  "usage": "Use when readers want one of several blocks; give each summary a plain question or a section name. Do not hide content a reader must see to act, and do not nest an accordion in an accordion.",
+  "notes": ""
+ },
+ {
+  "id": "K31",
+  "name": "Segmented control",
+  "status": "built",
+  "markup": "markup/segmented.html",
+  "class_root": ".ds-segmented, .ds-segmented__option, .ds-segmented__input",
+  "variants": {
+   "look": "a quiet track on --bg-subtle, the chosen choice raised on --bg-surface with a --primary border"
+  },
+  "sizes": [
+   "sm 32",
+   "md 38 (default)",
+   "lg 44 (touch-min on a phone)"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "selected (checked)",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-input",
+   "--control-height-lg",
+   "--control-height-md",
+   "--control-height-sm",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-sm",
+   "--lh-tight",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-control",
+   "--radius-sm",
+   "--shadow-1",
+   "--space-1",
+   "--space-2",
+   "--space-4",
+   "--text-primary"
+  ],
+  "accessibility": "A fieldset with a legend (visible or .ds-sr-only) holding native radios with one name: the arrow keys move and choose, the group is one tab stop, the checked radio is the selected choice. A control that switches panels is Tabs (K12). The track's outline is --border-input (3.03 day, 3.01 night on --bg-surface; 2.84 day on --bg-page) and carries no state; the selected choice is raised with a --primary border and differs in text colour, not colour alone. Selected text --primary-subtle-text on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "Chooses one of two to five short options that change the view of the same content: a period, a list filter.",
+  "usage": "Use for a filter or a period with short labels; for more options use a select, for panels use Tabs, for a setting that applies at once use a Toggle. Labels are single words or short phrases.",
+  "notes": ""
+ },
+ {
+  "id": "K34",
+  "name": "Nav tile",
+  "status": "built",
+  "markup": "markup/nav-tile.html",
+  "class_root": ".ds-navtiles, .ds-navtile",
+  "variants": {
+   "layout": "a wide row tile: icon at the start, title and a line of text, chevron at the end; one column on a phone",
+   "slots": [
+    "icon",
+    "title",
+    "description",
+    "badge",
+    "chevron"
+   ]
+  },
+  "sizes": [
+   "one size, at least touch-min high"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "disabled (aria-disabled)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-surface",
+   "--border-default",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--icon-secondary",
+   "--lh-snug",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-card",
+   "--radius-md",
+   "--shadow-1",
+   "--shadow-2",
+   "--size-3xl",
+   "--space-1",
+   "--space-3",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--tile-max",
+   "--touch-min"
+  ],
+  "accessibility": "The whole tile is one anchor (never a div with a click handler); its name is the title and description. A tile that cannot be opened carries aria-disabled=\"true\" and no href. The icon box is decorative (aria-hidden icon); the badge is text. The tile is at least --touch-min high. Title --text-primary and description --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A door from a hub (More, a dashboard) to one screen.",
+  "usage": "Use for a grid of destinations with an icon and a title; use a Row list (K23) when each destination carries a value or a status. One tile, one link, one icon from the set; no more than a dozen tiles on a screen.",
   "notes": ""
  },
  {

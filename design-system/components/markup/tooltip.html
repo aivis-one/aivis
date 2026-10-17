@@ -1,0 +1,8 @@
+<!-- AIVIS Tooltip (K15): a short hint on one part. The trigger is a real button (or link) with class ds-tooltip-trigger and aria-describedby naming the tooltip;
+     the tooltip is role="tooltip" and holds text only. It opens on hover, on focus and on a tap (components.js); Escape closes it.
+     data-pos top (default), bottom, start, end; data-align start or end moves a top or bottom tooltip off the centre, near the edge of a screen.
+     An icon-only trigger needs aria-label. It opens at once: there is no hover delay. -->
+<span class="ds-tooltip-anchor">
+  <button class="ds-button ds-button--ghost ds-button--icon ds-tooltip-trigger" type="button" aria-label="About the fee" aria-describedby="tip-fee"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></button>
+  <span class="ds-tooltip" role="tooltip" id="tip-fee" data-pos="top">The fee is taken once, at the purchase.</span>
+</span>

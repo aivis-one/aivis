@@ -1,0 +1,11 @@
+<!-- AIVIS Segmented control (K31): a radio group. fieldset.ds-segmented + a legend (visible, or .ds-sr-only) + one label.ds-segmented__option per choice holding a native
+     input.ds-segmented__input[type=radio] with the same name. The arrow keys move between the choices and choose; the group is one tab stop; the chosen choice is the checked radio.
+     Two to five choices, short labels. A control that switches panels is Tabs (K12), not this. data-size sm, md (default), lg on the fieldset.
+     The look is a quiet track; the chosen choice is raised and edged in the brand colour. -->
+<fieldset class="ds-segmented">
+  <legend class="ds-sr-only">Period</legend>
+  <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="period" value="week" checked>Week</label>
+  <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="period" value="month">Month</label>
+  <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="period" value="year">Year</label>
+  <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="period" value="all" disabled>All</label>
+</fieldset>

@@ -63,3 +63,44 @@
     if (next) { e.preventDefault(); next.focus(); select(next); }
   });
 })();
+
+/* Batch 2 (P5.2). Tooltip: a tap on the trigger opens or closes it (no hover on a phone); Escape closes it; a tap elsewhere closes it;
+   the data-dismissed mark keeps an Escape-closed tooltip closed until the pointer or the focus leaves the anchor. */
+(function () {
+  'use strict';
+  var ANCHOR = '.ds-tooltip-anchor';
+  function closeAll(except) {
+    document.querySelectorAll(ANCHOR + '[data-open="true"]').forEach(function (a) {
+      if (a !== except) a.removeAttribute('data-open');
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest(ANCHOR + ' > .ds-tooltip-trigger');
+    if (!trigger) { closeAll(null); return; }
+    var anchor = trigger.parentElement;
+    var touch = e.pointerType === 'touch' || (window.matchMedia && window.matchMedia('(hover: none)').matches);
+    if (!touch) return;
+    var open = anchor.getAttribute('data-open') === 'true';
+    closeAll(anchor);
+    if (open) anchor.removeAttribute('data-open'); else anchor.setAttribute('data-open', 'true');
+    anchor.removeAttribute('data-dismissed');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll(ANCHOR).forEach(function (a) {
+      var shown = a.getAttribute('data-open') === 'true' || a.matches(':hover') || a.matches(':focus-within');
+      if (!shown) return;
+      a.removeAttribute('data-open');
+      a.setAttribute('data-dismissed', 'true');
+    });
+  });
+  function clearDismissed(e) {
+    var a = e.target.closest && e.target.closest(ANCHOR);
+    if (a) a.removeAttribute('data-dismissed');
+  }
+  document.addEventListener('mouseout', function (e) {
+    var a = e.target.closest && e.target.closest(ANCHOR);
+    if (a && !a.contains(e.relatedTarget)) a.removeAttribute('data-dismissed');
+  });
+  document.addEventListener('focusout', clearDismissed);
+})();

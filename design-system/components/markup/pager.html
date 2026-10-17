@@ -1,0 +1,13 @@
+<!-- AIVIS Pager (K17): a nav landmark with a name; the current page is a link with aria-current="page" and an aria-label "Page n" (the visible text is the number).
+     Previous and next are links with an icon and an aria-label; at the first or last page they carry aria-disabled="true" and no href. The gap is not focusable. -->
+<nav class="ds-pager" aria-label="Pagination">
+  <ul class="ds-pager__list">
+    <li><a class="ds-pager__item" aria-disabled="true" aria-label="Previous page"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg></a></li>
+    <li><a class="ds-pager__item" href="?page=1" aria-current="page" aria-label="Page 1">1</a></li>
+    <li><a class="ds-pager__item" href="?page=2" aria-label="Page 2">2</a></li>
+    <li><a class="ds-pager__item" href="?page=3" aria-label="Page 3">3</a></li>
+    <li><span class="ds-pager__gap" aria-hidden="true">&hellip;</span></li>
+    <li><a class="ds-pager__item" href="?page=9" aria-label="Page 9">9</a></li>
+    <li><a class="ds-pager__item" href="?page=2" aria-label="Next page"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></a></li>
+  </ul>
+</nav>
