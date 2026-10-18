@@ -1754,7 +1754,7 @@ textarea.ds-input {
   .ds-stepper[data-orientation="horizontal"] .ds-step__body { padding-block-start: 0; }
 }
 
-/* the schedule list: one row per tranche (InstallmentPlanDetailView.vue lines 94 to 145, ported) */
+/* the schedule list: one row per item (InstallmentPlanDetailView.vue lines 368 to 428, ported) */
 .ds-schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
 .ds-schedule__item {
   box-sizing: border-box;

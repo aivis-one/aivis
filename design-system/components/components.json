@@ -1616,7 +1616,7 @@
   ],
   "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Offer a short list of actions for one object: the share actions of a hub link (A-2) and the row actions of a staff list (S-2).",
-  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger carries a word; the set has no icon for more, share or qr yet: they are drawn in style P1 and approved by the owner before any use.",
+  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger is a Button with the share icon before its word and the chevron after it.",
   "notes": "No AIVIS source holds an action menu (map K26: MISSING; the cabinet language picker is a listbox), so the look is built from the system: the surface, border, radius and shadow of the combobox list, the row hover tint of the Row list. The open trigger takes --bg-subtle and the chevron turns, as the accordion chevron does."
  },
  {
@@ -1628,7 +1628,7 @@
   "variants": {
    "orientation": "vertical (default); data-orientation=\"horizontal\" in a row from 640 up, stacked below",
    "step state": "data-state done, current, upcoming, problem",
-   "schedule row": "default, aria-current=\"step\" (due next), data-status=\"problem\" (overdue, defaulted, reversed: a tinted row)"
+   "schedule row": "default, aria-current=\"step\" (the current item), data-status=\"problem\" (a tinted item that needs attention)"
   },
   "sizes": [
    "marker --size-xl; schedule stats in columns of at least --center-sm"
@@ -1638,7 +1638,7 @@
    "current (aria-current=\"step\")",
    "upcoming",
    "problem",
-   "schedule: paid, due next, scheduled, problem"
+   "schedule: done, current, upcoming, problem"
   ],
   "tokens": [
    "--bg-page",
@@ -1672,10 +1672,10 @@
    "--text-secondary",
    "--tracking-wide"
   ],
-  "accessibility": "An ordered list (ol) named by aria-label or aria-labelledby; the step in progress carries aria-current=\"step\". A state is never colour alone: done holds a check icon, problem a triangle, current and upcoming their number, and the meta line says the state in words; the markers are aria-hidden. The schedule is an ol of rows; each row has the tranche number, a Badge with the status in words, and a dl of due date, amount and units; the row due next carries aria-current=\"step\". The component writes no amount: the app fills it. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
-  "purpose": "Show progress through a flow (purchase, onboarding, KYC) and the tranche schedule of an instalment plan.",
-  "usage": "Use the stepper for three to six steps in a fixed order; the schedule list for dated payments. The connector line is decoration; the state is read from the marker and the words.",
-  "notes": "The schedule rows are ported from the cabinet (frontend/src/views/investor/InstallmentPlanDetailView.vue lines 368 to 428: bordered rows on the page ground, the problem row on --danger-subtle with a --danger border, a three column stats grid) and the tranche statuses of lines 80 to 98 (the template at lines 146 and following); the labels use --text-secondary because tertiary does not stand on the page ground by day. No AIVIS source holds a stepper (map K32: MISSING); its look is built from the Badge and Progress vocabulary: success for done, primary for current, danger for problem."
+  "accessibility": "An ordered list (ol) named by aria-label or aria-labelledby; the step in progress carries aria-current=\"step\". A state is never colour alone: done holds a check icon, problem a triangle, current and upcoming their number, and the meta line says the state in words; the markers are aria-hidden. The schedule is an ol of rows; each row has a title and a Badge with the state in words; the current row carries aria-current=\"step\"; a dl of stats and a foot line are optional and the screen fills them. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Show progress through a flow (purchase, onboarding, KYC) and the review steps of a document.",
+  "usage": "Use the stepper for three to six steps in a fixed order; the schedule list for a list of items that each have a state. The connector line is decoration; the state is read from the marker and the words.",
+  "notes": "The schedule rows are ported from the cabinet (frontend/src/views/investor/InstallmentPlanDetailView.vue lines 368 to 428: bordered rows on the page ground, the problem row on --danger-subtle with a --danger border, a three column stats grid) and the status badges of lines 80 to 98 (the template at lines 146 and following); the labels use --text-secondary because tertiary does not stand on the page ground by day. No AIVIS source holds a stepper (map K32: MISSING); its look is built from the Badge and Progress vocabulary: success for done, primary for current, danger for problem."
  },
  {
   "id": "K36",
@@ -1798,7 +1798,7 @@
   "markup": "markup/booking-card.html",
   "class_root": ".ds-booking",
   "variants": {
-   "kind": "a Badge says the basis in words: purchase, gift, installment",
+   "kind": "a Badge says the basis in words: purchase, gift",
    "pdf": "the signed agreement row is a K44 link, or the unavailable row"
   },
   "sizes": [

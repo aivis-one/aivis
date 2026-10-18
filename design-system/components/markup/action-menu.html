@@ -2,9 +2,10 @@
      Keys (components.js): Enter, Space or Down on the button opens and focuses the first item; Up opens on the last; Up, Down, Home, End and a typed letter move; Escape closes and returns the focus to the button; Tab closes; a click outside closes.
      Event ds-menu-select (detail.value = data-value) is the app's hook; the menu never acts itself. data-align="end" opens toward the end edge (use it when the button sits at the end of a row).
      An item that cannot be used takes aria-disabled="true" (it stays in the list and is skipped by the keys). A destructive item takes ds-menu__item--danger and the app confirms it.
-     The names come from the translation tables; the English strings here are examples. The trigger carries a word; the set has no icon for more, share or qr yet: they are drawn in style P1 and approved by the owner before any use. -->
+     The names come from the translation tables; the English strings here are examples. The trigger is a Button with the share icon before its word and the chevron after it. -->
 <div class="ds-menu" data-align="end">
   <button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="am-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="am-list">
+    <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share"/></svg>
     Share
     <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>
   </button>

@@ -28,7 +28,7 @@ The catalogue of components is `../components/components.json` (one entry per co
 2. Name the states the component has and bind a token to each: rest, hover, pressed and focus. The hover and pressed colours exist as `--primary-hover`, `--primary-active`, `--accent-hover` and `--danger-hover`; focus is a `--focus-width` solid outline in `--focus-ring` with a `--focus-offset` offset.
 3. A component that carries text puts it on a ground that its text colour is allowed on (`../tokens/tokens.md`, "Text on grounds"); the text on `--primary` is `--on-primary`, white by day and `#04243E` by night.
 4. An input takes `--border-input` at `--border-input-width` and no other border token; a card keeps its border as it is, `--border-subtle` (`refusals.md`: Inputs and focus; `../elements/README.md`).
-5. Draw every icon from `../components/icons/icons.svg` by a key of `../components/icons/icons.json`, in `currentColor`; the rocket and the spark from 24 pixels up.
+5. Draw every icon from `../components/icons/icons.svg` by a key of `../components/icons/icons.json`, in `currentColor`; the rocket, the spark and the qr from 24 pixels up (`min_size_px` in `icons.json`).
 6. Lay out with logical properties and with the four widths 480, 640, 880 and 1120; nothing is mirrored (`conventions.md`: direction, widths).
 7. Take the typeface from the role tokens `--font-display`, `--font-body` and `--font-mono`.
 8. Check the contrast of every text and non-text pair of the component in `../tokens/contrast.json`, in the day and the night theme; a pair that is not in the file is computed with the formula named there.

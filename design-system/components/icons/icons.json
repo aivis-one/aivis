@@ -1,5 +1,5 @@
 {
- "count": 93,
+ "count": 96,
  "style": "P1",
  "sprite": "icons.svg",
  "viewBox": "0 0 24 24",
@@ -96,6 +96,14 @@
   "globe",
   "plug",
   "spark",
-  "terminal"
- ]
+  "terminal",
+  "more",
+  "share",
+  "qr"
+ ],
+ "min_size_px": {
+  "rocket": 24,
+  "spark": 24,
+  "qr": 24
+ }
 }

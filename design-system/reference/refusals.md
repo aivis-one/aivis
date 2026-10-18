@@ -55,7 +55,7 @@ A prohibition without a replacement sends work back to guessing, so every row na
 |---|---|---|---|
 | use an icon from outside the set, or a second icon set | a key of `../components/icons/icons.json` | one set is the owner's decision | P1 icons |
 | draw an icon with a fill, a gradient, an opacity or a hard-coded colour, or with a stroke other than 1.5, round caps and joins | the rules of `../components/icons/STYLE-P1.md` | the set is one style | P1 icons |
-| show the rocket or the spark icon below 24 pixels | 24 pixels or larger | the rocket is dense and the spark reads as a spinner at 16 pixels | SP 4e |
+| show the rocket, the spark or the qr icon below 24 pixels | 24 pixels or larger | the rocket is dense, the spark reads as a spinner and the dots of the qr merge at 16 pixels | SP 4e; the owner's decision of 2026-10-18 (more, share and qr) |
 | draw an icon from the hexagon of the logo | the P1 rules | the hexagon is the logo and the decorative elements, never a rule for the icons | the owner's decision of 2026-10-16 (Q gorvrzo8) |
 
 ## Decoration

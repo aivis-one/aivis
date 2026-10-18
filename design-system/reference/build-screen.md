@@ -29,7 +29,7 @@
 4. Choose the text colour for each ground by the table "Text on grounds" of `../tokens/tokens.md`: by day quiet text stands on white surfaces only, and on the day page ground and the day card ground `--text-secondary` stands instead; by night tertiary text stands on every ground; amber never as text on the card ground.
 5. Set type with `--font-display` for headings, `--font-body` for text and `--font-mono` for figures; the sizes come from the scale of `../tokens/type-recipe.json`.
 6. Draw an input with a `--border-input-width` (1 px) border in `--border-input`; show focus as a `--focus-width` (2 px) solid outline in `--focus-ring` with a `--focus-offset` (2 px) offset and no `--shadow-focus` halo (the owner's decision of 2026-10-17 (small points on the focus and border page)); a primary button takes `--on-primary` for its text (`conventions.md`).
-7. Take every icon from `../components/icons/icons.svg` by a key of `../components/icons/icons.json`; the rocket and the spark from 24 pixels up.
+7. Take every icon from `../components/icons/icons.svg` by a key of `../components/icons/icons.json`; the rocket, the spark and the qr from 24 pixels up (`min_size_px` in `icons.json`).
 8. Add decoration only from `../elements/`, in the way its README places each part; read the tick rules before putting a tick on a card.
 9. Take every string from the product's shared language setting (it lives in the site and cabinet code, not in this tree), English and Russian; write no language list in the screen.
 10. Look the contrast of each text and non-text pair up in `../tokens/contrast.json`; a pair that is not in the file is computed with the formula named there, in both themes.
@@ -44,7 +44,7 @@
 | text on grounds | no amber text on the card ground; by day no tertiary text on the page ground or the card ground; no tertiary text on a pattern or the mark |
 | widths | the only breakpoints are 480, 640, 880 and 1120 |
 | direction | no physical left or right property in layout |
-| icons | every icon is a key of `icons.json`; rocket and spark at 24 pixels or larger |
+| icons | every icon is a key of `icons.json`; rocket, spark and qr at 24 pixels or larger |
 | decoration | every part follows `../elements/README.md`; no tick on a form, a dialog, a table, an alert, a single card or a card that is not a list item |
 | focus | every interactive part shows a `--focus-width` solid outline in `--focus-ring` with a `--focus-offset` offset |
 | themes | both themes viewed |

@@ -14,6 +14,7 @@ Every line below is a decision of the owner, a measurement, or a value of the fo
 | Q `<id>` | a closed question of the owner, answered 2026-10-16 or 2026-10-17; the letter is the option he chose |
 | SP 4a to 4e | the five small points the owner agreed on 2026-10-17: 4a the hover of the accent, 4b where quiet text stands, 4c night text on primary, 4d the input border, 4e the rocket and spark icons |
 | the owner's decision of 2026-10-17 (small points on the focus and border page) | the three small points the owner agreed on 2026-10-17, each option A, on the page with sha256 `64e92256239bcee2761f3cfe4418f7b42b3d744da3ef64e29c82b1ba06486115`: 1 tertiary text by night on every night ground, 2 the focus indicator a 2 px solid outline in `--focus-ring` with a 2 px offset and no `--shadow-focus` halo, 3 the input border 1 px |
+| the owner's decision of 2026-10-18 (more, share and qr) | the icon choices the owner made on 2026-10-18 on the page of the three new icons: more as drawn, share as three linked nodes, qr only from 24 pixels, the action menu trigger as the share icon, the word and the chevron |
 | P4 | the decorative page the owner accepted on 2026-10-17 (`index.html` sha256 `fa48b9d3e109849da64fbdbb1da9f056cbaa1a484d60423f7c0214f06e17fa3f`), carried into `../elements/` |
 | P1 icons | the icon set the owner accepted on 2026-10-16: 93 icons, `../components/icons/STYLE-P1.md` |
 | M | a measured contrast in `../tokens/contrast.json`, by the formula named there |
@@ -44,8 +45,8 @@ Every line below is a decision of the owner, a measurement, or a value of the fo
 | input border | `--border-input`: `#7F97AE` by day, `#506579` by night; inputs only; card borders stay as they are (`--border-subtle`, as on the 4d page and in `../elements/README.md`) | SP 4d; M 3.03 and 3.01 |
 | input border width | `--border-input-width`, 1 px | the owner's decision of 2026-10-17 (small points on the focus and border page) |
 | focus ring | `--focus-ring`: azure-500 `#217AB6` by day, azure-300 `#37A6E6` by night; never the accent; the focus indicator is a `--focus-width` (2 px) solid outline in `--focus-ring` with a `--focus-offset` (2 px) offset, and no `--shadow-focus` halo | Q xja37czs A; the owner's decision of 2026-10-17 (small points on the focus and border page); M 4.09 at the lowest by day |
-| icons | one set, 93 icons, drawn on a 24 by 24 grid, stroke 1.5, round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | P1 icons |
-| rocket and spark | used from 24 pixels up | SP 4e |
+| icons | one set, 96 icons, drawn on a 24 by 24 grid, stroke 1.5, round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | P1 icons; the owner's decision of 2026-10-18 (more, share and qr) |
+| rocket, spark and qr | used from 24 pixels up | SP 4e; the owner's decision of 2026-10-18 (more, share and qr) |
 | the hexagon | the hexagon is the logo and the decorative elements; it is never a rule for the icons | the owner's decision of 2026-10-16 (Q gorvrzo8) |
 | brand marks | the colour logo is unchanged; the mark drawn in lines has no inner facet lines | the owner's decision of 2026-10-17 (Q 148jakgc) |
 | decoration | pattern, mark on the grid, divider, cube hexagon and card tick as in `../elements/README.md`; line weight 1 px by day and 1.5 px by night, divider 1 px in both | P4 |

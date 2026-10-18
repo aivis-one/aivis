@@ -16,28 +16,11 @@
   </li>
 </ol>
 
-<!-- The schedule list (the tranche rows): an ol of li.ds-schedule__item. data-status="problem" tints the row (overdue, defaulted, reversed) and the badge says which in words;
-     the item due next carries aria-current="step". The stats are a dl (due date, units, and an amount where the screen shows one); the dates and numbers are the app's. -->
-<ol class="ds-schedule" aria-label="Schedule">
-  <li class="ds-schedule__item">
-    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 1</span><span class="ds-badge ds-badge--success">Paid</span></div>
-    <dl class="ds-schedule__stats">
-      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
-      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
-    </dl>
-  </li>
-  <li class="ds-schedule__item" aria-current="step">
-    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 2</span><span class="ds-badge ds-badge--info">Due next</span></div>
-    <dl class="ds-schedule__stats">
-      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
-      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
-    </dl>
-  </li>
-  <li class="ds-schedule__item" data-status="problem">
-    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 3</span><span class="ds-badge ds-badge--danger">Overdue</span></div>
-    <dl class="ds-schedule__stats">
-      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
-      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
-    </dl>
-  </li>
+<!-- The schedule list: an ol of li.ds-schedule__item, each a title and a Badge with the state in words (done, current, upcoming); the current item carries aria-current="step".
+     data-status="problem" tints an item that needs attention. A dl.ds-schedule__stats and a p.ds-schedule__foot are optional: the screen fills them. -->
+<ol class="ds-schedule" aria-label="Review list">
+<li class="ds-schedule__item"><div class="ds-schedule__head"><span class="ds-schedule__num">Document received</span><span class="ds-badge ds-badge--success">Done</span></div></li>
+<li class="ds-schedule__item" data-status="problem"><div class="ds-schedule__head"><span class="ds-schedule__num">Identity checked</span><span class="ds-badge ds-badge--danger">Needs your attention</span></div></li>
+<li class="ds-schedule__item" aria-current="step"><div class="ds-schedule__head"><span class="ds-schedule__num">Address checked</span><span class="ds-badge ds-badge--info">Current</span></div></li>
+<li class="ds-schedule__item"><div class="ds-schedule__head"><span class="ds-schedule__num">Approved</span><span class="ds-badge">Upcoming</span></div></li>
 </ol>

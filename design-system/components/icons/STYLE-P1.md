@@ -16,3 +16,4 @@
 9. Colour: only `currentColor`; no hard-coded colour, no opacity, no gradient.
 10. Naming: symbol id `i-<name>`, name in kebab-case as counted by compare/count.py (lowercase Lucide names, aliases normalised).
 11. Direction: left/right pairs are exact mirrors (arrow-left and arrow-right); the pointing tip sits at 4.5 or 19.5.
+12. Size: the rocket, the spark and the qr are used from 24 px up; the qr is three finder squares and dots that fill in at 16 px.

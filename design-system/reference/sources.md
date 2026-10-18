@@ -278,9 +278,12 @@ Each row gives the value in the system, the file and line it was taken from (the
 
 | Asset | Taken from |
 |---|---|
-| `components/icons/icons.svg` | `Agent-Aivis.one/navigator/sandbox/icons-redraw/p1/icons-p1.svg` of the agent home (outside this repository), byte-identical, 93 symbols |
-| `components/icons/STYLE-P1.md` | the same folder, `STYLE-P1.md`, byte-identical; the `build_p1.py` its header names stays in that folder and is not carried: the drawings are final in `icons.svg` |
+| `components/icons/icons.svg` | `Agent-Aivis.one/navigator/sandbox/icons-redraw/p1/icons-p1.svg` of the agent home (outside this repository), byte-identical for its 93 symbols; `more`, `share` and `qr` are appended after them, see the rows below |
+| `components/icons/STYLE-P1.md` | the same folder, `STYLE-P1.md`, byte-identical for rules 1 to 11; rule 12 (the rocket, the spark and the qr from 24 px) is added here from SP 4e (`conventions.md`) and his word 2026-10-18T07:06Z (row 95 HIS WORD, P5.4 icons, b A); the `build_p1.py` its header names stays in that folder and is not carried: the drawings are final in `icons.svg` |
 | `components/icons/icons.json` | the symbol ids of `icons.svg` |
+| `components/icons/icons.svg#i-more` | his word 2026-10-18T07:06Z (row 95 HIS WORD, P5.4 icons); the symbol `i-more` of `Agent-Aivis.one/navigator/sandbox/icons-redraw/p1/batch4/icons-batch4.svg` (the batch4 page `index.html` of that folder), path data unchanged |
+| `components/icons/icons.svg#i-share` | his word 2026-10-18T07:06Z (row 95 HIS WORD, P5.4 icons); the symbol `i-share-b` (three linked nodes) of the same file, renamed `i-share`, path data unchanged |
+| `components/icons/icons.svg#i-qr` | his word 2026-10-18T07:06Z (row 95 HIS WORD, P5.4 icons); the symbol `i-qr` of the same file, path data unchanged |
 | `brand/aivis-mark.svg` | `frontend/public/aivis-mark.svg` |
 | `brand/aivis-wordmark.svg` | `frontend/public/aivis-wordmark.svg` |
 | `brand/aivis-mark-mono.svg` | `_design-source/aivis-mark-mono.svg` |
