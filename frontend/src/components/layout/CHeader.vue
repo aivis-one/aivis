@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-// App header — sticky top bar from mockups/css/components.css .app-header.
+// App header — sticky top bar.
 // Shows logo + title on the left, optional back button, right slot.
 //
 // F4.1.4 polish: left section now truncates long titles with

@@ -1,7 +1,7 @@
 > WHAT THIS IS:  the order of work for building one page or screen of AIVIS inside the design system.
 > FOR WHOM:      an agent or a person who has no memory of earlier work.
 > WHEN:          at every request that emits a page or a screen for the site or a cabinet.
-> WHO WRITES:    the navigator of Agent-Aivis.one.
+> WHO WRITES:    the maintainers of the AIVIS design system.
 
 # build-screen
 

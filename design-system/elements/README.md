@@ -1,7 +1,7 @@
 > WHAT THIS IS:  the decorative elements of AIVIS: the lattice pattern, the line mark on the grid, the divider, the cube hexagon and the card tick, with how each is built and placed.
 > FOR WHOM:      anyone building a page or screen that carries decoration.
 > WHEN:          before placing a pattern, a mark, a divider, a hexagon bullet or a tick.
-> WHO WRITES:    the navigator of Agent-Aivis.one.
+> WHO WRITES:    the maintainers of the AIVIS design system.
 
 # elements
 

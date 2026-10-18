@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Status badge. Variants from mockups/css/components.css.
+// Status badge.
 
 defineProps<{
   variant?: 'success' | 'warning' | 'danger' | 'primary' | 'accent' | 'neutral'

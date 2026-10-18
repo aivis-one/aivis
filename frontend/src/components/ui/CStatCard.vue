@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Numeric stat card from mockup stats-grid pattern.
+// Numeric stat card.
 //
 // A5 / keyboard reach: a stat card carrying a @click IS a control, and until
 // 2026-08-21 it rendered a bare <div>. Four of them were the staff dashboard's

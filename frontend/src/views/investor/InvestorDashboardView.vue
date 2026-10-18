@@ -13,7 +13,7 @@
 //   1. Greeting row -- time-of-day greeting, no data call.
 //
 //   2. Portfolio hero card -- the primary CTA. Full-width, gradient
-//      background from mockups/investor-shell/mockup.html. Shows
+//      background. Shows
 //      total current value, number of products, unit count. Tap
 //      navigates to /investor/portfolio. Source: dashboardStore.summary.
 //

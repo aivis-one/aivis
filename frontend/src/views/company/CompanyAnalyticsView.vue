@@ -26,7 +26,7 @@
 //
 //   1. Page header     -- title + subtitle, no data call.
 //
-//   2. Top metrics card (mockup style: big primary value with two
+//   2. Top metrics card (big primary value with two
 //      sub-metrics underneath, NOT three equal tiles). The dashboard
 //      already shows three tiles for the same role; the analytics
 //      view leans more "report-like" with one headline figure.
@@ -39,7 +39,7 @@
 //      the primary business metric for the company; units are a
 //      secondary curiosity in the hover tooltip).
 //
-//      No charting library. The mockup uses a CSS bar chart
+//      No charting library. A CSS bar chart
 //      (`.chart-bars` / `.chart-bar { height: % }`); the native
 //      `title=` attribute carries the per-bar tooltip. We follow the
 //      same pattern -- adding a charting dep (~50KB gzip for recharts
@@ -439,7 +439,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 }
 
 /*
- * Top metrics card -- inspired by the mockup balance-card:
+ * Top metrics card:
  * gradient background with the primary value as the headline and a
  * row of two sub-metrics underneath. The gradient uses --primary as
  * the anchor; --primary-dark falls back to --primary so themes that

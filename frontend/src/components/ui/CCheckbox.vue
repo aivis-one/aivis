@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Checkbox with label. Mockup checkbox-row pattern.
+// Checkbox with label.
 //
 // This was a <div @click="toggle"> with a drawn box and no input of any kind:
 // no role, no aria-checked, no tabindex. It could not be focused, could not be

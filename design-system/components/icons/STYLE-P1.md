@@ -1,7 +1,7 @@
 > WHAT THIS IS:  the rules of icon style P1 "Мягкий контур" (soft outline), the one AIVIS icon set chosen by the owner 2026-10-16.
 > FOR WHOM:      whoever draws or checks an AIVIS icon (site and cabinets).
 > WHEN:          before drawing any icon, and when judging a batch.
-> WHO WRITES:    the navigator of Agent-Aivis.one; build_p1.py is the source of the drawings.
+> WHO WRITES:    the maintainers of the AIVIS design system.
 
 # P1 rules
 

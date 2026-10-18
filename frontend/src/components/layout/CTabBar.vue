@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Bottom tab bar from mockups/css/components.css .tab-bar.
+// Bottom tab bar.
 // Renders TabItem[] with Lucide icons, highlights active route.
 //
 // iter 2.7 Block A1 (R1 §2):

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Staff dashboard — platform statistics + quick actions.
 // GET /api/v1/staff/dashboard/stats → DashboardStatsResponse.
-// Matches staff-shell/mockup.html screen-dashboard layout.
 
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'

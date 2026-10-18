@@ -1,6 +1,6 @@
 /* SYNC-ADDITION ROLL-CALL -- grep this file for `SYNC-ADDITION` and you get all of
    them. Everything listed here exists ONLY in this file and has NO counterpart in
-   `_design-source/aivis-tokens.css`; a regeneration from source drops it silently,
+   the design system's token set v0.7 it was adopted from; a regeneration from that set drops it silently,
    with no error and no failed build. Added 2026-08-19 because until today the two
    most damaging entries carried prose notes and no greppable marker, so the grep
    returned 3 and the true count was 6.
@@ -12,7 +12,7 @@
    ============================================================ */
 /* ============================================================
    AIVIS design tokens — the design system, adopted whole (batch 6b-2)
-   Source: _design-source/aivis-tokens.css v0.7, values verbatim.
+   Source: the design system's token set v0.7, values verbatim.
 
    THE OLD SCHEME IS GONE, NOT ALIASED. The teal/orange palette, the
    --o-* and --t-* ramps and the old semantic names were deleted here;
@@ -181,7 +181,7 @@
      system's own container primitive is `padding: 0 var(--space-5)`, so copying
      `.wrap` across while --space-5 did not exist would have resolved the gutter
      to nothing — silently, with no error and no failed build. Values are the
-     system's own, verbatim from `_design-source/aivis-tokens.css`. */
+     system's own, verbatim from design-system/tokens/tokens.css. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;

@@ -16,8 +16,7 @@
 //   per-purchase list instead.
 //
 // Hero card:
-//   Mirrors the visual in mockups/investor-shell/mockup.html screen-
-//   portfolio: gradient full-width card with total value + three stat
+//   A gradient full-width card with total value + three stat
 //   columns (Products, Units, Profit%). Total value is current value
 //   across all positions; profit% is a CLIENT-side calc
 //   `(current - paid) / paid * 100`. See TD-F11d comment below:
@@ -28,7 +27,7 @@
 // Position cards:
 //   One card per company position (PortfolioPositionResponse). Tap
 //   routes to CompanyPositionView via role-aware route name. Visual
-//   from the mockup .portfolio-item: company name + per-company
+//   shows the company name + per-company
 //   profit%, followed by three stats (Units / Avg. price / Value).
 //
 // Empty state:

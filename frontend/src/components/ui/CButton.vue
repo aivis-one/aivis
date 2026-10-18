@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Universal button with variant styling from mockups/css/components.css.
+// Universal button with variant styling.
 
 withDefaults(
   defineProps<{

@@ -1,4 +1,4 @@
-/* AIVIS design system -- components, batches 1 (P5.1) and 2 (P5.2); batch 2 starts at its own banner below.
+/* AIVIS design system -- components, batches 1 and 2; batch 2 starts at its own banner below.
    Button, Text field, Radio, Toggle, Card, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader.
    Every value is a token of ../tokens/tokens.css (day) and ../tokens/tokens-dark.css (night): no hex, no rgb, no pixel
    size below (the only numbers are the widths in the media queries, which a custom property cannot hold).
@@ -666,7 +666,7 @@ textarea.ds-input {
 }
 
 /* =====================================================================================================
-   AIVIS design system -- components, batch 2 (P5.2).
+   AIVIS design system -- components, batch 2.
    K25 App shell and navigation, K15 Tooltip, K17 Pager, K19 Skeleton, K23 Row list, K24 Table,
    K27 Accordion, K31 Segmented control, K34 Nav tile.
    Same rules as batch 1: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
@@ -692,7 +692,7 @@ textarea.ds-input {
 
 /* ===== K25 App shell and navigation (tab bar, side rail, header) ===== */
 /* The shell is one grid of header, main and nav. The nav is ONE element: below the rail tier it is the tab bar,
-   from the rail tier up it is the side rail. The tier follows the viewport (question ej1wo930 A): the tab bar below
+   from the rail tier up it is the side rail. The tier follows the viewport (decided by the owner, 2026-10-17): the tab bar below
    880 (--bp-lg), the icon rail from 880, the labelled rail from 1120 (--bp-xl); a media query writes the number.
    The attribute data-tier on .ds-shell (bar, rail or wide) forces a tier in a specimen only (never on a product screen), for a shell drawn narrower than
    the window; the media queries below act on a shell that has no data-tier. */
@@ -1307,7 +1307,7 @@ textarea.ds-input {
 }
 
 /* =====================================================================================================
-   AIVIS design system -- components, batch 3 (P5.3).
+   AIVIS design system -- components, batch 3.
    K28 OTP input, K29 Date picker, K30 File input, K38 Combobox, K39 Reorder list, K35 Payout form, K33 Auth shell.
    Same rules as batches 1 and 2: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
    The owner's decisions of 2026-10-17 are built in: the native date input, the file input as a button, the auth form on a --bg-surface
@@ -1358,7 +1358,7 @@ textarea.ds-input {
 .ds-otp[aria-busy="true"] .ds-otp__cell { color: var(--text-secondary); }
 
 /* ===== K29 Date picker (the browser's own date input, drawn as a Text field) ===== */
-/* a .ds-input of type date, in the mono family for figures (SK: the date field renders in --font-mono); the browser's picker follows the theme */
+/* a .ds-input of type date, in the mono family for figures; the browser's picker follows the theme */
 .ds-input[type="date"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color-scheme: light; }
 [data-theme="dark"] .ds-input[type="date"] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-input[type="date"] { color-scheme: dark; } }
@@ -1553,7 +1553,7 @@ textarea.ds-input {
 .ds-payout[aria-busy="true"] .ds-payout__group, .ds-payout[data-locked="true"] .ds-payout__group { opacity: 0.55; }
 
 /* ===== K33 Auth shell (login, register, verify, reset, Telegram entry, 404) ===== */
-/* the page ground carries the shell; the form stands on .ds-auth__panel, the owner's decision (the cabinet's auth screens have no card: VerifyEmailView.vue .auth-content) */
+/* the page ground carries the shell; the form stands on .ds-auth__panel, decided by the owner, 2026-10-17 */
 .ds-auth { display: flex; flex-direction: column; box-sizing: border-box; min-block-size: 100dvh; background: var(--bg-page); color: var(--text-primary); }
 .ds-auth--framed { min-block-size: 100%; }
 .ds-auth__header {
@@ -1620,7 +1620,7 @@ textarea.ds-input {
 }
 
 /* =====================================================================================================
-   AIVIS design system -- components, batch 4 (P5.4).
+   AIVIS design system -- components, batch 4.
    K26 Action menu, K32 Stepper and schedule list, K36 Document sheet and viewer, K44 Document row with download,
    K43 Invoice and QR block, the Booking card, K37 Bar chart with a text alternative.
    Same rules as batches 1 to 3: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored now.
@@ -1754,7 +1754,7 @@ textarea.ds-input {
   .ds-stepper[data-orientation="horizontal"] .ds-step__body { padding-block-start: 0; }
 }
 
-/* the schedule list: one row per item (InstallmentPlanDetailView.vue lines 368 to 428, ported) */
+/* the schedule list: one row per item */
 .ds-schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
 .ds-schedule__item {
   box-sizing: border-box;
@@ -1830,7 +1830,7 @@ textarea.ds-input {
 .ds-docviewer__body :is(ul, ol) { margin: 0 0 var(--space-3); padding-inline-start: var(--space-4-lg); }
 .ds-docviewer__body li { margin-block-end: var(--space-1); }
 .ds-docviewer__body table { display: block; max-inline-size: 100%; overflow-x: auto; }
-.ds-docviewer__frame { display: block; inline-size: 100%; block-size: 100%; min-block-size: var(--center-lg); border: 0; background: var(--paper); } /* a sandboxed document paints no ground and expects white (AgreementSheet.vue line 332) */
+.ds-docviewer__frame { display: block; inline-size: 100%; block-size: 100%; min-block-size: var(--center-lg); border: 0; background: var(--paper); } /* a sandboxed document paints no ground and expects white */
 .ds-docviewer__status { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); text-align: center; }
 .ds-docviewer__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 /* a specimen drawn in the flow of a page (not fixed): the dialog alone, on the page */
@@ -1878,7 +1878,7 @@ textarea.ds-input {
   padding: var(--space-3);
   border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
-  /* the QR stays dark on white in both themes: scanners need that contrast (InvestorDepositView.vue lines 118 to 130 and 578 to 591). */
+  /* the QR stays dark on white in both themes: scanners need that contrast. */
   background: var(--paper);
 }
 .ds-invoice__qr img { display: block; inline-size: 100%; block-size: auto; }

@@ -15,7 +15,6 @@
 - `AIVIS-State-Machines.md` — переходы статусов
 - `AIVIS-Installment.md` — механика рассрочки
 - `AIVIS-Share-Pool-Refactor.md` — архитектурный референс OptionPool / Product Inventory (✅ closed Sprint 4.4, deployed `b539ee8`)
-- `mockups/` — UI-прототипы (auth-flow, investor-shell, agent-shell, company-shell, staff-shell)
 
 ---
 
@@ -209,7 +208,7 @@ aivis/                                -- GitHub repo root (существует)
 │   │   │       └── ar.json           -- العربية (RTL)
 │   │   │
 │   │   ├── styles/                   -- Глобальные стили
-│   │   │   ├── variables.css         -- Дизайн-токены (из mockups/css/variables.css 1:1)
+│   │   │   ├── variables.css         -- Дизайн-токены
 │   │   │   ├── global.css            -- Reset, typography, Google Fonts, RTL
 │   │   │   └── telegram.css          -- Telegram-specific overrides (если нужно)
 │   │   │
@@ -240,7 +239,6 @@ aivis/                                -- GitHub repo root (существует)
 │   ├── Dockerfile                    -- Multi-stage: node build → nginx
 │   └── README.md                     -- Инструкция
 │
-├── mockups/                          -- UI-прототипы (существуют, read-only reference)
 ├── docker-compose.yml                -- Весь стек (backend + frontend + postgres + redis)
 ├── scripts/
 │   └── install_aivis.sh            -- Целевой артефакт поставки
@@ -358,9 +356,9 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 **Цель:** CSS-переменные из мокапов подключены, темизация работает.
 
 **Задачи:**
-- [x] src/styles/variables.css — скопирован из `mockups/css/variables.css` 1:1
+- [x] src/styles/variables.css — дизайн-токены
 - [x] src/styles/global.css — reset, Google Fonts (Montserrat + Noto Sans Arabic), base styles
-- [x] Тёмная тема: `[data-theme="dark"]` переопределяет переменные (из mockups)
+- [x] Тёмная тема: [data-theme="dark"] переопределяет переменные
 - [x] RTL: `[dir="rtl"]` базовые overrides
 
 **Критерий готовности:** CSS-переменные доступны, тема переключается.
@@ -522,7 +520,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 **Решения реализации:**
 - Storage driver: явный ternary `sessionStorage / localStorage` вместо `window[driver]` — TypeScript type safety
 - Telegram auth failure: `authError` ref + `retryAuth()` — пользователь видит ошибку + retry вместо вечного спиннера
-- i18n ключи auth.* из `mockups/js/i18n.js` — 4 локали (en/ru/de/ar), включая error messages
+- i18n ключи auth.* — 4 локали (en/ru/de/ar), включая error messages
 - Кнопка "Войти через Telegram" отложена: `VITE_TELEGRAM_BOT_URL=https://t.me/cbshome_bot` готов в env
 
 **Зависимость от бэкенда:** POST /auth/email/register, POST /auth/email/login, POST /auth/telegram, POST /auth/logout, GET /users/me. Phase 1 ✅.
@@ -559,7 +557,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 | CStatCard | value, label, sub, change, changeDir (icon slot) | Числовая карточка статистики |
 | CProgressBar | value, max, color | Полоска прогресса |
 | CModal | open, closeOnOverlay, showClose | Модальное окно (Teleport, Transition) |
-| CIconBox | variant (teal/orange/green/yellow/red/blue/neutral) | Иконка в цветном квадрате (из mockups/css/components.css) |
+| CIconBox | variant (teal/orange/green/yellow/red/blue/neutral) | Иконка в цветном квадрате |
 
 - [x] src/components/ui/index.ts — barrel export всех 17 компонентов (включая CbsLogo)
 - [x] src/composables/useToast.ts — singleton state, showToast(message, variant), auto-hide 3s
@@ -576,10 +574,10 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 | StaffShell | CHeader + `<RouterView>` + CTabBar (STAFF_TABS) + CToast |
 
 - [x] src/router/tabs.ts — TabItem interface + конфигурации для 4 ролей
-- [x] i18n ключи tab.* из mockups/js/i18n.js (4 локали)
+- [x] i18n ключи tab.* (4 локали)
 
 **Решения реализации:**
-- Все стили 1:1 из `mockups/css/components.css` через CSS-переменные (`variables.css`)
+- Все стили через CSS-переменные (variables.css)
 - Lucide-vue-next (^0.460) для иконок — все мокапы используют Lucide
 - CTabBar: `iconMap` Record маппит строковые имена иконок из tabs.ts на Lucide-компоненты
 - Shell'ы: minimal composition (CHeader + RouterView + CTabBar + CToast), контент рендерится через nested routes
@@ -856,7 +854,7 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 - F3-05: `stores/auth._clearSession()` вызывает `setAvatarActive(false)` — сбрасывает флаг на logout / 401 / restore fail. Закрывает сценарий "zombie banner после повторного логина".
 - F3-06: `endAvatarSession` zombie guard — если `cbs_staff_token` отсутствует (после 401 + re-login), сбрасывает флаг и редиректит без вызова backend.
 - F3-07: Dashboard загружает agent applications count параллельно со stats (`Promise.all`), а не показывает `active_avatar_sessions` под ложным лейблом.
-- F3-08: `CIconBox.vue` (F2.1 компонент) — создан с 7 вариантами из mockups/css/components.css.
+- F3-08: `CIconBox.vue` (F2.1 компонент) — создан с 7 вариантами.
 
 **Дополнительные изменения (F3):**
 - `stores/auth.ts` — import `setAvatarActive` из `avatarState`

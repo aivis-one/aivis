@@ -140,8 +140,7 @@ body {
 }
 
 /* === Container measure ===================================================
-   The design system's own container primitive (`_design-source/aivis-tokens.css`
-   :280-281), adopted rather than reinvented. Two widths, chosen by DENSITY:
+   The design system's own container primitive (design-system/tokens/tokens.css, `--maxw`, `--maxw-wide`), adopted rather than reinvented. Two widths, chosen by DENSITY:
    `.wrap` for ordinary cabinet content, `.wrap-wide` for pattern-heavy screens
    (wide tables, dashboards) that genuinely use the room.
 

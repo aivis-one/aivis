@@ -1,5 +1,5 @@
 <!-- AIVIS Invoice and QR block (K43): the fields of an open deposit invoice (network, amount, deadline), the QR as an image and the same address as text, a Copy button and a polite status.
-     The fields are the cabinet's (InvestorDepositView.vue lines 388 to 402); the component writes no amount, fee or term, the app fills the values. The QR is the app's image (an img with alt text, a data or blob URL);
+     The fields are network, amount and deadline; the component writes no amount, fee or term, the app fills the values. The QR is the app's image (an img with alt text, a data or blob URL);
      the pad is white in both themes because a camera scanner needs dark on white, and the QR and the address are left-to-right islands. The same address is selectable text in .ds-invoice__address.
      data-state on the block: absent (open), expired, unavailable (no QR could be drawn). In both the QR image is hidden and .ds-invoice__qr-note says why in words; the copy button stays unless the app disables it.
      The Copy button: data-copy-target is the address element's id; data-label-copied, data-msg-copied and data-msg-failed come from the translation tables; components.js copies, switches the label and the icon, writes the status

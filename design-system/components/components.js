@@ -1,4 +1,4 @@
-/* AIVIS design system -- behaviour of components, batch 1 (P5.1).
+/* AIVIS design system -- behaviour of components, batch 1.
    Plain script, no dependency; it only wires what markup cannot do alone, by event delegation on the document.
    Tabs: arrow keys, Home and End move between tabs (automatic activation); the panel follows aria-selected.
    Filter chip: a click toggles aria-pressed. Removable chip and dismissible alert or toast: a click removes it.
@@ -64,7 +64,7 @@
   });
 })();
 
-/* Batch 2 (P5.2). Tooltip: a tap on the trigger opens or closes it (no hover on a phone); Escape closes it; a tap elsewhere closes it;
+/* Batch 2. Tooltip: a tap on the trigger opens or closes it (no hover on a phone); Escape closes it; a tap elsewhere closes it;
    the data-dismissed mark keeps an Escape-closed tooltip closed until the pointer or the focus leaves the anchor. */
 (function () {
   'use strict';
@@ -105,7 +105,7 @@
   document.addEventListener('focusout', clearDismissed);
 })();
 
-/* Batch 3 (P5.3). No network, no storage; every text it shows comes from data-* attributes the page fills from its translation tables
+/* Batch 3. No network, no storage; every text it shows comes from data-* attributes the page fills from its translation tables
    (data-msg-*, data-label-*), and file sizes are formatted by Intl in the page language.
    OTP input (paste fills all, auto-advance, Backspace steps back), file input
    (type and size checks, local preview, progress set by the app), combobox (ARIA 1.2: aria-activedescendant), reorder list (move buttons).
@@ -382,7 +382,7 @@
   document.querySelectorAll('.ds-reorder').forEach(roRefresh);
 })();
 
-/* Batch 4 (P5.4). No network, no storage; every text it shows comes from data-* attributes the page fills from its translation tables
+/* Batch 4. No network, no storage; every text it shows comes from data-* attributes the page fills from its translation tables
    (data-msg-*, data-label-*). Action menu (the menu button pattern: Enter, Space and Down open, arrows, Home, End, a typed letter, Escape
    returns the focus to the button, Tab closes), document viewer (a dialog: the focus moves in, Tab stays inside, Escape and the scrim close,
    the focus returns to what opened it), document row (the download state), invoice block (the copy button and its polite status).

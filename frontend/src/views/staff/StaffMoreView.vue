@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // Staff "More" screen — profile card, tools navigation, system info, logout.
-// Matches staff-shell/mockup.html screen-more layout.
 
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'

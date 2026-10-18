@@ -1,7 +1,7 @@
 > WHAT THIS IS:  how the AIVIS tokens are named, layered and chosen, and where each value lives.
 > FOR WHOM:      anyone building a page of the site or a cabinet screen.
 > WHEN:          before choosing a colour, size, space, radius, shadow or duration.
-> WHO WRITES:    the navigator of Agent-Aivis.one.
+> WHO WRITES:    the maintainers of the AIVIS design system.
 
 # Tokens
 
@@ -128,5 +128,4 @@ Layout uses logical properties: `margin-inline`, `padding-block`, `inset-inline-
 | Need | Do this |
 |---|---|
 | the value of one token, both themes | find the name in `tokens-resolved.json` |
-| where a value came from | find the name in `../reference/sources.md` |
 | the measured contrast of a pair | find it in `contrast.json` |

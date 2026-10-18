@@ -1,7 +1,7 @@
 > WHAT THIS IS:  the licence note of the font files in this folder.
 > FOR WHOM:      anyone shipping the fonts with a build.
 > WHEN:          when the font set changes or the files are redistributed.
-> WHO WRITES:    the navigator of Agent-Aivis.one.
+> WHO WRITES:    the maintainers of the AIVIS design system.
 
 # Fonts
 
