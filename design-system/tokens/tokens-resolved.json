@@ -774,6 +774,11 @@
   "light": "#FFFFFF",
   "dark": "#3A1905"
  },
+ "--paper": {
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "dark": "#FFFFFF"
+ },
  "--primary": {
   "layer": "semantic",
   "light": "#0B4F86",
@@ -893,6 +898,11 @@
   "layer": "primitive",
   "light": "#360B09",
   "dark": "#360B09"
+ },
+ "--scrim": {
+  "layer": "semantic",
+  "light": "rgba(7,10,14,.5)",
+  "dark": "rgba(7,10,14,.5)"
  },
  "--shadow-1": {
   "layer": "scale",

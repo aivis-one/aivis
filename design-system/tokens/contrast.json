@@ -1432,6 +1432,50 @@
    "ratio": 6.04,
    "threshold": 3.0,
    "verdict": "pass"
+  },
+  {
+   "pair": "paper against surface",
+   "foreground": "--paper",
+   "background": "--bg-surface",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#FFFFFF",
+   "ratio": 1.0,
+   "threshold": 3.0,
+   "verdict": "fail"
+  },
+  {
+   "pair": "paper against page",
+   "foreground": "--paper",
+   "background": "--bg-page",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#F6F8FA",
+   "ratio": 1.06,
+   "threshold": 3.0,
+   "verdict": "fail"
+  },
+  {
+   "pair": "paper against surface",
+   "foreground": "--paper",
+   "background": "--bg-surface",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#10161D",
+   "ratio": 18.19,
+   "threshold": 3.0,
+   "verdict": "pass"
+  },
+  {
+   "pair": "paper against page",
+   "foreground": "--paper",
+   "background": "--bg-page",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#070A0E",
+   "ratio": 19.83,
+   "threshold": 3.0,
+   "verdict": "pass"
   }
  ]
 }

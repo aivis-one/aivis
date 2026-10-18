@@ -1618,3 +1618,333 @@ textarea.ds-input {
 @media (prefers-reduced-motion: reduce) {
   .ds-otp__cell, .ds-reorder__item, .ds-reorder__move { transition: none; }
 }
+
+/* =====================================================================================================
+   AIVIS design system -- components, batch 4 (P5.4).
+   K26 Action menu, K32 Stepper and schedule list, K36 Document sheet and viewer, K44 Document row with download,
+   K43 Invoice and QR block, the Booking card, K37 Bar chart with a text alternative.
+   Same rules as batches 1 to 3: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored now.
+   ===================================================================================================== */
+
+/* ===== Shared: focus of the batch 4 parts ===== */
+:is(.ds-docviewer__dialog, .ds-docviewer__body):focus-visible,
+.ds-barchart__alt > summary:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+/* the menu item: the outline outside the item at --focus-offset, in the list's --space-1 padding (as the tabs strip, reference/conventions.md) */
+.ds-menu__item:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ===== K26 Action menu (the menu button pattern) ===== */
+.ds-menu { position: relative; display: inline-flex; }
+.ds-menu__button[aria-expanded="true"] { background: var(--bg-subtle); border-color: var(--border-input-hover); }
+.ds-menu__button .ds-icon:last-child { transition: rotate var(--dur-fast) var(--ease-standard); }
+.ds-menu__button[aria-expanded="true"] .ds-icon:last-child { rotate: 180deg; }
+.ds-menu__list {
+  position: absolute;
+  z-index: 40;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  inline-size: max-content;
+  min-inline-size: 100%;
+  max-inline-size: var(--center-lg);
+  margin: 0;
+  margin-block-start: var(--space-1);
+  padding: var(--space-1);
+  list-style: none;
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-2);
+}
+.ds-menu__list[hidden] { display: none; }
+.ds-menu[data-align="end"] .ds-menu__list { inset-inline-start: auto; inset-inline-end: 0; }
+.ds-menu__item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: var(--size-xl);
+  padding-block: 0;
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+.ds-menu__item .ds-icon { color: var(--icon-secondary); }
+.ds-menu__item:hover { background: var(--bg-subtle); }
+.ds-menu__item:active { background: var(--bg-inset); box-shadow: var(--shadow-inset-hex); }
+.ds-menu__item--danger, .ds-menu__item--danger .ds-icon { color: var(--danger); }
+.ds-menu__item[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.ds-menu__item[aria-disabled="true"]:hover { background: transparent; }
+.ds-menu__item[data-state="done"] .ds-icon { color: var(--success); }
+.ds-menu__sep { margin-block: var(--space-1); border-block-start: thin solid var(--border-subtle); }
+
+/* ===== K32 Stepper (an ordered list; one step is the current one) ===== */
+.ds-stepper { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.ds-step {
+  --_m: var(--size-xl);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--_m) minmax(0, 1fr);
+  column-gap: var(--space-3);
+  padding-block-end: var(--space-5);
+  min-inline-size: 0;
+}
+.ds-step:last-child { padding-block-end: 0; }
+.ds-step::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--_m) 0;
+  inset-inline-start: calc(var(--_m) / 2);
+  inline-size: calc(var(--border-input-width) * 2);
+  margin-inline-start: calc(var(--border-input-width) * -1);
+  background: var(--border-default);
+}
+.ds-step:last-child::before { display: none; }
+.ds-step[data-state="done"]::before { background: var(--success); }
+.ds-step__marker {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  inline-size: var(--_m);
+  block-size: var(--_m);
+  border: calc(var(--border-input-width) * 2) solid var(--border-input);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1;
+}
+.ds-step[data-state="current"] .ds-step__marker { border-color: var(--primary); background: var(--primary-subtle); color: var(--primary-subtle-text); }
+.ds-step[data-state="done"] .ds-step__marker { border-color: var(--success); background: var(--success); color: var(--on-success); }
+.ds-step[data-state="problem"] .ds-step__marker { border-color: var(--danger); background: var(--danger); color: var(--on-danger); }
+.ds-step__body { display: grid; gap: calc(var(--space-1) / 2); align-content: start; min-inline-size: 0; padding-block-start: var(--space-1); }
+.ds-step__title { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-step[data-state="upcoming"] .ds-step__title { color: var(--text-secondary); }
+.ds-step__meta { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+@media (min-width: 640px) {
+  .ds-stepper[data-orientation="horizontal"] { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); column-gap: var(--space-3); }
+  .ds-stepper[data-orientation="horizontal"] .ds-step { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-2); padding-block-end: 0; }
+  .ds-stepper[data-orientation="horizontal"] .ds-step::before {
+    inset-block: calc(var(--_m) / 2) auto;
+    inset-inline: calc(var(--_m) + var(--space-2)) calc(var(--space-3) * -1);
+    inline-size: auto;
+    block-size: calc(var(--border-input-width) * 2);
+    margin-inline-start: 0;
+    margin-block-start: calc(var(--border-input-width) * -1);
+  }
+  .ds-stepper[data-orientation="horizontal"] .ds-step__body { padding-block-start: 0; }
+}
+
+/* the schedule list: one row per tranche (InstallmentPlanDetailView.vue lines 94 to 145, ported) */
+.ds-schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.ds-schedule__item {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  padding: var(--space-3);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+.ds-schedule__item[aria-current="step"] { border-color: var(--primary); border-width: calc(var(--border-input-width) * 2); }
+.ds-schedule__item[data-status="problem"] { background: var(--danger-subtle); border-color: var(--danger); }
+.ds-schedule__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ds-schedule__num { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
+.ds-schedule__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(var(--center-sm), 100%), 1fr)); gap: var(--space-3); margin: 0; }
+.ds-schedule__stat { min-inline-size: 0; }
+.ds-schedule__stat dt { margin-block-end: var(--space-1); font-size: var(--fs-3xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
+.ds-schedule__stat dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-schedule__foot { margin: 0; font-size: var(--fs-xs); color: var(--text-secondary); }
+
+/* ===== K36 Document sheet and viewer (a dialog; sheet or modal) ===== */
+.ds-docviewer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--scrim);
+}
+.ds-docviewer[hidden] { display: none; }
+.ds-docviewer[data-variant="modal"] { align-items: center; padding: var(--space-5); }
+.ds-docviewer__dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-prose);
+  max-block-size: 90dvh;
+  padding: var(--space-5);
+  padding-block-end: calc(var(--space-5) + var(--space-safe-bottom));
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-deep);
+}
+.ds-docviewer[data-variant="modal"] .ds-docviewer__dialog { max-inline-size: var(--maxw-form-wide); border-radius: var(--radius-modal); padding-block-end: var(--space-5); }
+.ds-docviewer__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.ds-docviewer__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-docviewer__body {
+  box-sizing: border-box;
+  flex: 1;
+  min-block-size: var(--center-md);
+  overflow-y: auto;
+  padding: var(--space-4);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+.ds-docviewer__body[aria-busy="true"] { display: grid; place-items: center; }
+.ds-docviewer__body h1 { margin: 0 0 var(--space-3); font-family: var(--font-display); font-size: var(--fs-lg); }
+.ds-docviewer__body h2 { margin: var(--space-4) 0 var(--space-2); font-family: var(--font-display); font-size: var(--fs-body); }
+.ds-docviewer__body p { margin: 0 0 var(--space-3); }
+.ds-docviewer__body :is(ul, ol) { margin: 0 0 var(--space-3); padding-inline-start: var(--space-4-lg); }
+.ds-docviewer__body li { margin-block-end: var(--space-1); }
+.ds-docviewer__body table { display: block; max-inline-size: 100%; overflow-x: auto; }
+.ds-docviewer__frame { display: block; inline-size: 100%; block-size: 100%; min-block-size: var(--center-lg); border: 0; background: var(--paper); } /* a sandboxed document paints no ground and expects white (AgreementSheet.vue line 332) */
+.ds-docviewer__status { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); text-align: center; }
+.ds-docviewer__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+/* a specimen drawn in the flow of a page (not fixed): the dialog alone, on the page */
+.ds-docviewer--inline { position: static; z-index: auto; display: block; padding: 0; background: transparent; }
+.ds-docviewer--inline .ds-docviewer__dialog { max-block-size: none; border-radius: var(--radius-lg); padding-block-end: var(--space-5); box-shadow: var(--shadow-2); }
+.ds-docviewer--inline .ds-docviewer__body { max-block-size: var(--center-lg); }
+
+/* ===== K44 Document row with download (a Row list row whose link is the file) ===== */
+.ds-docrow .ds-row__link { display: grid; gap: calc(var(--space-1) / 2); }
+.ds-docrow .ds-row__meta { overflow-wrap: anywhere; }
+.ds-docrow__state { display: inline-flex; align-items: center; justify-content: center; inline-size: var(--icon-size-md); block-size: var(--icon-size-md); color: var(--icon-secondary); }
+.ds-docrow:has(.ds-row__link):hover .ds-docrow__state { color: var(--primary); }
+.ds-docrow[data-state="downloading"] .ds-docrow__state { color: var(--primary); }
+.ds-docrow[data-state="downloading"] .ds-docrow__state .ds-icon { animation: ds-docrow-pulse var(--dur-slower) var(--ease-standard) infinite alternate; }
+.ds-docrow[data-state="downloaded"] .ds-docrow__state { color: var(--success); }
+.ds-docrow[data-state="downloaded"] .ds-row__lead { background: var(--success-subtle); color: var(--success-subtle-text); }
+.ds-docrow[data-state="unavailable"] { background: var(--bg-subtle); border-style: dashed; opacity: 1; cursor: default; }
+.ds-docrow[data-state="unavailable"] .ds-row__meta { color: var(--text-secondary); }
+@keyframes ds-docrow-pulse { from { opacity: 1; } to { opacity: 0.45; } }
+
+/* ===== The Booking card (purchase, basis, the agreement as HTML and the signed PDF) ===== */
+.ds-booking { gap: var(--space-3); }
+.ds-booking__head { display: flex; align-items: center; gap: var(--space-3); }
+.ds-booking__icon { display: grid; place-items: center; flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); border-radius: var(--radius-md); background: var(--primary-subtle); color: var(--primary-subtle-text); }
+.ds-booking__title { flex: 1; min-inline-size: 0; margin: 0; font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-booking__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(var(--center-sm), 100%), 1fr)); gap: var(--space-3); margin: 0; }
+.ds-booking__facts dt { margin-block-end: var(--space-1); font-size: var(--fs-3xs); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
+.ds-booking__facts dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.ds-booking__basis { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ds-booking__docs { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+
+/* ===== K43 Invoice and QR block (a left-to-right island for the QR and the address) ===== */
+.ds-invoice { display: grid; gap: var(--space-4); min-inline-size: 0; }
+.ds-invoice__fields { display: grid; gap: var(--space-3); margin: 0; }
+.ds-invoice__field { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ds-invoice__field dt { font-size: var(--fs-xs); font-weight: 700; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
+.ds-invoice__field dd { margin: 0; font-size: var(--fs-sm); color: var(--text-primary); text-align: end; overflow-wrap: anywhere; }
+.ds-invoice__qr {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  direction: ltr;
+  inline-size: min(100%, calc(var(--center-md) + var(--size-4xl)));
+  padding: var(--space-3);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-sm);
+  /* the QR stays dark on white in both themes: scanners need that contrast (InvestorDepositView.vue lines 118 to 130 and 578 to 591). */
+  background: var(--paper);
+}
+.ds-invoice__qr img { display: block; inline-size: 100%; block-size: auto; }
+.ds-invoice__qr-note { display: none; margin: 0; padding-block: var(--space-6); text-align: center; font-size: var(--fs-sm); color: var(--text-secondary); }
+.ds-invoice[data-state="expired"] .ds-invoice__qr,
+.ds-invoice[data-state="unavailable"] .ds-invoice__qr { background: var(--bg-subtle); border-style: dashed; }
+.ds-invoice[data-state="expired"] .ds-invoice__qr img,
+.ds-invoice[data-state="unavailable"] .ds-invoice__qr img { display: none; }
+.ds-invoice[data-state="expired"] .ds-invoice__qr-note,
+.ds-invoice[data-state="unavailable"] .ds-invoice__qr-note { display: block; }
+.ds-invoice__address {
+  margin: 0;
+  direction: ltr;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+  user-select: all;
+}
+.ds-invoice__copy { justify-self: center; }
+.ds-invoice__copy[data-state="copied"] { --_bg: var(--success); --_bg-hover: var(--success); --_bg-active: var(--success); --_fg: var(--on-success); }
+.ds-invoice__status { margin: 0; min-block-size: calc(var(--fs-sm) * var(--lh-normal)); font-size: var(--fs-sm); text-align: center; color: var(--text-secondary); }
+
+/* ===== K37 Bar chart with a text alternative ===== */
+.ds-barchart { display: grid; gap: var(--space-3); margin: 0; min-inline-size: 0; }
+.ds-barchart__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.ds-barchart__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; color: var(--text-primary); }
+.ds-barchart__range { font-size: var(--fs-xs); font-weight: 600; color: var(--text-secondary); }
+.ds-barchart__plot {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  border: thin solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+/* the months follow the reading direction: the labels by their grid, the svg (it holds no text) turned end for end in a right-to-left page, so the first bar stands under the first label */
+.ds-barchart__svg:dir(rtl) { scale: -1 1; }
+.ds-barchart__svg { display: block; inline-size: 100%; block-size: var(--center-lg); }
+.ds-barchart__grid { stroke: var(--border-subtle); stroke-width: var(--border-input-width); vector-effect: non-scaling-stroke; }
+.ds-barchart__bar { fill: var(--primary); transition: fill var(--dur-fast) var(--ease-standard); }
+.ds-barchart__bar:hover { fill: var(--primary-hover); }
+.ds-barchart__bar[data-peak] { fill: var(--primary-active); stroke: var(--text-primary); stroke-width: var(--border-input-width); vector-effect: non-scaling-stroke; }
+.ds-barchart__labels { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ds-barchart__labels li { overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-3xs); font-weight: 600; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
+.ds-barchart__alt > summary { cursor: pointer; padding-block: var(--space-2); font-size: var(--fs-sm); font-weight: 600; color: var(--primary); }
+.ds-barchart__alt[open] > summary { margin-block-end: var(--space-2); }
+.ds-barchart__empty { margin: 0; padding: var(--space-4); border: thin dashed var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); text-align: center; font-size: var(--fs-xs); color: var(--text-secondary); }
+
+/* ===== Phone (the 480 width) and touch, batch 4 ===== */
+@media (max-width: 480px) {
+  .ds-menu__item { min-block-size: var(--touch-min); }
+  .ds-docviewer[data-variant="modal"] { padding: var(--space-3); }
+  .ds-docviewer__dialog { padding: var(--space-4); padding-block-end: calc(var(--space-4) + var(--space-safe-bottom)); }
+  .ds-docviewer[data-variant="modal"] .ds-docviewer__dialog { padding-block-end: var(--space-4); }
+  .ds-docviewer__actions > .ds-button { flex: 1 1 auto; }
+  .ds-docrow { min-block-size: var(--touch-min); }
+  .ds-barchart__alt > summary { min-block-size: var(--touch-min); display: flex; align-items: center; }
+  .ds-barchart__plot { padding-inline: var(--space-2); }
+  .ds-invoice__copy { inline-size: 100%; }
+}
+
+/* ===== Reduced motion, batch 4 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .ds-menu__item, .ds-menu__button .ds-icon:last-child, .ds-barchart__bar { transition: none; }
+  .ds-docrow[data-state="downloading"] .ds-docrow__state .ds-icon { animation: none; }
+}

@@ -1,0 +1,16 @@
+<!-- AIVIS Document row with download (K44): a Row list row (K23) whose link is the file. One a.ds-row__link holds the title AND the meta, so the link's name carries the file type and size in text ("Signed agreement, PDF, 218 KB").
+     The link is a real link with download (or the app's href); the whole row is its target. The trailing icon is decorative; the row's state is also said in words in .ds-docrow__status (role=status).
+     data-state on the li: absent (rest), downloading, downloaded, unavailable. unavailable has no link: the row says plainly that the file is not there yet (aria-disabled="true").
+     components.js sets downloading on the click and emits ds-docrow-download; the app calls AivisDS.docrow.done(row) or .fail(row). Texts: data-msg-downloading, data-msg-downloaded, data-msg-failed on the li.
+     The file size and type come from the file, formatted in the page language; the English strings are examples. -->
+<ul class="ds-rows">
+  <li class="ds-row ds-docrow" data-msg-downloading="Downloading" data-msg-downloaded="Downloaded" data-msg-failed="The download failed">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+    <span class="ds-row__body"><a class="ds-row__link" href="/files/sample.pdf" download="sample.pdf"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English</span></a></span>
+    <span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status"></span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span>
+  </li>
+  <li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+    <span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span>
+  </li>
+</ul>

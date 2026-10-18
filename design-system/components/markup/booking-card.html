@@ -1,0 +1,25 @@
+<!-- AIVIS Booking card: one purchase of an investor's position: what was booked (date, units), the basis in plain words, the agreement as HTML (opens K36) and the signed agreement as a PDF row (K44),
+     or a row that says plainly that the PDF is not uploaded yet. Built on the Card (K07). It carries NO price and NO payment term (the owner's answer da4rwtbl: the documents carry none for now).
+     The kind badge says the basis in words (Purchase, Gift, Installment); the title is the same kind in plain words. The facts are a dl. Every string comes from the translation tables; the English strings are examples. -->
+<article class="ds-card ds-booking" aria-labelledby="bk-1-t">
+  <header class="ds-booking__head">
+    <span class="ds-booking__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-shopping-cart"/></svg></span>
+    <h3 class="ds-booking__title" id="bk-1-t">Purchase agreement</h3>
+    <span class="ds-badge ds-badge--info">Purchase</span>
+  </header>
+  <dl class="ds-booking__facts">
+    <div><dt>Booked</dt><dd>12 Oct 2026</dd></div>
+    <div><dt>Units</dt><dd>4</dd></div>
+  </dl>
+  <p class="ds-booking__basis">Basis: a purchase made through the platform, confirmed by you.</p>
+  <ul class="ds-booking__docs">
+    <li class="ds-row ds-docrow">
+      <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+      <span class="ds-row__body"><button type="button" class="ds-button ds-button--ghost" data-size="sm" data-docviewer-open="dv-1">View agreement</button></span>
+    </li>
+    <li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true">
+      <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-signature"/></svg></span>
+      <span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span>
+    </li>
+  </ul>
+</article>

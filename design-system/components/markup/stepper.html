@@ -1,0 +1,43 @@
+<!-- AIVIS Stepper (K32): an ordered list; the step in progress carries aria-current="step". A step is data-state done, current, upcoming or problem.
+     The state is never colour alone: done holds a check, problem a triangle, the others their number, and the meta line says it in words ("Done", "Current", "Upcoming", "Needs your attention").
+     data-orientation="horizontal" lays the steps in a row from 640 up; below it, and on a phone, they stack. The list is named by aria-label or aria-labelledby. -->
+<ol class="ds-stepper" aria-label="Review steps">
+  <li class="ds-step" data-state="done">
+    <span class="ds-step__marker" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+    <span class="ds-step__body"><span class="ds-step__title">Submitted</span><span class="ds-step__meta">Done</span></span>
+  </li>
+  <li class="ds-step" data-state="current" aria-current="step">
+    <span class="ds-step__marker" aria-hidden="true">2</span>
+    <span class="ds-step__body"><span class="ds-step__title">Reviewed</span><span class="ds-step__meta">Current</span></span>
+  </li>
+  <li class="ds-step" data-state="upcoming">
+    <span class="ds-step__marker" aria-hidden="true">3</span>
+    <span class="ds-step__body"><span class="ds-step__title">Signed</span><span class="ds-step__meta">Upcoming</span></span>
+  </li>
+</ol>
+
+<!-- The schedule list (the tranche rows): an ol of li.ds-schedule__item. data-status="problem" tints the row (overdue, defaulted, reversed) and the badge says which in words;
+     the item due next carries aria-current="step". The stats are a dl (due date, units, and an amount where the screen shows one); the dates and numbers are the app's. -->
+<ol class="ds-schedule" aria-label="Schedule">
+  <li class="ds-schedule__item">
+    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 1</span><span class="ds-badge ds-badge--success">Paid</span></div>
+    <dl class="ds-schedule__stats">
+      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
+      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
+    </dl>
+  </li>
+  <li class="ds-schedule__item" aria-current="step">
+    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 2</span><span class="ds-badge ds-badge--info">Due next</span></div>
+    <dl class="ds-schedule__stats">
+      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
+      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
+    </dl>
+  </li>
+  <li class="ds-schedule__item" data-status="problem">
+    <div class="ds-schedule__head"><span class="ds-schedule__num">Part 3</span><span class="ds-badge ds-badge--danger">Overdue</span></div>
+    <dl class="ds-schedule__stats">
+      <div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div>
+      <div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div>
+    </dl>
+  </li>
+</ol>

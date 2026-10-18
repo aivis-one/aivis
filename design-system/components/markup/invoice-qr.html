@@ -1,0 +1,23 @@
+<!-- AIVIS Invoice and QR block (K43): the fields of an open deposit invoice (network, amount, deadline), the QR as an image and the same address as text, a Copy button and a polite status.
+     The fields are the cabinet's (InvestorDepositView.vue lines 388 to 402); the component writes no amount, fee or term, the app fills the values. The QR is the app's image (an img with alt text, a data or blob URL);
+     the pad is white in both themes because a camera scanner needs dark on white, and the QR and the address are left-to-right islands. The same address is selectable text in .ds-invoice__address.
+     data-state on the block: absent (open), expired, unavailable (no QR could be drawn). In both the QR image is hidden and .ds-invoice__qr-note says why in words; the copy button stays unless the app disables it.
+     The Copy button: data-copy-target is the address element's id; data-label-copied, data-msg-copied and data-msg-failed come from the translation tables; components.js copies, switches the label and the icon, writes the status
+     into .ds-invoice__status (role=status, polite) and puts the button back after three seconds. -->
+<section class="ds-invoice" aria-labelledby="inv-t" data-state="open">
+  <h3 class="ds-sr-only" id="inv-t">Deposit invoice</h3>
+  <dl class="ds-invoice__fields">
+    <div class="ds-invoice__field"><dt>Network</dt><dd>SAMPLE-NET</dd></div>
+    <div class="ds-invoice__field"><dt>Amount</dt><dd>0.00 USDT</dd></div>
+    <div class="ds-invoice__field"><dt>Expires</dt><dd>sample date</dd></div>
+  </dl>
+  <div class="ds-invoice__qr">
+    <img src="/invoice/qr-sample.svg" alt="QR code for the deposit address below" width="240" height="240">
+    <p class="ds-invoice__qr-note">The invoice has expired. Open a new deposit.</p>
+  </div>
+  <p class="ds-invoice__address" id="inv-addr" dir="ltr">SAMPLE-ADDRESS-0000000000000000000000</p>
+  <button type="button" class="ds-button ds-button--primary ds-invoice__copy" data-copy-target="inv-addr" data-label-copied="Copied" data-msg-copied="The address is copied" data-msg-failed="Could not copy. Select the address and copy it by hand">
+    <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg><span class="ds-invoice__copy-label">Copy address</span>
+  </button>
+  <p class="ds-invoice__status" role="status"></p>
+</section>

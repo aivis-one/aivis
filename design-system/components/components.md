@@ -1,6 +1,6 @@
-> WHAT THIS IS:  the components of batches 1, 2 and 3 of the AIVIS design system: what each is for, how to choose and use it, its states, its tokens and its accessibility contract.
+> WHAT THIS IS:  the components of batches 1, 2, 3 and 4 of the AIVIS design system: what each is for, how to choose and use it, its states, its tokens and its accessibility contract.
 > FOR WHOM:      an agent or a person with no memory of earlier work, building a screen or a component.
-> WHEN:          before using or changing Button, Text field, Radio, Toggle, Card, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Reorder list, Payout form or Auth shell.
+> WHEN:          before using or changing Button, Text field, Radio, Toggle, Card, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Reorder list, Payout form, Auth shell, Action menu, Stepper, Document viewer, Document row, Booking card, Invoice and QR block or Bar chart.
 > WHO WRITES:    the navigator of Agent-Aivis.one.
 
 # components, batch 1
@@ -210,3 +210,82 @@ Markup: `markup/auth-shell.html`. `.ds-auth` is a column of `header.ds-auth__hea
 ## Tokens used, batch 3
 
 Every value is a token (`components.json` lists them per component). No token was added. The literal numbers of the batch 3 css, besides those already listed above for batches 1 and 2: `100dvh` on the auth shell (as the app shell); `1 / -1` grid lines; the disabled `0.55` opacity again; the hidden file input's `opacity: 0` and `clip-path: inset(50%)`; halves and doubles of tokens (`/ 2`, `* 2`); the keyword `thin`; one more `@media (max-width: 480px)`. Needed and not present as tokens: none.
+
+# components, batch 4
+
+Batch 4 adds K26 Action menu, K32 Stepper and schedule list, K36 Document sheet and viewer, K44 Document row with download, K43 Invoice and QR block, the Booking card (its id KN1 is a placeholder: the map calls it "(new)" and gives it no K number) and K37 Bar chart with a text alternative to the same files: `components.css` (after its batch 4 banner), `components.js` (the batch 4 block at its end), `components.json` (one entry each, the same schema), `markup/<name>.html` (`action-menu`, `stepper`, `document-viewer`, `document-row`, `booking-card`, `invoice-qr`, `bar-chart`) and `../examples/components-4.html` (every component in use on cabinet-like fragments, every state, day and night, left-to-right and right-to-left, desktop and the 480 phone frame). Everything under "Use" for batch 1 holds. The behaviour is in `components.js` by delegation: no network, no storage; every text it shows comes from `data-*` attributes the page fills from the translation tables. Events: `ds-menu-select`, `ds-menu-open`, `ds-menu-close`, `ds-docviewer-open`, `ds-docviewer-close`, `ds-docrow-download`, `ds-copy`; the app listens, nothing here acts, submits or uploads. The document, the booking card and the invoice block carry no price and no payment term as written content (the owner's answer da4rwtbl); every figure on the page is plainly sample data.
+
+The owner's decisions of row 95 HIS WORD 2026-10-18T06:17Z are built in: the veil behind the document dialog is the token `--scrim`; in-page document text follows the theme; the months of the bar chart follow the reading direction; the QR pad and the frame of a sandboxed document are the token `--paper`, white in both themes; the stepper sample is Submitted, Reviewed, Signed.
+
+## K26 Action menu
+
+Markup: `markup/action-menu.html`. The menu button pattern: `div.ds-menu` holds a Button (`.ds-menu__button`, `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`) and `ul.ds-menu__list[role=menu]` (named by the button) of `li[role=none] > button.ds-menu__item[role=menuitem]`; `li.ds-menu__sep[role=separator]` is a rule. Enter, Space and Down open and focus the first item, Up opens on the last; Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes. An item with `aria-disabled="true"` stays in the list and is skipped. `data-align="end"` opens toward the end edge. The menu never acts: `ds-menu-select` carries `detail.value` (the item's `data-value`).
+
+| Part | Rule |
+|---|---|
+| list | `--bg-surface`, `--border-default`, `--radius-md`, `--shadow-2`; at least as wide as the button, at most `--center-lg` |
+| item | `--size-xl` high, `--touch-min` at the 480 width, `--text-primary` 600; the icon `--icon-secondary` |
+| states | rest, hover (`--bg-subtle`), pressed (`--bg-inset` and `--shadow-inset-hex`), focus (the system outline outside the item, in the list's padding), disabled (0.55), danger (`--danger` text and icon), done (the icon `--success`); the open trigger takes `--bg-subtle` and its chevron turns |
+| icons | `chevron-down`, `link`, `external-link`, `download`, `ban`, `check`; the trigger carries a word; the set has no icon for more, share or qr yet: they are drawn in style P1 and approved by the owner before any use |
+
+Look: no AIVIS source holds an action menu (map K26 MISSING; the cabinet's language picker is a listbox), so it is built from the system's own parts: the surface, border, radius and shadow of the combobox list and the hover tint of the Row list.
+
+## K32 Stepper and schedule list
+
+Markup: `markup/stepper.html`. `ol.ds-stepper` of `li.ds-step[data-state=done|current|upcoming|problem]`; the step in progress also has `aria-current="step"`. A marker holds a check (done), a triangle (problem) or the number, and `.ds-step__meta` says the state in words, so a state is never colour alone; the marker is `aria-hidden`. `data-orientation="horizontal"` lays the steps in a row from 640 up, below it they stack. The connector is decoration (`--border-default`, `--success` after a done step). The schedule list is `ol.ds-schedule` of `li.ds-schedule__item`: the number, a Badge with the status in words, a `dl` of due date, amount and units, and a foot line; `aria-current="step"` marks the one due next, `data-status="problem"` tints an overdue, defaulted or reversed row (`--danger-subtle`, a `--danger` border). The component writes no amount: the app fills it.
+
+| Part | Rule |
+|---|---|
+| marker | `--size-xl` disc, a double `--border-input-width` ring in `--border-input`, the number in the mono face on `--bg-surface`; current `--primary` ring on `--primary-subtle`; done `--success` with `--on-success`; problem `--danger` with `--on-danger` |
+| text | title in the display face (`--text-primary`, `--text-secondary` when upcoming), meta `--text-secondary` (tertiary does not stand on the page ground by day) |
+| schedule row | `--bg-page`, `--border-default`, `--radius-sm` (the cabinet's tranche row); labels 3xs uppercase `--text-secondary` |
+| states | done, current, upcoming, problem; schedule: paid, due next, scheduled, problem |
+
+Look: the schedule is ported from the cabinet (`frontend/src/views/investor/InstallmentPlanDetailView.vue` lines 368 to 428 and the statuses at lines 80 to 98); no AIVIS source holds a stepper (map K32 MISSING), so its vocabulary is the Badge and Progress one: success, primary, danger.
+
+## K36 Document sheet and viewer
+
+Markup: `markup/document-viewer.html`. `div.ds-docviewer[data-variant=sheet|modal][hidden]` is the veil and holds `div.ds-docviewer__dialog[role=dialog][aria-modal=true][aria-labelledby][tabindex=-1]`: a head (the heading and a ghost icon Close button), `div.ds-docviewer__body` (a scrollable region, `tabindex="0"`, `role="region"` with a name) and `div.ds-docviewer__actions` (Close, and the download as a real link). The body is in-page HTML or a `iframe.ds-docviewer__frame` that keeps `sandbox=""` and a title. A button with `data-docviewer-open="<id>"` opens it: the focus moves to the dialog, Tab and Shift+Tab stay inside, Escape, the close buttons and a click on the veil close it, and the focus returns to the opener. The page behind is not made inert and its scroll is not locked. `ds-docviewer--inline` draws the dialog in the flow of a page.
+
+| Part | Rule |
+|---|---|
+| sheet | the cabinet's AgreementSheet on CBottomSheet: from the bottom edge, `--maxw-prose` (680) wide where the cabinet caps it at 520, which no token holds, 90dvh at most, `--bg-page`, `--shadow-deep`, `--radius-lg` on the top corners, the bottom padded by the safe-area inset |
+| modal | the cabinet's LegalDocModal on CModal: centred, `--maxw-form-wide` (400; the cabinet's CModal 420), `--radius-modal` |
+| body | framed (`--border-default`, `--radius-sm`), `--fs-sm`, h1 and h2 in the display face, lists and tables as the cabinet's prose |
+| states | closed, open, loading (`aria-busy` and a Loader), loaded, error (an Alert with a retry), focus |
+| phone | the actions take the full width; the sheet and modal padding is `--space-4` |
+
+The veil behind the dialog is the token `--scrim` (`--neutral-950` at 50 percent, the same in both themes; the cabinet's veil is `rgba(0, 0, 0, 0.5)`, CBottomSheet.vue line 86 and CModal.vue line 60). In-page document text follows the theme: the body is `--bg-surface`. A sandboxed iframe's document paints no ground and expects white (`#fff`, AgreementSheet.vue line 332; the booking card's agreement is such a frame), so `.ds-docviewer__frame` is `--paper`, white in both themes.
+
+## K44 Document row with download
+
+Markup: `markup/document-row.html`. A Row list row (`li.ds-row.ds-docrow`) whose ONE link (`a.ds-row__link`) holds the title and the meta, so the link's name carries the file type and size in text ("Signed agreement PDF, 218 KB, English"); `download` or the app's `href`; the whole row is the target. The trailing icon is decorative (`.ds-docrow__state`); `.ds-docrow__status` (`role=status`, visually hidden) says the state in words from `data-msg-downloading`, `data-msg-downloaded` and `data-msg-failed` on the row. `components.js` sets `data-state="downloading"` on the click and emits `ds-docrow-download`; the app calls `AivisDS.docrow.done(row)` or `.fail(row)`. In the cabinet a file is not a fixed address: `frontend/src/api/attachments.ts` (`downloadAttachment`) asks the API for a short-lived presigned link and then navigates to it, so the app writes the file's own route as the `href`, handles the link's click itself (its own listener calls `preventDefault`, asks for the link, navigates) and then calls `done` or `fail`; with a plain `href` and `download` nothing calls `done`, so the app calls it right after the navigation or the row keeps saying "Downloading".
+
+| State | Look |
+|---|---|
+| rest, hover, pressed, focus | the Row list's: border `--border-subtle`, `--border-default` on hover, `--border-input-hover` pressed, the outline around the row on focus; the trailing icon turns `--primary` on hover |
+| downloading | the icon `--primary` and pulsing (0.45 to 1 opacity, off under reduced motion); the text says "Downloading" |
+| downloaded | a check, `--success`; the lead box `--success-subtle` with `--success-subtle-text` |
+| unavailable | `aria-disabled`, no link, a dashed border on `--bg-subtle`, the meta says in text that the file is not uploaded yet; the row keeps full opacity (the Row list's 0.55 for aria-disabled would put that text at 2.39 by day and 3.33 by night) |
+
+Look: the cabinet's attachment item (`frontend/src/components/shared/AttachmentsSection.vue`, the item from line 352 and the styles at lines 447 to 545) on the Row list; there it is a button, here a real link as the map asks.
+
+## The Booking card (KN1)
+
+Markup: `markup/booking-card.html`. A Card (`article.ds-card.ds-booking`, named by its heading): `header.ds-booking__head` (an icon box by basis, the title, a Badge with the basis in words), `dl.ds-booking__facts` (booked date, units), `p.ds-booking__basis` (the basis in plain words), and `ul.ds-booking__docs`: a row with the "View agreement" button that opens K36, and a K44 row for the signed PDF, or the unavailable row. It carries no price and no payment term; the map's row I-3 also lists an amount, which is left out under the owner's answer da4rwtbl (adding the amount is a point for him). The kind is a Badge: purchase `info`, installment neutral (the gift is a third kind the app names). Look: the cabinet's purchase row (`CompanyPositionView.vue` lines 413 to 446) on the Card; states: rest, PDF available, PDF not uploaded.
+
+## K43 Invoice and QR block
+
+Markup: `markup/invoice-qr.html`. `section.ds-invoice[data-state=open|expired|unavailable]` named by a heading: `dl.ds-invoice__fields` (network, amount, deadline; the app fills them, the component writes no amount, fee or term), `div.ds-invoice__qr` holding the QR as an `img` with alt text that says what it is and `p.ds-invoice__qr-note`, the same address as text in `p.ds-invoice__address` (`dir="ltr"`, selectable, in the mono face), the Copy button (`.ds-invoice__copy` on a Button, `data-copy-target`, `data-label-copied`, `data-msg-copied`, `data-msg-failed`) and `p.ds-invoice__status` (`role=status`, polite). Copy writes the address with the clipboard (a selection copy as the fallback), switches the label and the icon to "Copied" with a check, writes the confirmation into the status, and puts the button back after three seconds; a failure writes the failure message. Expired and unavailable hide the image and show the note, on `--bg-subtle` with a dashed border; the app may disable Copy.
+
+The QR and the address are left-to-right islands (`direction: ltr`) and the QR pad is `--paper` (white in both themes), because a camera scanner needs dark on white (the cabinet's `InvestorDepositView.vue` lines 118 to 130 and 578 to 591). Text never stands on the white pad: the note and the status sit on the page or card ground. The states are open, copy hover, pressed and focus, copied, copy failed, expired, QR unavailable, disabled copy.
+
+## K37 Bar chart with a text alternative
+
+Markup: `markup/bar-chart.html`. `figure.ds-barchart`: a head (the title and a range line), `div.ds-barchart__plot` holding `svg.ds-barchart__svg[role=img][aria-labelledby]` (the title and the range line) of `rect.ds-barchart__bar` in a `viewBox` of N columns by 100 rows with `preserveAspectRatio="none"`, three `line.ds-barchart__grid`, and `ul.ds-barchart__labels` (`aria-hidden`: the table names the months), then `details.ds-barchart__alt[open]` with the data table (`th scope`, a named region): the text alternative. The svg holds no text. The height of a bar is value over the maximum times 100, a value above zero at least one row; the highest bar takes `data-peak` (a darker fill and a `--text-primary` outline; both are only a shade apart from a plain bar, 1.73 and 1.24 by day, so the peak is carried in words by the range line and the table, never by the bar alone). One series in `--primary` on `--bg-surface`; a second series is not built. Empty data shows `.ds-barchart__empty`. Look: the cabinet's analytics chart (`CompanyAnalyticsView.vue` lines 488 to 584: a framed surface plot, primary bars, 3xs uppercase month labels; the cabinet's plot is 160 high, here `--center-lg`, 320, since no token holds 160), with its `title` tooltips replaced by the table; because the svg is stretched the bar corners are square (the cabinet rounds the top).
+
+The months follow the reading direction, as the cabinet's flex row does: the label list follows the page direction by its grid, and in a right-to-left page the svg is drawn turned end for end (`scale: -1 1` under `:dir(rtl)`; the svg holds no text), so the first bar stands under the first label.
+
+## Tokens used, batch 4
+
+Every value is a token (`components.json` lists them per component, equal to the tokens the rules of that component use). Two tokens were added with this batch: `--scrim` and `--paper` (`../tokens/tokens.md`, `../reference/sources.md`). The literal numbers of the batch 4 css, besides those listed above for batches 1 to 3: `max-width: 480px` and `min-width: 640px` (`--bp-md`, a media query writes the number); `90dvh` on the viewer dialog (as the shell's `100dvh`); the opacities 0.55 (disabled, again), 0.45 and 1 (the downloading pulse) and 1 (the unavailable document row, which keeps full opacity over the Row list's 0.55); `z-index` 40 (the menu list) and 60 (the viewer); `line-height: 1` on the step marker; `rotate: 180deg` (as the accordion chevron); `scale: -1 1` (the bar chart's svg in a right-to-left page); halves and doubles of tokens (`/ 2`, `* 2`, `* -1`); the keyword `thin`; `0`, `auto` and `1 1 auto`; the svg's own geometry in the markup (a viewBox of N by 100). Needed and not present as tokens: a z-index scale; icons for more, share and qr (drawn in style P1 and approved by the owner before any use).

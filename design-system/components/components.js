@@ -381,3 +381,168 @@
   });
   document.querySelectorAll('.ds-reorder').forEach(roRefresh);
 })();
+
+/* Batch 4 (P5.4). No network, no storage; every text it shows comes from data-* attributes the page fills from its translation tables
+   (data-msg-*, data-label-*). Action menu (the menu button pattern: Enter, Space and Down open, arrows, Home, End, a typed letter, Escape
+   returns the focus to the button, Tab closes), document viewer (a dialog: the focus moves in, Tab stays inside, Escape and the scrim close,
+   the focus returns to what opened it), document row (the download state), invoice block (the copy button and its polite status).
+   Events (all bubble, detail in event.detail): ds-menu-select, ds-menu-open, ds-menu-close, ds-docviewer-open, ds-docviewer-close,
+   ds-docrow-download, ds-copy. The app listens; this file never fetches, uploads or stores. AivisDS.docrow.done(row) and .fail(row)
+   finish a download the app drove. */
+(function () {
+  'use strict';
+  function emit(el, name, detail) { el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: detail })); }
+
+  /* ---------- K26 Action menu ---------- */
+  function menuItems(menu) { return Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]')).filter(function (i) { return i.getAttribute('aria-disabled') !== 'true'; }); }
+  function menuClose(menu, refocus) {
+    var btn = menu.querySelector('.ds-menu__button'), list = menu.querySelector('.ds-menu__list');
+    if (!btn || !list || list.hidden) return;
+    list.hidden = true; btn.setAttribute('aria-expanded', 'false');
+    if (refocus) btn.focus();
+    emit(menu, 'ds-menu-close', {});
+  }
+  function menuOpen(menu, which) {
+    var btn = menu.querySelector('.ds-menu__button'), list = menu.querySelector('.ds-menu__list');
+    if (!btn || !list || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
+    document.querySelectorAll('.ds-menu').forEach(function (m) { if (m !== menu) menuClose(m, false); });
+    list.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    var items = menuItems(menu);
+    menuItems(menu).forEach(function (i) { i.tabIndex = -1; });
+    if (items.length) (which === 'last' ? items[items.length - 1] : items[0]).focus();
+    emit(menu, 'ds-menu-open', {});
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.ds-menu__button');
+    if (btn) {
+      var menu = btn.closest('.ds-menu');
+      if (btn.getAttribute('aria-expanded') === 'true') menuClose(menu, false); else menuOpen(menu, 'first');
+      return;
+    }
+    var item = e.target.closest('.ds-menu__item');
+    if (item) {
+      if (item.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+      var m = item.closest('.ds-menu');
+      emit(m, 'ds-menu-select', { value: item.dataset.value || item.textContent.trim(), item: item });
+      menuClose(m, true);
+      return;
+    }
+    document.querySelectorAll('.ds-menu').forEach(function (mm) { menuClose(mm, false); });
+  });
+  document.addEventListener('keydown', function (e) {
+    var btn = e.target.closest && e.target.closest('.ds-menu__button');
+    if (btn) {
+      var menu = btn.closest('.ds-menu');
+      if (e.key === 'ArrowDown') { e.preventDefault(); menuOpen(menu, 'first'); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); menuOpen(menu, 'last'); }
+      return;
+    }
+    var item = e.target.closest && e.target.closest('.ds-menu__item');
+    if (!item) return;
+    var m = item.closest('.ds-menu'), items = menuItems(m), i = items.indexOf(item);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); menuClose(m, true); }
+    else if (e.key === 'Tab') { menuClose(m, false); }
+    else if (e.key.length === 1 && /\S/.test(e.key)) {
+      var k = e.key.toLowerCase(), n = items.filter(function (x) { return x.textContent.trim().toLowerCase().indexOf(k) === 0; });
+      if (n.length) { var at = n.indexOf(item); n[(at + 1) % n.length].focus(); }
+    }
+  });
+
+  /* ---------- K36 Document viewer ---------- */
+  var viewerOpener = null;
+  function focusables(root) {
+    return Array.prototype.slice.call(root.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), iframe')).filter(function (x) { return !x.closest('[hidden]'); });
+  }
+  function viewerOpen(v, opener) {
+    if (!v) return;
+    viewerOpener = opener || document.activeElement;
+    v.hidden = false;
+    var d = v.querySelector('.ds-docviewer__dialog');
+    if (d) d.focus();
+    emit(v, 'ds-docviewer-open', {});
+  }
+  function viewerClose(v) {
+    if (!v || v.hidden) return;
+    v.hidden = true;
+    var o = viewerOpener; viewerOpener = null;
+    if (o && o.isConnected) o.focus();
+    emit(v, 'ds-docviewer-close', {});
+  }
+  document.addEventListener('click', function (e) {
+    var op = e.target.closest('[data-docviewer-open]');
+    if (op) { viewerOpen(document.getElementById(op.getAttribute('data-docviewer-open')), op); return; }
+    var cl = e.target.closest('[data-docviewer-close]');
+    if (cl) { viewerClose(cl.closest('.ds-docviewer')); return; }
+    if (e.target.classList && e.target.classList.contains('ds-docviewer') && !e.target.classList.contains('ds-docviewer--inline')) viewerClose(e.target);
+  });
+  document.addEventListener('keydown', function (e) {
+    var v = e.target.closest && e.target.closest('.ds-docviewer:not(.ds-docviewer--inline):not([hidden])');
+    if (!v) return;
+    if (e.key === 'Escape') { e.preventDefault(); viewerClose(v); return; }
+    if (e.key !== 'Tab') return;
+    var f = focusables(v.querySelector('.ds-docviewer__dialog'));
+    if (!f.length) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1], dlg = v.querySelector('.ds-docviewer__dialog');
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === dlg)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  /* ---------- K44 Document row ---------- */
+  function rowStatus(row, key) {
+    var s = row.querySelector('.ds-docrow__status');
+    if (s) s.textContent = row.getAttribute('data-msg-' + key) || '';
+  }
+  function rowIcon(row, key) {
+    var u = row.querySelector('.ds-docrow__state use');
+    if (u) u.setAttribute('href', '#i-' + key);
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('.ds-docrow .ds-row__link');
+    if (!a) return;
+    var row = a.closest('.ds-docrow');
+    row.setAttribute('data-state', 'downloading'); rowStatus(row, 'downloading');
+    emit(row, 'ds-docrow-download', { href: a.getAttribute('href'), row: row });
+  });
+  window.AivisDS = window.AivisDS || {};
+  window.AivisDS.docrow = {
+    done: function (row) { row.setAttribute('data-state', 'downloaded'); rowIcon(row, 'check'); rowStatus(row, 'downloaded'); },
+    fail: function (row) { row.removeAttribute('data-state'); rowIcon(row, 'download'); rowStatus(row, 'failed'); }
+  };
+
+  /* ---------- K43 Copy button ---------- */
+  var copyTimers = new WeakMap();
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copy-target]');
+    if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return;
+    var src = document.getElementById(b.getAttribute('data-copy-target')), box = b.closest('.ds-invoice') || document;
+    var status = box.querySelector('.ds-invoice__status'), label = b.querySelector('.ds-invoice__copy-label'), use = b.querySelector('use');
+    if (!src) return;
+    var text = src.textContent.trim();
+    function ok() {
+      b.setAttribute('data-state', 'copied');
+      if (label) { if (!b.dataset.labelRest) b.dataset.labelRest = label.textContent; label.textContent = b.dataset.labelCopied || label.textContent; }
+      if (use) use.setAttribute('href', '#i-check');
+      if (status) status.textContent = b.dataset.msgCopied || '';
+      emit(b, 'ds-copy', { text: text });
+      clearTimeout(copyTimers.get(b));
+      copyTimers.set(b, setTimeout(function () {
+        b.removeAttribute('data-state');
+        if (label && b.dataset.labelRest) label.textContent = b.dataset.labelRest;
+        if (use) use.setAttribute('href', '#i-copy');
+      }, 3000));
+    }
+    function fail() { if (status) status.textContent = b.dataset.msgFailed || ''; }
+    function fallback() {
+      try {
+        var r = document.createRange(); r.selectNodeContents(src);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        if (document.execCommand('copy')) ok(); else fail();
+      } catch (x) { fail(); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback();
+  });
+})();

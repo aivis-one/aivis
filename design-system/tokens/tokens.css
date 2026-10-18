@@ -105,6 +105,8 @@
   --focus-ring: var(--azure-500);
   --toggle-track: var(--neutral-500);
   --toggle-knob: var(--neutral-0);
+  --paper: var(--neutral-0);
+  --scrim: color-mix(in srgb, var(--neutral-950) 50%, transparent);
   --icon-primary: var(--neutral-900);
   --icon-secondary: var(--neutral-600);
   --icon-disabled: var(--neutral-400);

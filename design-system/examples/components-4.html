@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIVIS components, batch 4</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../tokens/tokens-dark.css">
+<link rel="stylesheet" href="../components/components.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-page); color: var(--text-primary); font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal); }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); margin: 0; }
+code { font-family: var(--font-mono); font-size: 0.875em; }
+.wrap { max-inline-size: var(--maxw-wide); margin-inline: auto; padding-inline: var(--space-gutter-mobile); }
+header.top { padding-block: var(--space-6) var(--space-4); border-block-end: thin solid var(--border-default); }
+header.top h1 { font-size: var(--fs-h1); }
+header.top p { color: var(--text-secondary); margin-block: var(--space-2) 0; max-inline-size: var(--maxw-prose); }
+.toolbar { position: sticky; inset-block-start: 0; z-index: 70; background: var(--bg-page); border-block-end: thin solid var(--border-subtle); padding-block: var(--space-3); }
+.toolbar .wrap { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); align-items: center; }
+.toolbar .grp { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.toolbar .lbl { font-size: var(--fs-sm); color: var(--text-secondary); }
+.toolbar a { color: var(--primary); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+.toolbar a:hover { text-decoration: underline; }
+.toolbar a:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+section.blk { scroll-margin-block-start: 4rem; padding-block: var(--space-7); border-block-end: thin solid var(--border-subtle); }
+section.blk h2 { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
+section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--space-2); }
+.lead { color: var(--text-secondary); max-inline-size: var(--maxw-prose); margin-block: 0 var(--space-4); }
+.note { color: var(--text-secondary); font-size: var(--fs-sm); max-inline-size: var(--maxw-prose); margin-block: var(--space-3) 0; }
+.cols { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); align-items: start; }
+.cols-s { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); align-items: start; }
+.opt { border: thin solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-page); color: var(--text-primary); padding: var(--space-4); display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.opt > h4 { font-size: var(--fs-body); }
+.opt .tag { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); }
+.stack { display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.padded { padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
+.desk { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; }
+.phone { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; max-inline-size: 30rem; }
+.phone-wrap { display: grid; gap: var(--space-2); justify-items: center; margin: 0; min-inline-size: 0; }
+.phone-wrap figcaption { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); text-align: center; }
+.announce { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; min-block-size: 1.5em; }
+.lbl-s { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); margin: 0; }
+.menu-room { min-block-size: calc(var(--center-lg) + var(--size-4xl)); }
+@media (max-width: 480px) { .toolbar { position: static; } }
+footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-size: var(--fs-sm); }
+/* simulated states, drawn only so every state is visible at once */
+.ds-menu__item.sim-hover { background: var(--bg-subtle); }
+.ds-menu__item.sim-pressed { background: var(--bg-inset); box-shadow: var(--shadow-inset-hex); }
+.sim-focus { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-row.sim-hover { border-color: var(--border-default); }
+.ds-row.sim-pressed { border-color: var(--border-input-hover); }
+.ds-row.sim-focus { z-index: 1; }
+.ds-button.sim-hover { background: var(--_bg-hover); }
+.ds-barchart__bar.sim-hover { fill: var(--primary-hover); }
+.frag-sources { display: none; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>AIVIS components, batch 4</h1><p>Action menu, Stepper and schedule list, Document sheet and viewer, Document row, Invoice and QR block, the Booking card and the Bar chart, in use on cabinet-like fragments, in every state, day and night, left-to-right and right-to-left, desktop and the 480 phone width. All names, dates, sizes and numbers on this page are sample data, and no price and no payment term is written anywhere.</p></div></header>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#menu">Action menu</a><a href="#stepper">Stepper</a><a href="#position">Booking, rows, viewer</a><a href="#deposit">Invoice and QR</a><a href="#stats">Bar chart</a></div></div></div>
+
+<!-- K26 -->
+<section class="blk" id="menu"><div class="wrap"><h2>K26 Action menu</h2>
+<p class="lead">The menu button pattern: a button that opens a list of actions (<code>role=menu</code>, <code>role=menuitem</code>), Down or Enter opens, the arrows, Home, End and a typed letter move, Escape closes and returns the focus to the button. Used for the share actions of a hub link (A-2) and the row actions of a staff list (S-2). Try it by keyboard below.</p>
+<div class="cols">
+<div class="stack" data-frag="menu"><div class="padded desk menu-room">
+<h3>Share a link (live)</h3>
+<div class="ds-rows"><div class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Hub link</span><span class="ds-row__meta">Sample link, 12 clicks</span></span><span class="ds-row__trail">
+<div class="ds-menu" data-align="end"><button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="m-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="m-list">Share<svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></button>
+<ul class="ds-menu__list" role="menu" id="m-list" aria-labelledby="m-btn" hidden>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="copy-link" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Copy link</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="open" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-external-link"/></svg>Open page</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" aria-disabled="true" data-value="export" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg>Export</button></li>
+<li role="separator" class="ds-menu__sep"></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item ds-menu__item--danger" data-value="deactivate" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-ban"/></svg>Deactivate link</button></li></ul></div></span></div></div>
+<p class="announce" id="m-echo" role="status"></p></div></div>
+<div class="stack"><div class="padded desk menu-room"><h3>Open, with every item state</h3>
+<p class="lbl-s">button open, aria-expanded=true; items: rest, hover, pressed, focus, disabled, danger</p>
+<div class="ds-menu" data-align="start"><button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" aria-haspopup="menu" aria-expanded="true" aria-controls="s-list" id="s-btn">Share<svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></button>
+<ul class="ds-menu__list" role="menu" id="s-list" aria-labelledby="s-btn">
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Rest</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item sim-hover" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Hover</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item sim-pressed" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Pressed</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item sim-focus" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Focus</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" aria-disabled="true" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg>Disabled</button></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-state="done" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg>Done (copied)</button></li>
+<li role="separator" class="ds-menu__sep"></li>
+<li role="none"><button type="button" role="menuitem" class="ds-menu__item ds-menu__item--danger" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-ban"/></svg>Danger</button></li></ul></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Action menu on a phone" data-src="components-4.html?fragment=menu" height="430"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<!-- K32 -->
+<section class="blk" id="stepper"><div class="wrap"><h2>K32 Stepper and schedule list</h2>
+<p class="lead">Review and sign-up flows (I-8, I-9, P-7, I-17) and the schedule list (I-10, I-12). An ordered list; the step in progress carries <code>aria-current="step"</code>. A state is never colour alone: a check, a triangle or a number, and a word. The schedule rows are the cabinet's tranche rows: the dates, units and amounts are the app's, and the sample shows a status, a placeholder date and units.</p>
+<div class="cols">
+<div class="stack" data-frag="purchase"><div class="padded desk">
+<h3>Steps</h3>
+<ol class="ds-stepper" aria-label="Review steps">
+<li class="ds-step" data-state="done"><span class="ds-step__marker" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-step__body"><span class="ds-step__title">Submitted</span><span class="ds-step__meta">Done</span></span></li>
+<li class="ds-step" data-state="current" aria-current="step"><span class="ds-step__marker" aria-hidden="true">2</span><span class="ds-step__body"><span class="ds-step__title">Reviewed</span><span class="ds-step__meta">Current</span></span></li>
+<li class="ds-step" data-state="upcoming"><span class="ds-step__marker" aria-hidden="true">3</span><span class="ds-step__body"><span class="ds-step__title">Signed</span><span class="ds-step__meta">Upcoming</span></span></li>
+</ol>
+<h3>A step that needs attention</h3>
+<ol class="ds-stepper" aria-label="Review steps, with a problem">
+<li class="ds-step" data-state="done"><span class="ds-step__marker" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-step__body"><span class="ds-step__title">Submitted</span><span class="ds-step__meta">Done</span></span></li>
+<li class="ds-step" data-state="problem"><span class="ds-step__marker" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-step__body"><span class="ds-step__title">Reviewed</span><span class="ds-step__meta">Needs your attention</span></span></li>
+<li class="ds-step" data-state="upcoming"><span class="ds-step__marker" aria-hidden="true">3</span><span class="ds-step__body"><span class="ds-step__title">Signed</span><span class="ds-step__meta">Upcoming</span></span></li>
+</ol>
+<h3>Horizontal, from 640 up</h3>
+<ol class="ds-stepper" data-orientation="horizontal" aria-label="Review steps in a row">
+<li class="ds-step" data-state="done"><span class="ds-step__marker" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-step__body"><span class="ds-step__title">Submitted</span><span class="ds-step__meta">Done</span></span></li>
+<li class="ds-step" data-state="current" aria-current="step"><span class="ds-step__marker" aria-hidden="true">2</span><span class="ds-step__body"><span class="ds-step__title">Reviewed</span><span class="ds-step__meta">Current</span></span></li>
+<li class="ds-step" data-state="upcoming"><span class="ds-step__marker" aria-hidden="true">3</span><span class="ds-step__body"><span class="ds-step__title">Signed</span><span class="ds-step__meta">Upcoming</span></span></li>
+</ol>
+<h3>Schedule</h3>
+<ol class="ds-schedule" aria-label="Schedule">
+<li class="ds-schedule__item"><div class="ds-schedule__head"><span class="ds-schedule__num">Part 1</span><span class="ds-badge ds-badge--success">Paid</span></div><dl class="ds-schedule__stats"><div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div><div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div></dl><p class="ds-schedule__foot">Paid (sample)</p></li>
+<li class="ds-schedule__item" aria-current="step"><div class="ds-schedule__head"><span class="ds-schedule__num">Part 2</span><span class="ds-badge ds-badge--info">Due next</span></div><dl class="ds-schedule__stats"><div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div><div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div></dl></li>
+<li class="ds-schedule__item"><div class="ds-schedule__head"><span class="ds-schedule__num">Part 3</span><span class="ds-badge">Scheduled</span></div><dl class="ds-schedule__stats"><div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div><div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div></dl></li>
+<li class="ds-schedule__item" data-status="problem"><div class="ds-schedule__head"><span class="ds-schedule__num">Part 4</span><span class="ds-badge ds-badge--danger">Overdue</span></div><dl class="ds-schedule__stats"><div class="ds-schedule__stat"><dt>Due</dt><dd>sample date</dd></div><div class="ds-schedule__stat"><dt>Units</dt><dd>2</dd></div></dl></li>
+</ol>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Stepper and schedule on a phone" data-src="components-4.html?fragment=purchase" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<!-- K44, K36, booking card -->
+<section class="blk" id="position"><div class="wrap"><h2>Booking card, K44 Document row, K36 Document viewer</h2>
+<p class="lead">A position page (I-3): each purchase is one booking card with the date, the units, its basis in plain words, the agreement as HTML (opens the viewer) and the signed PDF as a document row, or a row that says plainly that the file is not uploaded yet. The document row is a real link with the type and size in its text. The viewer is a dialog with a labelled heading; the focus moves in, stays in, and returns to the button. Nothing here writes a price or a payment term.</p>
+<div class="cols">
+<div class="stack" data-frag="booking"><div class="padded desk">
+<h3>Booking cards</h3>
+<article class="ds-card ds-booking" aria-labelledby="b1-t"><header class="ds-booking__head"><span class="ds-booking__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-shopping-cart"/></svg></span><h4 class="ds-booking__title" id="b1-t">Purchase agreement</h4><span class="ds-badge ds-badge--info">Purchase</span></header>
+<dl class="ds-booking__facts"><div><dt>Booked</dt><dd>12 Oct 2026</dd></div><div><dt>Units</dt><dd>4</dd></div></dl>
+<p class="ds-booking__basis">Basis: a purchase made through the platform, confirmed by you.</p>
+<ul class="ds-booking__docs">
+<li class="ds-row ds-docrow"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-button ds-button--ghost" data-size="sm" data-docviewer-open="dv-1">View agreement</button></span></li>
+<li class="ds-row ds-docrow" data-msg-downloading="Downloading" data-msg-downloaded="Downloaded" data-msg-failed="The download failed" id="live-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-signature"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="data:text/plain;charset=utf-8,Sample%20file%2C%20not%20a%20real%20agreement" download="sample-agreement.txt"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English (sample)</span></a></span><span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status"></span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li></ul></article>
+<article class="ds-card ds-booking" aria-labelledby="b2-t"><header class="ds-booking__head"><span class="ds-booking__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-calendar-clock"/></svg></span><h4 class="ds-booking__title" id="b2-t">Installment subcontract</h4><span class="ds-badge">Installment</span></header>
+<dl class="ds-booking__facts"><div><dt>Booked</dt><dd>3 Sep 2026</dd></div><div><dt>Units</dt><dd>2</dd></div></dl>
+<p class="ds-booking__basis">Basis: one tranche of an installment plan.</p>
+<ul class="ds-booking__docs"><li class="ds-row ds-docrow"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-button ds-button--ghost" data-size="sm" data-docviewer-open="dv-2">View agreement (modal)</button></span></li>
+<li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-signature"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span></li></ul></article>
+<h3>Document row, every state</h3>
+<ul class="ds-rows">
+<li class="ds-row ds-docrow"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Rest</span><span class="ds-row__meta">PDF, 218 KB</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+<li class="ds-row ds-docrow sim-hover"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Hover</span><span class="ds-row__meta">PDF, 218 KB</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state" style="color: var(--primary)"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+<li class="ds-row ds-docrow sim-pressed"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Pressed</span><span class="ds-row__meta">PDF, 218 KB</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+<li class="ds-row ds-docrow sim-focus"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Focus</span><span class="ds-row__meta">PDF, 218 KB</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+<li class="ds-row ds-docrow" data-state="downloading"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Downloading</span><span class="ds-row__meta">PDF, 218 KB. Downloading</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+<li class="ds-row ds-docrow" data-state="downloaded"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Downloaded</span><span class="ds-row__meta">PDF, 218 KB. Downloaded</span></a></span><span class="ds-row__trail"><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span></span></li>
+<li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Unavailable</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span></li></ul>
+<h3>Viewer drawn in the flow: loaded, loading, error</h3>
+<div class="ds-docviewer ds-docviewer--inline" data-variant="sheet"><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="iv-t" tabindex="-1"><div class="ds-docviewer__head"><h4 class="ds-docviewer__title" id="iv-t">Purchase agreement</h4><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+<div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="iv-t"><h1>Sample agreement</h1><p>This is sample text. The real document is the HTML the cabinet receives for the purchase.</p><h2>1. Sample clause</h2><p>Sample clause text, long enough to show how a line wraps inside the sheet on a narrow screen.</p><ul><li>Sample item one</li><li>Sample item two</li></ul><h2>2. Sample clause</h2><p>More sample text.</p></div>
+<div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary">Close</button><a class="ds-button ds-button--primary" href="#doc"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg>Save a copy</a></div></div></div>
+<div class="ds-docviewer ds-docviewer--inline" data-variant="sheet"><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="lv-t" tabindex="-1"><div class="ds-docviewer__head"><h4 class="ds-docviewer__title" id="lv-t">Purchase agreement</h4></div><div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="lv-t" aria-busy="true"><span class="ds-loader" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading the document</span></span></div></div></div>
+<div class="ds-docviewer ds-docviewer--inline" data-variant="sheet"><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="ev-t" tabindex="-1"><div class="ds-docviewer__head"><h4 class="ds-docviewer__title" id="ev-t">Purchase agreement</h4></div><div class="ds-alert ds-alert--danger" role="alert"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">The document did not load</p><p class="ds-alert__text">Try again in a moment.</p></div></div><div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary">Close</button><button type="button" class="ds-button ds-button--primary">Retry</button></div></div></div>
+<p class="announce" id="row-echo" role="status"></p>
+<div class="ds-docviewer" id="dv-1" data-variant="sheet" hidden><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="dv-1-t" tabindex="-1"><div class="ds-docviewer__head"><h2 class="ds-docviewer__title" id="dv-1-t">Purchase agreement</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close" data-docviewer-close><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div><div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="dv-1-t"><h1>Sample agreement</h1><p>This is sample text for the live sheet. Press Escape, the close button, the scrim or Close; the focus returns to the button that opened it.</p><h2>1. Sample clause</h2><p>Sample clause text.</p></div><div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary" data-docviewer-close>Close</button><a class="ds-button ds-button--primary" href="data:text/plain;charset=utf-8,Sample%20file" download="sample-agreement.txt"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg>Save a copy</a></div></div></div>
+<div class="ds-docviewer" id="dv-2" data-variant="modal" hidden><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="dv-2-t" tabindex="-1"><div class="ds-docviewer__head"><h2 class="ds-docviewer__title" id="dv-2-t">Installment subcontract</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close" data-docviewer-close><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div><div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="dv-2-t"><h1>Sample document</h1><p>This is sample text for the live modal, the form the cabinet uses for the legal texts of the sign-up.</p></div><div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary" data-docviewer-close>Close</button></div></div></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Booking cards and viewer on a phone" data-src="components-4.html?fragment=booking" height="2320"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<!-- K43 -->
+<section class="blk" id="deposit"><div class="wrap"><h2>K43 Invoice and QR block</h2>
+<p class="lead">A deposit page (I-12): the fields of the open invoice, the QR as an image with alt text, the same address as text, a Copy button with a polite confirmation. The QR and the address are left-to-right islands and the QR pad stays white in both themes (a scanner needs dark on white). The values are sample values; the QR picture is a sample pattern, not a real code.</p>
+<div class="cols">
+<div class="stack" data-frag="deposit"><div class="padded desk">
+<h3>Open (live copy button)</h3>
+<section class="ds-invoice" aria-labelledby="i1-t" data-state="open"><h4 class="ds-sr-only" id="i1-t">Deposit invoice</h4><dl class="ds-invoice__fields"><div class="ds-invoice__field"><dt>Network</dt><dd>SAMPLE-NET</dd></div><div class="ds-invoice__field"><dt>Amount</dt><dd>0.00 USDT</dd></div><div class="ds-invoice__field"><dt>Expires</dt><dd>sample date</dd></div></dl>
+<div class="ds-invoice__qr"><img data-sample-qr alt="QR code for the deposit address below (sample picture)" width="240" height="240"><p class="ds-invoice__qr-note">The invoice has expired. Open a new deposit.</p></div>
+<p class="ds-invoice__address" id="i1-addr" dir="ltr">SAMPLE-ADDRESS-0000000000000000000000</p>
+<button type="button" class="ds-button ds-button--primary ds-invoice__copy" data-copy-target="i1-addr" data-label-copied="Copied" data-msg-copied="The address is copied" data-msg-failed="Could not copy. Select the address and copy it by hand"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg><span class="ds-invoice__copy-label">Copy address</span></button><p class="ds-invoice__status" role="status"></p></section>
+<h3>Copied (shown at rest)</h3>
+<section class="ds-invoice" aria-labelledby="i2-t" data-state="open"><h4 class="ds-sr-only" id="i2-t">Deposit invoice, copied</h4>
+<p class="ds-invoice__address" id="i2-addr" dir="ltr">SAMPLE-ADDRESS-0000000000000000000000</p>
+<button type="button" class="ds-button ds-button--primary ds-invoice__copy" data-state="copied" data-copy-target="i2-addr"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg><span class="ds-invoice__copy-label">Copied</span></button><p class="ds-invoice__status" role="status">The address is copied</p></section>
+<h3>Expired</h3>
+<section class="ds-invoice" aria-labelledby="i3-t" data-state="expired"><h4 class="ds-sr-only" id="i3-t">Deposit invoice, expired</h4><dl class="ds-invoice__fields"><div class="ds-invoice__field"><dt>Expires</dt><dd>sample date (passed)</dd></div></dl>
+<div class="ds-invoice__qr"><img data-sample-qr alt="" width="240" height="240"><p class="ds-invoice__qr-note">The invoice has expired. Open a new deposit.</p></div>
+<button type="button" class="ds-button ds-button--primary ds-invoice__copy" disabled><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg><span class="ds-invoice__copy-label">Copy address</span></button></section>
+<h3>QR unavailable</h3>
+<section class="ds-invoice" aria-labelledby="i4-t" data-state="unavailable"><h4 class="ds-sr-only" id="i4-t">Deposit invoice, no QR</h4>
+<div class="ds-invoice__qr"><img data-sample-qr alt="" width="240" height="240"><p class="ds-invoice__qr-note">The QR code is not available. Use the address below.</p></div>
+<p class="ds-invoice__address" id="i4-addr" dir="ltr">SAMPLE-ADDRESS-0000000000000000000000</p></section>
+<div class="ds-alert ds-alert--warning" role="alert"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">Check the network</p><p class="ds-alert__text">Send only on the network shown above.</p></div></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Invoice and QR on a phone" data-src="components-4.html?fragment=deposit" height="1260"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<!-- K37 -->
+<section class="blk" id="stats"><div class="wrap"><h2>K37 Bar chart with a text alternative</h2>
+<p class="lead">The analytics screen of a company (C-4): units by month, oldest first. The bars are an svg with <code>role="img"</code> and <code>aria-labelledby</code>; the same numbers are a table underneath, open by default, which is the text alternative. The highest bar has an outline as well as its fill, so the reading never rests on colour alone. The numbers are sample numbers.</p>
+<div class="cols">
+<div class="stack" data-frag="stats"><div class="padded desk">
+<div class="ds-card"><figure class="ds-barchart"><div class="ds-barchart__head"><h4 class="ds-barchart__title" id="c1-t">Units by month (sample data)</h4><span class="ds-barchart__range" id="c1-d">Jan 2026 to Jun 2026, peak in Mar</span></div>
+<div class="ds-barchart__plot"><svg class="ds-barchart__svg" role="img" aria-labelledby="c1-t c1-d" viewBox="0 0 60 100" preserveAspectRatio="none" focusable="false"><line class="ds-barchart__grid" x1="0" x2="60" y1="25" y2="25"/><line class="ds-barchart__grid" x1="0" x2="60" y1="50" y2="50"/><line class="ds-barchart__grid" x1="0" x2="60" y1="75" y2="75"/><rect class="ds-barchart__bar" x="1" y="60" width="8" height="40"/><rect class="ds-barchart__bar" x="11" y="40" width="8" height="60"/><rect class="ds-barchart__bar" data-peak x="21" y="0" width="8" height="100"/><rect class="ds-barchart__bar sim-hover" x="31" y="30" width="8" height="70"/><rect class="ds-barchart__bar" x="41" y="55" width="8" height="45"/><rect class="ds-barchart__bar" x="51" y="45" width="8" height="55"/></svg><ul class="ds-barchart__labels" aria-hidden="true"><li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May</li><li>Jun</li></ul></div>
+<details class="ds-barchart__alt" open><summary>Table of the numbers</summary><div class="ds-table-wrap" role="region" aria-label="Units by month" tabindex="0"><table class="ds-table"><thead><tr><th scope="col">Month</th><th scope="col" class="ds-table__num">Units</th></tr></thead><tbody><tr><th scope="row">Jan 2026</th><td class="ds-table__num">40</td></tr><tr><th scope="row">Feb 2026</th><td class="ds-table__num">60</td></tr><tr><th scope="row">Mar 2026</th><td class="ds-table__num">100</td></tr><tr><th scope="row">Apr 2026</th><td class="ds-table__num">70</td></tr><tr><th scope="row">May 2026</th><td class="ds-table__num">45</td></tr><tr><th scope="row">Jun 2026</th><td class="ds-table__num">55</td></tr></tbody></table></div></details></figure></div>
+<h3>Table closed, and no data</h3>
+<div class="ds-card"><details class="ds-barchart__alt"><summary>Table of the numbers (closed)</summary><p class="note">The table opens here.</p></details></div>
+<p class="ds-barchart__empty">There are no sales to show yet.</p>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Bar chart on a phone" data-src="components-4.html?fragment=stats" height="1020"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<footer class="end"><div class="wrap">Sample data throughout. No price and no payment term is written on this page.</div></footer>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var frag = qs.get('fragment');
+  if (frag) {
+    var el = document.querySelector('[data-frag="' + frag + '"]');
+    var clone = el ? el.cloneNode(true) : null;
+    Array.prototype.slice.call(document.body.children).forEach(function (c) { if (c.tagName !== 'SCRIPT') c.remove(); });
+    if (clone) { document.body.insertBefore(clone, document.body.firstChild); }
+  } else {
+    document.querySelectorAll('iframe[data-src]').forEach(function (f) { f.src = f.getAttribute('data-src'); });
+  }
+  if (qs.get('theme')) document.documentElement.setAttribute('data-theme', qs.get('theme'));
+  fetch('../components/icons/icons.svg').then(function (r) { return r.text(); }).then(function (t) {
+    document.body.insertAdjacentHTML('afterbegin', t);
+  });
+  /* a sample QR picture: a pattern with three finder squares, drawn locally; it is not a real code and encodes nothing */
+  function samplePattern() {
+    var n = 25, cells = [], seed = 7;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+    function finder(x, y) { return (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7); }
+    function finderOn(x, y) { var dx = x % (n - 7 + (x >= n - 7 ? 0 : 0)); var lx = x >= n - 7 ? x - (n - 7) : x, ly = y >= n - 7 ? y - (n - 7) : y; var ring = Math.max(Math.abs(lx - 3), Math.abs(ly - 3)); return ring !== 2; }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) { var on = finder(x, y) ? finderOn(x, y) : rnd() > 0.5; if (on) cells.push('<rect x="' + x + '" y="' + y + '" width="1" height="1"/>'); }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 ' + (n + 2) + ' ' + (n + 2) + '" shape-rendering="crispEdges"><rect x="-1" y="-1" width="' + (n + 2) + '" height="' + (n + 2) + '" fill="#fff"/><g fill="#000">' + cells.join('') + '</g></svg>';
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+  var pat = samplePattern();
+  document.querySelectorAll('img[data-sample-qr]').forEach(function (i) { i.src = pat; });
+  function frames() { return Array.prototype.slice.call(document.querySelectorAll('iframe[data-src]')); }
+  function press(attr, val) { document.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+  function applyTo(doc, theme, dir) { try { doc.documentElement.setAttribute('data-theme', theme); doc.documentElement.setAttribute('dir', dir); } catch (e) {} }
+  var state = { theme: document.documentElement.getAttribute('data-theme') || 'light', dir: 'ltr' };
+  function apply() {
+    applyTo(document, state.theme, state.dir);
+    frames().forEach(function (f) { if (f.contentDocument) applyTo(f.contentDocument, state.theme, state.dir); });
+    press('data-theme-set', state.theme); press('data-dir-set', state.dir);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-theme-set]'); if (t) { state.theme = t.getAttribute('data-theme-set'); apply(); }
+    var d = e.target.closest('[data-dir-set]'); if (d) { state.dir = d.getAttribute('data-dir-set'); apply(); }
+  });
+  frames().forEach(function (f) { f.addEventListener('load', apply); });
+  /* the page's own listeners show what the app would do with the events; nothing is sent anywhere */
+  var mecho = document.getElementById('m-echo');
+  document.addEventListener('ds-menu-select', function (e) { if (mecho && e.target.querySelector('#m-btn')) mecho.textContent = 'Chosen: ' + e.detail.value; });
+  var rowEcho = document.getElementById('row-echo');
+  document.addEventListener('ds-docrow-download', function (e) {
+    var row = e.target;
+    if (rowEcho) rowEcho.textContent = 'Download started (sample file)';
+    setTimeout(function () { window.AivisDS.docrow.done(row); if (rowEcho) rowEcho.textContent = 'Download done'; }, 900);
+  });
+})();
+</script>
+<script src="../components/components.js"></script>
+</body>
+</html>

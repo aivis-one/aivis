@@ -117,6 +117,8 @@ Each row gives the value in the system, the file and line it was taken from (the
 | `--focus-ring` | `#217AB6` | `#37A6E6` | the owner's decision of 2026-10-17 (question xja37czs, A); landing/site/assets/site.css:58; night landing/site/assets/site.css:73 | landing/site/assets/ds/aivis-tokens.css:79 differs: #37a6e6 |
 | `--toggle-track` | `#6B7785` |  | frontend/src/styles/variables.css:404 |  |
 | `--toggle-knob` | `#FFFFFF` |  | frontend/src/styles/variables.css:405 |  |
+| `--paper` | `#FFFFFF` | `#FFFFFF` | the owner's decision of 2026-10-18 (P5.4 small point d, option A; row 95 HIS WORD 2026-10-18T06:17Z): the QR pad and the sandboxed document frame stay white in both themes | frontend/src/views/investor/InvestorDepositView.vue:582 and frontend/src/components/shared/AgreementSheet.vue:332 |
+| `--scrim` | `rgba(7,10,14,.5)` | `rgba(7,10,14,.5)` | the owner's decision of 2026-10-18 (P5.4 small point a, option B; row 95 HIS WORD 2026-10-18T06:17Z): the veil as option B was drawn, `--neutral-950` at 50 percent | frontend/src/components/ui/CBottomSheet.vue:86 and frontend/src/components/ui/CModal.vue:60 (`rgba(0, 0, 0, 0.5)`) |
 | `--icon-primary` | `#11161B` | `#F6F8FA` | landing/site/assets/site.css:45; night landing/site/assets/site.css:68 |  |
 | `--icon-secondary` | `#4C5763` | `#A7B4C2` | landing/site/assets/site.css:46; night landing/site/assets/site.css:69 |  |
 | `--icon-disabled` | `#9BA8B6` | `#41505E` | landing/site/assets/site.css:47; night landing/site/assets/site.css:70 |  |

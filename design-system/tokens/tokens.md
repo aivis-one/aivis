@@ -5,7 +5,7 @@
 
 # Tokens
 
-252 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
+254 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
 
 ## Layers
 
@@ -17,7 +17,7 @@
 
 ## Themes
 
-`tokens.css` states the day theme on `:root`. `tokens-dark.css` re-binds the same names under `[data-theme="dark"]` (a chosen theme) and under the system setting when no theme is chosen (`:root:not([data-theme])`). A page sets `data-theme="light"` or `"dark"` on the root, or sets none and follows the system.
+`tokens.css` states the day theme on `:root`. `tokens-dark.css` re-binds the same names under `[data-theme="dark"]` (a chosen theme) and under the system setting when no theme is chosen (`:root:not([data-theme])`), and only the tokens whose night value differs: a token that is the same in both themes (`--paper`, `--scrim`, `--toggle-knob`, the telegram trio) is stated once in `tokens.css`, and a new token goes into both night blocks only when its night value differs. A page sets `data-theme="light"` or `"dark"` on the root, or sets none and follows the system.
 
 ## Colour roles
 
@@ -69,6 +69,8 @@
 | `--focus-ring` | the focus outline colour: azure-500 by day, azure-300 by night; never the accent; the outline is `--focus-width` solid with `--focus-offset` offset |
 | `--toggle-track` | switch track (the same in both themes) |
 | `--toggle-knob` | switch knob |
+| `--paper` | a ground that stays white in both themes: the QR pad and the frame of a sandboxed document, which paints no ground and expects white; text on it is never a theme text colour |
+| `--scrim` | the veil behind a sheet or a modal: `--neutral-950` at 50 percent, the same in both themes |
 | `--icon-primary` | icon default |
 | `--icon-secondary` | icon supporting |
 | `--icon-disabled` | icon disabled |

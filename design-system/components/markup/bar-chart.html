@@ -1,0 +1,28 @@
+<!-- AIVIS Bar chart with a text alternative (K37): one series, oldest first. The bars are an svg with role="img", named by aria-labelledby (the title, and a summary line that says the range and the peak);
+     the SAME numbers are a real table in a details element that is open by default (the text alternative), so nothing is carried by colour or height alone.
+     The svg holds no text: it is drawn in a viewBox of N columns by 100 rows with preserveAspectRatio="none" (the bars stretch to the width); the month labels are an HTML list under it, hidden from the accessibility tree because the table names them.
+     Bar height = value / max * 100, a value above zero at least 1 row; the peak bar takes data-peak (a darker fill and an outline; the range line names the peak in words). No hover tooltip is needed; the table is the exact reading.
+     The plot follows the reading direction (components.css turns the svg end for end in a right-to-left page, so the bars stay under their labels).
+     Empty data: .ds-barchart__empty with a sentence, no svg. The numbers here are sample numbers. -->
+<figure class="ds-barchart">
+  <div class="ds-barchart__head"><h3 class="ds-barchart__title" id="bc-t">Units by month (sample data)</h3><span class="ds-barchart__range" id="bc-d">Jan 2026 to Jun 2026, peak in Mar</span></div>
+  <div class="ds-barchart__plot">
+    <svg class="ds-barchart__svg" role="img" aria-labelledby="bc-t bc-d" viewBox="0 0 60 100" preserveAspectRatio="none" focusable="false">
+      <line class="ds-barchart__grid" x1="0" x2="60" y1="25" y2="25"/><line class="ds-barchart__grid" x1="0" x2="60" y1="50" y2="50"/><line class="ds-barchart__grid" x1="0" x2="60" y1="75" y2="75"/>
+      <rect class="ds-barchart__bar" x="1" y="60" width="8" height="40"/>
+      <rect class="ds-barchart__bar" x="11" y="40" width="8" height="60"/>
+      <rect class="ds-barchart__bar" data-peak x="21" y="0" width="8" height="100"/>
+      <rect class="ds-barchart__bar" x="31" y="30" width="8" height="70"/>
+      <rect class="ds-barchart__bar" x="41" y="55" width="8" height="45"/>
+      <rect class="ds-barchart__bar" x="51" y="45" width="8" height="55"/>
+    </svg>
+    <ul class="ds-barchart__labels" aria-hidden="true"><li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May</li><li>Jun</li></ul>
+  </div>
+  <details class="ds-barchart__alt" open>
+    <summary>Table of the numbers</summary>
+    <div class="ds-table-wrap" role="region" aria-label="Units by month" tabindex="0">
+      <table class="ds-table"><thead><tr><th scope="col">Month</th><th scope="col" class="ds-table__num">Units</th></tr></thead>
+      <tbody><tr><th scope="row">Jan 2026</th><td class="ds-table__num">40</td></tr><tr><th scope="row">Feb 2026</th><td class="ds-table__num">60</td></tr><tr><th scope="row">Mar 2026</th><td class="ds-table__num">100</td></tr><tr><th scope="row">Apr 2026</th><td class="ds-table__num">70</td></tr><tr><th scope="row">May 2026</th><td class="ds-table__num">45</td></tr><tr><th scope="row">Jun 2026</th><td class="ds-table__num">55</td></tr></tbody></table>
+    </div>
+  </details>
+</figure>

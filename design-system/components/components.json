@@ -1553,5 +1553,386 @@
   "purpose": "Switch language and theme.",
   "usage": "See components.md.",
   "notes": "Labels come from i18n keys, never from English literals in the template."
+ },
+ {
+  "id": "K26",
+  "name": "Action menu",
+  "status": "built",
+  "markup": "markup/action-menu.html",
+  "class_root": ".ds-menu, .ds-menu__button, .ds-menu__list, .ds-menu__item",
+  "variants": {
+   "align": "data-align=\"end\" opens toward the end edge",
+   "item": "default, --danger, aria-disabled, data-state=\"done\"",
+   "events": [
+    "ds-menu-select",
+    "ds-menu-open",
+    "ds-menu-close"
+   ]
+  },
+  "sizes": [
+   "the trigger is a Button (sm 32, md 38, lg 44); items --size-xl high, --touch-min at the 480 width"
+  ],
+  "states": [
+   "rest",
+   "hover (button and item)",
+   "pressed (item)",
+   "focus",
+   "open (aria-expanded)",
+   "item hover",
+   "item focus (the outline outside the item, in the list's padding)",
+   "item disabled (aria-disabled)",
+   "danger item",
+   "done item"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input-hover",
+   "--border-subtle",
+   "--center-lg",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-sm",
+   "--icon-secondary",
+   "--lh-snug",
+   "--radius-md",
+   "--radius-sm",
+   "--shadow-2",
+   "--shadow-inset-hex",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--success",
+   "--text-primary",
+   "--touch-min"
+  ],
+  "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Offer a short list of actions for one object: the share actions of a hub link (A-2) and the row actions of a staff list (S-2).",
+  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger carries a word; the set has no icon for more, share or qr yet: they are drawn in style P1 and approved by the owner before any use.",
+  "notes": "No AIVIS source holds an action menu (map K26: MISSING; the cabinet language picker is a listbox), so the look is built from the system: the surface, border, radius and shadow of the combobox list, the row hover tint of the Row list. The open trigger takes --bg-subtle and the chevron turns, as the accordion chevron does."
+ },
+ {
+  "id": "K32",
+  "name": "Stepper and schedule list",
+  "status": "built",
+  "markup": "markup/stepper.html",
+  "class_root": ".ds-stepper, .ds-step, .ds-schedule, .ds-schedule__item",
+  "variants": {
+   "orientation": "vertical (default); data-orientation=\"horizontal\" in a row from 640 up, stacked below",
+   "step state": "data-state done, current, upcoming, problem",
+   "schedule row": "default, aria-current=\"step\" (due next), data-status=\"problem\" (overdue, defaulted, reversed: a tinted row)"
+  },
+  "sizes": [
+   "marker --size-xl; schedule stats in columns of at least --center-sm"
+  ],
+  "states": [
+   "done",
+   "current (aria-current=\"step\")",
+   "upcoming",
+   "problem",
+   "schedule: paid, due next, scheduled, problem"
+  ],
+  "tokens": [
+   "--bg-page",
+   "--bg-surface",
+   "--border-default",
+   "--border-input",
+   "--border-input-width",
+   "--center-sm",
+   "--danger",
+   "--danger-subtle",
+   "--font-display",
+   "--font-mono",
+   "--fs-3xs",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--on-danger",
+   "--on-success",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-pill",
+   "--radius-sm",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-5",
+   "--success",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-wide"
+  ],
+  "accessibility": "An ordered list (ol) named by aria-label or aria-labelledby; the step in progress carries aria-current=\"step\". A state is never colour alone: done holds a check icon, problem a triangle, current and upcoming their number, and the meta line says the state in words; the markers are aria-hidden. The schedule is an ol of rows; each row has the tranche number, a Badge with the status in words, and a dl of due date, amount and units; the row due next carries aria-current=\"step\". The component writes no amount: the app fills it. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Show progress through a flow (purchase, onboarding, KYC) and the tranche schedule of an instalment plan.",
+  "usage": "Use the stepper for three to six steps in a fixed order; the schedule list for dated payments. The connector line is decoration; the state is read from the marker and the words.",
+  "notes": "The schedule rows are ported from the cabinet (frontend/src/views/investor/InstallmentPlanDetailView.vue lines 368 to 428: bordered rows on the page ground, the problem row on --danger-subtle with a --danger border, a three column stats grid) and the tranche statuses of lines 80 to 98 (the template at lines 146 and following); the labels use --text-secondary because tertiary does not stand on the page ground by day. No AIVIS source holds a stepper (map K32: MISSING); its look is built from the Badge and Progress vocabulary: success for done, primary for current, danger for problem."
+ },
+ {
+  "id": "K36",
+  "name": "Document sheet and viewer",
+  "status": "built",
+  "markup": "markup/document-viewer.html",
+  "class_root": ".ds-docviewer, .ds-docviewer__dialog, .ds-docviewer__body, .ds-docviewer__actions",
+  "variants": {
+   "placement": "data-variant=\"sheet\" (a bottom sheet, the cabinet AgreementSheet) or \"modal\" (centred, the cabinet LegalDocModal)",
+   "inline": "--inline draws the dialog in the flow of a page",
+   "content": "in-page HTML, or a sandboxed iframe (ds-docviewer__frame)",
+   "events": [
+    "ds-docviewer-open",
+    "ds-docviewer-close"
+   ]
+  },
+  "sizes": [
+   "sheet up to --maxw-prose; modal up to --maxw-form-wide; at most 90dvh high"
+  ],
+  "states": [
+   "closed (hidden)",
+   "open",
+   "loading (aria-busy on the body)",
+   "loaded",
+   "error (an Alert and a retry)",
+   "focus"
+  ],
+  "tokens": [
+   "--bg-page",
+   "--bg-surface",
+   "--border-default",
+   "--border-subtle",
+   "--center-lg",
+   "--center-md",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-body",
+   "--fs-h4",
+   "--fs-lg",
+   "--fs-sm",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw-form-wide",
+   "--maxw-prose",
+   "--paper",
+   "--radius-lg",
+   "--radius-modal",
+   "--radius-sm",
+   "--scrim",
+   "--shadow-2",
+   "--shadow-deep",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-4-lg",
+   "--space-5",
+   "--space-safe-bottom",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "A dialog: role=\"dialog\" with aria-modal=\"true\" and aria-labelledby naming its heading, tabindex=\"-1\" so the focus can enter it. The focus moves to the dialog on open, Tab and Shift+Tab stay inside it, Escape, the close button and a click on the veil close it, and the focus returns to the button that opened it (components.js). The body is a scrollable region with tabindex=\"0\" and a name so the keyboard can scroll it. A download is a real link (a with the app href and download). An iframe keeps sandbox=\"\" and a title. Loading sets aria-busy and a status text; an error is an Alert with role=\"alert\". At the 480 width the actions take the full width and the sheet starts from the safe-area inset. The page behind is not made inert and its scroll is not locked by this component. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Read a document (a purchase agreement, an ownership certificate, a legal text of the sign-up) and take a copy of it.",
+  "usage": "Use the sheet for a document opened from a row of a position (I-3, I-14) and the modal for the legal texts of the sign-up (P-7), as the cabinet does. The component carries no price and no payment term; the text is the app document. The veil behind the dialog is the token --scrim; in-page text follows the theme; the frame of a sandboxed document is --paper, white in both themes.",
+  "notes": "Ported from the cabinet: the sheet and its actions from frontend/src/components/shared/AgreementSheet.vue (lines 259 to 302 the template and 304 to 340 the styles: a 60 percent high framed document on a white canvas, Close, Save and Email in a row, the loading and error states) on the CBottomSheet shell (components/ui/CBottomSheet.vue lines 82 to 165: a page-ground sheet with a deep shadow, a 520 wide cap), the modal and its body from components/legal/LegalDocModal.vue (the template from line 68 and the styles at lines 92 to 188: a framed scrolling body, prose styles) on CModal (components/ui/CModal.vue). The veil is --scrim, --neutral-950 at 50 percent in both themes (the cabinet has rgba(0,0,0,.5)). The iframe canvas is #fff (AgreementSheet.vue line 332) because the document paints no ground: the frame is --paper, white in both themes. The cabinet's Email button is the screen's, not part of the component."
+ },
+ {
+  "id": "K44",
+  "name": "Document row with download",
+  "status": "built",
+  "markup": "markup/document-row.html",
+  "class_root": ".ds-docrow (on a .ds-row)",
+  "variants": {
+   "state": "absent (rest), downloading, downloaded, unavailable",
+   "events": [
+    "ds-docrow-download"
+   ],
+   "calls": [
+    "AivisDS.docrow.done(row)",
+    "AivisDS.docrow.fail(row)"
+   ]
+  },
+  "sizes": [
+   "the Row list row; --touch-min high at the 480 width"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "downloading",
+   "downloaded",
+   "unavailable (aria-disabled, no link, full opacity: its text carries the state)"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--dur-slower",
+   "--ease-standard",
+   "--icon-secondary",
+   "--icon-size-md",
+   "--primary",
+   "--space-1",
+   "--success",
+   "--success-subtle",
+   "--success-subtle-text",
+   "--text-secondary",
+   "--touch-min"
+  ],
+  "accessibility": "A Row list row whose title and meta sit inside ONE real link (a with href and download), so the link name carries the file type and size in text (\"Signed agreement PDF, 218 KB, English\"). The trailing icon is decorative. The state is also said in words in a status element (role=\"status\") filled from data-msg-downloading, data-msg-downloaded and data-msg-failed on the row. An unavailable row has no link and says in text that the file is not there yet (aria-disabled=\"true\"). Focus is the Row list outline around the row. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Download a file listed in a screen: attachments of a company, documents of a staff or an investor, the signed agreement of a booking.",
+  "usage": "Use it for any file a screen lists. The file type and size come from the file, formatted in the page language. A file that is not uploaded yet is the unavailable row, never a dead link. In the cabinet the href is the file's route and the app handles the click (an API call for a short-lived presigned link, then a navigation: frontend/src/api/attachments.ts), then calls AivisDS.docrow.done or .fail; nothing calls done for a plain download link, so the app does.",
+  "notes": "Ported from the cabinet's attachment item (frontend/src/components/shared/AttachmentsSection.vue the item from line 352 and the styles at lines 447 to 545: an icon box, a title, the description, the file name and size, a download icon; there a button, here a real link as the map asks) on the Row list (K23)."
+ },
+ {
+  "id": "KN1",
+  "name": "Booking card",
+  "status": "built",
+  "markup": "markup/booking-card.html",
+  "class_root": ".ds-booking",
+  "variants": {
+   "kind": "a Badge says the basis in words: purchase, gift, installment",
+   "pdf": "the signed agreement row is a K44 link, or the unavailable row"
+  },
+  "sizes": [
+   "a Card (md); the facts wrap in columns of at least --center-sm"
+  ],
+  "states": [
+   "rest",
+   "PDF available",
+   "PDF not uploaded",
+   "the agreement button: rest, hover, pressed, focus"
+  ],
+  "tokens": [
+   "--center-sm",
+   "--font-display",
+   "--fs-3xs",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-md",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-wide"
+  ],
+  "accessibility": "An article named by its heading (aria-labelledby). The facts are a dl (booked date, units). The basis is a sentence. The agreement as HTML opens K36 from a button; the signed agreement is a K44 row. The icon box is aria-hidden; the kind is in the badge text. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Show one purchase of an investor's position with its basis and its two documents (I-3).",
+  "usage": "One card per purchase. The card carries no price and no payment term (the owner's answer da4rwtbl: the documents carry none for now); the map also lists an amount, which is left out here and is a point for the owner to add. The map names this component \"(new)\" and gives it no K number; KN1 is a placeholder id.",
+  "notes": "Built from the cabinet's purchase row (frontend/src/views/investor/CompanyPositionView.vue lines 413 to 446: an icon by basis, the kind, the date, the units, a view button) on the Card (K07), with the K44 row for the PDF and the K36 button; the target is the map nav33-target-cabinets section 1.1 row I-3."
+ },
+ {
+  "id": "K43",
+  "name": "Invoice and QR block",
+  "status": "built",
+  "markup": "markup/invoice-qr.html",
+  "class_root": ".ds-invoice, .ds-invoice__qr, .ds-invoice__address, .ds-invoice__copy",
+  "variants": {
+   "state": "data-state open (absent), expired, unavailable",
+   "events": [
+    "ds-copy"
+   ]
+  },
+  "sizes": [
+   "the QR pad up to --center-md plus --size-4xl wide; the copy button full width at the 480 width"
+  ],
+  "states": [
+   "open",
+   "copy rest, hover, pressed, focus",
+   "copied (data-state=\"copied\", a check and a word)",
+   "copy failed (a message)",
+   "expired",
+   "QR unavailable",
+   "disabled copy"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--border-default",
+   "--center-md",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-normal",
+   "--on-success",
+   "--paper",
+   "--radius-sm",
+   "--size-4xl",
+   "--space-3",
+   "--space-4",
+   "--space-6",
+   "--success",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-wide"
+  ],
+  "accessibility": "A section named by a heading. The fields are a dl. The QR is an img with alt text that says what it is; the same address is text in a selectable element (dir=\"ltr\"), so the data is never only in the picture. The Copy button names its action; on success components.js switches its label and icon (data-label-copied) and writes the confirmation into a role=\"status\" element (polite), and puts the button back after three seconds; a failure writes data-msg-failed. When the invoice is expired or the QR cannot be drawn the image is hidden and a sentence says why. The QR and the address are left-to-right islands (direction: ltr). Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Pay a deposit: the invoice fields, the QR and the address to copy (I-12).",
+  "usage": "The app fills the network, the amount and the deadline; the component writes no amount, fee or term. The QR pad is white in both themes because a camera scanner needs dark on white; the QR image is the app's. No value of a wallet is stored by the component.",
+  "notes": "Ported from the cabinet's deposit page (frontend/src/views/investor/InvestorDepositView.vue lines 388 to 402 the three fields, 424 to 439 QR and address, 578 to 600 the QR pad and the address, and generateQr at lines 118 to 130: a forced light palette). The pad is --paper, white in both themes, because a camera scanner needs dark on white. The cabinet's warning card is an Alert of the system."
+ },
+ {
+  "id": "K37",
+  "name": "Bar chart with a text alternative",
+  "status": "built",
+  "markup": "markup/bar-chart.html",
+  "class_root": ".ds-barchart, .ds-barchart__plot, .ds-barchart__svg, .ds-barchart__bar, .ds-barchart__alt",
+  "variants": {
+   "axis": "follows the reading direction (the labels by their grid, the svg turned end for end by scale: -1 1 under :dir(rtl), so the first bar stands under the first label)",
+   "peak": "data-peak on the highest bar (a darker fill and an outline, a shade apart from a plain bar; the range line names the peak in words)"
+  },
+  "sizes": [
+   "plot --center-lg high; one column per month"
+  ],
+  "states": [
+   "rest",
+   "bar hover",
+   "peak",
+   "table open",
+   "table closed",
+   "empty"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-default",
+   "--border-input-width",
+   "--border-subtle",
+   "--center-lg",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-3xs",
+   "--fs-sm",
+   "--fs-xs",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--radius-md",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min",
+   "--tracking-wide"
+  ],
+  "accessibility": "The bars are an svg with role=\"img\" and aria-labelledby naming the title and a line that gives the range and the peak. The same numbers are a real table (th scope, a caption or region name) in a details element that is open by default: the text alternative. The svg holds no text; the month labels are an HTML list hidden from the accessibility tree because the table names them. A bar is never the only carrier: the range line names the peak in words, every value is in the table, and the bars are one series in --primary on --bg-surface. No hover tooltip is required. Empty data shows a sentence in place of the svg. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "purpose": "Show a series by month on the analytics screen of a company (C-4).",
+  "usage": "One series, oldest first; the height is value / max with a value above zero at least one row. A second series needs a design of its own (patterns, labels) and is not built. The chart is stretched to the width by preserveAspectRatio=\"none\", so the bars have square corners (the cabinet's flex bars have a rounded top).",
+  "notes": "Ported from the cabinet (frontend/src/views/company/CompanyAnalyticsView.vue lines 488 to 584: a --bg-surface plot with a border, --primary bars, a 3xs uppercase month label, a fixed 160 px height; here the plot is --center-lg, 320, since no token holds 160); the cabinet's title attribute tooltip is replaced by the table. The month labels use --text-secondary where the cabinet has --text-tertiary: they stand on the plot's --bg-surface, where tertiary would be allowed by day; secondary is darker for the 3xs uppercase size. The cabinet's flex row follows the reading direction, and so does this chart."
  }
 ]
