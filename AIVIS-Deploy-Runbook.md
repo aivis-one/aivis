@@ -66,7 +66,7 @@ What to have ready either way:
   not continue without it: the password reset, the registration code and the document letters go
   out by email, and comms refuses to start at all when a type routed to email has no keys. There is
   no later step that could add it -- `.env` is not edited by hand on this box.
-- Root SSH access to the target box (`CREDENTIALS.md` §1).
+- Root SSH access to the target box (the operator's credentials file, §1).
 - **The DNS records, in place BEFORE the install reaches certbot:** `aivis.one`, `api.aivis.one` and
   `files.aivis.one`, each an A record to this box. **There is no `app.aivis.one`** — the cabinet
   lives at `https://aivis.one/app/`, and the old host has no record, no nginx site and no
@@ -185,7 +185,7 @@ Each one is listed here in execution order, with the exact answer.
      survive. If a prompt does appear on a re-install, the honest reading is not "press ENTER, it's
      already there" — it is "this key stopped working"; look at the GitHub page before answering.
 
-3. **Telegram Bot Token** — type the value from `CREDENTIALS.md` §2 (the `@aivisonebot` row).
+3. **Telegram Bot Token** — type the value from the operator's credentials file, §2 (the `@aivisonebot` row).
    **The script now verifies the token by using it**: it calls Telegram's `getMe`, and a typo, a
    revoked token or a placeholder is rejected on the spot with Telegram's own answer printed, and
    the prompt asks again. **The token is required: ENTER asks again too** -- the backend refuses to
