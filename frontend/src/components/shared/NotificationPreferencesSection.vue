@@ -7,7 +7,7 @@
 // CompanySettingsView's Actions section, same drop-in-row pattern as
 // TwoFactorSection.vue / ActiveSessionsSection.vue / DeactivateAccountSection.vue.
 // Backend: notifications/router.py + service.py's preferences pair,
-// a thin proxy over comms (D:/02_Projects/comms/app/api/prefs.py).
+// a thin proxy over comms (the comms service's preferences API).
 //
 // i18n: every string is read from `${props.tPrefix}.notifications.*`,
 // matching the established "no shared settings-string namespace"

@@ -5,7 +5,7 @@
 # A PROXY, not a store -- and thinner than support/service.py's user
 # side: there is no local pointer table at all, because there is
 # nothing here for this product to own. comms' inbox API
-# (D:/02_Projects/comms/app/api/inbox.py) already IS a per-user table
+# (the comms service's inbox API) already IS a per-user table
 # keyed by recipient_id, and recipient_id IS user.id 1:1 -- confirmed
 # by core/comms_sync.sync_recipient, which upserts recipients keyed
 # on user.id and nothing else. So every read and every write this

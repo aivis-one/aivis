@@ -1929,7 +1929,7 @@ server {
 NGINX_API
 }
 
-# The apex serves two things (row 32, his word ukmgl4oy):
+# The apex serves two things:
 #   /app/   the cabinet -- proxied to the frontend container with the prefix
 #           KEPT (frontend/nginx.conf serves it under /app/ itself);
 #   /login  a redirect into the cabinet, the address the site's button uses;

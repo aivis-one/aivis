@@ -5,9 +5,9 @@
     "name": "aivis-one-design-system",
     "version": "1.1.0",
     "path": "ds-record",
-    "path_note": "relative to this skill's own root (resolved that way by gate.py's Q-DS-ABSENCE). Was an absolute session-container path (/home/claude/work/...) that would not have existed outside the build session -- ds-record/ ships the two files ds-verify-absence.py actually reads (references/coverage.md, assets/tokens-resolved.json) so the gate re-verifies portably instead of failing on a dead path the moment this skill left the session it was built in.",
+    "path_note": "relative to this skill's own root (resolved that way by gate.py's Q-DS-ABSENCE). ds-record/ ships the two files ds-verify-absence.py reads (references/coverage.md, assets/tokens-resolved.json) so the gate re-verifies portably.",
     "source_hash": "6c1bceb28a605c59cb838963f4e695480fd12ad47c803a13e0561bcae8b05d7a",
-    "payload_note": "the adapter's actual input was a throwaway, session-local copy of ds-record/assets/tokens-resolved.json with every key re-prefixed --ds-* (this design system ships bare -- names, e.g. --bg-surface, per its own tokens.md \"no namespace prefix\"; ds-adapter.py's alias lookup expects the --ds-* form). Not shipped separately -- payload_sha256 identifies its exact content, and it is reproducible from ds-record/assets/tokens-resolved.json by that same prefix transform.",
+    "payload_note": "the adapter's input is ds-record/assets/tokens-resolved.json with every key re-prefixed --ds-* (this design system ships bare names, e.g. --bg-surface; ds-adapter.py's alias lookup expects the --ds-* form). Not shipped separately -- payload_sha256 identifies its exact content, reproducible from ds-record/assets/tokens-resolved.json by that same prefix transform.",
     "payload_sha256": "87984d3dda730ddbe835252b7d75aeb927d222cb11b58189f48940f26dd79bd3",
     "rows": 209
   },

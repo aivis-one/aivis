@@ -118,7 +118,7 @@ was wired on (Windows 11, via npm's own shell, not via a POSIX shell):
 
 | name | resolves to |
 |---|---|
-| `python` | Python 3.13.13, `C:\Program Files\Python313\python.exe` |
+| `python` | Python 3.13.13 |
 | `python3` | Python 3.14.5, the WindowsApps shim |
 
 Both run, and they are **not the same interpreter**. `python` was kept because it

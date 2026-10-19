@@ -20,7 +20,7 @@
 //
 // CURSOR PAGINATION, NOT PAGE NUMBERS. comms' inbox contract is
 // cursor/next_cursor (keyset on sent_at DESC, id DESC -- see
-// D:/02_Projects/comms/app/api/inbox.py), not page/per_page. This
+// the comms service's inbox API), not page/per_page. This
 // mirrors BalanceView's / AgentBalanceView's epoch-guarded infinite
 // scroll (useInfiniteScroll + a stale-fetch epoch + a load-more error
 // brake) with the pagination cursor swapped in for a page number --

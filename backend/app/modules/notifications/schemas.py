@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # Response shapes ONLY, mirroring support/schemas.py's split -- comms'
-# inbox API (D:/02_Projects/comms/app/api/inbox.py) is a FROZEN CONTRACT,
+# inbox API (the comms service's inbox API) is a FROZEN CONTRACT,
 # and these models are that contract typed for this product rather than
 # forwarded as raw dicts. Typing it (instead of `-> Any` the way
 # support/router.py forwards comms' payload untouched) is deliberate

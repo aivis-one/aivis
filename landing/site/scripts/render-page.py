@@ -913,7 +913,7 @@ def r_prose(sec, c, site):
         esc(section_classes(sec)), esc(sid), esc(c.get(f"{sid}.title")), esc(c.get(f"{sid}.body")))
 
 
-# ---------- v2: the company home (row 28) ----------
+# ---------- v2: the company home ----------
 # Four blocks and a footer, in the owner's order: AIVIS + the founder + the
 # company; why SANKORD; the four courses; popular questions. Markup mirrors the
 # design system's catalogue through data-component / data-variant / data-size
@@ -1299,7 +1299,7 @@ def r_home_footer(sec, c, site):
 
 
 def r_support(c):
-    """The floating support launcher and its panel (row 150, phase 1): the home page only, no form, no storage.
+    """The floating support launcher and its panel: the home page only, no form, no storage.
     The e-mail link goes through at() exactly like the footer tile, from the footer's own key (CF4); the panel stays
     hidden until site.js opens it, and the launcher itself stays hidden until site.js runs (the footer holds the contacts)."""
     g = lambda k: c.get("support." + k)
@@ -1436,13 +1436,13 @@ def strip_dev_comments(html):
 
 
 def r_legal_doc(sec, c, site, legal_root=None):
-    """One legal document, rendered at BUILD time from legal-site/out/<lang>/<doc>.html (never copied into content):
+    """One legal document, rendered at BUILD time from landing/legal/out/<lang>/<doc>.html (never copied into content):
     internal links become relative, e-mail addresses are written with a character
     reference, wide tables get a scroll region."""
     doc = sec["doc"]
-    src = (ROOT / site.get("legal_dir", "../legal-site/out")) / c.locale / (doc + ".html")
+    src = (ROOT / site.get("legal_dir", "../legal/out")) / c.locale / (doc + ".html")
     if not src.exists():
-        raise SystemExit("FAIL: legal source missing: %s (run python sandbox/legal-site/build.py)" % src)
+        raise SystemExit("FAIL: legal source missing: %s (run python landing/legal/build.py)" % src)
     h = _doc_fragment(read(src), c)
     crumb = ('<nav class="crumb" aria-label="%s"><a href="%s">‹ %s</a></nav>'
              % (esc(c.get("legalpage.crumb")), esc(page_href("about")), T(c.get("legalpage.back"))))
@@ -1450,7 +1450,7 @@ def r_legal_doc(sec, c, site, legal_root=None):
 
 
 def _doc_fragment(h, c):
-    """A document fragment rendered at build time from a legal-site output: internal links become relative, e-mail
+    """A document fragment rendered at build time from a landing/legal output: internal links become relative, e-mail
     addresses are written with a character reference, wide tables get a scroll region; heading levels never skip
     (a document whose sections start at h3 under its h1 is lifted to h2), and a spaced hyphen used as a dash in
     Russian text is written as an em dash."""

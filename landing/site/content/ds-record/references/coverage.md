@@ -19,17 +19,17 @@ decision, not something to improvise mid-screen.
 
 | Category | State | Where it lives, or why it is not here |
 |---|---|---|
-| Token graph | delivered | `assets/tokens-resolved.json`. Both themes, every alias chain expanded. Rules in `references/tokens.md` |
-| Component matrix | delivered | `assets/components.json`. Axes, evidence, per-component a11y duty, status. Rules in `references/components.md` |
-| Brand marks | delivered | `assets/assets-manifest.json`. A reference record per mark — role, declared path, format, viewBox, polygon count. The bytes stay in the project repo by design; see the note below |
-| Icon set | partial | `assets/icons.svg` carries the sprite, `assets/icons.json` the key inventory and the binding rule. **The gap: no concept-to-key mapping, and no record of the concepts this set cannot express.** Read the gap clause below before choosing an icon |
-| Responsive layer | delivered | Four `bp-` primitives in the token payload; the rule, the two surfaces, and where a breakpoint does and does not belong, in `references/layout.md` |
-| Theme switch | delivered | `references/tokens.md`, "Theme model" — the attribute, where it is set, the default order, the relation to `prefers-color-scheme`, and the explicit statement that no platform switch exists |
-| Contrast evidence | delivered | `assets/contrast.json`. 38 pairs, both themes, translucent fills composited. **Six rows read FAIL** — see below; a live finding, not a historical note |
-| Type recipe | partial | `assets/type-recipe.json` carries each family's declared name, its stack, the script split and the `@font-face` binding shape. **The gap: no binary is named for any script slot, and no path, subset range, metric override or licence travelled** — the project's font stylesheet was not among the sources this tree was frozen from |
+| Token graph | delivered | `assets/tokens-resolved.json`. Both themes, every alias chain expanded. Rules in the design system's tokens reference |
+| Component matrix | delivered | the design system's component matrix. Axes, evidence, per-component a11y duty, status. Rules in its components reference |
+| Brand marks | delivered | the design system's assets manifest. A reference record per mark — role, declared path, format, viewBox, polygon count. The bytes stay in the project repo by design; see the note below |
+| Icon set | partial | the design system's icon sprite carries the keys, its icon inventory the key list and the binding rule. **The gap: no concept-to-key mapping, and no record of the concepts this set cannot express.** Read the gap clause below before choosing an icon |
+| Responsive layer | delivered | Four `bp-` primitives in the token payload; the rule, the two surfaces, and where a breakpoint does and does not belong, in the design system's layout reference |
+| Theme switch | delivered | the design system's tokens reference, "Theme model" — the attribute, where it is set, the default order, the relation to `prefers-color-scheme`, and the explicit statement that no platform switch exists |
+| Contrast evidence | delivered | the design system's contrast record. 38 pairs, both themes, translucent fills composited. **Six rows read FAIL** — see below; a live finding, not a historical note |
+| Type recipe | partial | the design system's type recipe carries each family's declared name, its stack, the script split and the `@font-face` binding shape. **The gap: no binary is named for any script slot, and no path, subset range, metric override or licence travelled** — the project's font stylesheet was not among the sources this tree was frozen from |
 | Microcopy rules | declared absent | **There are no microcopy rules in this design system.** Button case, error tone, empty-state phrasing and the prohibitions were never captured, so they reproduce only by an agent copying whatever surface it happens to see. Capture them at the next re-emit; until then match the surrounding surface and say that you did |
 | Density | declared absent | **There are no density tokens and no density axis.** Spacing has one scale, control heights one three-step scale, and neither carries a comfortable/compact pair. A screen needing tighter rows has no token for it, and the honest move is to raise the gap rather than borrow a smaller spacing step and call it density |
-| Writing direction | delivered | `references/layout.md`, "Writing direction" — LTR only, no RTL locale supported or measured, logical properties required regardless, with the refusal and its escape |
+| Writing direction | delivered | the design system's layout reference, "Writing direction" — LTR only, no RTL locale supported or measured, logical properties required regardless, with the refusal and its escape |
 | Print | declared absent | **No print rule exists in this design system and none was captured.** It matters more here than in most systems, because half the output is decks and documents that get printed, and the dark theme has no print behaviour declared — a dark deck sent to a printer is undefined. Treat any print request as a gap to raise before building |
 
 ---
@@ -42,10 +42,10 @@ not for what they mean in this product. `wallet`, `coins` and `trending-up` read
 product decision that was never recorded. Choosing one by resemblance is a guess that looks like a
 lookup. **Do:** pick the key whose drawn subject you can defend out loud, say in the code notes which
 concept you mapped it to, and raise the mapping as missing. **Do not:** invent a key that is not in
-`icons.json` — the sprite is the only icon source (hard rule R1-4 and the forbidden-dependency list
-in `conventions.md`), so a key that is not there is a symbol that will not render.
+the icon inventory — the sprite is the only icon source (hard rule R1-4 and the forbidden-dependency list
+in the design system's conventions), so a key that is not there is a symbol that will not render.
 
-**Font binaries and paths (category 8).** `type-recipe.json` states each family's declared name, its
+**Font binaries and paths (category 8).** The type recipe states each family's declared name, its
 stack order, and what the `@font-face` block has to look like. It does not state which binary fills
 which script slot, nor where any file is, because the project's font stylesheet was not among the
 sources this tree was frozen from. **Do:** read the slot assignments and paths from that stylesheet
@@ -67,7 +67,7 @@ review that follows it.
 
 ## The contrast finding
 
-`assets/contrast.json` measures 38 pairs. Thirty-two pass. **All six failures are the same shape:**
+The contrast record measures 38 pairs. Thirty-two pass. **All six failures are the same shape:**
 the three border roles against the surface, in both themes.
 
 | Pair | Light | Dark | Threshold |
@@ -108,11 +108,11 @@ roles that screens bind. The ones that genuinely *are* a library — the colour 
 radius, type, motion, icon-size, breakpoint and facet scales — carry the declaration, and the count of
 each group is a filter on the payload rather than a number written here.
 
-**Prose naming several components on one line (P-14) fires on `composition.md`.** The check guards
+**Prose naming several components on one line (P-14) fires on the composition reference.** The check guards
 against prose re-listing what the payload holds. What those rows carry is the archetype-to-slot
 mapping, which the payload does **not** hold — nothing in it says which components a Form is composed
 from. Removing the names would delete the only place that mapping exists. What the rows must not do is
-restate *status*, and they do not: each sends the reader to `assets/components.json` for that, and the
+restate *status*, and they do not: each sends the reader to the component matrix for that, and the
 file says so at the top.
 
 Neither line blocks. Both are recorded here because a finding that is silently ignored is
@@ -126,7 +126,7 @@ Categories 3 and 8 deliver **records**, not files. A produced skill is loaded in
 cannot render a font binary or an SVG; what the agent needs is the path, the format and the rule for
 binding them, and all three are text. The bytes stay where the build already reads them, which also
 keeps them from becoming a second copy with no owner. The same reasoning governs the two token
-stylesheets — see `assets/README.md`.
+stylesheets.
 
 ---
 

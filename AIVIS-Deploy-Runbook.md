@@ -1,7 +1,7 @@
 # AIVIS.ONE — Manual Deploy & Operations Runbook
 
 > **This repo is PUBLIC.** This document contains no secrets and never will — every credential it
-> references is a POINTER to `AIVIS-Server/CREDENTIALS.md`, a file that lives outside this repo,
+> references is a POINTER to the operator's credentials file, kept outside this repo,
 > outside git entirely, on the operator's own machine. If you don't have access to that file, get it
 > from whoever manages the server before you start.
 >
@@ -52,7 +52,7 @@ RE-INSTALL, absent means clean-box.
 
 What to have ready either way:
 
-- **The Telegram bot token** (`AIVIS-Server/CREDENTIALS.md` §2, the target `@aivisonebot` row) —
+- **The Telegram bot token** (the operator's credentials file, §2, the target `@aivisonebot` row) —
   you'll type this in during the install, once.
 - **Two browser tabs open on GitHub → Settings → Deploy keys**, logged in as someone with admin
   rights: one on `aivis-one/aivis`, one on `aivis-one/comms`. **There are two repositories on this
@@ -158,7 +158,7 @@ Each one is listed here in execution order, with the exact answer.
    else; running the installation again starts from the same place. It then deletes
    `/opt/aivis/repo` entirely, which takes
    `backend/.env` with it: **every credential in that file that you have not already copied into
-   `AIVIS-Server/CREDENTIALS.md` is gone for good the instant you answer `y`.** Treat this prompt as
+   the operator's credentials file is gone for good the instant you answer `y`.** Treat this prompt as
    if it read "delete the database, forever?" — on a box carrying real data, that is exactly what it
    does; today's box is empty enough that the cost is low, but the prompt does not know which box
    it's running on. **Anything other than `y` aborts the script immediately** — there is no "keep
