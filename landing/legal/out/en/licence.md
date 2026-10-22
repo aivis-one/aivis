@@ -48,7 +48,7 @@ The courses and course materials are created by and belong to AIVIS.ONE LLC, whi
 
 ## Related documents
 
-- [Privacy policy](/about/privacy/)
-- [Terms of use](/about/terms/)
-- [Company details](/about/imprint/)
-- [Cookie and local storage notice](/about/cookies/)
+- [Privacy Policy](/about/privacy/)
+- [Terms of Use of the Site](/about/terms/)
+- [Company Details](/about/imprint/)
+- [Cookie and Local Storage Notice](/about/cookies/)

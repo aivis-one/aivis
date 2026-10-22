@@ -1,70 +1,74 @@
-# Terms of use
+# Terms of Use of the Site
 
-Updated 14 October 2026
+Updated 23 October 2026
 
-## Who we are and what these terms cover
+## 1. Who we are and what these terms cover
 
-These terms govern your use of the public pages of aivis.one (the Site). The Site is run by AIVIS.ONE LLC, a limited liability company registered in Georgia (identification number 404804422). By using the Site you accept these terms. If you do not accept them, please do not use the Site.
+1.1. These terms govern your use of the public pages of aivis.one (the "Site"). The Site is run by **AIVIS.ONE LLC**, a limited liability company of Georgia, identification number 404804422, legal address Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14 (the "Company").
 
-The cabinet (aivis.one/app), where registered users manage their SANKORD licences and purchases, has its own terms, which you accept when you register. Any paid service has its own terms too, which you see before you use it. Nothing here replaces them.
+1.2. By using the Site you accept these terms. If you do not accept them, please do not use the Site.
 
-## Using the Site
+1.3. The cabinet at aivis.one/app/ (the "Cabinet") has its own terms and documents. They describe what is sold in it, to whom and how, and you see and accept them there before any purchase. Nothing in these terms replaces them.
 
-The Site is free to read. Use it lawfully and with respect for other visitors. Please do not:
+## 2. Using the Site
+
+2.1. The Site is free to read. Use it lawfully and with respect for other visitors. Please do not:
 
 - try to break into the Site, disrupt it or overload it;
 - use it to send spam or malicious code;
 - collect its content automatically at a rate that affects other visitors.
 
-## Content and licences
+## 3. Content and licences
 
-The courses and course materials published free on the Site are licensed under CC BY-NC-ND 4.0. What you may do with them is on the [course licence](/about/licence/) page. These terms add no restriction to that licence.
+3.1. The courses and course materials published free on the Site are licensed under CC BY-NC-ND 4.0. What you may do with them is on the [course licence](/about/licence/) page. These terms add no restriction to that licence.
 
-The design and software of the Site, and the names and logos of SANKORD and AIVIS.ONE, belong to AIVIS.ONE LLC or its licensors. They are not covered by CC BY-NC-ND 4.0, and no licence to them is given beyond viewing the Site. Please do not use them in a way that suggests we endorse you or your work.
+3.2. The design and software of the Site, and the names and logos of SANKORD and AIVIS.ONE, belong to the Company or its licensors. They are not covered by CC BY-NC-ND 4.0, and no licence to them is given beyond viewing the Site. Please do not use them in a way that suggests we endorse you or your work.
 
-Third-party material on the Site keeps its own licence and is marked with its source.
+3.3. Third-party material on the Site keeps its own licence and is marked with its source.
 
-## Information, not advice
+## 4. Information, not advice
 
-The Site and the courses are for information and education. They are not legal, financial, tax, medical, migration or other professional advice, and using them creates no advisory relationship with AIVIS.ONE LLC or its director. They promise no result.
+4.1. The Site and what is published on it are for information and education. They are not legal, financial, tax, medical, migration or other professional advice, and using them creates no advisory relationship with the Company or its director. They promise no result.
 
-Everything is provided as it is, without warranty of accuracy, completeness or fitness for a particular purpose. Check facts, figures and decisions yourself before you rely on them: trust, but verify.
+4.2. Everything is provided as it is, without warranty of accuracy, completeness or fitness for a particular purpose. Check facts, figures and decisions yourself before you rely on them.
 
-## No offer
+## 5. No offer
 
-Nothing on the Site is an offer, invitation or solicitation to buy, sell or license SANKORD, or to buy, sell or hold a share, a participation or any financial product of AIVIS.ONE LLC or anyone else, and nothing on it promises a return. Any such offer would be made separately, in writing, under its own documents.
+5.1. Nothing on the Site is an offer or invitation to buy anything, and nothing on it promises a return.
 
-## Links to other sites
+5.2. What the Cabinet sells is offered only inside it, to a registered person who has passed verification, under the documents accepted there.
 
-The Site links to services we do not run. We are not responsible for their content or practices.
+## 6. Links to other sites
 
-## Liability
+6.1. The Site links to services we do not run. We are not responsible for their content or practices.
 
-To the extent Georgian law allows, and except in cases of intent or gross negligence, AIVIS.ONE LLC is not liable for loss arising from your use of the Site or your reliance on its content. Nothing in these terms limits a liability that the law does not allow to be limited, or a right you have as a consumer that cannot be waived.
+## 7. Liability
 
-## Where the Site is offered
+7.1. To the extent Georgian law allows, and except in cases of intent or gross negligence, the Company is not liable for loss arising from your use of the Site or your reliance on its content. Nothing in these terms limits a liability that the law does not allow to be limited, or a right you have as a consumer that cannot be waived.
 
-The Site is written for readers worldwide in English and for Russian speakers outside Russia. It is not offered to users in Russia or Belarus, nor in Iran, North Korea, Cuba or the occupied territories of Ukraine, nor in any other country or territory under comprehensive sanctions of the United Nations, the European Union or the United States, and it is not meant for use there. We also do not offer it in Syria, as our own policy.
+## 8. Whom the Site is not for
 
-## Governing law and disputes
+8.1. The Site is not for persons on the sanctions lists of the United States, the European Union, the United Kingdom and the United Nations, nor for residents of Cuba, Iran, North Korea, Syria, Crimea, DNR and LNR.
 
-These terms are governed by the law of Georgia. Disputes go to the state courts of Tbilisi, Georgia, unless mandatory law where you live gives you the right to go to another forum.
+## 9. Governing law and disputes
 
-## Changes
+9.1. These terms are governed by the law of Georgia. Disputes go to the state courts of Georgia in Tbilisi, unless mandatory law where you live gives you the right to go to another forum.
 
-We may change these terms. When we do, we replace the text and show the line “Updated” with the date at the top of the page. The text published on the Site applies from that date.
+## 10. Changes
 
-## Language
+10.1. We may change these terms. When we do, we replace the text and show the line "Updated" with the date at the top of the page. The text published on the Site applies from that date.
 
-The English text of these terms prevails over their text in any other language.
+## 11. Language
 
-## Contact
+11.1. The English text of these terms prevails over their text in any other language.
 
-AIVIS.ONE LLC, Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14. E-mail hello@aivis.one; legal and data questions legal@aivis.one. Telegram [@aivisone](https://t.me/aivisone).
+## 12. Contact
+
+12.1. AIVIS.ONE LLC, Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14. E-mail hello@aivis.one; legal and data questions legal@aivis.one. Telegram [@aivisone](https://t.me/aivisone).
 
 ## Related documents
 
-- [Privacy policy](/about/privacy/)
-- [Company details](/about/imprint/)
-- [Cookie and local storage notice](/about/cookies/)
+- [Privacy Policy](/about/privacy/)
+- [Company Details](/about/imprint/)
+- [Cookie and Local Storage Notice](/about/cookies/)
 - [Course licence (CC BY-NC-ND 4.0)](/about/licence/)
