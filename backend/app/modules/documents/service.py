@@ -343,6 +343,59 @@ async def list_documents_for_role(
     ]
 
 
+async def get_current_document_by_type(
+    document_type: str,
+    language: str,
+    user_id: UUID,
+    session: AsyncSession,
+) -> DocumentResponse:
+    """The current active document of a type, in `language` or in English.
+
+    Same shape the list gives for one document (id, version, title, ...,
+    is_signed). Reaches the documents that no role is required to sign
+    (they are not in the list), so they can be read and signed by id.
+
+    Raises:
+        NotFoundError: no active document of this type in `language` or in
+            English.
+    """
+    candidate_langs = [language]
+    if language != FALLBACK_LANGUAGE:
+        candidate_langs.append(FALLBACK_LANGUAGE)
+
+    rows = (
+        await session.execute(
+            select(Document)
+            .where(
+                Document.type == document_type,
+                Document.status == DocumentStatus.ACTIVE,
+                Document.language.in_(candidate_langs),
+            )
+            .order_by(Document.version.desc())
+        )
+    ).scalars().all()
+
+    chosen: Document | None = None
+    for doc in rows:
+        if doc.language == language:
+            chosen = doc
+            break
+        if chosen is None:
+            chosen = doc
+    if chosen is None:
+        raise NotFoundError("Document not found")
+
+    signed = (
+        await session.execute(
+            select(DocumentSigning.id).where(
+                DocumentSigning.user_id == user_id,
+                DocumentSigning.document_id == chosen.id,
+            )
+        )
+    ).first()
+    return _build_document_response(chosen, signed is not None)
+
+
 async def get_document(
     document_id: UUID,
     user_id: UUID,
@@ -436,6 +489,17 @@ async def sign_document(
 # ---------------------------------------------------------------------------
 
 
+# Steps from which maybe_complete_onboarding may finish onboarding. The role
+# card is gone, so a user no longer has to pass ROLE_SELECTED by choosing.
+_ONBOARDING_OPEN_STEPS = frozenset(
+    {
+        OnboardingStep.EMAIL_VERIFIED,
+        OnboardingStep.PROFILE_COMPLETE,
+        OnboardingStep.ROLE_SELECTED,
+    }
+)
+
+
 async def maybe_complete_onboarding(
     user_id: UUID,
     session: AsyncSession,
@@ -458,9 +522,17 @@ async def maybe_complete_onboarding(
     every user would sit on the role page for good.
 
     Public (no leading underscore) because select_role imports it
-    cross-module. The internal guard `step != ROLE_SELECTED -> return`
-    keeps the function safe to call from any callsite without
-    pre-check ceremony.
+    cross-module. The internal guard (the step must be one of
+    _ONBOARDING_OPEN_STEPS, else return) keeps the function safe to
+    call from any callsite without pre-check ceremony.
+
+    NO ROLE CARD, NO PROFILE SCREEN.
+    A new user is an investor from the first entry, so nothing waits for
+    a role choice: the function acts from EMAIL_VERIFIED, PROFILE_COMPLETE
+    and ROLE_SELECTED alike. When documents are still outstanding it
+    moves the step to ROLE_SELECTED (the step the documents screen is
+    keyed on) and leaves it there; when none are, onboarding completes.
+    The step values themselves are unchanged.
 
     Group-by `type`, not document id: a user who signed the English
     Privacy Policy in one session and (after a locale switch) the
@@ -471,7 +543,7 @@ async def maybe_complete_onboarding(
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if user is None or user.onboarding_step != OnboardingStep.ROLE_SELECTED:
+    if user is None or user.onboarding_step not in _ONBOARDING_OPEN_STEPS:
         return
 
     # Every active doc row required for the user's role, across all
@@ -492,6 +564,11 @@ async def maybe_complete_onboarding(
         await session.flush()
         logger.info("onboarding_complete", user_id=str(user_id))
         return
+
+    # Documents are outstanding: park the user on the documents step.
+    if user.onboarding_step != OnboardingStep.ROLE_SELECTED:
+        user.onboarding_step = OnboardingStep.ROLE_SELECTED
+        await session.flush()
 
     id_to_type = {row[0]: row[1] for row in rows}
     required_types = set(id_to_type.values())
@@ -514,3 +591,31 @@ async def maybe_complete_onboarding(
         user.onboarding_step = OnboardingStep.ONBOARDING_COMPLETE
         await session.flush()
         logger.info("onboarding_complete", user_id=str(user_id))
+
+
+# ---------------------------------------------------------------------------
+# Signed-by-type check
+# ---------------------------------------------------------------------------
+
+
+async def has_signed_document_type(
+    user_id: UUID,
+    document_type: str,
+    session: AsyncSession,
+) -> bool:
+    """True when the user signed any version or language of this type.
+
+    Grouped by `type`, not by document id, the same way
+    maybe_complete_onboarding reads signings: signing the Russian text and
+    later reading the English one is still one acceptance of the type.
+    """
+    stmt = (
+        select(DocumentSigning.id)
+        .join(Document, Document.id == DocumentSigning.document_id)
+        .where(
+            DocumentSigning.user_id == user_id,
+            Document.type == document_type,
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None

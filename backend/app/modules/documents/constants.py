@@ -27,3 +27,8 @@ VALID_STATUS_TRANSITIONS: dict[str, list[str]] = {
     ],
     DocumentStatus.ARCHIVED: [],  # terminal
 }
+
+
+# The integrator-agent agreement. An agent may not receive a referral
+# link until a signing of a document of this type exists (referrals router).
+AGENT_INTEGRATOR_AGREEMENT_TYPE: str = "agent_integrator_agreement"

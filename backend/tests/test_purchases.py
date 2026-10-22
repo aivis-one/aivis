@@ -325,6 +325,49 @@ def test_gift_processor_portfolio_gte_not_met() -> None:
     assert len(transactions) == 0
 
 
+def _amount_bonus(threshold_cents: int) -> dict:
+    return {
+        "condition": "purchase_amount_gte",
+        "threshold_cents": threshold_cents,
+        "bonus_units_percent": 5,
+        "funded_by": "platform",
+    }
+
+
+def test_gift_processor_purchase_amount_gte_met_at_the_threshold() -> None:
+    """purchase_amount_gte: this purchase equals the threshold -> bonus."""
+    ctx = _make_context(
+        amount_cents=100_000, units=100, bonuses=[_amount_bonus(100_000)]
+    )
+    transactions = GiftProcessor(investor_portfolio_cents=0).process(ctx)
+
+    assert len(transactions) == 1
+    assert transactions[0].units == 5
+
+
+def test_gift_processor_purchase_amount_gte_below_the_threshold() -> None:
+    """purchase_amount_gte: this purchase is below the threshold -> none,
+    however large the portfolio already is."""
+    ctx = _make_context(
+        amount_cents=99_900, units=100, bonuses=[_amount_bonus(100_000)]
+    )
+    transactions = GiftProcessor(
+        investor_portfolio_cents=50_000_000
+    ).process(ctx)
+
+    assert len(transactions) == 0
+
+
+def test_validate_purchase_config_purchase_amount_gte() -> None:
+    """purchase_amount_gte is a valid condition and needs a threshold."""
+    validate_purchase_config({"bonuses": [_amount_bonus(100_000)]})
+
+    no_threshold = _amount_bonus(1)
+    del no_threshold["threshold_cents"]
+    with pytest.raises(BadRequestError, match="threshold_cents is required"):
+        validate_purchase_config({"bonuses": [no_threshold]})
+
+
 def test_gift_processor_empty_bonuses() -> None:
     """GiftProcessor: no bonuses configured -> empty result."""
     ctx = _make_context(bonuses=[])
@@ -469,6 +512,7 @@ async def test_purchase_insufficient_balance(
     )
     assert resp.status_code == 400
     assert "Insufficient balance" in resp.json()["message"]
+    assert resp.json()["error"] == "insufficient_balance"
 
 
 @pytest.mark.asyncio
@@ -493,6 +537,7 @@ async def test_purchase_product_not_active(
     )
     assert resp.status_code == 400
     assert "not available" in resp.json()["message"]
+    assert resp.json()["error"] == "product_not_available"
 
 
 @pytest.mark.asyncio
@@ -609,6 +654,15 @@ async def test_purchase_with_gift_bonus(
     assert sale["paid_cents"] == 100 * 10000
     assert gift["units"] == 10  # 10% of 100
     assert gift["paid_cents"] == 0
+
+    # The bonus row carries the id of the sale it came from (migration
+    # 0056); the sale itself carries none.
+    from app.modules.purchases.models import Purchase
+
+    gift_row = await db_session.get(Purchase, UUID(gift["id"]))
+    sale_row = await db_session.get(Purchase, UUID(sale["id"]))
+    assert gift_row.source_purchase_id == UUID(sale["id"])
+    assert sale_row.source_purchase_id is None
 
 
 # ---------------------------------------------------------------------------

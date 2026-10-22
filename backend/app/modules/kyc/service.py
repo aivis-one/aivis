@@ -81,7 +81,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.audit import record_audit
+from app.core.audit import AuditLog, record_audit
 from app.core.comms import comms_configured
 from app.core.constants import LedgerReason
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
@@ -721,6 +721,16 @@ async def submit_kyc(
             code="kyc_already_verified",
         )
 
+    # THE CONFIRMED E-MAIL IS KYC'S FIRST CONDITION. A person
+    # who came in through Telegram has no e-mail and is sent to the
+    # settings to add and confirm one; nothing is charged or stored first.
+    if not user.email_verified:
+        raise BadRequestError(
+            "Confirm your e-mail first: verification starts from a "
+            "confirmed e-mail address.",
+            code="kyc_email_not_verified",
+        )
+
     if document_type not in set(KYCDocumentType):
         raise BadRequestError(
             f"Unknown identity document type: {document_type}.",
@@ -931,6 +941,38 @@ async def submit_kyc(
 # ---------------------------------------------------------------------------
 
 
+async def _latest_rejection_reason(
+    user: User,
+    session: AsyncSession,
+) -> str | None:
+    """The reason of the user's latest rejection, from the audit log.
+
+    Only while the user is rejected: after a later approval, submission
+    or revocation the old reason no longer describes the account. The
+    reason is not copied onto the model (see REASONS LIVE IN THE AUDIT
+    LOG); this reads the newest "kyc.status_changed" row addressed to the
+    user whose "to" is "rejected".
+    """
+    if user.kyc_status != KYCStatus.REJECTED:
+        return None
+    stmt = (
+        select(AuditLog.data)
+        .where(
+            AuditLog.event == "kyc.status_changed",
+            AuditLog.target_type == "user",
+            AuditLog.target_id == user.id,
+            AuditLog.data["to"].as_string() == KYCStatus.REJECTED,
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(1)
+    )
+    data = (await session.execute(stmt)).scalar_one_or_none()
+    if not data:
+        return None
+    reason = data.get("reason")
+    return reason if isinstance(reason, str) and reason else None
+
+
 async def get_kyc_status(
     user: User,
     session: AsyncSession,
@@ -966,6 +1008,7 @@ async def get_kyc_status(
         kyc_status=user.kyc_status,
         application_id=application.id if application else None,
         application_status=application.status if application else None,
+        rejection_reason=await _latest_rejection_reason(user, session),
         fee_cents=KYC_VERIFICATION_FEE_CENTS,
         # The int() that stood here is gone with the defect it worked
         # around -- see get_active_balance's docstring (H12 P-46g).

@@ -44,3 +44,25 @@ class RejectRequest(BaseModel):
         max_length=2000,
         description="Reason for rejection (required)",
     )
+
+
+class AgentApplicationQueueItem(AgentApplicationResponse):
+    """One pending application in the staff queue, with the applicant.
+
+    Name, e-mail and KYC status are read from the applicant's user row:
+    staff decide on the person, not on an id. e-mail is null for an
+    account that came in through Telegram without one.
+    """
+
+    applicant_name: str
+    applicant_email: str | None = None
+    applicant_kyc_status: str
+
+
+class AgentApplicationQueueResponse(BaseModel):
+    """Paged staff queue of pending agent (integrator) applications."""
+
+    items: list[AgentApplicationQueueItem]
+    total: int
+    page: int
+    per_page: int

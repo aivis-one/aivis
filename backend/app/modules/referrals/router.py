@@ -3,7 +3,8 @@
 # =============================================================================
 #
 # ENDPOINTS:
-#   POST /api/v1/referrals/links       -- create referral link (agent only)
+#   POST /api/v1/referrals/links       -- issue the agent's one referral link,
+#                                         or return it if it exists (agent only)
 #   GET  /api/v1/referrals/links/me    -- list my referral links (agent only)
 #   GET  /api/v1/referrals/stats/me    -- referral stats (agent only)
 #   GET  /api/v1/referrals/downline/me -- my downline by level (agent only)
@@ -29,12 +30,14 @@
 # =============================================================================
 
 import structlog
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
+from app.modules.documents.constants import AGENT_INTEGRATOR_AGREEMENT_TYPE
+from app.modules.documents.service import has_signed_document_type
 from app.modules.referrals.models import ReferralLink
 from app.modules.referrals.schemas import (
     DownlineInvestorEntry,
@@ -46,6 +49,7 @@ from app.modules.referrals.schemas import (
 )
 from app.modules.referrals.service import (
     create_link,
+    get_existing_link,
     get_downline,
     get_my_links,
     get_my_stats,
@@ -114,11 +118,34 @@ def _link_response(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_referral_link(
+    response: Response,
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> ReferralLinkResponse:
-    """Create a new referral link. Agent only."""
+    """Issue the agent's referral link, once. Agent only, after the
+    integrator agreement is accepted.
+
+    An agent has exactly one link: when it exists already this returns it
+    (200) instead of creating a second one.
+    """
     _require_agent(user)
+
+    # The link is refused until the agent has accepted the integrator-agent
+    # agreement; the frontend hides the button until then, this is
+    # the check behind it.
+    if not await has_signed_document_type(
+        user.id, AGENT_INTEGRATOR_AGREEMENT_TYPE, session
+    ):
+        raise ForbiddenError(
+            "Accept the integrator agreement before getting a referral link",
+            code="agent_agreement_not_signed",
+        )
+
+    existing = await get_existing_link(user, session)
+    if existing is not None:
+        link, registration_count, purchase_count = existing
+        response.status_code = status.HTTP_200_OK
+        return _link_response(link, registration_count, purchase_count)
 
     link = await create_link(user, session)
     # A brand-new link has no registrations or purchases yet.

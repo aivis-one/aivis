@@ -13,10 +13,11 @@
 #     },
 #     "bonuses": [                     -- may be empty []
 #       {
-#         "condition": "always" | "portfolio_size_gte",
+#         "condition": "always" | "portfolio_size_gte"
+#                      | "purchase_amount_gte",
 #         "bonus_units_percent": 10,   -- percent of purchased units
 #         "funded_by": "company" | "platform",
-#         "threshold_cents": 50000     -- required for portfolio_size_gte
+#         "threshold_cents": 50000     -- required for the two _gte conditions
 #       }
 #     ]
 #   }
@@ -25,8 +26,8 @@
 #   - distribution: if present, validated same as Company.distribution_config
 #   - bonuses: sum(bonus_units_percent) <= 100
 #   - funded_by: must be "company" or "platform"
-#   - condition: must be "always" or "portfolio_size_gte"
-#   - threshold_cents: required when condition = "portfolio_size_gte"
+#   - condition: "always", "portfolio_size_gte" or "purchase_amount_gte"
+#   - threshold_cents: required when condition is one of the two _gte kinds
 #   - Unknown top-level keys rejected
 # =============================================================================
 
@@ -34,7 +35,9 @@ from app.core.exceptions import BadRequestError
 from app.modules.companies.constants import validate_distribution_config
 
 
-_VALID_CONDITIONS = frozenset({"always", "portfolio_size_gte"})
+_VALID_CONDITIONS = frozenset(
+    {"always", "portfolio_size_gte", "purchase_amount_gte"}
+)
 _VALID_FUNDED_BY = frozenset({"company", "platform"})
 _ALLOWED_TOP_KEYS = frozenset({"distribution", "bonuses"})
 _ALLOWED_BONUS_KEYS = frozenset({
@@ -127,13 +130,13 @@ def _validate_bonuses(bonuses: list) -> None:  # type: ignore[type-arg]
                 f"{', '.join(sorted(_VALID_FUNDED_BY))}"
             )
 
-        # -- threshold_cents (required for portfolio_size_gte) --
-        if condition == "portfolio_size_gte":
+        # -- threshold_cents (required for the two _gte conditions) --
+        if condition in ("portfolio_size_gte", "purchase_amount_gte"):
             threshold = bonus.get("threshold_cents")
             if threshold is None:
                 raise BadRequestError(
                     f"{prefix}.threshold_cents is required "
-                    f"when condition is 'portfolio_size_gte'"
+                    f"when condition is '{condition}'"
                 )
             if not isinstance(threshold, int) or threshold <= 0:
                 raise BadRequestError(

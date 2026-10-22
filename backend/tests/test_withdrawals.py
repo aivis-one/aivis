@@ -21,6 +21,8 @@
 #   15: Staff list withdrawals -> 200, paginated, sees other users' rows
 #   16: Staff list withdrawals filtered by status -> only matching rows
 #   17: Staff list withdrawals -- non-staff caller -> 403
+#   18: Create withdrawal as investor -> 403 withdrawal_role_not_allowed
+#   19: Create withdrawal as company -> 201
 # =============================================================================
 
 from uuid import UUID
@@ -37,7 +39,7 @@ from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
 from app.modules.transactions.constants import TransactionType
 from app.modules.transactions.models import Transaction
-from app.modules.users.models import User
+from app.modules.users.models import User, UserRole
 from app.modules.withdrawals.constants import WithdrawalStatus
 from app.modules.withdrawals.models import Withdrawal
 from app.modules.withdrawals.service import complete_withdrawal, fail_withdrawal
@@ -54,8 +56,12 @@ async def _create_user_with_balance(
     db_session: AsyncSession,
     balance_cents: int = 100000,
     with_payout_details: bool = True,
+    role: str = UserRole.AGENT,
 ) -> tuple[UUID, str]:
-    """Register user, set payout_details, credit passive balance.
+    """Register user, set role and payout_details, credit passive balance.
+
+    The role defaults to AGENT: POST /withdrawals is open to the agent and
+    company roles only, so a plain investor could not create one.
 
     Returns (user_id, session_token).
     """
@@ -65,11 +71,13 @@ async def _create_user_with_balance(
     token = data["session_token"]
     user_id = UUID(data["user"]["id"])
 
+    stmt = select(User).where(User.id == user_id)
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.role = role
+
     # Set payout_details on user.
     if with_payout_details:
-        stmt = select(User).where(User.id == user_id)
-        result = await db_session.execute(stmt)
-        user = result.scalar_one()
         user.set_jsonb("payout_details", {"method": "crypto", "address": "TXyz123"})
         await db_session.flush()
 
@@ -796,3 +804,46 @@ async def test_staff_list_withdrawals_requires_staff(
         headers=auth_headers(token),
     )
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# 18-19. Role gate: agent and company only
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_investor_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An investor cannot create a withdrawal; the balance is untouched."""
+    user_id, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000, role=UserRole.INVESTOR
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "withdrawal_role_not_allowed"
+
+    balance = await get_passive_balance(db_session, user_id)
+    assert balance["confirmed"] == 50000
+
+
+@pytest.mark.asyncio
+async def test_create_withdrawal_company_allowed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A company account may create a withdrawal."""
+    _, token = await _create_user_with_balance(
+        client, db_session, balance_cents=50000, role=UserRole.COMPANY
+    )
+
+    resp = await client.post(
+        "/api/v1/withdrawals",
+        json={"amount_cents": 20000},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 201, resp.text

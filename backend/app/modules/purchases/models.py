@@ -8,9 +8,11 @@
 #   returned by the Distribution Engine.
 #
 # IMMUTABLE:
-#   No updated_at. Two declared exceptions, both narrow and named here
-#   so neither reads as a violation:
-#     - status changes on reversal (pre-existing).
+#   No updated_at. Four declared exceptions, all narrow and named here
+#   so none reads as a violation:
+#     - status changes on reversal (pre-existing), and a staff cancel of a
+#       gift not yet accepted closes the row (cancelled, no
+#       ledger entry: gift_service.cancel_gift).
 #     - agreement_html / agreement_snapshot_attempts (H18 P-74),
 #       written asynchronously after creation by the background sweep
 #       below, never by anything on the purchase's own write path.
@@ -18,6 +20,10 @@
 #       sweep pass; agreement_html is written at most once -- a
 #       populated value is never re-rendered or overwritten (see
 #       render_agreement_html's read-time check).
+#     - status pending_acceptance -> active, once, when the recipient
+#       accepts a staff gift (gift_service.accept_gift).
+#     - source_purchase_id, written in the same transaction as the INSERT
+#       by engine.write_transactions, never later.
 #   Everything else on this row is fixed at INSERT. Reversals create
 #   mirror ledger entries, not new Purchase rows.
 #
@@ -205,6 +211,17 @@ class Purchase(UUIDMixin, Base):
         default=0,
         server_default="0",
         nullable=False,
+    )
+
+    # The sale a bonus row came from (gift rows written by the engine in the
+    # same batch as a sale or an instalment tranche). NULL for a sale, a
+    # tranche, a staff-granted gift and the instalment completion bonus.
+    # Lets the agreement of a sale list its own bonus parts without
+    # guessing by timestamp.
+    source_purchase_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("purchases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     # Immutable timestamp -- no updated_at.

@@ -38,7 +38,7 @@ from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User, UserRole
-from tests.helpers import auth_headers, register_user
+from tests.helpers import auth_headers, register_user, sign_agent_agreement
 
 _PRICE = 1000
 
@@ -76,6 +76,7 @@ async def _make_agent(
     )).scalar_one()
     user.role = UserRole.AGENT
     await db_session.commit()
+    await sign_agent_agreement(user_id)
 
     resp = await client.post(
         "/api/v1/referrals/links", headers=auth_headers(token)

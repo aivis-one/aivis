@@ -6,6 +6,8 @@
 #
 # ENDPOINTS:
 #   GET  /api/v1/documents          -- List active documents for user's role
+#   GET  /api/v1/documents/by-type/{type}?lang=xx -- The current document of a
+#                                   type (also one no role has to sign)
 #   GET  /api/v1/documents/{id}     -- Get single document with is_signed
 #   POST /api/v1/documents/{id}/sign -- Sign document (checkbox consent)
 #
@@ -22,7 +24,7 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.client_ip import get_client_ip
@@ -31,6 +33,7 @@ from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.documents.schemas import DocumentResponse, DocumentSigningResponse
 from app.modules.documents.service import (
+    get_current_document_by_type,
     get_document,
     list_documents_for_role,
     sign_document,
@@ -57,6 +60,28 @@ async def list_documents(
     """
     return await list_documents_for_role(
         user.role, user.language, user.id, session
+    )
+
+
+@router.get(
+    "/by-type/{document_type}",
+    response_model=DocumentResponse,
+)
+async def get_document_by_type(
+    document_type: str,
+    lang: str | None = Query(default=None, min_length=2, max_length=10),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> DocumentResponse:
+    """The current document of a type, in `lang` (default: the caller's
+    language) or in English.
+
+    Any signed-in user. Gives a document that no role is required to sign
+    (so the list does not return it) the same shape the list gives, so it
+    can be read and signed by its id.
+    """
+    return await get_current_document_by_type(
+        document_type, lang or user.language, user.id, session
     )
 
 

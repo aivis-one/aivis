@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # ENDPOINTS:
-#   GET  /api/v1/staff/agent-applications         -- pending queue
+#   GET  /api/v1/staff/agent-applications         -- pending queue (paged, with applicant)
 #   POST /api/v1/staff/agent-applications/{id}/approve -- approve
 #   POST /api/v1/staff/agent-applications/{id}/reject  -- reject
 #
@@ -18,11 +18,13 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
 from app.modules.agent_applications.schemas import (
+    AgentApplicationQueueItem,
+    AgentApplicationQueueResponse,
     AgentApplicationResponse,
     RejectRequest,
 )
@@ -32,6 +34,7 @@ from app.modules.agent_applications.staff_service import (
     agent_application_reject,
 )
 from app.modules.auth.dependencies import require_staff_permission
+from app.modules.purchases.document_utils import extract_investor_name
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -44,15 +47,31 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=list[AgentApplicationResponse],
+    response_model=AgentApplicationQueueResponse,
 )
 async def get_agent_application_queue(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     staff: User = Depends(require_staff_permission("agent_application_review")),
     session: AsyncSession = Depends(get_db_reader),
-) -> list[AgentApplicationResponse]:
-    """List pending agent applications. Requires agent_application_review."""
-    applications = await agent_application_queue(session)
-    return [AgentApplicationResponse.model_validate(a) for a in applications]
+) -> AgentApplicationQueueResponse:
+    """Paged queue of pending applications with the applicant's name,
+    e-mail and KYC status. Requires agent_application_review."""
+    rows, total = await agent_application_queue(
+        session, page=page, per_page=per_page
+    )
+    items = [
+        AgentApplicationQueueItem(
+            **AgentApplicationResponse.model_validate(application).model_dump(),
+            applicant_name=extract_investor_name(applicant),
+            applicant_email=applicant.email,
+            applicant_kyc_status=applicant.kyc_status,
+        )
+        for application, applicant in rows
+    ]
+    return AgentApplicationQueueResponse(
+        items=items, total=total, page=page, per_page=per_page
+    )
 
 
 @router.post(

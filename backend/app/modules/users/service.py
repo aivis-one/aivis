@@ -46,20 +46,24 @@
 # =============================================================================
 
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyotp
 import structlog
 from cryptography.fernet import InvalidToken
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.comms_sync import sync_recipient
 from app.modules.documents.service import maybe_complete_onboarding
 from app.core.crypto import decrypt_secret, encrypt_secret
-from app.core.exceptions import BadRequestError, ForbiddenError
+from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError
 from app.modules.auth.service import (
+    _VERIFICATION_CODE_TTL_MINUTES,
+    _generate_verification_code,
+    _request_verification_email,
     delete_all_sessions,
     hash_password,
     verify_password,
@@ -219,6 +223,11 @@ async def update_user(
 
     await session.flush()
 
+    # No role card: nothing waits for a role choice, so onboarding is
+    # finished here when every required document is already signed (a
+    # user left on EMAIL_VERIFIED or PROFILE_COMPLETE before this change).
+    await maybe_complete_onboarding(user.id, session)
+
     if language_changed:
         await sync_recipient(session, user)
     # Reload expired attrs (updated_at) after potential set_jsonb + flush.
@@ -312,6 +321,76 @@ async def select_role(
         new_role=role,
     )
 
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Adding an e-mail to an account that has none
+# ---------------------------------------------------------------------------
+
+
+async def attach_email_to_account(
+    user: User,
+    email: str,
+    session: AsyncSession,
+) -> User:
+    """An account without an e-mail (a Telegram sign-in) adds one.
+
+    The address is stored unverified and a 6-digit code goes out the way
+    registration sends it; POST /auth/verify-email confirms it. No
+    password is stored: the account keeps signing in as before.
+
+    Raises:
+        ConflictError: the account already has an e-mail (code
+            email_already_set), or the address belongs to another account
+            (code email_taken, from the unique index ix_users_email).
+    """
+    creds = dict(user.credentials or {})
+    if (creds.get("email") or {}).get("email"):
+        raise ConflictError(
+            "This account already has an e-mail address",
+            code="email_already_set",
+        )
+
+    email_lower = email.strip().lower()
+    code = _generate_verification_code()
+    expires_at = datetime.now(UTC) + timedelta(
+        minutes=_VERIFICATION_CODE_TTL_MINUTES
+    )
+
+    creds["email"] = {
+        "email": email_lower,
+        "verified": False,
+        "verified_at": None,
+    }
+    creds["onboarding"] = {
+        **(creds.get("onboarding") or {}),
+        "email_token": code,
+        "email_token_expires_at": expires_at.isoformat(),
+        "email_verification_attempts": 0,
+    }
+    user.set_jsonb("credentials", creds)
+
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        if "ix_users_email" in str(exc.orig):
+            raise ConflictError(
+                "Email is already registered", code="email_taken"
+            )
+        raise
+
+    await sync_recipient(session, user)
+    await record_audit(
+        session=session,
+        event="user.email_attached",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={},
+    )
+    await _request_verification_email(session, user.id, code, expires_at)
     return user
 
 
@@ -423,6 +502,41 @@ async def _require_current_password(user: User, password: str) -> None:
 # silently accepted.
 
 
+async def _require_no_active_products(user: User, session: AsyncSession) -> None:
+    """A company cannot deactivate itself during a sale.
+
+    "During a sale" means at least one of its products is ACTIVE.
+    Hidden and archived products do not count.
+
+    Raises:
+        ConflictError: code="company_has_active_products".
+    """
+    # Local imports: companies and products import the users module.
+    from sqlalchemy import func, select
+
+    from app.modules.companies.models import CompanyProfile
+    from app.modules.products.constants import ProductStatus
+    from app.modules.products.models import Product
+
+    active = (
+        await session.execute(
+            select(func.count())
+            .select_from(Product)
+            .join(CompanyProfile, CompanyProfile.id == Product.company_id)
+            .where(
+                CompanyProfile.user_id == user.id,
+                Product.status == ProductStatus.ACTIVE,
+            )
+        )
+    ).scalar_one()
+    if active:
+        raise ConflictError(
+            "A company cannot be deactivated while it has an active "
+            "product on sale. Hide or archive the product first.",
+            code="company_has_active_products",
+        )
+
+
 async def deactivate_own_account(
     user: User,
     current_password: str,
@@ -455,6 +569,8 @@ async def deactivate_own_account(
         raise BadRequestError("Staff accounts cannot be self-deactivated")
     if user.role == UserRole.PLATFORM:
         raise BadRequestError("Platform account cannot be self-deactivated")
+    if user.role == UserRole.COMPANY:
+        await _require_no_active_products(user, session)
 
     now = datetime.now(UTC)
     updated_creds = dict(user.credentials or {})

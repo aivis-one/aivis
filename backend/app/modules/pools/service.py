@@ -50,7 +50,8 @@
 #
 # CONSUMED:
 #   "Consumed" = SUM(Purchase.units) for all active purchases of the
-#   company, including gifts. Gifts consume the pool first; if pool
+#   company, including bonus gifts but not a staff-granted gift (given
+#   from the company's reserve). Bonus gifts consume the pool first; if pool
 #   runs out, gifts overflow into owner supply (pool_remaining < 0).
 #   See spec §3.5 - §3.7.
 #
@@ -83,7 +84,7 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select, text
+from sqlalchemy import String, cast, exists, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -98,6 +99,7 @@ from app.modules.installments.constants import (
     InstallmentTrancheStatus,
 )
 from app.modules.installments.models import InstallmentPlan, InstallmentTranche
+from app.modules.ledgers.models import ActiveLedger
 from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
 from app.modules.pools.schemas import CreatePoolRequest, UpdatePoolRequest
@@ -173,13 +175,22 @@ async def get_pool_consumed(
 ) -> int:
     """Sum of Purchase.units for active purchases of the company.
 
-    Includes gifts. See module docstring for rationale.
+    Includes bonus gifts. A staff-granted gift is NOT counted: it is given
+    from the company's reserve, not from the pool on sale. See module
+    docstring for rationale.
     """
+    # A staff gift is recognised by its own ledger entry, written once on
+    # the recipient's acceptance (engine.credit_pending_gift).
+    staff_grant = exists().where(
+        ActiveLedger.reason
+        == func.concat("gift:grant:company:", cast(Purchase.id, String))
+    )
     stmt = (
         select(func.coalesce(func.sum(Purchase.units), 0))
         .where(
             Purchase.company_id == company_id,
             Purchase.status == PurchaseStatus.ACTIVE,
+            ~staff_grant,
         )
     )
     result = await session.execute(stmt)

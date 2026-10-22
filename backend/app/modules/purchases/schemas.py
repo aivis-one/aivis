@@ -5,6 +5,7 @@
 # REQUEST SCHEMAS:
 #   CreatePurchaseRequest -- POST /api/v1/products/{id}/purchase
 #   StaffReversePurchaseRequest -- POST /staff/purchases/{id}/reverse (R-2.2)
+#   StaffGrantGiftRequest -- POST /staff/purchases/gifts
 #
 # RESPONSE SCHEMAS:
 #   PurchaseResponse      -- single purchase record
@@ -43,6 +44,21 @@ class StaffReversePurchaseRequest(BaseModel):
         max_length=500,
         description="Optional reason for the reversal",
     )
+
+
+class StaffGrantGiftRequest(BaseModel):
+    """Staff grants gift parts to a user.
+
+    The product names the project and the price snapshot the gift
+    certificate is rendered against. The recipient must have passed KYC.
+    Nothing is credited until the recipient accepts.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    product_id: UUID
+    units: int = Field(gt=0, le=1_000_000_000)
 
 
 # ---------------------------------------------------------------------------
@@ -85,3 +101,10 @@ class PurchaseReversalResponse(BaseModel):
     passive_entries_reversed: int
     units_returned: int
     affected_user_ids: list[UUID]
+
+
+class GiftListResponse(BaseModel):
+    """Gifts waiting for the caller's acceptance."""
+
+    items: list[PurchaseResponse]
+    total: int

@@ -22,6 +22,7 @@ import time
 import pytest
 from app.core.config import settings
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers import (
     auth_headers,
     build_init_data,
@@ -238,3 +239,120 @@ async def test_telegram_missing_init_data(client: AsyncClient) -> None:
         json={},
     )
     assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Entry without an e-mail
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_telegram_entry_skips_the_email_step(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A new Telegram user is an investor who is never sent to the e-mail
+    step: the first step is the documents step or, with nothing to sign,
+    the cabinet. The account has no confirmed e-mail."""
+    from sqlalchemy import select
+
+    from app.modules.documents.models import Document, DocumentStatus
+    from app.modules.users.models import User
+
+    data = await login_telegram(client, telegram_id=100010, first_name="NoMail")
+    assert data["user"]["role"] == "investor"
+
+    required = (
+        await db_session.execute(
+            select(Document.id).where(
+                Document.status == DocumentStatus.ACTIVE,
+                Document.required_for_roles.contains(["investor"]),
+            )
+        )
+    ).first()
+    expected = "role_selected" if required else "onboarding_complete"
+    assert data["user"]["onboarding_step"] == expected
+
+    import uuid
+
+    user = await db_session.get(User, uuid.UUID(data["user"]["id"]))
+    assert user.email is None
+    assert user.email_verified is False
+
+
+# ---------------------------------------------------------------------------
+# Adding an e-mail to a Telegram account
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_telegram_account_adds_and_confirms_an_email(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """POST /users/me/email stores the address unverified and issues a
+    code; /auth/verify-email with that code confirms it, which is what
+    identity verification asks for first."""
+    import uuid
+
+    from app.modules.users.models import User
+
+    data = await login_telegram(
+        client, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
+    )
+    token = data["session_token"]
+    address = f"tg_{uuid.uuid4().hex[:10]}@example.com"
+
+    resp = await client.post(
+        "/api/v1/users/me/email",
+        json={"email": address.upper()},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["email"] == address
+
+    user = await db_session.get(User, uuid.UUID(data["user"]["id"]))
+    await db_session.refresh(user)
+    assert user.email == address
+    assert user.email_verified is False
+    code = user.credentials["onboarding"]["email_token"]
+    assert len(code) == 6
+
+    # A second add on the same account is refused.
+    again = await client.post(
+        "/api/v1/users/me/email",
+        json={"email": f"other_{address}"},
+        headers=auth_headers(token),
+    )
+    assert again.status_code == 409, again.text
+    assert again.json()["error"] == "email_already_set"
+
+    verified = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"code": code},
+        headers=auth_headers(token),
+    )
+    assert verified.status_code == 200, verified.text
+    await db_session.refresh(user)
+    assert user.email_verified is True
+
+
+@pytest.mark.asyncio
+async def test_attach_email_refuses_an_address_of_another_account(
+    client: AsyncClient,
+) -> None:
+    import uuid
+
+    from tests.helpers import register_user
+
+    taken = await register_user(client)
+    taken_email = taken["user"]["email"]
+    data = await login_telegram(
+        client, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
+    )
+
+    resp = await client.post(
+        "/api/v1/users/me/email",
+        json={"email": taken_email},
+        headers=auth_headers(data["session_token"]),
+    )
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"] == "email_taken"

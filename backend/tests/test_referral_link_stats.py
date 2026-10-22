@@ -37,6 +37,8 @@ from app.modules.products.models import Product
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.referrals.models import ReferralAttribution, ReferralLink
+from app.modules.referrals.service import create_link
+from app.modules.users.models import User
 
 from tests.helpers import (
     auth_headers,
@@ -51,19 +53,16 @@ from tests.helpers import (
 
 
 async def _create_second_link(
-    client: AsyncClient, session: AsyncSession, token: str
+    session: AsyncSession, agent: User
 ) -> ReferralLink:
-    """Create one more link for the same agent via the real endpoint."""
-    resp = await client.post(
-        "/api/v1/referrals/links", headers=auth_headers(token)
-    )
-    assert resp.status_code == 201, resp.text
-    link_id = resp.json()["id"]
-    return (
-        await session.execute(
-            select(ReferralLink).where(ReferralLink.id == link_id)
-        )
-    ).scalar_one()
+    """A second link for the same agent, written by the service.
+
+    POST /referrals/links now returns the agent's one link instead of
+    issuing another, so data that holds several links (older agents)
+    is built here directly."""
+    link = await create_link(agent, session)
+    await session.commit()
+    return link
 
 
 async def _clear_email_auth_rate_limit() -> None:
@@ -159,7 +158,7 @@ async def test_links_me_counts_are_per_link(
     exactly its own clicks / registrations / purchases.
     """
     agent, token, link1 = await create_agent_with_link(client, db_session)
-    link2 = await _create_second_link(client, db_session, token)
+    link2 = await _create_second_link(db_session, agent)
 
     # link1: 3 clicks, 2 registrations, 2 purchases.
     await _set_clicks(db_session, link1, 3)
@@ -200,7 +199,7 @@ async def test_stats_me_totals_summed_across_links(
     own links only (a second agent's activity must not leak in).
     """
     _agent, token, link1 = await create_agent_with_link(client, db_session)
-    link2 = await _create_second_link(client, db_session, token)
+    link2 = await _create_second_link(db_session, _agent)
 
     await _set_clicks(db_session, link1, 5)
     await _set_clicks(db_session, link2, 2)
@@ -261,16 +260,83 @@ async def test_fresh_agent_reports_zeroes(
 async def test_create_link_response_contract(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """POST /links response carries the Block D fields, zeroed."""
-    _agent, token, _link = await create_agent_with_link(client, db_session)
+    """POST /links carries the Block D fields. The agent has one link
+    already (create_agent_with_link issued it), so the call returns that
+    link (200) and creates no second one."""
+    _agent, token, link = await create_agent_with_link(client, db_session)
 
     resp = await client.post(
         "/api/v1/referrals/links", headers=auth_headers(token)
     )
-    assert resp.status_code == 201, resp.text
+    assert resp.status_code == 200, resp.text
     body = resp.json()
+    assert body["id"] == str(link.id)
+    assert body["code"] == link.code
 
     assert body["is_active"] is True
     assert body["click_count"] == 0
     assert body["registration_count"] == 0
     assert body["purchase_count"] == 0
+
+
+async def test_link_refused_until_the_integrator_agreement_is_signed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An agent who has not signed the integrator agreement (agent_integrator_agreement) gets
+    403 agent_agreement_not_signed and no link; after signing, 201."""
+    from tests.helpers import sign_agent_agreement
+
+    # create_agent_with_link creates a link itself, so build the agent by hand.
+    from app.modules.users.models import User, UserRole
+
+    data = await register_user(client)
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+    user = (
+        await db_session.execute(select(User).where(User.id == user_id))
+    ).scalar_one()
+    user.role = UserRole.AGENT
+    await db_session.commit()
+
+    refused = await client.post(
+        "/api/v1/referrals/links", headers=auth_headers(token)
+    )
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["error"] == "agent_agreement_not_signed"
+    links = (
+        await db_session.execute(
+            select(ReferralLink).where(ReferralLink.agent_id == user_id)
+        )
+    ).scalars().all()
+    assert links == []
+
+    await sign_agent_agreement(user_id)
+    accepted = await client.post(
+        "/api/v1/referrals/links", headers=auth_headers(token)
+    )
+    assert accepted.status_code == 201, accepted.text
+
+
+async def test_an_agent_has_exactly_one_link(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The first POST issues the link (201); every later POST returns the
+    same link with its counters (200); only one row exists."""
+    agent, token, link = await create_agent_with_link(client, db_session)
+    await _set_clicks(db_session, link, 4)
+
+    for _ in range(2):
+        resp = await client.post(
+            "/api/v1/referrals/links", headers=auth_headers(token)
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["id"] == str(link.id)
+        assert body["click_count"] == 4
+
+    rows = (
+        await db_session.execute(
+            select(ReferralLink).where(ReferralLink.agent_id == agent.id)
+        )
+    ).scalars().all()
+    assert len(rows) == 1

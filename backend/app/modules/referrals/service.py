@@ -6,6 +6,7 @@
 #   resolve_referral_link()  -- code -> validated ReferralLink or None (Task 1 C)
 #   resolve_referral_code()  -- code -> agent_id or None (thin wrapper)
 #   create_link()            -- generate unique referral link for agent
+#   get_existing_link()      -- the agent's one link + counters, or None
 #   record_click()           -- atomic click_count increment by code (Task 1 B)
 #   get_agent_chain()        -- walk User.referred_by up to max_depth
 #   create_attribution()     -- record purchase-to-link mapping
@@ -140,6 +141,48 @@ async def validate_referral_link_id(
 # ---------------------------------------------------------------------------
 # Link management
 # ---------------------------------------------------------------------------
+
+
+async def get_existing_link(
+    agent: User,
+    session: AsyncSession,
+) -> tuple[ReferralLink, int, int] | None:
+    """The agent's one link with its counters, or None when there is none.
+
+    An agent has one link, issued once. The agent's user row is locked
+    first so two requests at the same moment cannot both find none and
+    both create one. If older data holds several links, the oldest is the
+    one returned.
+    """
+    await session.execute(
+        select(User.id).where(User.id == agent.id).with_for_update()
+    )
+    link = (
+        await session.execute(
+            select(ReferralLink)
+            .where(ReferralLink.agent_id == agent.id)
+            .order_by(ReferralLink.created_at.asc(), ReferralLink.id.asc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if link is None:
+        return None
+
+    registrations = (
+        await session.execute(
+            select(func.count())
+            .select_from(User)
+            .where(User.referred_by_link_id == link.id)
+        )
+    ).scalar_one()
+    purchases = (
+        await session.execute(
+            select(func.count())
+            .select_from(ReferralAttribution)
+            .where(ReferralAttribution.referral_link_id == link.id)
+        )
+    ).scalar_one()
+    return link, registrations, purchases
 
 
 async def create_link(

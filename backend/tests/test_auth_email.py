@@ -559,3 +559,47 @@ async def test_revoke_session_nonexistent_and_foreign_id_404(client: AsyncClient
     resp = await client.get("/api/v1/auth/sessions", headers=auth_headers(token_b))
     assert resp.status_code == 200
     assert len(resp.json()["items"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# No role card: confirming the e-mail ends the funnel
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_verify_email_completes_onboarding_without_role_card(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """After the e-mail code a new user is an investor and is never sent to
+    the role or profile steps: onboarding is complete when no document is
+    outstanding, and parked on the documents step (role_selected) when one is."""
+    from app.modules.documents.models import Document, DocumentStatus
+
+    data = await register_user(client, verified=True)
+    token = data["session_token"]
+    user = (
+        await db_session.execute(
+            select(User).where(User.id == uuid.UUID(data["user"]["id"]))
+        )
+    ).scalar_one()
+    code = user.credentials["onboarding"]["email_token"]
+
+    required = (
+        await db_session.execute(
+            select(Document.id).where(
+                Document.status == DocumentStatus.ACTIVE,
+                Document.required_for_roles.contains(["investor"]),
+            )
+        )
+    ).first()
+
+    resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"code": code},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["role"] == "investor"
+    expected = "role_selected" if required else "onboarding_complete"
+    assert body["onboarding_step"] == expected

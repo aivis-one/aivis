@@ -66,6 +66,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_reader, get_db_session
 from app.core.rate_limit import check_rate_limit
 from app.modules.auth.dependencies import get_current_user
+from app.core.exceptions import NotFoundError
 from app.modules.purchases.agreement_service import (
     load_agreement_data,
     render_agreement_html,
@@ -76,6 +77,7 @@ from app.modules.purchases.ownership_certificate_service import (
     render_ownership_html,
     request_ownership_email,
 )
+from app.modules.purchases.constants import PurchaseStatus
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -139,6 +141,10 @@ async def email_agreement(
     await check_rate_limit(f"agreement_email:{user.id}")
 
     data = await load_agreement_data(purchase_id, user.id, session)
+    if data.purchase.status != PurchaseStatus.ACTIVE:
+        # A gift not yet accepted can be read on screen but its
+        # certificate is not sent out until the parts are credited.
+        raise NotFoundError("Purchase not found")
     await request_agreement_email(data, session)
 
 

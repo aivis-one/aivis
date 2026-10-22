@@ -225,8 +225,47 @@ async def test_staff_queue_lists_pending(
         headers=auth_headers(admin_token),
     )
     assert resp.status_code == 200
-    ids = {row["id"] for row in resp.json()}
+    body = resp.json()
+    ids = {row["id"] for row in body["items"]}
     assert application_id in ids
+    assert body["total"] >= 1
+    assert body["page"] == 1
+    assert body["per_page"] == 20
+
+
+@pytest.mark.asyncio
+async def test_staff_queue_carries_the_applicant_and_pages(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Each queue row carries the applicant's name, e-mail and KYC status;
+    per_page=1 returns a single row while total counts all pending."""
+    user_id, token = await _investor(client)
+    _, other_token = await _investor(client)
+    _, admin_token = await create_admin_user(client, db_session)
+
+    submit = await _submit(client, token)
+    await _submit(client, other_token)
+    application_id = submit.json()["id"]
+
+    paged = await client.get(
+        "/api/v1/staff/agent-applications",
+        params={"page": 1, "per_page": 1},
+        headers=auth_headers(admin_token),
+    )
+    assert paged.status_code == 200
+    assert len(paged.json()["items"]) == 1
+    assert paged.json()["total"] >= 2
+
+    resp = await client.get(
+        "/api/v1/staff/agent-applications",
+        params={"per_page": 100},
+        headers=auth_headers(admin_token),
+    )
+    row = next(r for r in resp.json()["items"] if r["id"] == application_id)
+    user = await db_session.get(User, user_id)
+    assert row["applicant_email"] == user.email
+    assert row["applicant_name"]
+    assert row["applicant_kyc_status"] == user.kyc_status
 
 
 # ---------------------------------------------------------------------------

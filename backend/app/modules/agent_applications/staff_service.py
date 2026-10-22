@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
@@ -40,15 +40,32 @@ logger = structlog.get_logger()
 
 async def agent_application_queue(
     session: AsyncSession,
-) -> list[AgentApplication]:
-    """List all pending agent applications (oldest first)."""
+    *,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[tuple[AgentApplication, User]], int]:
+    """Pending agent applications, oldest first, one page of them.
+
+    Each row is the application together with its applicant's user row
+    (name, e-mail and KYC status are read from it). Returns
+    (rows, total pending).
+    """
+    pending = AgentApplication.status == AgentApplicationStatus.PENDING
+    total = (
+        await session.execute(
+            select(func.count()).select_from(AgentApplication).where(pending)
+        )
+    ).scalar_one()
     stmt = (
-        select(AgentApplication)
-        .where(AgentApplication.status == AgentApplicationStatus.PENDING)
-        .order_by(AgentApplication.created_at.asc())
+        select(AgentApplication, User)
+        .join(User, User.id == AgentApplication.user_id)
+        .where(pending)
+        .order_by(AgentApplication.created_at.asc(), AgentApplication.id.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    return [(a, u) for a, u in result.all()], total
 
 
 async def agent_application_approve(

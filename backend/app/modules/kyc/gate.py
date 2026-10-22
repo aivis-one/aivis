@@ -139,6 +139,9 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         # -- Profile, onboarding, settings -----------------------------
         ("PATCH", "/api/v1/users/me"),
         ("POST", "/api/v1/users/me/select-role"),
+        # An account without an e-mail (a Telegram sign-in) adds one: the
+        # step that lets it reach verification at all. Writes no money.
+        ("POST", "/api/v1/users/me/email"),
         ("POST", "/api/v1/users/me/deactivate"),
         ("POST", "/api/v1/documents/{document_id}/sign"),
         ("PATCH", "/api/v1/notifications/preferences"),
@@ -167,6 +170,12 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         # investor owns nothing, so these answer 404 for them.
         ("POST", "/api/v1/purchases/{purchase_id}/agreement/email"),
         ("POST", "/api/v1/companies/{company_id}/ownership-certificate/email"),
+        # -- A gift granted by staff ----------------------------
+        # Credits parts at zero price. Open here because the check is made
+        # in the service, at the grant and again at the acceptance
+        # (purchases/gift_service.grant_gift / accept_gift, code
+        # kyc_required), so a verification revoked in between still stops it.
+        ("POST", "/api/v1/purchases/{purchase_id}/accept-gift"),
         # -- Support ---------------------------------------------------
         ("POST", "/api/v1/support/threads"),
         ("POST", "/api/v1/support/threads/messages"),

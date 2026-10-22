@@ -38,11 +38,13 @@
 #                                 templates)
 #   public_products_router    -> /api/v1/public/products/* (iter 2.4 R1 §1.6.2)
 #   staff_products_router     -> /api/v1/staff/products/* (Sprint 4.2)
+#   company_products_router   -> /api/v1/company/products
 #   staff_pools_router        -> /api/v1/staff/companies/{id}/pool (Sprint 4.3)
 #   company_dashboard_router  -> /api/v1/company/* (Sprint 4.3 / B5)
 #   payments_router           -> /api/v1/payments/* (Sprint 5.1)
 #   staff_payments_router     -> /api/v1/staff/payments/* (Sprint 5.3)
 #   purchases_router          -> /api/v1/purchases/* (Sprint 6.1)
+#   gift_router               -> /api/v1/purchases/gifts/pending, /{id}/accept-gift
 #   staff_purchases_router    -> /api/v1/staff/purchases/* (R-2.2)
 #   installment_create_router -> /api/v1/installments/* (Sprint 6.2)
 #   installment_query_router  -> /api/v1/installments/* (Sprint 6.2)
@@ -202,6 +204,7 @@ from app.modules.posts.staff_router import staff_events_router, staff_posts_rout
 from app.modules.products.public_router import (
     router as public_products_router,
 )
+from app.modules.products.company_router import router as company_products_router
 from app.modules.products.staff_router import router as staff_products_router
 
 # Refactor 2 iter 2.4: agreement_router + ownership_router replace certificate_router.
@@ -213,6 +216,7 @@ from app.modules.purchases.agreement_router import (
 # H18 P-74: background sweep, not an inline call in engine.write_transactions --
 # see purchases/agreement_worker.py's own header for why.
 from app.modules.purchases.agreement_worker import run_agreement_snapshot_batch
+from app.modules.purchases.gift_router import router as gift_router
 from app.modules.purchases.router import router as purchases_router
 from app.modules.purchases.staff_router import router as staff_purchases_router
 from app.modules.referrals.public_router import router as referrals_public_router
@@ -576,6 +580,7 @@ app.include_router(staff_attachments_router)
 app.include_router(staff_templates_router)
 app.include_router(public_products_router)
 app.include_router(staff_products_router)
+app.include_router(company_products_router)
 # Sprint 4.3: pool admin endpoints (POST/PATCH /staff/companies/{id}/pool).
 app.include_router(staff_pools_router)
 # Sprint 4.3 / B5: company self-service dashboard + analytics.
@@ -583,6 +588,7 @@ app.include_router(company_dashboard_router)
 app.include_router(payments_router)
 app.include_router(staff_payments_router)
 app.include_router(purchases_router)
+app.include_router(gift_router)
 app.include_router(staff_purchases_router)
 app.include_router(installment_create_router)
 app.include_router(installment_query_router)

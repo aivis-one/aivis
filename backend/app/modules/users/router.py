@@ -6,6 +6,8 @@
 #   GET   /api/v1/users/me                -- Get current user profile
 #   PATCH /api/v1/users/me                -- Update current user profile
 #   POST  /api/v1/users/me/select-role    -- Select role during onboarding (F2.3)
+#   POST  /api/v1/users/me/email          -- Add an e-mail to an account that
+#                                             has none (code by e-mail)
 #   GET   /api/v1/users/me/payout-details -- Get payout details (Sprint 6.3)
 #   PUT   /api/v1/users/me/payout-details -- Set payout details (Sprint 6.3)
 #   POST  /api/v1/users/me/deactivate     -- Self-deactivate (TASK-38,
@@ -36,6 +38,7 @@ from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.users.models import User
 from app.modules.users.schemas import (
+    AttachEmailRequest,
     DeactivateAccountRequest,
     PayoutDetailsResponse,
     SelectRoleRequest,
@@ -44,6 +47,7 @@ from app.modules.users.schemas import (
     UserUpdate,
 )
 from app.modules.users.service import (
+    attach_email_to_account,
     build_user_response,
     deactivate_own_account,
     select_role,
@@ -136,6 +140,31 @@ async def select_role_endpoint(
     surface consistency.
     """
     updated = await select_role(user, body.role, session)
+    return await build_user_response(updated, session)
+
+
+# ---------------------------------------------------------------------------
+# Adding an e-mail (an account that signed in without one)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/me/email",
+    response_model=UserResponse,
+    dependencies=[Depends(forbid_avatar("update_profile"))],
+)
+async def attach_email_endpoint(
+    body: AttachEmailRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    """A Telegram-only account adds an e-mail.
+
+    The address is stored unverified, the code goes out as at
+    registration, and POST /auth/verify-email confirms it. Verification
+    (KYC) needs a confirmed e-mail.
+    """
+    updated = await attach_email_to_account(user, body.email, session)
     return await build_user_response(updated, session)
 
 

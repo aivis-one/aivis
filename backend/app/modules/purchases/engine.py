@@ -72,6 +72,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.comms import comms_configured
+from app.core.constants import LedgerReason
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import InsufficientBalanceError
 from app.modules.commissions.service import COMMISSION_REASON_RE
@@ -446,4 +447,88 @@ async def write_transactions(
 
         purchases.append(purchase)
 
+    # A bonus row carries the id of the sale (or tranche) it came from, so
+    # the sale's agreement can list its own bonus parts (migration 0056).
+    # Only a batch that holds a sale has a source: the instalment completion
+    # bonus is written alone and keeps NULL.
+    source = next(
+        (p for p in purchases if p.legal_basis != PurchaseLegalBasis.GIFT),
+        None,
+    )
+    if source is not None:
+        for purchase in purchases:
+            if purchase.legal_basis == PurchaseLegalBasis.GIFT:
+                purchase.source_purchase_id = source.id
+        await session.flush()
+
     return purchases
+
+
+async def credit_pending_gift(
+    session: AsyncSession,
+    purchase: Purchase,
+    *,
+    company_user_id: UUID,
+) -> Purchase:
+    """Credit a staff-granted gift on the recipient's acceptance.
+
+    The purchase was stored in PENDING_ACCEPTANCE and credited nothing. This
+    writes what write_transactions writes for any gift -- the zero-amount
+    active entry for the recipient and the zero-amount passive entry for the
+    funder (the company, from its reserve), the transaction-log row -- and
+    only then flips the row to ACTIVE, which is also what makes its units
+    count against the pool and in the portfolio.
+
+    The caller has already checked ownership and status. Does not commit.
+    """
+    reason = LedgerReason.GIFT.format(
+        type="grant:company", reference_id=str(purchase.id)
+    )
+    await record_active_ledger(
+        session,
+        user_id=purchase.investor_id,
+        amount_cents=0,
+        status=LedgerStatus.CONFIRMED,
+        reason=reason,
+    )
+    await record_passive_ledger(
+        session,
+        user_id=company_user_id,
+        amount_cents=0,
+        status=LedgerStatus.CONFIRMED,
+        reason=reason,
+    )
+
+    purchase.status = PurchaseStatus.ACTIVE
+    await session.flush()
+
+    await record_transaction(
+        session,
+        user_id=purchase.investor_id,
+        type=TransactionType.PURCHASE_GIFT,
+        amount_cents=0,
+        reference_id=purchase.id,
+        reference_type=ReferenceType.PURCHASE,
+        details={
+            "product_id": str(purchase.product_id),
+            "company_id": str(purchase.company_id),
+            "units": purchase.units,
+            "price_per_unit_cents": purchase.price_per_unit_cents,
+            "legal_basis": purchase.legal_basis,
+        },
+    )
+
+    await record_audit(
+        session=session,
+        event="purchase.gift_accepted",
+        actor_id=purchase.investor_id,
+        actor_type="user",
+        target_type="purchase",
+        target_id=purchase.id,
+        data={
+            "product_id": str(purchase.product_id),
+            "company_id": str(purchase.company_id),
+            "units": purchase.units,
+        },
+    )
+    return purchase

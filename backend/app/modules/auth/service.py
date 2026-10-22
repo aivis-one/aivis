@@ -154,6 +154,7 @@ from app.core.exceptions import (
     UnauthorizedError,
 )
 from app.core.redis import get_redis
+from app.modules.documents.service import maybe_complete_onboarding
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
 logger = structlog.get_logger()
@@ -810,6 +811,13 @@ async def verify_email_code(
         user.onboarding_step = OnboardingStep.EMAIL_VERIFIED
 
     await session.flush()
+
+    # No role card and no profile screen: a new
+    # user is an investor from the first entry, so confirming the e-mail
+    # finishes onboarding when the required documents are signed already
+    # (they are signed on the registration screen) and otherwise parks the
+    # user on the documents step.
+    await maybe_complete_onboarding(user.id, session)
     await session.refresh(user)
 
     await record_audit(
@@ -1366,7 +1374,17 @@ async def upsert_telegram_user(
         updated_creds["telegram"] = telegram_creds
         user.set_jsonb("credentials", updated_creds)
 
+        # A Telegram-only user born before the e-mail step was dropped
+        # for Telegram sits on REGISTERED with no e-mail to confirm: lift
+        # such a user onto the documents step.
+        if (
+            user.onboarding_step == OnboardingStep.REGISTERED
+            and not (user.credentials or {}).get("email")
+        ):
+            user.onboarding_step = OnboardingStep.ROLE_SELECTED
+
         await session.flush()
+        await maybe_complete_onboarding(user.id, session)
         # Reload expired attrs (updated_at) after set_jsonb + flush.
         await session.refresh(user)
 
@@ -1405,6 +1423,12 @@ async def upsert_telegram_user(
         referred_by_link_id=referred_by_link_id,
         credentials={"telegram": telegram_creds},
         language=lang,
+        # A Telegram entry has no e-mail and no e-mail step:
+        # the first data comes from Telegram, so the user starts on the
+        # documents step. maybe_complete_onboarding below finishes it when
+        # there is nothing left to sign. The e-mail is asked for later, as
+        # KYC's first condition (kyc_email_not_verified).
+        onboarding_step=OnboardingStep.ROLE_SELECTED,
     )
 
     try:
@@ -1448,6 +1472,7 @@ async def upsert_telegram_user(
             return user, False
         raise
 
+    await maybe_complete_onboarding(new_user.id, session)
     await session.refresh(new_user)
 
     # Same rule as the e-mail path: comms learns the recipient before

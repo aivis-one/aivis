@@ -17,8 +17,9 @@
 # Sprint 4.3 NOTE (semantics):
 #   `total_options_sold` reports paid-acquisition units only -- both
 #   instant SALE and INSTALLMENT_TRANCHE (Sprint 4.6 hotfix). It does
-#   NOT include GIFT units, while pool.consumed includes everything.
-#   So `consumed - total_options_sold = gift units issued` is the
+#   NOT include GIFT units, while pool.consumed includes every active purchase except staff gifts.
+#   So `consumed - total_options_sold = bonus gift units issued` (staff
+#   gifts, given from the reserve, are not in consumed) is the
 #   intended interpretation, and it remains true after the hotfix.
 #
 # Sprint 4.4 CHANGES:

@@ -5,6 +5,13 @@
 # PURCHASE STATUS:
 #   active   -- normal purchase record
 #   reversed -- chargeback processed, mirror entries created
+#   pending_acceptance -- a gift granted by staff that the recipient has not
+#                         accepted yet. Credits nothing: no ledger
+#                         entry, no pool consumption, not in any portfolio
+#                         figure until it becomes active.
+#   cancelled -- a pending gift that staff closed before the recipient
+#                accepted it. Credits nothing, has no ledger entry, and is
+#                not a reversal of real money.
 #
 # LEGAL BASIS:
 #   sale                -- paid purchase (units * price)
@@ -20,6 +27,8 @@ class PurchaseStatus(enum.StrEnum):
 
     ACTIVE = "active"
     REVERSED = "reversed"
+    PENDING_ACCEPTANCE = "pending_acceptance"
+    CANCELLED = "cancelled"
 
 
 class PurchaseLegalBasis(enum.StrEnum):

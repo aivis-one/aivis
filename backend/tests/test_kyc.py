@@ -72,6 +72,7 @@ from app.modules.transactions.models import Transaction
 from app.modules.users.models import KYCStatus, User
 from tests.helpers import (
     auth_headers,
+    confirm_email,
     create_admin_user,
     fund_user,
     register_user,
@@ -1104,3 +1105,63 @@ async def test_two_decisions_on_one_application_serialise(
     assert [n["idempotency_key"] for n in notifications] == [
         f"kyc-decision:{application_id}:{KYCStatus.APPROVED}"
     ]
+
+
+@pytest.mark.asyncio
+async def test_status_carries_the_rejection_reason(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """GET /kyc/status shows the reason of the rejection (read from the
+    audit log) while the user is rejected, and none before or after."""
+    _, staff_token = await create_admin_user(client, db_session)
+    token, user_id = await _unverified_investor(client)
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+
+    before = await client.get("/api/v1/kyc/status", headers=auth_headers(token))
+    assert before.json()["rejection_reason"] is None
+
+    submit = await submit_kyc_application(client, token)
+    reject = await client.post(
+        f"/api/v1/staff/kyc/{submit.json()['id']}/reject",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert reject.status_code == 204, reject.text
+
+    rejected = await client.get("/api/v1/kyc/status", headers=auth_headers(token))
+    assert rejected.json()["kyc_status"] == "rejected"
+    assert rejected.json()["rejection_reason"] == REASON
+
+    approve = await client.post(
+        f"/api/v1/staff/kyc/users/{user_id}/approve",
+        json={"reason": REASON},
+        headers=auth_headers(staff_token),
+    )
+    assert approve.status_code == 204, approve.text
+    after = await client.get("/api/v1/kyc/status", headers=auth_headers(token))
+    assert after.json()["rejection_reason"] is None
+
+
+@pytest.mark.asyncio
+async def test_submit_requires_a_confirmed_email(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The confirmed e-mail is KYC's first condition: an account whose
+    address was never confirmed is refused before anything is charged,
+    and is accepted once the address is confirmed."""
+    data = await register_user(client, verified=False, email_confirmed=False)
+    token = data["session_token"]
+    user_id = UUID(data["user"]["id"])
+    await fund_user(user_id, KYC_VERIFICATION_FEE_CENTS)
+
+    refused = await submit_kyc_application(client, token)
+    assert refused.status_code == 400
+    assert refused.json()["error"] == "kyc_email_not_verified"
+    balance = await get_active_balance(db_session, user_id)
+    assert int(balance["frozen"]) + int(balance["confirmed"]) == (
+        KYC_VERIFICATION_FEE_CENTS
+    )
+
+    await confirm_email(user_id)
+    accepted = await submit_kyc_application(client, token)
+    assert accepted.status_code == 201, accepted.text

@@ -28,6 +28,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_session_factory
+from app.modules.documents.constants import AGENT_INTEGRATOR_AGREEMENT_TYPE
+from app.modules.documents.models import Document, DocumentSigning, DocumentStatus
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import record_active_ledger
 from app.modules.referrals.models import ReferralLink
@@ -131,6 +133,7 @@ async def register_user(
     password: str = "Password123!",
     referral_code: str | None = None,
     verified: bool = True,
+    email_confirmed: bool | None = None,
 ) -> dict:
     """POST /api/v1/auth/email/register and assert 201. Returns the
     response body (contains session_token and user details).
@@ -170,7 +173,36 @@ async def register_user(
     if verified:
         await set_kyc_status(body["user"]["id"], KYCStatus.APPROVED)
 
+    # THE CONFIRMED E-MAIL IS KYC'S FIRST CONDITION.
+    # A user registered with verified=False is the one a test is about to
+    # send through POST /kyc/submit, so by default that user's e-mail is
+    # confirmed; every other user keeps the unconfirmed address the real
+    # registration leaves (the e-mail tests rely on it). Pass
+    # email_confirmed explicitly to build the other combination.
+    if email_confirmed is None:
+        email_confirmed = not verified
+    if email_confirmed:
+        await confirm_email(body["user"]["id"])
+
     return body
+
+
+async def confirm_email(user_id: str | uuid.UUID) -> None:
+    """Mark a user's e-mail as confirmed, in its own transaction.
+
+    The same JSONB flag the verification endpoint writes
+    (credentials.email.verified); the code round trip is skipped.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        user = (
+            await session.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+        ).scalar_one()
+        creds = dict(user.credentials)
+        creds["email"] = dict(creds["email"])
+        creds["email"]["verified"] = True
+        user.set_jsonb("credentials", creds)
+        await session.commit()
 
 
 async def set_kyc_status(user_id: str | uuid.UUID, status: str) -> None:
@@ -392,9 +424,64 @@ async def create_admin_user(
 # ---------------------------------------------------------------------------
 
 
+async def sign_agent_agreement(user_id: str | uuid.UUID) -> None:
+    """Record a signing of the integrator-agent agreement.
+
+    POST /referrals/links is refused until a document of type
+    agent_integrator_agreement is signed. The cabinet documents are data
+    seeded from files, so the test database may not hold the type: this
+    creates an active row for it when absent (required for no role, so no
+    onboarding is affected), then writes the signing. Idempotent.
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        uid = uuid.UUID(str(user_id))
+        document = (
+            await session.execute(
+                select(Document).where(
+                    Document.type == AGENT_INTEGRATOR_AGREEMENT_TYPE,
+                    Document.status == DocumentStatus.ACTIVE,
+                )
+            )
+        ).scalars().first()
+        if document is None:
+            document = Document(
+                type=AGENT_INTEGRATOR_AGREEMENT_TYPE,
+                version=1,
+                language="en",
+                title="Integrator agreement (test)",
+                required_for_roles=[],
+                content_hash="",
+                status=DocumentStatus.ACTIVE,
+                created_by=uid,
+            )
+            session.add(document)
+            await session.flush()
+        already = (
+            await session.execute(
+                select(DocumentSigning.id).where(
+                    DocumentSigning.user_id == uid,
+                    DocumentSigning.document_id == document.id,
+                )
+            )
+        ).first()
+        if already is None:
+            session.add(
+                DocumentSigning(
+                    user_id=uid,
+                    document_id=document.id,
+                    ip_address="127.0.0.1",
+                    user_agent="tests",
+                )
+            )
+        await session.commit()
+
+
 async def create_agent_with_link(
     client: AsyncClient,
     session: AsyncSession,
+    *,
+    sign_agreement: bool = True,
 ) -> tuple[User, str, ReferralLink]:
     """Register a user, promote to agent, create one referral link.
 
@@ -417,6 +504,10 @@ async def create_agent_with_link(
     ).scalar_one()
     user.role = UserRole.AGENT
     await session.commit()
+
+    # The link is refused until the integrator agreement is signed.
+    if sign_agreement:
+        await sign_agent_agreement(user.id)
 
     resp = await client.post(
         "/api/v1/referrals/links", headers=auth_headers(token)

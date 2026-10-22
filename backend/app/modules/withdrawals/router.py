@@ -7,8 +7,9 @@
 #   GET  /api/v1/withdrawals/me -- list my withdrawals
 #
 # AUTH:
-#   All endpoints require authenticated user with any role
-#   (withdrawal is available to any User with confirmed passive balance).
+#   All endpoints require an authenticated user. Creating a withdrawal is
+#   open to the agent and company roles only; an investor is refused (403,
+#   code withdrawal_role_not_allowed). Listing one's own history stays open.
 #   Creation is blocked in avatar mode (R49, forbid_avatar).
 #
 # COMMIT RULE (P-01):
@@ -22,9 +23,10 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.exceptions import ForbiddenError
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
-from app.modules.users.models import User
+from app.modules.users.models import User, UserRole
 from app.modules.withdrawals.schemas import (
     CreateWithdrawalRequest,
     WithdrawalListResponse,
@@ -33,6 +35,10 @@ from app.modules.withdrawals.schemas import (
 from app.modules.withdrawals.service import create_withdrawal, get_my_withdrawals
 
 logger = structlog.get_logger()
+
+# Roles that may ask for a withdrawal. Passive balance is earned by agents
+# (commissions) and companies (sales); an investor is refused.
+WITHDRAWAL_ROLES = frozenset({UserRole.AGENT, UserRole.COMPANY})
 
 router = APIRouter(prefix="/api/v1/withdrawals", tags=["withdrawals"])
 
@@ -52,8 +58,13 @@ async def create_withdrawal_endpoint(
     """Create a withdrawal request.
 
     Debits passive_ledger immediately. Only one active withdrawal
-    per user is allowed.
+    per user is allowed. Agent and company roles only.
     """
+    if user.role not in WITHDRAWAL_ROLES:
+        raise ForbiddenError(
+            "Withdrawals are available to agent and company accounts only",
+            code="withdrawal_role_not_allowed",
+        )
     withdrawal = await create_withdrawal(user, body.amount_cents, session)
     return WithdrawalResponse.model_validate(withdrawal)
 

@@ -254,6 +254,16 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         return (self.credentials or {}).get("email", {}).get("email")
 
     @property
+    def email_verified(self) -> bool:
+        """True when the account has an e-mail and its code was confirmed.
+
+        Read from credentials.email.verified (JSONB); there is no column.
+        False for a Telegram-only user, who has no e-mail at all.
+        """
+        email_creds = (self.credentials or {}).get("email") or {}
+        return bool(email_creds.get("email")) and email_creds.get("verified") is True
+
+    @property
     def two_factor_enabled(self) -> bool:
         """Whether TOTP 2FA is active (TASK-38).
 

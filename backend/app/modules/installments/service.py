@@ -136,7 +136,8 @@ async def create_plan(
     # -- KYC guard (TD-038) --
     if investor.kyc_status != KYCStatus.APPROVED:
         raise BadRequestError(
-            "KYC verification required before installment purchase"
+            "KYC verification required before installment purchase",
+            code="kyc_required",
         )
 
     # -- 1. Load Product (must be active for new plans) --
@@ -150,7 +151,8 @@ async def create_plan(
 
     if template.product_id != product.id:
         raise BadRequestError(
-            "Installment template does not belong to this product"
+            "Installment template does not belong to this product",
+            code="installment_template_mismatch",
         )
 
     # -- 4. Snapshot plan_config --
@@ -177,7 +179,8 @@ async def create_plan(
     available_cents = balance["frozen"] + balance["confirmed"]
     if available_cents < first_tranche_cents:
         raise BadRequestError(
-            "Insufficient balance for the first installment tranche"
+            "Insufficient balance for the first installment tranche",
+            code="insufficient_balance",
         )
 
     # -- 4b. Pool capacity check + reservation (R51, boss decision (a)) --
@@ -195,7 +198,8 @@ async def create_plan(
     if pool_remaining < total_units:
         raise BadRequestError(
             f"Insufficient pool capacity: {max(0, pool_remaining)} options "
-            f"remaining, installment plan requires {total_units}"
+            f"remaining, installment plan requires {total_units}",
+            code="insufficient_pool_capacity",
         )
 
     # -- 5. Create InstallmentPlan --
@@ -298,7 +302,8 @@ async def create_plan(
         # tranche to OVERDUE; rolling back the whole create_plan via
         # BadRequestError is cleaner than leaving an orphan plan.
         raise BadRequestError(
-            "Insufficient balance for the first installment tranche"
+            "Insufficient balance for the first installment tranche",
+            code="insufficient_balance",
         )
 
     return plan
@@ -845,7 +850,8 @@ async def _load_product_active(
 
     if product.status != "active":
         raise BadRequestError(
-            f"Product is not available for purchase (status={product.status})"
+            f"Product is not available for purchase (status={product.status})",
+            code="product_not_available",
         )
 
     return product
@@ -864,7 +870,8 @@ async def _load_company_active(
 
     if company.status != "active":
         raise BadRequestError(
-            f"Company is not active (status={company.status})"
+            f"Company is not active (status={company.status})",
+            code="company_not_active",
         )
 
     return company

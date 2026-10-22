@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.modules.staff.schemas import StaffProfileResponse
 
@@ -105,6 +105,12 @@ class UserUpdate(BaseModel):
 # (not just by hiding the UI cards) so a direct API call can't recreate
 # either bug.
 _SELECTABLE_ROLES = {"investor"}
+
+
+class AttachEmailRequest(BaseModel):
+    """POST /api/v1/users/me/email -- an account without an e-mail adds one."""
+
+    email: EmailStr = Field(..., description="E-mail address to add")
 
 
 class SelectRoleRequest(BaseModel):

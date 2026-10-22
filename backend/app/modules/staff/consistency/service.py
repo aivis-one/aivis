@@ -144,7 +144,16 @@ async def s_02(session: AsyncSession) -> SemaphoreResult:
     extra, and matching it by the "purchase:%" prefix broke the parity
     on every spent-deposit reversal.
     """
-    purchase_count_stmt = select(func.count()).select_from(Purchase)
+    # A gift waiting for acceptance, or cancelled by staff before it,
+    # has no ledger entry: it is
+    # not a purchase of this pairing (a cancelled one never becomes one).
+    purchase_count_stmt = (
+        select(func.count())
+        .select_from(Purchase)
+        .where(
+            Purchase.status.notin_(("pending_acceptance", "cancelled"))
+        )
+    )
     purchase_count = (await session.execute(purchase_count_stmt)).scalar_one()
 
     # Active ledger entries linked to purchases via reason prefix.

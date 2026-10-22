@@ -50,6 +50,10 @@ class KYCStatusResponse(BaseModel):
     kyc_status: str
     application_id: UUID | None = None
     application_status: str | None = None
+    # Why the last decision was a rejection. Read from the audit log
+    # (kyc/service.py: reasons live there, not on the model); null unless
+    # kyc_status is "rejected".
+    rejection_reason: str | None = None
     fee_cents: int
     available_cents: int
 

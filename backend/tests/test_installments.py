@@ -439,13 +439,17 @@ async def test_create_plan_product_not_active(
     _, inv_id = await _create_investor_with_balance(client, db_session)
     inv_user = await db_session.get(User, inv_id)
 
-    with pytest.raises(BadRequestError, match="not available for purchase"):
+    with pytest.raises(
+        BadRequestError, match="not available for purchase"
+    ) as excinfo:
         await create_plan(
             product_id=UUID(product["id"]),
             product_installment_id=UUID(template["id"]),
             investor=inv_user,
             session=db_session,
         )
+    # Machine-readable code for the client.
+    assert excinfo.value.code == "product_not_available"
 
 
 @pytest.mark.asyncio

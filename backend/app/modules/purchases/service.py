@@ -84,7 +84,7 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
@@ -167,7 +167,7 @@ async def get_available_packages_map(
     Algorithm:
       1. Fetch all active pools for the given company_ids (single SELECT).
       2. Fetch consumed = SUM(Purchase.units) per company_id for active
-         purchases, including gifts (single SELECT).
+         purchases, bonus gifts included and staff gifts not (single SELECT).
       3. Fetch package_size for each product_id (single SELECT).
       4. For each product:
             pool = pools[product.company_id]
@@ -200,7 +200,8 @@ async def get_available_packages_map(
         # should still render.
         pools_by_company.setdefault(pool.company_id, pool)
 
-    # 2. Consumed per company (all active purchases, gifts included).
+    # 2. Consumed per company (active purchases, bonus gifts included,
+    #    staff gifts not).
     consumed_stmt = (
         select(
             Purchase.company_id,
@@ -209,6 +210,11 @@ async def get_available_packages_map(
         .where(
             Purchase.company_id.in_(company_ids),
             Purchase.status == PurchaseStatus.ACTIVE,
+            # a staff gift (D-10) is given from the reserve, as get_pool_consumed
+            ~exists().where(
+                ActiveLedger.reason
+                == func.concat("gift:grant:company:", cast(Purchase.id, String))
+            ),
         )
         .group_by(Purchase.company_id)
     )
@@ -302,7 +308,8 @@ async def _load_product(
 
     if product.status != ProductStatus.ACTIVE:
         raise BadRequestError(
-            f"Product is not available for purchase (status={product.status})"
+            f"Product is not available for purchase (status={product.status})",
+            code="product_not_available",
         )
 
     return product
@@ -321,7 +328,8 @@ async def _load_company(
 
     if company.status != CompanyStatus.ACTIVE:
         raise BadRequestError(
-            f"Company is not active (status={company.status})"
+            f"Company is not active (status={company.status})",
+            code="company_not_active",
         )
 
     return company
@@ -402,7 +410,8 @@ async def execute_purchase(
     # -- 0. KYC guard (TD-038) --
     if investor.kyc_status != KYCStatus.APPROVED:
         raise BadRequestError(
-            "KYC verification required before purchase"
+            "KYC verification required before purchase",
+            code="kyc_required",
         )
 
     # -- 1. Load Product (must be active) --
@@ -431,7 +440,8 @@ async def execute_purchase(
     if pool_remaining < product.package_size:
         raise BadRequestError(
             f"Sold out: pool has {max(0, pool_remaining)} options remaining, "
-            f"package requires {product.package_size}"
+            f"package requires {product.package_size}",
+            code="sold_out",
         )
 
     # -- 5. Compute frozen context --

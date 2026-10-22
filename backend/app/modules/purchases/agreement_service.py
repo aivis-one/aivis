@@ -77,7 +77,7 @@ from datetime import datetime, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
@@ -89,7 +89,7 @@ from app.modules.companies.service import (
     make_asset_data_uri_func,
 )
 from app.modules.products.models import Product
-from app.modules.purchases.constants import PurchaseStatus
+from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.document_utils import (
     build_document_environment,
     documents_link,
@@ -151,7 +151,8 @@ async def load_agreement_data(
 
     Raises:
         NotFoundError: Purchase not found, not owned by user, or not
-            in ACTIVE status (reversed agreements aren't surfaced).
+            in ACTIVE status (reversed agreements aren't surfaced; a gift
+            pending acceptance is).
         TemplateMissingError: Purchase exists but template_id is NULL.
     """
     stmt = (
@@ -166,7 +167,16 @@ async def load_agreement_data(
         .where(
             Purchase.id == purchase_id,
             Purchase.investor_id == user_id,
-            Purchase.status == PurchaseStatus.ACTIVE,
+            # A gift waiting for acceptance has its certificate
+            # readable by its recipient before he accepts; every other
+            # purchase needs to be ACTIVE.
+            or_(
+                Purchase.status == PurchaseStatus.ACTIVE,
+                and_(
+                    Purchase.status == PurchaseStatus.PENDING_ACCEPTANCE,
+                    Purchase.legal_basis == PurchaseLegalBasis.GIFT,
+                ),
+            ),
         )
     )
 

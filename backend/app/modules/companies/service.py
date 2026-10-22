@@ -215,6 +215,7 @@ from app.modules.companies.schemas import (
     UpdateOwnCompanyRequest,
 )
 from app.modules.posts.models import Post
+from app.modules.products.constants import ProductStatus
 from app.modules.products.models import Product
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
@@ -477,6 +478,8 @@ async def update_company(
     Raises:
         NotFoundError: If company not found.
         BadRequestError: If distribution_config invalid or status transition invalid.
+        ConflictError: ACTIVE -> HIDDEN while a product is ACTIVE
+            (code company_has_active_products).
     """
     profile = await get_company(company_id, session)
 
@@ -494,6 +497,11 @@ async def update_company(
             raise BadRequestError(
                 f"Cannot transition from '{profile.status}' to '{new_status}'"
             )
+        if (
+            profile.status == CompanyStatus.ACTIVE
+            and new_status == CompanyStatus.HIDDEN
+        ):
+            await _require_no_active_products_to_hide(profile, session)
         profile.status = new_status
 
     # -- distribution_config --
@@ -528,6 +536,37 @@ async def update_company(
     )
 
     return profile
+
+
+async def _require_no_active_products_to_hide(
+    profile: CompanyProfile, session: AsyncSession
+) -> None:
+    """Refuse hiding a project while a sale is running.
+
+    A sale is running when at least one of the project's products is ACTIVE
+    (the same refusal as deactivating the company's account,
+    users/service._require_no_active_products). Binds the project's own
+    PATCH and the staff update alike.
+
+    Raises:
+        ConflictError: code company_has_active_products.
+    """
+    active_products = (
+        await session.execute(
+            select(func.count())
+            .select_from(Product)
+            .where(
+                Product.company_id == profile.id,
+                Product.status == ProductStatus.ACTIVE,
+            )
+        )
+    ).scalar_one()
+    if active_products:
+        raise ConflictError(
+            "A project cannot be hidden while it has an active "
+            "product on sale. Hide or archive the product first.",
+            code="company_has_active_products",
+        )
 
 
 async def _apply_price_change(
@@ -711,6 +750,7 @@ async def update_own_company(
                 f"'{CompanyStatus.ACTIVE.value}') and archiving are "
                 f"staff-only actions."
             )
+        await _require_no_active_products_to_hide(profile, session)
         changes["status"] = {"old": profile.status, "new": requested_status}
         profile.status = requested_status
 

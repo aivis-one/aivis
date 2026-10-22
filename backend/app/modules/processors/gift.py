@@ -11,6 +11,8 @@
 # BONUS CONDITIONS:
 #   "always"              -- unconditional bonus on every purchase
 #   "portfolio_size_gte"  -- investor's total paid_cents >= threshold
+#   "purchase_amount_gte" -- the amount of this purchase alone >= threshold
+#                            (the portfolio does not count)
 #
 # FUNDED_BY:
 #   "company"  -- bonus units deducted from company's passive_ledger
@@ -136,6 +138,10 @@ class GiftProcessor:
             # Portfolio includes current purchase.
             total = self._portfolio_cents + context.amount_cents
             return total >= threshold
+
+        if condition == "purchase_amount_gte":
+            # This purchase alone, not the portfolio.
+            return context.amount_cents >= bonus.get("threshold_cents", 0)
 
         # Unknown condition -- skip (defensive).
         return False
