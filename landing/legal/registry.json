@@ -12,7 +12,7 @@
     {"id": "buyer_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Buyer Agreement", "ru": "Договор покупателя"}, "edition": 1, "date": "2026-10-23"},
     {"id": "pre_purchase_disclosure", "scope": "cabinet", "roles": [], "title": {"en": "Pre-Purchase Disclosure Sheet", "ru": "Лист раскрытия перед покупкой"}, "edition": 1, "date": "2026-10-23"},
     {"id": "agent_integrator_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Agent-Integrator Agreement", "ru": "Договор агента-интегратора"}, "edition": 1, "date": "2026-10-23"},
-    {"id": "aml_policy", "scope": "cabinet", "roles": ["staff"], "title": {"en": "AML and Screening Policy", "ru": "Политика по противодействию отмыванию денег и проверке (AML)"}, "edition": 2, "date": "2026-10-23"},
+    {"id": "aml_policy", "scope": "cabinet", "roles": [], "title": {"en": "AML and Screening Policy", "ru": "Политика по противодействию отмыванию денег и проверке (AML)"}, "edition": 2, "date": "2026-10-23"},
     {"id": "company_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Company Agreement", "ru": "Договор компании"}, "edition": 1, "date": "2026-10-23"},
     {"id": "kyc_notice", "scope": "cabinet", "roles": [], "title": {"en": "Identity Verification (KYC) Notice", "ru": "Уведомление о проверке личности (KYC)"}, "edition": 2, "date": "2026-10-23"},
     {"id": "index_rules", "scope": "cabinet", "roles": [], "title": {"en": "Index Rules", "ru": "Правила индекса"}, "edition": 1, "date": "2026-10-23"},
