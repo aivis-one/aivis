@@ -476,8 +476,8 @@ async def credit_pending_gift(
     writes what write_transactions writes for any gift -- the zero-amount
     active entry for the recipient and the zero-amount passive entry for the
     funder (the company, from its reserve), the transaction-log row -- and
-    only then flips the row to ACTIVE, which is also what makes its units
-    count against the pool and in the portfolio.
+    only then flips the row to ACTIVE, which is what makes its units count
+    in the portfolio (a staff gift comes from the reserve and never counts against the sale pool).
 
     The caller has already checked ownership and status. Does not commit.
     """
