@@ -18,7 +18,7 @@ landing/legal/
     imprint/imprint.{en,ru}.md      company details         -> /about/imprint/, /ru/about/imprint/
     cookies/cookies.{en,ru}.md      cookie and local storage notice -> /about/cookies/, /ru/about/cookies/
     licence/licence.{en,ru}.md      course licence          -> /about/licence/, /ru/about/licence/
-  cabinet/                          the documents of the cabinet (none yet; README.md says what goes there)
+  cabinet/                          the documents of the cabinet (README.md lists them)
     <type>/<type>.{en,ru}.md
   out/{en,ru}/<doc>.{md,html}       built; the published form the site build reads (tracked, never edited by hand)
 ```
@@ -47,7 +47,7 @@ the heading's link target and the same in both languages), paragraphs, `- ` list
    that the site scripts use and `facts.json` does not declare.
 3. `cd landing/legal && python build.py` -- writes `out/{en,ru}/<doc>.md` and `.html`. This runs BEFORE the site build,
    which reads `out/` (`legal_dir` in `landing/site/content/site.json`).
-4. When a cabinet document exists: `cd landing/legal && python build.py --cabinet` writes each one as a full HTML page to
+4. `cd landing/legal && python build.py --cabinet` writes each one as a full HTML page to
    `frontend/public/legal/{en,ru}/<type>.html` (`--cabinet-out DIR` writes elsewhere). This runs BEFORE the frontend
    build, which ships `frontend/public/` as it stands. Off unless asked; it writes only the cabinet's own files and never
    touches the other languages' files already in that folder.

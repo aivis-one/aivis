@@ -1,0 +1,51 @@
+# Index Rules
+
+These rules describe the index project "AIVIS Projects Index" of **{company.name}**, a limited liability company of Georgia, identification number {company.id}, legal address {company.address} (the "Company").
+
+## 1. The Index {#ir-h1}
+
+1.1. The Company owns the intellectual property of each of its projects. The AIVIS Projects Index (the "Index") is the index of the Company's projects. It is kept in the Cabinet as a project of its own, with its own account, description and published information, apart from the Company's account.
+
+1.2. Each project of the Company has 1,000,000,000 parts, of which 10 percent, 100,000,000 parts, is its index part. The Index holds the index part of every project in it.
+
+1.3. A part of the Index is called a unit (the "Unit"). The Index has 10,000,000,000 Units, for 100 places of projects. The number is fixed and no Unit is ever added.
+
+1.4. 70 percent of the Units are for sale and 30 percent form the bonus fund of the Index. The Index has no reserve. Bonus Units come from the bonus fund of the Index; the bonus funds of the projects do not serve the Index.
+
+1.5. The Company holds every Unit not yet sold or given, and the income of those Units is directed to developing the projects.
+
+1.6. The description of the Index in the Cabinet names the projects in it and the projects that may join it, by their names and directions only.
+
+## 2. What a Unit is {#ir-h2}
+
+2.1. One Unit is 0.01 part of every project in the Index. When all 100 places of the Index are filled, one Unit is one part in sum (100 x 0.01).
+
+2.2. A Unit, like a part of a project, is an existing right owned by the Company: the right to a share of the income of the index parts of the projects in the Index.
+
+2.3. The holders of a project's parts share a fixed pool of 15 percent of the project's gross receipts, and the index part of a project receives its share of that pool as any other part does. A holder of X Units receives the income of the index part of every project in the Index x X / 10,000,000,000. This is the same income as holding those projects' parts directly: 0.01 x X parts of every project in the Index.
+
+## 3. The value of the Index and the price of a Unit {#ir-h3}
+
+3.1. The value of the Index is the sum of 10 percent of the current valuations of the projects in it. The price of a Unit is the value of the Index divided by 10,000,000,000. Units are sold at that value, with no premium.
+
+3.2. The price of a Unit is recomputed at every entry of a project into the Index and at every revaluation of a project in it, and moves only so.
+
+3.3. Example. The Index holds SANKORD, valued at 4,000,000 USD, and NUTREEX, valued at 1,000,000 USD. The price of a part is 0.004 USD for SANKORD and 0.001 USD for NUTREEX. The value of the Index is 500,000 USD and the price of a Unit 0.00005 USD, which is 0.01 x 0.004 + 0.01 x 0.001.
+
+## 4. The money of an index purchase {#ir-h4}
+
+4.1. The money paid for Units, less the selling cost, is distributed to the realisation of the projects in the Index in equal shares, whatever their development or value. The selling cost is the same as for a purchase of parts under the Buyer Agreement: the commissions of the agent-integrators, up to 17 percent of a purchase at full levels. The Company decides nothing about how the money is divided. Example: in the Index of clause 3.3 a buyer pays 1,000 USD for Units at full levels; 170 USD go to the selling cost and 830 USD are divided equally, 415 USD to SANKORD and 415 USD to NUTREEX.
+
+## 5. Projects joining and leaving the Index {#ir-h5}
+
+5.1. A further project joins the Index only by a schedule that the Company signs with the project's author. The project joins at its own current valuation.
+
+5.2. The Company may sell a project's intellectual property only after it has bought back the shares of all holders of that project, the index part included, at a price not below the value of the share at the project's last revaluation. The price of the index part is paid to the holders of Units in proportion to their Units, and the place of that project in the Index is freed for a further project.
+
+5.3. If a project is closed, its index part leaves the Index, the value of the Index falls by it, and nothing is paid for it.
+
+## 6. The purchase of Units {#ir-h6}
+
+6.1. Units are bought in the Cabinet as the parts of the project "AIVIS Projects Index", under the Buyer Agreement, on the same purchase agreement and the same certificate of ownership as the parts of any other project.
+
+6.2. Where these rules state a term of the Index otherwise than the Buyer Agreement states it for the parts of a project, these rules apply to the Units.

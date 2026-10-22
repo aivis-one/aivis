@@ -1,95 +1,142 @@
-# Cabinet terms of use
+# Cabinet User Agreement
 
-## 1. Who we are and what these terms cover {#ct-h-scope}
+## 1. The parties and what this agreement covers {#ct-h1}
 
-The cabinet at {site.domain}{site.path.app} (the Cabinet) is run by {company.name}, a {company.form} registered in {company.country} (identification number {company.id}), at {company.address} (the Company). By registering you enter into an agreement with the Company on these terms. If you do not accept them, please do not register.
+1.1. The cabinet at {site.domain}{site.path.app}/ (the "Cabinet") is run by **{company.name}**, a limited liability company of Georgia, identification number {company.id}, whose legal address is {company.address} (the "Company").
 
-These terms apply to everyone who registers. The public pages of {site.domain} have their own [terms of use]({site.path.terms}), and how your data is handled is in the [privacy policy]({site.path.privacy}). Each purchase has its own documents, which you see before you pay. Nothing here replaces them.
+1.2. By registering you, a natural person (the "User"), enter into this agreement with the Company. You accept it by a click in the Cabinet at registration, together with the privacy policy. If you do not accept them, please do not register.
 
-## 2. What the Cabinet is {#ct-h-what}
+1.3. This is the one user agreement of the Cabinet. It applies to everyone who registers. The public pages of {site.domain} have their own terms of use, and how your data is handled is in the privacy policy.
 
-The Cabinet is the place where you manage your {sankord.name} licences and your purchases from the Company: you see what you have bought and paid for, your payments and your documents. It is not a subscription service, and nothing in it is sold by subscription.
+1.4. Each purchase has its own documents, which you see before you pay: the pre-purchase disclosure sheet and the buyer agreement. This agreement does not replace them.
 
-{sankord.plan} Until licences are on sale, you can register, look inside and prepare your account. Nothing is sold in the Cabinet before then, and no payment for a licence is taken in advance. Products of the Company’s shop may be added to the Cabinet later; each is described, with its own terms, before you can buy it.
+## 2. What the Cabinet is {#ct-h2}
 
-## 3. The seller {#ct-h-seller}
+2.1. The Cabinet is the place where you register, pass identity verification, buy parts of the projects of {company.name} and see what you hold: the entry in the Company's register, your accruals and payments, and your documents. It is not a subscription service, and nothing in it is sold by subscription.
 
-The seller of everything offered in the Cabinet is {company.name}. If other sellers are admitted to the Cabinet later, it names the seller of each product before you buy, and that seller’s own terms apply to the sale.
+2.2. Agreements and transactions are downloadable in the Cabinet. The Cabinet records the documents you accept, with the version and the time.
 
-## 4. Who is who {#ct-h-roles}
+2.3. Anyone may register, enter the Cabinet and look inside. Nothing is bought in the Cabinet before the verification described in clause 5.
 
-- **Buyer:** a business or a private person who registers to buy a licence or a product. This is what every user is when he registers.
-- **Integrator:** a buyer whom the Company has approved to set up and support {sankord.name} for other buyers, under the integrator agreement.
-- **Seller:** the Company and, later, other sellers who list products in the Cabinet.
-- **Staff:** the people who run the Cabinet for the Company.
+## 3. The seller {#ct-h3}
 
-## 5. Your account {#ct-h-account}
+3.1. The seller of everything offered in the Cabinet is the Company.
 
-You register with your e-mail address or through Telegram and confirm the address or the sign-in. Give true information and keep it up to date. Keep your sign-in secret: you answer for what is done under your account, except where it is done by someone who got in because of our fault.
+## 4. Who is who {#ct-h4}
 
-## 6. Looking inside, and buying only after verification {#ct-h-kyc}
+4.1. **Buyer:** a natural person who has registered to buy parts of a project. Every user is a buyer when he registers. A buyer becomes a holder after the purchase.
 
-Anyone may enter the Cabinet and look. Nothing can be bought until you have passed identity verification. Verification is mandatory, and it is paid: the fee is {kyc.fee}, and it is never returned, whatever the result. What is checked, how, and what happens to your documents is in the KYC notice. The Company may refuse to verify you, or withdraw a verification, where its AML policy requires it.
+4.2. **Agent-integrator:** a natural person, after verification, whom the Company has approved to sell parts of the projects outside Georgia under the agent-integrator agreement.
 
-## 7. Payments {#ct-h-pay}
+4.3. **Staff:** the people who run the Cabinet for the Company.
 
-The price and the terms of payment of a purchase are those shown before you confirm it and agreed in the order; these terms set none. Payments are recorded in the Cabinet. The Company may reverse a payment that was recorded in error or was not completed by the payment service. What follows from a licence purchase is set out in the licence purchase agreement.
+4.4. In this agreement buyers and agent-integrators are natural persons only.
 
-## 8. Investments are not sold in the Cabinet {#ct-h-invest}
+## 5. Your account and verification {#ct-h5}
 
-The Cabinet does not sell, and you cannot buy in it, a share, a participation or any other investment in the Company or in anyone else. An investor signs his agreement directly with the Company, outside the Cabinet, under its own documents.
+5.1. You register with your e-mail address or through Telegram and confirm the address or the sign-in. Give true information and keep it up to date. Keep your sign-in secret: you answer for what is done under your account, except where it is done by someone who got in because of our fault.
 
-An investor may also register in the Cabinet. If he does, the Company’s staff may book there the money received under his agreement, with the document that is the basis of the payment, and may upload his signed agreement as a PDF into his account, where only he and the staff can see it. This changes nothing in the agreement. If the booking or the PDF in the Cabinet differs from the signed agreement, the signed agreement prevails.
+5.2. Nothing can be bought until you have passed identity verification (KYC) with documents. It is checked by hand by the Company's support staff.
 
-## 9. Integrators {#ct-h-integ}
+5.3. Verification is paid: the fee is {kyc.fee}. It is never returned, whatever the result, because it pays for a service that has been rendered. What is checked, how, and what happens to your documents is in the KYC notice.
 
-Anyone may apply to become an integrator once he has passed verification. The Company decides on the application. An approved integrator signs the integrator agreement, completes the training and the examinations it names, and owns a licence he has bought.
+5.4. The Company may refuse to verify you, or withdraw a verification, where its screening policy requires it.
 
-## 10. Staff access {#ct-h-staff}
+## 6. Where the Cabinet is offered and whom the Company refuses {#ct-h6}
 
-Staff can see your account data and your payments, review the documents you sent for verification, reverse payments, decide on integrators’ applications, and, to help you, enter your account in a support session. Every such entry is recorded. The [privacy policy]({site.path.privacy}) describes what staff see and why.
+6.1. The Company refuses persons on the sanctions lists of the United States, the European Union, the United Kingdom and the United Nations, and residents of Cuba, Iran, North Korea, Syria, Crimea, DNR and LNR.
 
-## 11. Using the Cabinet {#ct-h-use}
+6.2. Russian and Belarusian citizens are accepted after screening against the lists. Support staff screen at verification.
 
-Use the Cabinet lawfully. Please do not:
+6.3. No bank transfer is accepted from Russian buyers, a Russian resident in the European Union included. They pay in USDT and are not given bank details.
 
-- give false information or use another person’s identity;
+## 7. Payments in {#ct-h7}
+
+7.1. You can pay in USDT in the Cabinet, on the networks TRC20, ERC20 and BSC20. You can also pay by bank transfer in USD or EUR through support, subject to clauses 6.3 and 7.5.
+
+7.2. USDT is taken only as payment for the Company's own goods and services. It is credited to you as internal settlement units. The Company holds no crypto for you and shows no crypto account in the Cabinet, and nothing is given back to you as crypto at will.
+
+7.3. A USDT deposit is accepted before verification; the verification fee may itself be paid in USDT. A purchase, an instalment, a payout of money and an application to become an agent-integrator need a passed verification.
+
+7.4. If you make a USDT deposit but do not pass verification, the Company refunds the deposit within 90 days, less the verification fee where that fee was taken from this deposit; the verification fee is not returned (clause 5.3). The refund goes to the sending address only, on the network by which the deposit came, and is made less the network fee. Money received from a person found on a sanctions list is not refunded: it is held as the law requires.
+
+7.5. Bank details of the Company are given by support, under this agreement, only to a client whose verification is passed, at support's decision.
+
+7.6. Payments are recorded in the Cabinet. The Company may reverse a payment that was recorded in error or was not completed by the payment service; a mistake is corrected by a reversing entry.
+
+## 8. Your account in the Cabinet {#ct-h8}
+
+8.1. A buyer has one account only, which he tops up to buy. It is spendable only on parts of the Company's projects and is refunded only through support. It is never withdrawn at will.
+
+8.2. The holder's Cabinet shows accruals and payments only. It never shows a balance that the holder can spend or withdraw.
+
+## 9. Purchases and the buyer agreement {#ct-h9}
+
+9.1. The rights and duties that arise from a purchase of parts are set out in the buyer agreement, which you accept by a click in the Cabinet before you pay. The Cabinet shows you the pre-purchase disclosure sheet before the purchase.
+
+9.2. A buyer may withdraw within 14 days of a purchase, by the buyer agreement and through support only.
+
+9.3. Payments to holders are made by the Company as the buyer agreement sets out. They are paid to the holder's bank account or card, or in USDT to the confirmed address of a holder who paid in USDT. For a payment in USDT, the holder names the network and the wallet in his payout details.
+
+## 10. Agent-integrators {#ct-h10}
+
+10.1. Anyone may apply to become an agent-integrator, but the application is closed until his verification is passed. The Company decides on the application.
+
+10.2. An approved agent-integrator accepts the agent-integrator agreement by a click in the Cabinet.
+
+10.3. An agent has a separate withdrawal account under his own agreement. It is the Company's debt for the commission he has earned, and it is paid 14 days after his request. An agent's commission may be paid in USDT through the Cabinet or by bank in USD or EUR through support. For a payout in USDT, the agent names the network and the wallet in his payout details.
+
+## 11. Staff access {#ct-h11}
+
+11.1. Staff can see your account data and your payments, review the documents you sent for verification, reverse payments, decide on agent-integrators' applications and, to help you, enter your account in a support session. Every such entry is recorded. The privacy policy describes what staff see and why.
+
+## 12. Using the Cabinet {#ct-h12}
+
+12.1. Use the Cabinet lawfully. Please do not:
+
+- give false information or use another person's identity;
 - try to break into the Cabinet, disrupt it or overload it;
 - collect its content automatically, or use it to send spam or malicious code;
-- use it to move money whose origin you cannot show, or in breach of the Company’s AML policy.
+- use it to move money whose origin you cannot show, or in breach of the Company's screening policy.
 
-## 12. Documents and changes {#ct-h-docs}
+## 13. Documents and changes {#ct-h13}
 
-The Cabinet records the documents you accept, with the version and the time. We may change these terms. When we do, we replace the text and show the line “Updated” with the date at the top, and we may ask you to accept the new text before you go on. The text published in the Cabinet applies from that date.
+13.1. We may change this agreement. When we do, we replace the text and show the line "Updated" with the date at the top, and we may ask you to accept the new text before you go on. The text published in the Cabinet applies from that date.
 
-## 13. Names, software and content {#ct-h-content}
+## 14. Names, software and content {#ct-h14}
 
-The names and logos of {sankord.name} and {company.brand}, the software, and the design and texts of the Cabinet belong to the Company or its licensors. A licence to use {sankord.name} is given only under the licence purchase agreement. No other right is given.
+14.1. The names and logos of SANKORD and AIVIS, the software, and the design and texts of the Cabinet belong to the Company or its licensors. No right in them is given by this agreement.
 
-## 14. Information, not advice {#ct-h-info}
+## 15. Information, not advice {#ct-h15}
 
-The Cabinet and what is published in it are information. They are not legal, financial, tax, investment or other professional advice. Check facts and decisions yourself before you rely on them.
+15.1. The Cabinet and what is published in it are information. They are not legal, financial, tax or other professional advice. Check facts and decisions yourself before you rely on them.
 
-## 15. Where the Cabinet is offered {#ct-h-markets}
+## 16. Taxes {#ct-h16}
 
-The Cabinet is not offered to users in Russia or Belarus, nor in Iran, North Korea, Cuba or the occupied territories of Ukraine, nor in any other country or territory under comprehensive sanctions of the United Nations, the European Union or the United States, and it is not meant for use there. We also do not offer it in Syria, as our own policy.
+16.1. The Company settles its own taxes and the taxes of the projects. You settle your own taxes with your tax authority.
 
-## 16. Liability {#ct-h-liab}
+## 17. Liability {#ct-h17}
 
-To the extent Georgian law allows, and except in cases of intent or gross negligence, the Company is not liable for loss arising from your use of the Cabinet or from your reliance on its content, or from a break in its availability. Nothing in these terms limits a liability that the law does not allow to be limited, or a right you have as a consumer that cannot be waived. What the Company owes you for a purchase is set out in the documents of that purchase.
+17.1. To the extent Georgian law allows, and except in cases of intent or gross negligence, the Company is not liable for loss arising from your use of the Cabinet or from your reliance on its content, or from a break in its availability. Nothing in this agreement limits a liability that the law does not allow to be limited, or a right you have as a consumer that cannot be waived. What the Company owes you for a purchase is set out in the documents of that purchase.
 
-## 17. Ending {#ct-h-end}
+## 18. Ending {#ct-h18}
 
-You may stop using the Cabinet at any time and may ask us to close your account by writing to us. The Company may suspend or close an account where these terms, the AML policy or a sanctions rule are broken, or where verification is withdrawn. Closing an account does not undo a purchase already made; its documents say what follows. When an account is closed, the files you sent for verification are deleted, except what the law requires us to keep, and payment records are kept for the accounting period.
+18.1. You may stop using the Cabinet at any time and may ask us to close your account by writing to us. The Company may suspend or close an account where this agreement, the screening policy or a sanctions rule is broken, or where verification is withdrawn.
 
-## 18. Governing law and disputes {#ct-h-law}
+18.2. Closing an account does not undo a purchase already made; its documents say what follows. Money left in a buyer's account is refunded through support, except money held under clause 7.4.
 
-These terms are governed by the law of Georgia. Disputes go to the state courts of Tbilisi, Georgia, unless mandatory law where you live gives you the right to go to another forum. A purchase of a licence by a business, and the integrator agreement, have the forum named in their own documents.
+18.3. When an account is closed, the files you sent for verification are deleted, except what the law requires us to keep; if you hold a share, they are kept as long as your register entry. Payment records, payout statements and the agreements you accepted are kept as long as the share they concern exists and for 10 years after it ends, and those that concern no share for the accounting period, as the privacy policy says.
 
-## 19. Language {#ct-h-lang}
+## 19. Governing law and disputes {#ct-h19}
 
-The English text of these terms prevails over their text in any other language.
+19.1. This agreement is governed by the law of Georgia. Every buyer is treated as a consumer. Disputes go to the state courts of Georgia in Tbilisi, unless mandatory law where you live gives you the right to go to another forum, and your home protection as a consumer is kept.
 
-## 20. Contact {#ct-h-contact}
+19.2. A user may sign a separate agreement for arbitration at GIAC after a dispute arises.
 
-{company.name}, {company.address}. E-mail {contact.general}; legal and data questions {contact.legal}. Telegram [{contact.telegram_handle}]({contact.telegram_url}).
+## 20. Language {#ct-h20}
+
+20.1. The English text of this agreement prevails over its text in any other language.
+
+## 21. Contact {#ct-h21}
+
+21.1. {company.name}, {company.address}. E-mail {contact.general}; legal and data questions {contact.legal}. Telegram [{contact.telegram_handle}]({contact.telegram_url}).
