@@ -360,8 +360,8 @@ export const router = createRouter({
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
         {
-          // TASK-39 item 3: FAQ framework. Investor + agent SHARE one
-          // FAQ (owner ruling) -- same InvestorFaqView, mirrored below
+          // TASK-39 item 3: FAQ framework. Investor + agent share one
+          // view, each with its own text (investor.html / agent.html) -- same InvestorFaqView, mirrored below
           // under the agent shell as agent-faq. Reached from the FAQ
           // tile in InvestorMoreView.
           path: 'faq',
@@ -519,8 +519,8 @@ export const router = createRouter({
         },
         {
           // TASK-39 item 3: mirror of investor-faq -- same
-          // InvestorFaqView, agent layout. Investor + agent SHARE one
-          // FAQ (owner ruling); reached from the FAQ tile in
+          // InvestorFaqView, agent layout, which opens agent.html for
+          // this route; reached from the FAQ tile in
           // AgentMoreView.
           path: 'faq',
           name: 'agent-faq',

@@ -4,7 +4,7 @@
 // =============================================================================
 //
 // Static FAQ page for investor + representative (agent) -- ONE shared
-// file set, ONE shared view, mounted at /investor/faq (route name
+// view (investor.html or agent.html by route), mounted at /investor/faq (route name
 // investor-faq) AND /agent/faq (route name agent-faq). Reached from
 // the FAQ tile in InvestorMoreView / AgentMoreView. Same "shared
 // component lives physically under views/investor/, other shells'
@@ -21,17 +21,17 @@
 //      storage), revoke-before-overwrite plus a final revoke on
 //      unmount. NOT v-html -- a v-html render gives the mounted node
 //      full access to the SPA origin (localStorage, auth token).
-//   2. Two audiences, and that is the whole information architecture:
-//      investor + agent SHARE this one FAQ; company gets its OWN,
+//   2. Three audiences, each with its own FAQ file: investor and
+//      agent share this one view but not one text (investor.html and agent.html, item 3); company gets its OWN,
 //      SEPARATE FAQ (CompanyFaqView.vue, its own file set under
 //      /faq/{lang}/company.html -- a company's questions are not an
 //      investor's). Staff/admin gets NO FAQ at all: no staff route,
 //      tile, or file exists for it, and none should be added here.
-//   3. CONTENT IS NOT WANTED YET. /faq/{lang}/investor.html is a
-//      PLACEHOLDER, marked "not written yet" both as a visible
-//      in-page notice and an HTML comment. This view renders
-//      whatever that static file says, sandboxed, and invents
-//      nothing -- no FAQ copy lives in this component.
+//   3. The text lives in static files: /faq/{lang}/investor.html for
+//      the investor route and /faq/{lang}/agent.html for the agent
+//      route (route name agent-faq). This view renders whatever that
+//      static file says, sandboxed, and invents nothing -- no FAQ
+//      copy lives in this component.
 //
 // LOCALE FALLBACK.
 //   FAQ content exists for `en` and `ru` only -- `de`/`ar` are parked
@@ -55,8 +55,8 @@
 //   SAFE_TOKEN guard on doc.type/doc.language, just enforced by the
 //   TypeScript union instead of a regex since the value space here is
 //   two literals, not open-ended backend strings. The audience
-//   segment ("investor") is a hardcoded string literal in this file,
-//   never interpolated from a variable, so it carries none of the
+//   segment comes from faqFile, a computed typed as the literal union
+//   'agent' | 'investor' and chosen by comparing route.name, never copied from the route, so it carries none of the
 //   injection surface doc.type/doc.language have in InvestorDocsView.
 //
 // NO LIST, NO MODAL. InvestorDocsView renders many rows behind a list
@@ -84,6 +84,13 @@ const router = useRouter()
 // carries `de`/`ar`, which are explicitly parked for FAQ content.
 const FAQ_LOCALES = ['en', 'ru'] as const
 type FaqLocale = (typeof FAQ_LOCALES)[number]
+
+// The agent shell (route name agent-faq) has its own FAQ file; every
+// other mount shows the investor one. A fixed two-value literal, never
+// interpolated from the route.
+const faqFile = computed<'agent' | 'investor'>(() =>
+  route.name === 'agent-faq' ? 'agent' : 'investor',
+)
 
 function resolveFaqLocale(value: string): FaqLocale {
   return (FAQ_LOCALES as readonly string[]).includes(value) ? (value as FaqLocale) : 'en'
@@ -121,7 +128,7 @@ async function load(): Promise<void> {
   let nextUrl: string | null = null
   try {
     const lang = resolveFaqLocale(locale.value)
-    const resp = await fetch(`${import.meta.env.BASE_URL}faq/${lang}/investor.html`)
+    const resp = await fetch(`${import.meta.env.BASE_URL}faq/${lang}/${faqFile.value}.html`)
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`)
     }

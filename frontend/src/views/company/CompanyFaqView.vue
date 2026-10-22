@@ -28,9 +28,8 @@
 //      with the investor/agent one -- a company's questions are not
 //      an investor's. Staff/admin gets no FAQ; nothing here or
 //      anywhere adds one.
-//   3. CONTENT IS NOT WANTED YET. /faq/{lang}/company.html is a
-//      PLACEHOLDER marked "not written yet" both in-page and as an
-//      HTML comment. This view invents no FAQ copy.
+//   3. The text lives in /faq/{lang}/company.html, which this view
+//      renders as it is. This view invents no FAQ copy.
 //
 // LOCALE FALLBACK + PATH SAFETY -- identical reasoning to
 // InvestorFaqView.vue: FAQ_LOCALES is its own {en, ru} constant,
