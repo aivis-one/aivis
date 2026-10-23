@@ -26,8 +26,9 @@ export const telegramPlatform: Platform = {
     const wa = getWebApp()
     wa.ready()
     wa.expand()
-    wa.setHeaderColor('#0B4F86')
-    wa.setBackgroundColor('#F5F5F5')
+    const css = getComputedStyle(document.documentElement)
+    wa.setHeaderColor(css.getPropertyValue('--primary').trim() || '#0B4F86')
+    wa.setBackgroundColor(css.getPropertyValue('--bg-page').trim() || '#F5F5F5')
   },
 
   getInitData(): string | null {
