@@ -43,8 +43,9 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, ChevronRight, Store } from '@/components/ui/icons'
+import { Building, CalendarClock, ChevronRight, Store } from '@/components/ui/icons'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import PendingGifts from '@/components/shared/PendingGifts.vue'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -56,6 +57,12 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = usePortfolioStore()
+
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('inv.portfolio.title'),
+  lead: () => t('inv.portfolio.subtitle'),
+})
 
 // ---------------------------------------------------------------------------
 // Derived state
@@ -122,6 +129,12 @@ const positionRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-company-position' : 'investor-company-position',
 )
 
+// The instalment plans: no tab holds them (the side menu's second list is gone),
+// so they are reached from this row.
+const plansRouteName = computed<string>(() =>
+  isAgentShell(route) ? 'agent-installment-plans' : 'investor-installment-plans',
+)
+
 const marketRouteName = computed<string>(() =>
   // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
   // catalogue moved to *-companies (CompanyListView). Computed name
@@ -161,18 +174,21 @@ onMounted(() => {
 
 <template>
   <div class="pv">
-    <!-- Header -->
-    <div class="pv__header">
-      <h1 class="pv__title">
-        {{ t('inv.portfolio.title') }}
-      </h1>
-      <p class="pv__subtitle">
-        {{ t('inv.portfolio.subtitle') }}
-      </p>
-    </div>
-
     <!-- Gifts waiting for acceptance -->
     <PendingGifts @accepted="store.fetchPortfolio()" />
+
+    <!-- The instalment plans (K23 row) -->
+    <ul class="ds-rows">
+      <li class="ds-row">
+        <span class="ds-row__lead"><CalendarClock size="sm" /></span>
+        <span class="ds-row__body">
+          <RouterLink class="ds-row__link" :to="{ name: plansRouteName }">
+            <span class="ds-row__title">{{ t('tab.installments') }}</span>
+          </RouterLink>
+        </span>
+        <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+      </li>
+    </ul>
 
     <!-- Initial load spinner (no positions yet, fetching) -->
     <div
@@ -295,23 +311,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.pv__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.pv__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.pv__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
 }
 
 .pv__center {
@@ -496,16 +495,5 @@ onMounted(() => {
   .pv__item-stats {
     max-inline-size: calc(3 * var(--tile-max));
   }
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.pv__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>
