@@ -58,8 +58,8 @@
 //   product-click  -> push to public-product-detail (Batch 6 stub
 //                     until then; navigation no-ops cleanly).
 //   external-click -> window.open with noopener + noreferrer.
-//   post-click     -> no-op (public posts view doesn't exist yet,
-//                     mirrors the investor-side handler).
+//   post-click     -> push to public-post (the post screen under the
+//                     storefront shell).
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -197,10 +197,11 @@ function onRoadmapExternalClick(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-function onRoadmapPostClick(_postId: string): void {
-  // No-op placeholder, same as the investor-side handler. Public
-  // posts view doesn't exist yet; argument prefixed with underscore
-  // to satisfy TS6133.
+function onRoadmapPostClick(postId: string): void {
+  void safeNavigate(
+    router.push({ name: 'public-post', params: { id: postId } }),
+    '[PublicCompanyOverviewView] to post',
+  )
 }
 </script>
 
@@ -237,9 +238,6 @@ function onRoadmapPostClick(_postId: string): void {
             <Building v-if="!coverImage" :size="56" />
           </div>
           <div class="co__hero-body">
-            <span class="co__hero-status">
-              {{ t('common.statusActive') }}
-            </span>
             <h1 class="co__hero-name">
               {{ data.name }}
             </h1>
@@ -365,15 +363,6 @@ function onRoadmapPostClick(_postId: string): void {
   gap: var(--space-2);
 }
 
-.co__hero-status {
-  align-self: flex-start;
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--success);
-  background: var(--success-subtle);
-  border-radius: var(--radius-pill);
-}
 
 .co__hero-name {
   margin: 0;

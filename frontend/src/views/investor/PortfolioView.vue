@@ -45,6 +45,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ChevronRight, Store } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import PendingGifts from '@/components/shared/PendingGifts.vue'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
@@ -169,6 +170,9 @@ onMounted(() => {
         {{ t('inv.portfolio.subtitle') }}
       </p>
     </div>
+
+    <!-- Gifts waiting for acceptance -->
+    <PendingGifts @accepted="store.fetchPortfolio()" />
 
     <!-- Initial load spinner (no positions yet, fetching) -->
     <div

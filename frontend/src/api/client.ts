@@ -85,6 +85,12 @@ export class ApiResponseError extends Error {
    * application) -- backend kyc/gate.py, turned over in H21 P-111.
    */
   kycCode?: string
+  /**
+   * The server's machine-readable error code (the `error` field of an
+   * error body, e.g. `insufficient_balance`). Screens branch on this and
+   * never on the message text. Undefined when the body carries none.
+   */
+  code?: string
 
   constructor(status: number, detail: string, retryAfter?: number) {
     super(detail)
@@ -292,6 +298,11 @@ async function request<T>(
       extractErrorMessage(response.status, data),
       retryAfter,
     )
+
+    if (data && typeof data === 'object') {
+      const body = data as Record<string, unknown>
+      if (typeof body.error === 'string' && body.error) error.code = body.error
+    }
 
     // 402 -- the KYC gate. Carry its code onto the error and tell the
     // app, which sends the user to the verification screen.

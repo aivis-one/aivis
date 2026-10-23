@@ -48,16 +48,17 @@
     },
     "register": {
       "title": "إنشاء حساب",
-      "subtitle": "انضم إلى منصة AIVIS.ONE الاستثمارية",
+      "subtitle": "Create your AIVIS.ONE account to buy parts of projects and follow your holdings",
       "email": "البريد الإلكتروني",
       "password": "كلمة المرور",
-      "passwordHint": "٨ أحرف على الأقل، حروف وأرقام",
+      "passwordHint": "Minimum 8 characters",
       "confirmPassword": "تأكيد كلمة المرور",
       "passPlaceholder": "٨ أحرف على الأقل",
       "confirmPlaceholder": "أعد إدخال كلمة المرور",
       "btn": "إنشاء حساب",
       "hasAccount": "لديك حساب بالفعل؟",
-      "loginLink": "تسجيل الدخول"
+      "loginLink": "تسجيل الدخول",
+      "buyNote": "Buying opens after identity verification ($10). Register first; after the e-mail code you come back to this product."
     },
     "verify": {
       "title": "تحقّق من بريدك",
@@ -137,12 +138,13 @@
       "fillAllFields": "يرجى ملء جميع الحقول",
       "networkError": "خطأ في الاتصال. تحقق من الإنترنت",
       "timeout": "لم يستجب الخادم. حاول مرة أخرى"
-    }
+    },
+    "logout": "Sign out"
   },
   "tab": {
     "home": "الرئيسية",
     "portfolio": "المحفظة",
-    "market": "السوق",
+    "market": "Store",
     "balance": "الرصيد",
     "more": "المزيد",
     "agent": {
@@ -165,7 +167,14 @@
       "kyc": "KYC",
       "payments": "المدفوعات",
       "more": "المزيد"
-    }
+    },
+    "settings": "Settings",
+    "news": "News and events",
+    "installments": "Installment plans",
+    "docs": "Documents",
+    "kyc": "Identity verification",
+    "support": "Support",
+    "faq": "FAQ"
   },
   "staff": {
     "panel": "لوحة الموظفين",
@@ -328,20 +337,20 @@
     "unit": "وحدة",
     "available": "متاح",
     "market": {
-      "title": "السوق",
+      "title": "Store",
       "subtitle": "المنتجات الاستثمارية المتاحة",
       "filter": {
-        "all": "جميع الشركات",
-        "company": "الشركة",
-        "title": "تصفية حسب الشركة",
-        "search": "ابحث عن الشركات...",
+        "all": "All projects",
+        "company": "Project",
+        "title": "Filter by project",
+        "search": "Search projects...",
         "clear": "مسح الفلتر",
-        "empty": "لم يتم العثور على شركات"
+        "empty": "No projects found"
       },
       "empty": {
         "title": "لا توجد منتجات حالياً",
         "desc": "تحقق لاحقاً من فرص استثمارية جديدة",
-        "filteredTitle": "لا توجد منتجات لهذه الشركة",
+        "filteredTitle": "No products for this project",
         "filteredDesc": "جرّب فلتراً آخر أو امسحه"
       }
     },
@@ -350,7 +359,7 @@
         "title": "المنتج غير موجود",
         "desc": "قد يكون هذا المنتج محذوفاً أو لم يعد متاحاً"
       },
-      "backToMarket": "العودة إلى السوق",
+      "backToMarket": "Back to the store",
       "priceLabel": "السعر لكل وحدة",
       "availability": "التوفر",
       "description": "عن المنتج",
@@ -358,7 +367,8 @@
       "installmentsEmpty": "لا توجد خطط تقسيط متاحة لهذا المنتج",
       "installmentsBonus": "+{n} وحدة إضافية",
       "buy": "شراء الآن",
-      "soldOut": "نفد الكمية"
+      "soldOut": "نفد الكمية",
+      "backLink": "Back to the store"
     },
     "purchase": {
       "title": "شراء",
@@ -376,11 +386,18 @@
         "desc": "يرجى العودة والمحاولة مرة أخرى"
       },
       "error": {
-        "insufficientBalance": "الرصيد غير كافٍ في حسابك النشط",
+        "insufficientBalance": "Not enough money on your buyer account",
         "kycRequired": "يلزم التحقق من الهوية. جارٍ التوجيه إلى الإعداد",
         "productInactive": "لم يعد هذا المنتج متاحاً",
-        "generic": "فشل الشراء. يرجى المحاولة مرة أخرى"
-      }
+        "generic": "فشل الشراء. يرجى المحاولة مرة أخرى",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "soldOut": "Not enough parts are left for this package"
+      },
+      "pay": "Pay",
+      "backLink": "Back",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up",
+      "successBonus": "Purchase made. Bonus parts: {units}"
     },
     "installment": {
       "title": "التقسيط",
@@ -410,13 +427,18 @@
         "kycRequired": "يلزم التحقق من الهوية. جارٍ التوجيه إلى الإعداد",
         "templateMismatch": "لم تعد الخطة المختارة صالحة لهذا المنتج",
         "productInactive": "لم يعد هذا المنتج متاحاً",
-        "generic": "تعذر إنشاء الخطة. يرجى المحاولة مرة أخرى"
-      }
+        "generic": "تعذر إنشاء الخطة. يرجى المحاولة مرة أخرى",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "poolCapacity": "Not enough parts are left for this plan"
+      },
+      "pay": "Pay",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up"
     },
     "balance": {
       "title": "الرصيد",
-      "active": "الرصيد النشط",
-      "frozen": "مجمّد",
+      "active": "Buyer account",
+      "frozen": "Awaiting confirmation",
       "deposit": "إيداع",
       "history": "سجل المدفوعات",
       "historyEmpty": "لا توجد مدفوعات بعد",
@@ -436,7 +458,9 @@
         "crypto": "عملة رقمية",
         "bank": "بنكي",
         "card": "بطاقة"
-      }
+      },
+      "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
+      "allOperations": "All operations"
     },
     "deposit": {
       "title": "الإيداع",
@@ -453,7 +477,6 @@
       "copy": "نسخ العنوان",
       "copied": "تم نسخ العنوان",
       "copyError": "تعذر نسخ العنوان",
-      "warning": "أرسل USDT فقط عبر TRC20 إلى هذا العنوان. الأموال المرسلة عبر شبكات أخرى لا يمكن استردادها.",
       "qrUnavailable": "رمز QR غير متاح — يرجى استخدام العنوان أدناه.",
       "backToBalance": "العودة إلى الرصيد",
       "backLink": "العودة إلى الرصيد",
@@ -473,14 +496,15 @@
       "newDeposit": "إيداع جديد",
       "unavailable": {
         "title": "الإيداع غير متاح مؤقتًا",
-        "desc": "لا يتم قبول الإيداعات بالعملات الرقمية حاليًا. لا توجد مشكلة في حسابك — يرجى المحاولة لاحقًا."
+        "desc": "لا يتم قبول الإيداعات بالعملات الرقمية حاليًا. لا توجد مشكلة في حسابك — يرجى المحاولة لاحقًا.",
+        "offline": "No connection to the service. Check your internet and try again."
       },
       "status": {
         "awaiting_confirmations": "تم العثور على المعاملة، في انتظار تأكيدات الشبكة.",
         "attempts_exhausted": "لم تتبق محاولات. يرجى التواصل مع الدعم.",
         "confirmed": "تم تأكيد الدفعة",
-        "expired": "انتهت صلاحية هذه الفاتورة",
-        "stalled": "لم تتأكد الدفعة في الوقت المحدد"
+        "expired": "This invoice has expired — create a new one.",
+        "stalled": "The payment did not confirm in time — try again or write to support."
       },
       "verdict": {
         "not_found": "لم يتم العثور على هذه المعاملة على الشبكة. تحقق من المعرّف وحاول مرة أخرى.",
@@ -489,7 +513,13 @@
         "invalid_format": "لا يبدو هذا معرّف معاملة لهذه الشبكة. لم تُستخدم أي محاولة.",
         "api_error": "لم يستجب مستكشف الشبكة. لم تُستخدم أي محاولة — يرجى المحاولة لاحقًا.",
         "unknown": "لم يُقبل المعرّف."
-      }
+      },
+      "coin": "USDT",
+      "minimum": "Minimum: ${amount}",
+      "networkNotSupported": "This network is not available right now. Choose another one.",
+      "offline": "No connection. Check your internet and try again.",
+      "bankLine": "To pay by bank, write to support.",
+      "bankCta": "Write to support"
     },
     "transactions": {
       "title": "المعاملات",
@@ -501,8 +531,7 @@
         "all": "الكل",
         "deposits": "الإيداعات",
         "purchases": "المشتريات",
-        "installments": "التقسيط",
-        "withdrawals": "السحوبات"
+        "installments": "التقسيط"
       },
       "type": {
         "deposit:received": "تم استلام الإيداع",
@@ -518,7 +547,8 @@
         "withdrawal:rejected": "تم رفض السحب",
         "withdrawal:completed": "اكتمل السحب",
         "withdrawal:failed": "فشل السحب",
-        "reversal:completed": "اكتمل عكس العملية"
+        "reversal:completed": "اكتمل عكس العملية",
+        "kyc:verification_fee": "Identity verification fee"
       },
       "detail": {
         "title": "تفاصيل المعاملة",
@@ -552,19 +582,19 @@
         "totalValue": "القيمة الإجمالية",
         "products": "المنتجات",
         "units": "الوحدات",
-        "companies": "الشركات",
+        "companies": "Projects",
         "empty": "لا توجد استثمارات بعد",
-        "emptyCta": "تصفّح السوق"
+        "emptyCta": "Browse the store"
       },
       "balance": {
-        "title": "الرصيد",
+        "title": "Buyer account",
         "available": "المتاح",
-        "frozen": "قيد الانتظار"
+        "frozen": "Awaiting confirmation"
       },
       "actions": {
         "title": "إجراءات سريعة",
         "deposit": "إيداع",
-        "market": "السوق"
+        "market": "Store"
       },
       "posts": {
         "title": "آخر الأخبار",
@@ -572,11 +602,21 @@
         "errorTitle": "تعذّر تحميل الأخبار",
         "errorRetry": "إعادة المحاولة",
         "seeAll": "عرض الكل"
-      }
+      },
+      "gift": "A gift is waiting for you to accept it"
     },
     "portfolio": {
+      "gifts": {
+        "title": "هدايا بانتظارك",
+        "units": "{units} جزءاً كهدية",
+        "certificate": "شهادة الهدية",
+        "accept": "قبول الهدية",
+        "accepted": "تم قبول الهدية: الأجزاء في محفظتك",
+        "acceptError": "تعذّر قبول الهدية، حاول مرة أخرى",
+        "kycRequired": "لقبول الهدية، أكمل التحقق من الهوية أولاً"
+      },
       "title": "المحفظة",
-      "subtitle": "ممتلكاتك عبر جميع الشركات",
+      "subtitle": "Your holdings across all projects",
       "totalValue": "القيمة الإجمالية",
       "products": "المنتجات",
       "units": "الوحدات",
@@ -591,8 +631,8 @@
       },
       "empty": {
         "title": "لا توجد استثمارات بعد",
-        "description": "تصفّح السوق لبدء بناء محفظتك.",
-        "cta": "الانتقال إلى السوق"
+        "description": "Browse the store to start your portfolio.",
+        "cta": "Go to the store"
       },
       "errorTitle": "تعذّر تحميل المحفظة"
     },
@@ -611,7 +651,8 @@
         "empty": "لا توجد مشتريات بعد",
         "legalBasis": {
           "sale": "شراء",
-          "gift": "هدية"
+          "gift": "هدية",
+          "installment_tranche": "Installment payment"
         },
         "units": "الوحدات",
         "paid": "المدفوع",
@@ -621,7 +662,7 @@
       "errorTitle": "تعذّر تحميل المركز",
       "notFound": {
         "title": "المركز غير موجود",
-        "description": "لا توجد مشتريات نشطة في هذه الشركة."
+        "description": "You have no active purchases in this project."
       }
     },
     "certificate": {
@@ -649,7 +690,8 @@
       },
       "meta": {
         "signed": "تم التوقيع مسبقاً",
-        "pending": "يتطلّب إجراءً"
+        "pending": "يتطلّب إجراءً",
+        "read": "للاطلاع والتنزيل"
       },
       "modal": {
         "loading": "جاري تحميل المستند...",
@@ -659,7 +701,8 @@
         "signing": "جاري التوقيع...",
         "signSuccess": "تم توقيع المستند",
         "signError": "تعذّر توقيع المستند",
-        "close": "إغلاق"
+        "close": "إغلاق",
+        "download": "تنزيل"
       }
     },
     "settings": {
@@ -691,7 +734,7 @@
       },
       "agent": {
         "title": "برنامج الوكلاء",
-        "apply": "كن وكيلاً",
+        "apply": "Become an integrator",
         "reapply": "إعادة التقديم",
         "pending": "طلبك قيد المراجعة",
         "cooldown": "متاح بعد {days} يوم",
@@ -701,9 +744,13 @@
         "loadError": "تعذّر تحميل حالة الطلب"
       },
       "actions": {
-        "title": "الإجراءات",
-        "docs": "مستنداتي",
-        "logout": "تسجيل الخروج"
+        "title": "Security and documents",
+        "docs": "Documents",
+        "logout": "تسجيل الخروج",
+        "support": "Support",
+        "faq": "FAQ",
+        "logoutAll": "Sign out of all devices",
+        "logoutAllError": "Could not sign out of all devices. Try again."
       }
     },
     "more": {
@@ -738,6 +785,9 @@
         "me": "أنت",
         "operator": "الدعم"
       }
+    },
+    "agreement": {
+      "save": "Download"
     }
   },
   "kyc": {
@@ -771,6 +821,27 @@
       "errorEmpty": "هذا الملف فارغ.",
       "errorTooLarge": "حجم هذا الملف يتجاوز 10 ميغابايت.",
       "errorIncomplete": "يرجى إرفاق جميع الصور المطلوبة."
-    }
+    },
+    "unlocks": "Verification unlocks buying, instalment plans and the integrator application. Everything else is open without it.",
+    "rejectedReason": "Reason: {reason}",
+    "emailFirst": "Confirm your e-mail first: verification starts from a confirmed e-mail address.",
+    "toSettings": "Go to settings"
+  },
+  "intro": {
+    "what": {
+      "title": "ما هي AIVIS.ONE",
+      "text": "تبيع AIVIS.ONE أجزاءً من مشاريع الملكية الفكرية. الجزء حصة من 15 بالمئة من الإيرادات الإجمالية للمشروع، وهو بيع لحق قائم يُقيَّد في سجل الشركة باسمك."
+    },
+    "where": {
+      "title": "أين أنت",
+      "text": "هذه بوابتك: واجهة المشاريع، ومحفظتك مع مستندات كل عملية شراء، وحساب المشتري الخاص بك."
+    },
+    "how": {
+      "title": "ماذا تفعل هنا",
+      "text": "أنشئ حساباً، وأكمل التحقق من الهوية (10 دولارات)، واشحن حسابك بعملة USDT، واشترِ أجزاءً من مشروع. ما تدرّه الأجزاء يُدفع كل ربع سنة."
+    },
+    "next": "التالي",
+    "skip": "تخطٍّ",
+    "start": "ابدأ"
   }
 }

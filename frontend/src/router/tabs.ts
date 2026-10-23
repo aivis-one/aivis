@@ -20,12 +20,33 @@ export interface TabItem {
   icon: string
 }
 
+// The tab order is the same for both roles that hold parts: Home, Store,
+// Portfolio, then Balance (investor) or Partners (integrator), then Settings.
+// There is no "More" tab: what it held lives inside the five.
 export const INVESTOR_TABS: TabItem[] = [
   { id: 'home', path: '/investor/dashboard', labelKey: 'tab.home', icon: 'Home' },
-  { id: 'portfolio', path: '/investor/portfolio', labelKey: 'tab.portfolio', icon: 'Briefcase' },
   { id: 'market', path: '/investor/companies', labelKey: 'tab.market', icon: 'Store' },
+  { id: 'portfolio', path: '/investor/portfolio', labelKey: 'tab.portfolio', icon: 'Briefcase' },
   { id: 'balance', path: '/investor/balance', labelKey: 'tab.balance', icon: 'Wallet' },
-  { id: 'more', path: '/investor/more', labelKey: 'tab.more', icon: 'Menu' },
+  { id: 'settings', path: '/investor/settings', labelKey: 'tab.settings', icon: 'Settings' },
+]
+
+// The web side menu: the five tabs above, then ONE LINE EACH for the sections
+// that lie inside a tab on a phone -- the news feed (inside Home), the
+// instalment plans (inside Portfolio), and the documents, identity
+// verification, support and FAQ (inside Settings).
+export const INVESTOR_MENU_EXTRA: TabItem[] = [
+  { id: 'news', path: '/investor/news', labelKey: 'tab.news', icon: 'Newspaper' },
+  {
+    id: 'installments',
+    path: '/investor/installments',
+    labelKey: 'tab.installments',
+    icon: 'CalendarClock',
+  },
+  { id: 'docs', path: '/investor/docs', labelKey: 'tab.docs', icon: 'FileText' },
+  { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },
+  { id: 'support', path: '/investor/support', labelKey: 'tab.support', icon: 'MessageCircle' },
+  { id: 'faq', path: '/investor/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
 ]
 
 export const AGENT_TABS: TabItem[] = [

@@ -61,8 +61,9 @@
 //                                     route to a placeholder
 // =============================================================================
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 import { tOrRaw } from '@/utils/i18n'
 import type { RoadmapItemResponse } from '@/api/types'
@@ -71,7 +72,7 @@ defineProps<{
   items: RoadmapItemResponse[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'product-click': [productId: string]
   'external-click': [url: string]
   'post-click': [postId: string]
@@ -131,12 +132,41 @@ function shouldShowDate(item: RoadmapItemResponse): boolean {
   return item.kind === 'milestone' || item.kind === 'event'
 }
 
-// Description renders only when there's NO linked post. The post
-// snippet supersedes inline description -- this is a content
-// curation rule from the spec, not a layout shortcut.
-function shouldShowDescription(item: RoadmapItemResponse): boolean {
-  if (!item.description) return false
-  return item.post_id === null || item.post_id === undefined
+// An entry is short by default: the title (with its chips and date). A tap
+// opens the detailed description, a second tap closes it. An entry linked to
+// a post opens the post screen instead, and an entry with neither has nothing
+// to open.
+const openIds = ref<Set<string>>(new Set())
+
+function hasPost(item: RoadmapItemResponse): boolean {
+  return item.post_id !== null && item.post_id !== undefined
+}
+
+// The description is the entry's detail only when there is NO linked post: the
+// post supersedes it (a content curation rule from the spec, not a layout
+// shortcut).
+function hasDetail(item: RoadmapItemResponse): boolean {
+  return !!item.description && !hasPost(item)
+}
+
+function isInteractive(item: RoadmapItemResponse): boolean {
+  return hasPost(item) || hasDetail(item)
+}
+
+function isOpen(item: RoadmapItemResponse): boolean {
+  return openIds.value.has(item.id)
+}
+
+function onEntryClick(item: RoadmapItemResponse): void {
+  if (hasPost(item)) {
+    emit('post-click', item.post_id as string)
+    return
+  }
+  if (!hasDetail(item)) return
+  const next = new Set(openIds.value)
+  if (next.has(item.id)) next.delete(item.id)
+  else next.add(item.id)
+  openIds.value = next
 }
 
 // End-marker key -- single locale string, no params (spec deferred
@@ -182,11 +212,30 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
           </header>
 
           <h3 class="roadmap__title">
-            {{ item.title }}
+            <button
+              v-if="isInteractive(item)"
+              type="button"
+              class="roadmap__toggle"
+              :aria-expanded="hasDetail(item) ? isOpen(item) : undefined"
+              @click="onEntryClick(item)"
+            >
+              <span class="roadmap__toggle-text">{{ item.title }}</span>
+              <ChevronDown
+                v-if="hasDetail(item)"
+                :size="16"
+                class="roadmap__chev"
+                :class="{ 'roadmap__chev--open': isOpen(item) }"
+              />
+              <ChevronRight v-else :size="16" class="roadmap__chev" />
+            </button>
+            <template v-else>
+              {{ item.title }}
+            </template>
           </h3>
 
-          <!-- Description (inline) -- suppressed when post_id is set. -->
-          <p v-if="shouldShowDescription(item)" class="roadmap__description">
+          <!-- Detail (the description) -- opened by a tap on the title,
+               never shown when a post is linked. -->
+          <p v-if="hasDetail(item) && isOpen(item)" class="roadmap__description">
             {{ item.description }}
           </p>
 
@@ -383,6 +432,36 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
+}
+
+.roadmap__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.roadmap__toggle-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.roadmap__chev {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.roadmap__chev--open {
+  transform: rotate(180deg);
 }
 
 .roadmap__description {

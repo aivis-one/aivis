@@ -17,22 +17,27 @@
 //      affordance (disabled button when balance < total) is a UX
 //      courtesy, not a security boundary.
 //   4. Success -> toast + push to the portfolio in the current shell.
-//   5. Error -> narrow to ApiResponseError and branch on status + a
-//      message hint. A 402 from the KYC gate is left to main.ts, which
-//      sends the person to /verification; the service's own 400 KYC
-//      refusal (what an agent meets) nudges there from here.
+//   5. Error -> narrow to ApiResponseError and branch on the server's error
+//      code (kyc_required, insufficient_balance, sold_out,
+//      product_not_available, company_not_active). A 402 from the KYC gate
+//      is left to main.ts, which shows the verification prompt; the
+//      service's own kyc_required refusal (what an agent meets) opens the
+//      same prompt from here.
+//
+// BEFORE PAYING. The screen shows the pre-purchase disclosure short, with its
+// full text by link, and ONE tick that accepts the buyer agreement. The
+// button ("Pay") stays shut until the tick is set; pressing it records the
+// acceptance (a signing of the buyer agreement) and then buys. A purchase
+// opens in the position of its own project. Short of money, the screen says
+// how much is missing and offers the top-up for exactly that amount.
 //
 // Balance source:
 //   active_balance.confirmed from /dashboard/summary. The backend
 //   reads the same figure via get_active_balance (frozen excluded).
 //
 // F4.2.1 polish:
-//   Error identification switched from (duck-typed status, regex)
-//   to `instanceof ApiResponseError` + status/message. Regex on the
-//   backend message string is still the discriminator between the
-//   three 400 sub-cases -- not ideal, but robust enough until the
-//   backend starts emitting error codes in `detail` (tracked as
-//   TD-F10). Until then, at least the type and status are rigid.
+//   Error identification is by `instanceof ApiResponseError` + the
+//   server's error code (the regexes on message text are gone).
 //
 // F4.3 fix:
 //   Cancel used router.push(ProductDetail), which pushed a fresh
@@ -66,11 +71,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from 'lucide-vue-next'
-import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
+import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { ApiResponseError } from '@/api/client'
+import { acceptDocumentByType } from '@/api/documents'
 import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
 import { useDashboardStore } from '@/stores/dashboard'
+import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
@@ -123,6 +131,17 @@ const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < totalCents.value
 })
 
+// What is missing, and the amount the top-up screen opens with: the shortfall,
+// and never less than the deposit minimum of $10.
+const MIN_TOP_UP_CENTS = 1000
+const shortfallCents = computed<number>(() => Math.max(0, totalCents.value - balanceCents.value))
+const topUpAmount = computed<string>(() =>
+  (Math.max(shortfallCents.value, MIN_TOP_UP_CENTS) / 100).toFixed(2),
+)
+
+// The buyer agreement is accepted by ONE tick before paying.
+const accepted = ref(false)
+
 const canConfirm = computed<boolean>(() => {
   return (
     !loading.value &&
@@ -130,7 +149,8 @@ const canConfirm = computed<boolean>(() => {
     !errored.value &&
     product.value !== null &&
     !soldOut.value &&
-    !insufficientBalance.value
+    !insufficientBalance.value &&
+    accepted.value
   )
 })
 
@@ -161,20 +181,42 @@ async function confirm(): Promise<void> {
   if (!canConfirm.value) return
   submitting.value = true
   try {
-    await createPurchase(productId.value, {})
-    showToast(t('inv.purchase.success'), 'success')
+    // The acceptance of the buyer agreement is recorded BEFORE the money
+    // moves: the signing time is the acceptance time the purchase agreement
+    // prints. Nothing is charged if the recording cannot be made.
+    const recorded = await acceptDocumentByType(
+      'buyer_agreement',
+      locale.value === 'ru' ? 'ru' : 'en',
+    )
+    if (recorded === 'missing') {
+      showToast(t('inv.purchase.error.agreementMissing'), 'error')
+      return
+    }
+
+    const rows = await createPurchase(productId.value, {})
+    // The bonus parts the purchase brought, one-time, are named at once.
+    const bonusUnits = rows
+      .filter((r) => r.legal_basis === 'gift')
+      .reduce((sum, r) => sum + r.units, 0)
+    showToast(
+      bonusUnits > 0
+        ? t('inv.purchase.successBonus', { units: formatNumber(bonusUnits, locale.value) })
+        : t('inv.purchase.success'),
+      'success',
+    )
     // Awaited push so `submitting` stays true until navigation
     // resolves, avoiding a brief UI flash of the Confirm button
     // between API success and unmount. safeNavigate is no-throw
     // by contract -- critical here so a benign NavigationFailure
     // does NOT bubble into the outer catch and trip handlePurchaseError(),
     // which would otherwise surface a generic-error toast on top of
-    // the success toast.
+    // the success toast. The purchase opens in the position of ITS project.
     await safeNavigate(
       router.push({
-        name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
+        name: agentShell.value ? 'agent-company-position' : 'investor-company-position',
+        params: { id: product.value?.company_id ?? '' },
       }),
-      '[PurchaseView] post-submit to portfolio',
+      '[PurchaseView] post-submit to the project position',
     )
   } catch (err: unknown) {
     await handlePurchaseError(err)
@@ -183,45 +225,52 @@ async function confirm(): Promise<void> {
   }
 }
 
+// Errors are read from the server's code, never from the text of its message.
 async function handlePurchaseError(err: unknown): Promise<void> {
   if (err instanceof ApiResponseError) {
-    const { status, message } = err
+    // 402 -- the KYC gate. main.ts has already shown the verification
+    // prompt; a toast here would only say "error" on top of it.
+    if (err.status === 402) return
 
-    // 402 -- the KYC gate. main.ts has already sent the person to the
-    // verification screen; a toast here would only say "error" on the
-    // way out.
-    if (status === 402) return
-
-    // KYC first -- matches BadRequestError('KYC verification required ...')
-    // from purchases/service.py KYC guard, which is what an agent meets:
-    // the gate lets agents through by role. TD-F10 will replace the
-    // regex with a backend-emitted error code.
-    if (status === 400 && /kyc/i.test(message)) {
-      showToast(t('inv.purchase.error.kycRequired'), 'warning')
-      void safeNavigate(router.push('/verification'), '[PurchaseView] to verification')
-      return
-    }
-
-    // Insufficient balance. Refresh the balance probe before returning
-    // so the next render shows the fresh figure, not the stale one.
-    // Store.refresh never throws -- balance display is a hint, not a
-    // gate, so a failed refresh here is acceptable (the previous
-    // stale value stays on screen).
-    if (status === 400 && /insufficient/i.test(message)) {
-      showToast(t('inv.purchase.error.insufficientBalance'), 'error')
-      await dashboardStore.refresh()
-      return
-    }
-
-    // Product / company status changed under us.
-    if ((status === 400 && /not active/i.test(message)) || status === 404) {
-      showToast(t('inv.purchase.error.productInactive'), 'error')
-      return
+    switch (err.code) {
+      case 'kyc_required':
+        // What an agent meets: the gate lets agents through by role.
+        showKycPrompt('purchase')
+        return
+      case 'insufficient_balance':
+        // Refresh the balance probe so the next render shows the fresh
+        // figure; the screen then offers the top-up for what is missing.
+        showToast(t('inv.purchase.error.insufficientBalance'), 'error')
+        await dashboardStore.refresh()
+        return
+      case 'sold_out':
+        showToast(t('inv.purchase.error.soldOut'), 'error')
+        await load()
+        return
+      case 'product_not_available':
+      case 'company_not_active':
+        showToast(t('inv.purchase.error.productInactive'), 'error')
+        return
+      default:
+        if (err.status === 404) {
+          showToast(t('inv.purchase.error.productInactive'), 'error')
+          return
+        }
     }
   }
 
   // Network / timeout / unknown -- fall through to generic.
   showToast(t('inv.purchase.error.generic'), 'error')
+}
+
+function toTopUp(): void {
+  void safeNavigate(
+    router.push({
+      name: 'investor-deposit',
+      query: { amount: topUpAmount.value, min: '10' },
+    }),
+    '[PurchaseView] to top-up',
+  )
 }
 
 function cancel(): void {
@@ -263,11 +312,11 @@ onMounted(load)
 <template>
   <div class="pv">
     <!-- iter 2.7 batch B2: <CHeader> removed (single-shell-header
-         paradigm). The product name lives in the hero <h1> below;
-         no inline title block is needed. By design no back-link --
-         this view's existing pattern (pre-B2) intentionally omitted
-         one, and purchases are typically reached from product detail
-         where the user can hit browser back. -->
+         paradigm). The product name lives in the hero <h1> below.
+         The screen has its own back control; cancel() is history-aware. -->
+    <div v-if="!loading && product" class="pv__back-row">
+      <CBackLink :label="t('inv.purchase.backLink')" @click="cancel" />
+    </div>
 
     <div v-if="loading" class="pv__center">
       <CLoader />
@@ -345,16 +394,28 @@ onMounted(load)
           <div class="pv__balance" :class="{ 'pv__balance--warn': insufficientBalance }">
             {{ formatPrice(balanceCents, product.currency) }}
           </div>
-          <p v-if="insufficientBalance" class="pv__balance-hint">
-            {{ t('inv.purchase.insufficientHint') }}
-          </p>
+          <template v-if="insufficientBalance">
+            <p class="pv__balance-hint">
+              {{
+                t('inv.purchase.shortfall', {
+                  amount: formatPrice(shortfallCents, product.currency),
+                })
+              }}
+            </p>
+            <CButton variant="outline" size="sm" @click="toTopUp">
+              {{ t('inv.purchase.topUp') }}
+            </CButton>
+          </template>
         </section>
+
+        <!-- The disclosure, short, and the one tick of the buyer agreement -->
+        <PurchaseTerms v-model="accepted" />
 
         <!-- Actions -->
         <div class="pv__actions">
           <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
             <ShoppingCart :size="16" />
-            {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.confirm') }}
+            {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.pay') }}
           </CButton>
           <CButton variant="outline" :disabled="submitting" @click="cancel">
             {{ t('inv.purchase.cancel') }}
@@ -369,6 +430,10 @@ onMounted(load)
 .pv {
   display: flex;
   flex-direction: column;
+}
+
+.pv__back-row {
+  padding: var(--space-3) var(--space-4) 0;
 }
 
 .pv__center {

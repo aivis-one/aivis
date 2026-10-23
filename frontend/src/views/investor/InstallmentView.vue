@@ -27,10 +27,13 @@
 // user can pick a different plan from there (three cards in total,
 // no infinite list per product).
 //
-// Error handling mirrors PurchaseView (F4.2.1): narrow to
-// ApiResponseError, discriminate 400 sub-cases by regex on message,
-// map to toast + side-effect. TD-F10 will replace the regex with a
-// backend-emitted `error_code` discriminator.
+// Error handling mirrors PurchaseView: narrow to ApiResponseError,
+// discriminate by the server's error code, map to toast + side-effect.
+//
+// A plan is accepted ONCE, when it is created: the confirmation shows the
+// disclosure short and one tick of the buyer agreement, and the button
+// ("Pay") records the acceptance before the first payment. Short of money,
+// the screen says how much is missing and offers the top-up for it.
 //
 // Balance source: active_balance.confirmed from /dashboard/summary.
 // The backend validates first-tranche affordability inside create_plan,
@@ -61,6 +64,9 @@ import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createInstallmentPlan } from '@/api/installments'
+import { acceptDocumentByType } from '@/api/documents'
+import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
+import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -135,6 +141,20 @@ const insufficientBalance = computed<boolean>(() => {
   return balanceCents.value < firstTrancheCents.value
 })
 
+// What is missing for the first payment, and the amount the top-up screen
+// opens with: the shortfall, and never less than the deposit minimum of $10.
+const MIN_TOP_UP_CENTS = 1000
+const shortfallCents = computed<number>(() =>
+  Math.max(0, firstTrancheCents.value - balanceCents.value),
+)
+const topUpAmount = computed<string>(() =>
+  (Math.max(shortfallCents.value, MIN_TOP_UP_CENTS) / 100).toFixed(2),
+)
+
+// The plan is accepted ONCE, at its creation, by one tick of the buyer
+// agreement; the months that follow are not accepted again.
+const accepted = ref(false)
+
 const canConfirm = computed<boolean>(() => {
   return (
     !loading.value &&
@@ -144,7 +164,8 @@ const canConfirm = computed<boolean>(() => {
     selectedPlan.value !== null &&
     planConfig.value !== null &&
     planConfig.value.tranches.length >= 2 &&
-    !insufficientBalance.value
+    !insufficientBalance.value &&
+    accepted.value
   )
 })
 
@@ -225,6 +246,16 @@ async function confirm(): Promise<void> {
   if (!canConfirm.value || !selectedPlan.value) return
   submitting.value = true
   try {
+    // The acceptance is recorded before the first payment is taken; nothing is
+    // charged if the recording cannot be made.
+    const recorded = await acceptDocumentByType(
+      'buyer_agreement',
+      locale.value === 'ru' ? 'ru' : 'en',
+    )
+    if (recorded === 'missing') {
+      showToast(t('inv.installment.error.agreementMissing'), 'error')
+      return
+    }
     await createInstallmentPlan(productId.value, {
       product_installment_id: selectedPlan.value.id,
     })
@@ -249,43 +280,53 @@ async function confirm(): Promise<void> {
   }
 }
 
+// Errors are read from the server's code, never from the text of its message.
 async function handlePlanError(err: unknown): Promise<void> {
   if (err instanceof ApiResponseError) {
-    const { status, message } = err
+    // 402 -- the KYC gate. main.ts has already shown the verification
+    // prompt; a toast here would only say "error" on top of it.
+    if (err.status === 402) return
 
-    // 402 -- the KYC gate. main.ts has already sent the person to the
-    // verification screen; a toast here would only say "error" on the
-    // way out.
-    if (status === 402) return
-
-    // installments/service.py's own KYC guard -- what an agent meets,
-    // since the gate lets agents through by role.
-    if (status === 400 && /kyc/i.test(message)) {
-      showToast(t('inv.installment.error.kycRequired'), 'warning')
-      void safeNavigate(router.push('/verification'), '[InstallmentView] to verification')
-      return
-    }
-
-    if (status === 400 && /insufficient/i.test(message)) {
-      showToast(t('inv.installment.error.insufficientBalance'), 'error')
-      await dashboardStore.refresh()
-      return
-    }
-
-    // Template drift -- rare, but possible if an admin soft-deletes
-    // the template between ProductDetail load and Confirm click.
-    if (status === 400 && /(template|does not belong)/i.test(message)) {
-      showToast(t('inv.installment.error.templateMismatch'), 'error')
-      return
-    }
-
-    if ((status === 400 && /not active/i.test(message)) || status === 404) {
-      showToast(t('inv.installment.error.productInactive'), 'error')
-      return
+    switch (err.code) {
+      case 'kyc_required':
+        // What an agent meets: the gate lets agents through by role.
+        showKycPrompt('installment')
+        return
+      case 'insufficient_balance':
+        showToast(t('inv.installment.error.insufficientBalance'), 'error')
+        await dashboardStore.refresh()
+        return
+      case 'insufficient_pool_capacity':
+        showToast(t('inv.installment.error.poolCapacity'), 'error')
+        return
+      // Template drift -- rare, but possible if an admin soft-deletes the
+      // template between ProductDetail load and Confirm click.
+      case 'installment_template_mismatch':
+        showToast(t('inv.installment.error.templateMismatch'), 'error')
+        return
+      case 'product_not_available':
+      case 'company_not_active':
+        showToast(t('inv.installment.error.productInactive'), 'error')
+        return
+      default:
+        if (err.status === 404) {
+          showToast(t('inv.installment.error.productInactive'), 'error')
+          return
+        }
     }
   }
 
   showToast(t('inv.installment.error.generic'), 'error')
+}
+
+function toTopUp(): void {
+  void safeNavigate(
+    router.push({
+      name: 'investor-deposit',
+      query: { amount: topUpAmount.value, min: '10' },
+    }),
+    '[InstallmentView] to top-up',
+  )
 }
 
 function cancel(): void {
@@ -498,16 +539,28 @@ onMounted(load)
                 {{ formatPrice(balanceCents, product.currency) }}
               </span>
             </div>
-            <p v-if="insufficientBalance" class="iv__balance-hint">
-              {{ t('inv.installment.insufficientHint') }}
-            </p>
+            <template v-if="insufficientBalance">
+              <p class="iv__balance-hint">
+                {{
+                  t('inv.installment.shortfall', {
+                    amount: formatPrice(shortfallCents, product.currency),
+                  })
+                }}
+              </p>
+              <CButton variant="outline" size="sm" @click="toTopUp">
+                {{ t('inv.installment.topUp') }}
+              </CButton>
+            </template>
           </section>
+
+          <!-- The disclosure, short, and the one tick of the buyer agreement -->
+          <PurchaseTerms v-model="accepted" />
 
           <!-- Actions -->
           <div class="iv__actions">
             <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
               <Calendar :size="16" />
-              {{ t('inv.installment.confirm') }}
+              {{ t('inv.installment.pay') }}
             </CButton>
             <CButton variant="outline" :disabled="submitting" @click="cancel">
               {{ t('inv.installment.cancel') }}

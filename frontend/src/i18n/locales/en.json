@@ -63,10 +63,10 @@
     },
     "register": {
       "title": "Create Account",
-      "subtitle": "Create your AIVIS.ONE account to manage SANKORD licences and purchases",
+      "subtitle": "Create your AIVIS.ONE account to buy parts of projects and follow your holdings",
       "email": "Email",
       "password": "Password",
-      "passwordHint": "Minimum 8 characters, letters and numbers",
+      "passwordHint": "Minimum 8 characters",
       "confirmPassword": "Confirm password",
       "passPlaceholder": "Minimum 8 characters",
       "confirmPlaceholder": "Repeat password",
@@ -77,7 +77,8 @@
       "consentRequired": "Please accept the Cabinet Terms and the Privacy Policy.",
       "consentTerms": "Cabinet Terms",
       "consentAnd": "and the",
-      "consentPrivacy": "Privacy Policy"
+      "consentPrivacy": "Privacy Policy",
+      "buyNote": "Buying opens after identity verification ($10). Register first; after the e-mail code you come back to this product."
     },
     "verify": {
       "title": "Check Your Email",
@@ -144,7 +145,7 @@
       "confirmTitle": "Set a new password",
       "confirmSubtitle": "Choose a new password for your account.",
       "newPassword": "New password",
-      "newPasswordHint": "Minimum 8 characters, letters and numbers",
+      "newPasswordHint": "Minimum 8 characters",
       "newPassPlaceholder": "Minimum 8 characters",
       "confirmPassword": "Confirm new password",
       "confirmPassPlaceholder": "Repeat password",
@@ -165,7 +166,8 @@
       "timeout": "Server did not respond. Try again",
       "rateLimited": "Too many attempts. Please try again later",
       "telegramMfaRequired": "Two-factor authentication is required. Please open AIVIS.ONE in a browser to finish signing in."
-    }
+    },
+    "logout": "Sign out"
   },
   "tab": {
     "home": "Home",
@@ -193,7 +195,14 @@
       "payments": "Payments",
       "platform": "Platform",
       "more": "More"
-    }
+    },
+    "settings": "Settings",
+    "news": "News and events",
+    "installments": "Installment plans",
+    "docs": "Documents",
+    "kyc": "Identity verification",
+    "support": "Support",
+    "faq": "FAQ"
   },
   "staff": {
     "panel": "Staff Panel",
@@ -675,17 +684,17 @@
       "title": "Store",
       "subtitle": "Available products",
       "filter": {
-        "all": "All companies",
-        "company": "Company",
-        "title": "Filter by company",
-        "search": "Search companies...",
+        "all": "All projects",
+        "company": "Project",
+        "title": "Filter by project",
+        "search": "Search projects...",
         "clear": "Clear filter",
-        "empty": "No companies found"
+        "empty": "No projects found"
       },
       "empty": {
         "title": "No products available",
         "desc": "Check back later for new products",
-        "filteredTitle": "No products for this company",
+        "filteredTitle": "No products for this project",
         "filteredDesc": "Try another filter or clear it"
       },
       "packsAvailable": "packs available"
@@ -723,11 +732,18 @@
         "desc": "Please go back and try again"
       },
       "error": {
-        "insufficientBalance": "Not enough balance on your active account",
+        "insufficientBalance": "Not enough money on your buyer account",
         "kycRequired": "KYC verification required. Redirecting to verification",
         "productInactive": "This product is no longer available",
-        "generic": "Purchase failed. Please try again"
-      }
+        "generic": "Purchase failed. Please try again",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "soldOut": "Not enough parts are left for this package"
+      },
+      "pay": "Pay",
+      "backLink": "Back",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up",
+      "successBonus": "Purchase made. Bonus parts: {units}"
     },
     "installment": {
       "title": "Installment Plan",
@@ -758,8 +774,13 @@
         "kycRequired": "KYC verification required. Redirecting to verification",
         "templateMismatch": "The selected plan is no longer valid for this product",
         "productInactive": "This product is no longer available",
-        "generic": "Could not create the plan. Please try again"
-      }
+        "generic": "Could not create the plan. Please try again",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "poolCapacity": "Not enough parts are left for this plan"
+      },
+      "pay": "Pay",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up"
     },
     "installmentPlans": {
       "list": {
@@ -770,7 +791,7 @@
         "empty": {
           "title": "No installment plans yet",
           "description": "Choose a product with an installment option to start a plan.",
-          "cta": "Browse companies"
+          "cta": "Browse projects"
         },
         "item": {
           "label": "Plan {id}",
@@ -822,8 +843,8 @@
     },
     "balance": {
       "title": "Balance",
-      "active": "Active balance",
-      "frozen": "Frozen",
+      "active": "Buyer account",
+      "frozen": "Awaiting confirmation",
       "deposit": "Deposit",
       "history": "Payment history",
       "historyEmpty": "No payments yet",
@@ -892,6 +913,13 @@
           "successToast": "Payout details updated",
           "error": "Could not save payout details"
         }
+      },
+      "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
+      "allOperations": "All operations",
+      "holder": {
+        "title": "Holder accruals and payouts",
+        "rule": "AIVIS pays the accruals itself, once a quarter, to your bank account or card; if you paid in USDT, in USDT to your confirmed address. There is no holder balance and no withdrawal request.",
+        "small": "An amount under 10 USD carries over to the next quarter."
       }
     },
     "deposit": {
@@ -909,7 +937,6 @@
       "copy": "Copy address",
       "copied": "Address copied",
       "copyError": "Could not copy the address",
-      "warning": "Send only USDT via TRC20 to this address. Funds sent on other networks cannot be recovered.",
       "qrUnavailable": "QR code unavailable — please use the address below.",
       "backToBalance": "Back to balance",
       "backLink": "Back to balance",
@@ -929,14 +956,15 @@
       "newDeposit": "New deposit",
       "unavailable": {
         "title": "Deposits are temporarily unavailable",
-        "desc": "Crypto deposits are not being accepted right now. Nothing is wrong with your account — please try again later."
+        "desc": "Crypto deposits are not being accepted right now. Nothing is wrong with your account — please try again later.",
+        "offline": "No connection to the service. Check your internet and try again."
       },
       "status": {
         "awaiting_confirmations": "Transaction found, waiting for network confirmations.",
         "attempts_exhausted": "No attempts left. Please contact support.",
         "confirmed": "Payment confirmed",
-        "expired": "This invoice has expired",
-        "stalled": "The payment did not confirm in time"
+        "expired": "This invoice has expired — create a new one.",
+        "stalled": "The payment did not confirm in time — try again or write to support."
       },
       "verdict": {
         "not_found": "That transaction was not found on chain. Check the hash and try again.",
@@ -945,7 +973,27 @@
         "invalid_format": "That does not look like a transaction hash for this network. No attempt was used.",
         "api_error": "The blockchain explorer did not answer. No attempt was used — please try again later.",
         "unknown": "The hash was not accepted."
-      }
+      },
+      "coin": "USDT",
+      "networks": {
+        "trc20": {
+          "name": "USDT · TRC20 (Tron)",
+          "warning": "Send only USDT on the TRC20 (Tron) network to this address. Funds sent on any other network cannot be recovered."
+        },
+        "erc20": {
+          "name": "USDT · ERC20 (Ethereum)",
+          "warning": "Send only USDT on the ERC20 (Ethereum) network to this address. Funds sent on any other network cannot be recovered."
+        },
+        "bsc20": {
+          "name": "USDT · BSC20 (BNB Smart Chain)",
+          "warning": "Send only USDT on the BSC20 (BNB Smart Chain) network to this address. Funds sent on any other network cannot be recovered."
+        }
+      },
+      "minimum": "Minimum: ${amount}",
+      "networkNotSupported": "This network is not available right now. Choose another one.",
+      "offline": "No connection. Check your internet and try again.",
+      "bankLine": "To pay by bank, write to support.",
+      "bankCta": "Write to support"
     },
     "transactions": {
       "title": "Transactions",
@@ -964,8 +1012,7 @@
         "all": "All",
         "deposits": "Deposits",
         "purchases": "Purchases",
-        "installments": "Installments",
-        "withdrawals": "Withdrawals"
+        "installments": "Installments"
       },
       "type": {
         "deposit:received": "Deposit received",
@@ -982,7 +1029,8 @@
         "withdrawal:rejected": "Withdrawal rejected",
         "withdrawal:completed": "Withdrawal completed",
         "withdrawal:failed": "Withdrawal failed",
-        "reversal:completed": "Reversal completed"
+        "reversal:completed": "Reversal completed",
+        "kyc:verification_fee": "Identity verification fee"
       },
       "detail": {
         "title": "Transaction details",
@@ -1016,14 +1064,14 @@
         "totalValue": "Total value",
         "products": "Products",
         "units": "Units",
-        "companies": "Companies",
+        "companies": "Projects",
         "empty": "No purchases yet",
         "emptyCta": "Browse the store"
       },
       "balance": {
-        "title": "Balance",
+        "title": "Buyer account",
         "available": "Available",
-        "frozen": "On hold"
+        "frozen": "Awaiting confirmation"
       },
       "actions": {
         "title": "Quick actions",
@@ -1041,6 +1089,15 @@
         "title": "Upcoming events",
         "errorTitle": "Couldn't load events",
         "errorRetry": "Retry"
+      },
+      "kyc": {
+        "not_started": "Identity not verified — verify ($10)",
+        "submitted": "Identity check in progress",
+        "rejected": "Identity check rejected"
+      },
+      "gift": "A gift is waiting for you to accept it",
+      "news": {
+        "title": "News and events"
       }
     },
     "events": {
@@ -1054,11 +1111,21 @@
       "errorRetry": "Retry",
       "eventCard": {
         "openUrl": "Open link"
-      }
+      },
+      "notFound": "Event not found"
     },
     "portfolio": {
+      "gifts": {
+        "title": "Gifts waiting for you",
+        "units": "{units} parts as a gift",
+        "certificate": "Gift certificate",
+        "accept": "Accept the gift",
+        "accepted": "The gift is accepted: the parts are in your portfolio",
+        "acceptError": "Could not accept the gift, please try again",
+        "kycRequired": "To accept the gift, pass identity verification first"
+      },
       "title": "Portfolio",
-      "subtitle": "Your holdings across all companies",
+      "subtitle": "Your holdings across all projects",
       "totalValue": "Total value",
       "products": "Products",
       "units": "Units",
@@ -1079,24 +1146,24 @@
       "errorTitle": "Could not load portfolio"
     },
     "companyList": {
-      "title": "Companies",
-      "subtitle": "Companies selling products",
+      "title": "Projects",
+      "subtitle": "Projects with products on sale",
       "empty": {
-        "title": "No companies yet",
-        "subtitle": "Check back soon as new companies join."
+        "title": "No projects yet",
+        "subtitle": "Check back soon as new projects join."
       },
-      "errorTitle": "Could not load companies",
+      "errorTitle": "Could not load projects",
       "errorRetry": "Retry"
     },
     "companyOverview": {
       "status": "Active",
-      "backToList": "All companies",
+      "backToList": "All projects",
       "backLink": "Back to the store",
-      "errorTitle": "Could not load company",
+      "errorTitle": "Could not load project",
       "errorRetry": "Retry",
-      "notFound": "Company not found",
+      "notFound": "Project not found",
       "sectionRoadmap": "Roadmap",
-      "sectionDocuments": "Company documents",
+      "sectionDocuments": "Project documents",
       "cta": {
         "viewProducts": "View products"
       },
@@ -1128,7 +1195,7 @@
       "openProduct": "View product",
       "openExternal": "Open",
       "readMore": "Read more",
-      "endMarker": "Beginning of company history"
+      "endMarker": "Beginning of the project's history"
     },
     "path": {
       "legal": "Legal",
@@ -1152,7 +1219,8 @@
         "empty": "No purchases yet",
         "legalBasis": {
           "sale": "Purchase",
-          "gift": "Gift"
+          "gift": "Gift",
+          "installment_tranche": "Installment payment"
         },
         "units": "Units",
         "paid": "Paid",
@@ -1168,7 +1236,7 @@
       },
       "notFound": {
         "title": "Position not found",
-        "description": "You have no active purchases in this company."
+        "description": "You have no active purchases in this project."
       }
     },
     "agreement": {
@@ -1182,13 +1250,10 @@
       "loading": "Loading document...",
       "errorTitle": "Could not load document",
       "errorRetry": "Retry",
-      "emailSend": "Email to me",
-      "emailSending": "Sending...",
-      "emailSuccess": "Document sent to your email",
-      "emailError": "Could not send the document",
       "rateLimited": "Too many requests, try again in a minute",
       "unavailable": "Document temporarily unavailable",
-      "close": "Close"
+      "close": "Close",
+      "save": "Download"
     },
     "docs": {
       "title": "Documents",
@@ -1204,7 +1269,8 @@
       },
       "meta": {
         "signed": "Already signed",
-        "pending": "Action required"
+        "pending": "Action required",
+        "read": "To read and download"
       },
       "modal": {
         "loading": "Loading document...",
@@ -1214,7 +1280,8 @@
         "signing": "Signing...",
         "signSuccess": "Document signed",
         "signError": "Could not sign the document",
-        "close": "Close"
+        "close": "Close",
+        "download": "Download"
       }
     },
     "faq": {
@@ -1258,7 +1325,7 @@
       },
       "agent": {
         "title": "Integrator programme",
-        "apply": "Become an Integrator",
+        "apply": "Become an integrator",
         "reapply": "Apply again",
         "pending": "Your application is under review",
         "cooldown": "Available in {days} days",
@@ -1268,8 +1335,8 @@
         "loadError": "Could not load application status"
       },
       "actions": {
-        "title": "Actions",
-        "docs": "My documents",
+        "title": "Security and documents",
+        "docs": "Documents",
         "logout": "Sign out",
         "twoFactor": {
           "ctaEnable": "Enable two-factor authentication",
@@ -1371,9 +1438,36 @@
           "confirmBtn": "Deactivate",
           "errorIncorrectPassword": "Incorrect password",
           "errorGeneric": "Something went wrong. Please try again."
-        }
+        },
+        "kyc": {
+          "title": "Identity verification",
+          "approved": "Passed",
+          "submitted": "In review",
+          "rejected": "Rejected",
+          "notStarted": "Not passed"
+        },
+        "support": "Support",
+        "faq": "FAQ",
+        "logoutAll": "Sign out of all devices",
+        "logoutAllError": "Could not sign out of all devices. Try again."
       },
-      "subtitle": "Manage your profile and preferences"
+      "subtitle": "Manage your profile and preferences",
+      "email": {
+        "title": "E-mail",
+        "needed": "Identity verification starts from a confirmed e-mail. Add yours.",
+        "label": "Your e-mail",
+        "sendCode": "Send the code",
+        "codeHint": "We sent a 6-digit code to {email}. Enter it to confirm the address.",
+        "codeLabel": "Code from the letter",
+        "sendAgain": "Send again",
+        "confirm": "Confirm",
+        "sent": "The code has been sent",
+        "confirmed": "E-mail confirmed",
+        "taken": "This address belongs to another account.",
+        "alreadySet": "This account already has an e-mail.",
+        "wrongCode": "The code is wrong or has expired. Send it again.",
+        "failed": "Could not complete this. Try again."
+      }
     },
     "more": {
       "title": "More",
@@ -1442,13 +1536,37 @@
     },
     "productsByCompany": {
       "title": "Products",
-      "backLink": "Back to company",
+      "backLink": "Back to project",
       "empty": {
         "title": "No products yet",
-        "subtitle": "This company hasn't published any products yet."
+        "subtitle": "This project hasn't published any products yet."
       },
       "errorTitle": "Could not load products",
-      "errorRetry": "Retry"
+      "errorRetry": "Retry",
+      "errorDesc": "Could not load the products, please try again."
+    },
+    "news": {
+      "title": "News and events",
+      "kind": {
+        "post": "News",
+        "event": "Event"
+      },
+      "showMore": "Show more",
+      "errorTitle": "Could not load the feed",
+      "empty": "No news or events yet"
+    },
+    "post": {
+      "errorTitle": "Could not load the post",
+      "errorDesc": "It may have been removed. Try again in a moment."
+    },
+    "terms": {
+      "title": "Before you pay",
+      "digestFailed": "The short form could not be loaded. Open the full sheet.",
+      "readFull": "Read the full disclosure sheet",
+      "disclosureTitle": "Pre-purchase disclosure sheet",
+      "agreementTitle": "Buyer agreement",
+      "acceptPrefix": "I accept the",
+      "agreementLink": "agreement"
     }
   },
   "nav": {
@@ -2301,21 +2419,23 @@
   },
   "public": {
     "shell": {
-      "loginButton": "Sign in"
+      "loginButton": "Sign in",
+      "registerButton": "Register",
+      "cabinetButton": "To the cabinet"
     },
     "companyList": {
-      "title": "Discover companies",
-      "subtitle": "Explore companies selling on AIVIS.ONE.",
-      "errorTitle": "Couldn't load companies",
+      "title": "Discover projects",
+      "subtitle": "Explore projects on AIVIS.ONE.",
+      "errorTitle": "Couldn't load projects",
       "errorRetry": "Try again",
       "empty": {
-        "title": "No active companies yet",
-        "subtitle": "Check back soon as new companies join."
+        "title": "No active projects yet",
+        "subtitle": "Check back soon as new projects join."
       }
     },
     "companyOverview": {
-      "notFound": "Company not found",
-      "errorTitle": "Couldn't load company",
+      "notFound": "Project not found",
+      "errorTitle": "Couldn't load project",
       "errorRetry": "Try again",
       "sectionRoadmap": "Roadmap",
       "stats": {
@@ -2343,7 +2463,7 @@
     },
     "productDetail": {
       "purchaseCTA": "Register to buy",
-      "backLink": "Back to company",
+      "backLink": "Back to project",
       "errorTitle": "Couldn't load product",
       "errorRetry": "Try again",
       "notFound": {
@@ -2353,7 +2473,7 @@
     },
     "attachmentLanding": {
       "title": "Document",
-      "backLink": "Back to company",
+      "backLink": "Back to project",
       "download": "Download",
       "errorTitle": "Couldn't load document",
       "errorRetry": "Try again",
@@ -2383,7 +2503,7 @@
     "revokedTitle": "Verification withdrawn",
     "revokedText": "Your approval has been withdrawn. Contact support if you believe this is a mistake.",
     "toSupport": "Contact support",
-    "unlocks": "Verification unlocks buying, installment plans and withdrawals. Everything else is open without it.",
+    "unlocks": "Verification unlocks buying, instalment plans and the integrator application. Everything else is open without it.",
     "back": "Back",
     "errorLoad": "Could not load verification status.",
     "errorStart": "Could not start verification.",
@@ -2401,6 +2521,45 @@
       "errorEmpty": "That file is empty.",
       "errorTooLarge": "That file is larger than 10 MB.",
       "errorIncomplete": "Please attach every requested image."
+    },
+    "rejectedReason": "Reason: {reason}",
+    "emailFirst": "Confirm your e-mail first: verification starts from a confirmed e-mail address.",
+    "toSettings": "Go to settings",
+    "details": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone",
+      "country": "Country",
+      "errorIncomplete": "Fill in your first name, last name and country."
+    },
+    "notice": {
+      "lead": "By sending the application you confirm that you have read the",
+      "link": "KYC notice"
+    },
+    "prompt": {
+      "purchase": "To buy, pass identity verification: $10",
+      "installment": "To pay in instalments, pass identity verification: $10",
+      "generic": "Pass identity verification: $10",
+      "text": "The fee is charged for each attempt and is not returned.",
+      "later": "Not now",
+      "go": "Verify identity"
     }
+  },
+  "intro": {
+    "what": {
+      "title": "What AIVIS.ONE is",
+      "text": "AIVIS.ONE sells parts of intellectual property projects. A part is a share of 15 percent of the project's gross receipts, the sale of an existing right; it is entered in the company's register in your name."
+    },
+    "where": {
+      "title": "Where you are",
+      "text": "This is your cabinet: the storefront of projects, your portfolio with the documents of every purchase, and your buyer account."
+    },
+    "how": {
+      "title": "What to do here",
+      "text": "Create an account, pass identity verification ($10), top up your account in USDT and buy parts of a project. What the parts bring is paid out quarterly."
+    },
+    "next": "Next",
+    "skip": "Skip",
+    "start": "Start"
   }
 }

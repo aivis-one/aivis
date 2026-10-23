@@ -12,14 +12,14 @@
 //   subtitle, matching MarketView / BalanceView.
 //
 // CATEGORY TABS.
-//   Five chips map directly to backend prefix filters:
+//   Four chips map directly to backend prefix filters (an investor has no
+//   withdrawals, so no chip for them; they stay in "All"):
 //     All          -> null
 //     Deposits     -> 'deposit:'
 //     Purchases    -> 'purchase:'
 //     Installments -> 'installment:'
-//     Withdrawals  -> 'withdrawal:'
 //   Backend dispatches on trailing ':' and does a startswith match.
-//   Horizontal chip row with overflow scroll -- five labels fit on
+//   Horizontal chip row with overflow scroll -- four labels fit on
 //   desktop, scroll on narrow mobile. No date/amount filter sheet
 //   in F4.3 (explicit scope decision).
 //
@@ -68,7 +68,7 @@ import { formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useTransactionsStore()
 const { showToast } = useToast()
 // storeToRefs keeps hasMore reactive when destructured -- matches
@@ -93,7 +93,6 @@ const TABS: readonly Tab[] = [
   { key: 'deposits', labelKey: 'inv.transactions.tabs.deposits', filter: 'deposit:' },
   { key: 'purchases', labelKey: 'inv.transactions.tabs.purchases', filter: 'purchase:' },
   { key: 'installments', labelKey: 'inv.transactions.tabs.installments', filter: 'installment:' },
-  { key: 'withdrawals', labelKey: 'inv.transactions.tabs.withdrawals', filter: 'withdrawal:' },
 ] as const
 
 const sentinelRef = ref<HTMLElement | null>(null)
@@ -129,7 +128,7 @@ function amountClass(cents: number): string {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale.value, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

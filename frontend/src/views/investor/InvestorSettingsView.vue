@@ -39,15 +39,20 @@
 //      rather than leaving a saved-but-invisible change (see CAppControls'
 //      own header comment: "the locale was set exclusively from
 //      `user.language` at login").
+//      The e-mail (EmailSection) sits here: an account that signed in
+//      without one adds and confirms it, because identity verification
+//      starts from a confirmed e-mail.
 //   3. Preferences -- theme selector (3 chips: auto / light / dark,
 //      driven by useTheme -- client-only, no backend round-trip) and
 //      a marketing consent toggle backed by profile.marketing_consent
 //      (PATCH /users/me with optimistic local flip + revert on fail).
-//   4. Agent programme -- conditional block, only rendered when the
-//      current user is an investor. State machine below.
-//   5. Actions -- My Documents shortcut (deep link into
-//      InvestorDocsView) and Sign out (authStore.logout then push
-//      /login).
+//   4. "Become an integrator" -- shown to an investor only AFTER the
+//      identity verification is passed (before it, the verification row
+//      below is the way in). State machine below.
+//   5. Actions -- identity verification (its status), Documents, Support
+//      and FAQ (they lie inside Settings on a phone), the security group
+//      (two-factor, sessions, "Sign out of all devices", "Sign out"),
+//      notification settings and account deactivation.
 //
 // AGENT APPLICATION STATE MACHINE.
 //   TASK-39 item 5: the derivation (loading / load_error / kyc_required /
@@ -100,12 +105,14 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
   FileText,
+  HelpCircle,
   LogOut,
+  MessageCircle,
   Monitor,
   Moon,
   Pencil,
@@ -117,6 +124,7 @@ import {
 
 import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
+import EmailSection from '@/components/shared/EmailSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
@@ -131,11 +139,11 @@ import { tOrRaw } from '@/utils/i18n'
 import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { COUNTRIES } from '@/utils/countries'
-import { ApiResponseError } from '@/api/client'
 import type { UserUpdate } from '@/api/types'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { showToast } = useToast()
 
@@ -164,6 +172,12 @@ const fullName = computed<string>(() => {
 })
 
 const email = computed<string>(() => authStore.user?.email ?? '')
+
+// The verification screen sends a person here to confirm an address that is
+// already on the account; with no address yet the field comes first.
+const confirmEmail = computed<boolean>(
+  () => route.query.confirm_email === '1' && email.value.length > 0,
+)
 
 const roleLabel = computed<string>(() => {
   const role = authStore.user?.role ?? 'investor'
@@ -319,11 +333,9 @@ async function handleSaveProfile(): Promise<void> {
     showEditProfile.value = false
     showToast(t('inv.settings.profile.editSuccess'), 'success')
   } catch (err) {
-    const message =
-      err instanceof ApiResponseError && err.detail
-        ? err.detail
-        : t('inv.settings.profile.editError')
-    showToast(message, 'error')
+    // A plain sentence, never the server's raw text.
+    void err
+    showToast(t('inv.settings.profile.editError'), 'error')
   } finally {
     savingProfile.value = false
   }
@@ -374,6 +386,7 @@ async function toggleMarketing(): Promise<void> {
 
 const {
   isInvestor,
+  kycApproved,
   state: agentState,
   cooldownDaysLeft,
   fetch: fetchAgentApps,
@@ -413,6 +426,40 @@ function goDocs(): void {
     router.push({ name: 'investor-docs' }),
     '[InvestorSettingsView] to investor docs',
   )
+}
+
+function goSupport(): void {
+  void safeNavigate(router.push({ name: 'investor-support' }), '[InvestorSettingsView] to support')
+}
+
+function goFaq(): void {
+  void safeNavigate(router.push({ name: 'investor-faq' }), '[InvestorSettingsView] to FAQ')
+}
+
+// The KYC row names where the verification stands.
+const kycRowKey = computed<string>(() => {
+  const raw = authStore.user?.kyc_status
+  if (raw === 'approved') return 'inv.settings.actions.kyc.approved'
+  if (raw === 'submitted') return 'inv.settings.actions.kyc.submitted'
+  if (raw === 'rejected') return 'inv.settings.actions.kyc.rejected'
+  return 'inv.settings.actions.kyc.notStarted'
+})
+
+const loggingOutAll = ref<boolean>(false)
+
+// Ends the session on every device. The local session is cleared only after
+// the server has ended them all; a failure says so and changes nothing.
+async function handleLogoutAll(): Promise<void> {
+  if (loggingOutAll.value) return
+  loggingOutAll.value = true
+  try {
+    await authStore.logoutAllDevices()
+    void safeNavigate(router.push('/login'), '[InvestorSettingsView] to login')
+  } catch {
+    showToast(t('inv.settings.actions.logoutAllError'), 'error')
+  } finally {
+    loggingOutAll.value = false
+  }
 }
 
 const loggingOut = ref<boolean>(false)
@@ -499,6 +546,11 @@ onMounted(() => {
       </div>
     </section>
 
+    <!-- The e-mail: added and confirmed here when the account has none -->
+    <section v-if="!email || confirmEmail" class="sett__section">
+      <EmailSection :confirm="confirmEmail" />
+    </section>
+
     <!-- Preferences -->
     <section class="sett__section">
       <div class="sett__section-title">
@@ -544,8 +596,8 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Agent programme -->
-    <section v-if="isInvestor" class="sett__section">
+    <!-- Become an integrator: after the verification is passed -->
+    <section v-if="isInvestor && kycApproved" class="sett__section">
       <div class="sett__section-title">
         {{ t('inv.settings.agent.title') }}
       </div>
@@ -569,20 +621,6 @@ onMounted(() => {
         <span class="sett__row-label sett__row-label--accent">
           {{ t('common.retry') }}
         </span>
-      </button>
-
-      <!-- KYC required -->
-      <button
-        v-else-if="agentState === 'kyc_required'"
-        type="button"
-        class="sett__row sett__row--clickable"
-        @click="goKyc"
-      >
-        <span class="sett__row-label sett__row-label--accent">
-          <Shield :size="16" />
-          {{ t('inv.settings.agent.kycRequired') }}
-        </span>
-        <ChevronRight :size="16" />
       </button>
 
       <!-- Pending review -->
@@ -620,6 +658,15 @@ onMounted(() => {
         {{ t('inv.settings.actions.title') }}
       </div>
 
+      <!-- Identity verification, with where it stands -->
+      <button type="button" class="sett__row sett__row--clickable" @click="goKyc">
+        <span class="sett__row-label sett__row-label--accent">
+          <Shield :size="16" />
+          {{ t('inv.settings.actions.kyc.title') }}
+        </span>
+        <span class="sett__row-value">{{ t(kycRowKey) }}</span>
+      </button>
+
       <button type="button" class="sett__row sett__row--clickable" @click="goDocs">
         <span class="sett__row-label sett__row-label--accent">
           <FileText :size="16" />
@@ -628,8 +675,39 @@ onMounted(() => {
         <ChevronRight :size="16" />
       </button>
 
+      <button type="button" class="sett__row sett__row--clickable" @click="goSupport">
+        <span class="sett__row-label sett__row-label--accent">
+          <MessageCircle :size="16" />
+          {{ t('inv.settings.actions.support') }}
+        </span>
+        <ChevronRight :size="16" />
+      </button>
+
+      <button type="button" class="sett__row sett__row--clickable" @click="goFaq">
+        <span class="sett__row-label sett__row-label--accent">
+          <HelpCircle :size="16" />
+          {{ t('inv.settings.actions.faq') }}
+        </span>
+        <ChevronRight :size="16" />
+      </button>
+
+      <!-- Security: two-factor, sessions, sign out of all devices, sign out -->
       <TwoFactorSection tPrefix="inv.settings.actions" />
       <ActiveSessionsSection tPrefix="inv.settings.actions" />
+      <button
+        type="button"
+        class="sett__row sett__row--clickable"
+        :class="{ 'sett__row--disabled': loggingOutAll }"
+        :disabled="loggingOutAll"
+        @click="handleLogoutAll"
+      >
+        <span class="sett__row-label sett__row-label--danger">
+          <LogOut :size="16" />
+          {{ t('inv.settings.actions.logoutAll') }}
+        </span>
+        <ChevronRight :size="16" />
+      </button>
+
       <NotificationPreferencesSection tPrefix="inv.settings.actions" />
       <DeactivateAccountSection tPrefix="inv.settings.actions" />
 
@@ -674,7 +752,6 @@ onMounted(() => {
         v-model="draftPhone"
         :label="t('inv.settings.profile.phone')"
         type="tel"
-        placeholder="+49 XXX XXXXXXXX"
         autocomplete="tel"
       />
 

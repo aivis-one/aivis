@@ -33,11 +33,19 @@ import {
   Users,
   CreditCard,
   LayoutGrid,
+  Newspaper,
+  CalendarClock,
+  FileText,
+  ShieldCheck,
+  MessageCircle,
+  HelpCircle,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
 
-defineProps<{ items: TabItem[] }>()
+// `items` are the shell's tabs; `extra` are the lines that, on a phone, lie
+// inside one of those tabs and on the web stand as lines of their own.
+withDefaults(defineProps<{ items: TabItem[]; extra?: TabItem[] }>(), { extra: () => [] })
 
 const route = useRoute()
 const router = useRouter()
@@ -57,6 +65,12 @@ const iconMap: Record<string, Component> = {
   Users,
   CreditCard,
   LayoutGrid,
+  Newspaper,
+  CalendarClock,
+  FileText,
+  ShieldCheck,
+  MessageCircle,
+  HelpCircle,
 }
 
 function isActive(tab: TabItem): boolean {
@@ -86,6 +100,23 @@ function navigate(tab: TabItem): void {
       </span>
       <span class="c-sidenav__label">{{ t(tab.labelKey) }}</span>
     </button>
+    <template v-if="extra.length > 0">
+      <hr class="c-sidenav__rule" />
+      <button
+        v-for="tab in extra"
+        :key="tab.id"
+        class="c-sidenav__item"
+        :class="{ 'c-sidenav__item--active': isActive(tab) }"
+        :aria-label="t(tab.labelKey)"
+        :aria-current="isActive(tab) ? 'page' : undefined"
+        @click="navigate(tab)"
+      >
+        <span class="c-sidenav__icon">
+          <component :is="iconMap[tab.icon]" :size="20" />
+        </span>
+        <span class="c-sidenav__label">{{ t(tab.labelKey) }}</span>
+      </button>
+    </template>
   </nav>
 </template>
 
@@ -129,6 +160,14 @@ function navigate(tab: TabItem): void {
       background-color 0.2s;
     /* Rail: the icon centres in the row. Desktop re-aligns to the start. */
     justify-content: center;
+  }
+
+  /* The line between the shell's tabs and the lines that lie inside them. */
+  .c-sidenav__rule {
+    width: 100%;
+    margin: var(--space-2) 0;
+    border: none;
+    border-top: 1px solid var(--border-default);
   }
 
   .c-sidenav__item:hover {

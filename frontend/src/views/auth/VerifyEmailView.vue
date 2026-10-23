@@ -13,6 +13,8 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
+import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
+import { postEntryTarget } from '@/utils/postAuthReturn'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -92,7 +94,10 @@ async function handleVerify(): Promise<void> {
     // safeNavigate is no-throw by contract -- critical here so a benign
     // NavigationFailure does NOT bubble into the outer verify-error
     // catch and surface as a generic-error toast after successful verify.
-    await safeNavigate(router.push('/'), '[VerifyEmailView] post-verify to home')
+    await safeNavigate(
+      router.push(postEntryTarget(authStore.user?.onboarding_step)),
+      '[VerifyEmailView] post-verify to home',
+    )
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail
@@ -216,6 +221,10 @@ async function handleResend(): Promise<void> {
           <span v-else class="resend-timer">
             {{ t('auth.verify.resendIn', { seconds: resendCooldown }) }}
           </span>
+        </div>
+
+        <div class="entry-logout">
+          <AuthLogoutLink />
         </div>
       </div>
     </div>
@@ -388,5 +397,10 @@ async function handleResend(): Promise<void> {
 }
 .btn-link:hover {
   text-decoration: underline;
+}
+.entry-logout {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
 }
 </style>

@@ -15,12 +15,21 @@
 // service's (TOR section 5) and are never invented here.
 //
 // Network:
-//   Hardcoded to one network, as before. NETWORK is a statement about
-//   what THIS SCREEN ASKS FOR -- it is not a registry of what the
-//   service serves. Which networks are served is the service's fact; it
-//   refuses the rest with 400 network_not_supported, and a list here
-//   would be a second answer that drifts. Whoever adds a selector
-//   should ask the service, not extend this const.
+//   The person picks one of three USDT networks (TRC20, ERC20, BSC20) before
+//   the invoice is opened, and the warning under the address names the
+//   network the invoice is on. NETWORKS is a statement about what THIS SCREEN
+//   OFFERS -- it is not a registry of what the service serves. Which
+//   networks are served is the service's fact; it refuses the rest with 400
+//   network_not_supported. An invoice already open on any of the three is
+//   found on arrival and shown, so a person is never asked to open a second
+//   one beside it.
+//
+// Arrival with an amount:
+//   The identity-verification screen sends a person who is short of the fee
+//   here with `?amount=10&min=10`: the amount field opens filled and a line
+//   names the minimum. The minimum is a message and is not checked in code.
+//
+// After verification the screen adds a line: to pay by bank, write to support.
 //
 // THE COUNTER IS NEVER COMPUTED HERE. `attempts_remaining` comes from
 // the server on every read and on every submission, because two of the
@@ -49,12 +58,12 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
 import { CBackLink, CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
-import { ApiResponseError } from '@/api/client'
+import { ApiNetworkError, ApiResponseError, ApiTimeoutError } from '@/api/client'
 import {
   createInvoice,
   getCurrentInvoice,
@@ -64,9 +73,23 @@ import {
 import type { InvoiceResponse } from '@/api/types'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
+import { formatDateTime } from '@/utils/format'
 
-// See the header: what this screen asks for, not what is available.
-const NETWORK = 'USDT-TRC20' as const
+// See the header: what this screen offers, not what is available. `id` is the
+// network name the payments service takes; `key` names the screen's own
+// translations (its name and its warning) for that network.
+const NETWORKS = [
+  { id: 'USDT-TRC20', key: 'trc20' },
+  { id: 'USDT-ERC20', key: 'erc20' },
+  { id: 'USDT-BSC20', key: 'bsc20' },
+] as const
+
+type NetworkId = (typeof NETWORKS)[number]['id']
+
+function networkKey(id: string): string {
+  return NETWORKS.find((n) => n.id === id)?.key ?? 'trc20'
+}
 
 // Statuses the service never leaves on its own. attempts_exhausted is
 // deliberately absent: such an invoice takes no more hashes but is
@@ -75,19 +98,42 @@ const NETWORK = 'USDT-TRC20' as const
 const TERMINAL = ['confirmed', 'expired', 'stalled']
 
 const router = useRouter()
-const { t } = useI18n()
+const route = useRoute()
+const { t, locale } = useI18n()
 const { showToast } = useToast()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 // `unavailable` is not `errored`. It is the deployment saying it cannot
 // serve deposits right now, which is a different sentence to the user.
 const unavailable = ref(false)
+// Why: the person's own connection (`offline`) or the service (`service`).
+// The two read differently and the first is the person's to fix.
+const unavailableReason = ref<'offline' | 'service'>('service')
 const invoice = ref<InvoiceResponse | null>(null)
 const qrSvg = ref<string | null>(null)
 
-const amountInput = ref('')
+// The network the person picked for a new invoice. An open invoice sets it to
+// its own network when the screen finds one.
+const network = ref<NetworkId>(NETWORKS[0].id)
+
+// A person who comes here short of the KYC fee arrives with the amount.
+function queryNumber(key: string): string {
+  const raw = route.query[key]
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' && /^\d+(\.\d{1,2})?$/.test(value) ? value : ''
+}
+const minimumAmount = queryNumber('min')
+
+const amountInput = ref(queryNumber('amount'))
 const amountError = ref('')
 const creating = ref(false)
+
+// Verified accounts are told how to pay by bank.
+const showBankLine = computed(() => authStore.kycStatus === 'approved')
+
+// The name of the network the screen is showing, from the translations.
+const shownNetworkKey = computed(() => networkKey(invoice.value?.network ?? network.value))
 
 const txidInput = ref('')
 const txidError = ref('')
@@ -110,7 +156,7 @@ const creditedDisplay = computed(() =>
     : null,
 )
 const expiresDisplay = computed(() =>
-  invoice.value?.expires_at ? new Date(invoice.value.expires_at).toLocaleString() : null,
+  invoice.value?.expires_at ? formatDateTime(invoice.value.expires_at, locale.value) : null,
 )
 
 async function generateQr(value: string): Promise<string | null> {
@@ -134,16 +180,20 @@ async function generateQr(value: string): Promise<string | null> {
  *
  * 503 and 504 are the client's own verdicts for an unreachable or
  * unconfigured service; 502 is a service answer we could not use. 400
- * lands here too, and that is the least obvious one: it means the
- * service does not serve the network this screen asks for, which is a
- * deployment mismatch and not something the user chose -- they never
- * picked a network.
+ * lands here too: the service does not serve the network that was asked
+ * for. (When the person has picked that network by hand, `create` says so
+ * next to the choice instead, and lets them pick another.)
  */
 function isUnavailable(err: unknown): boolean {
   return (
     err instanceof ApiResponseError &&
     (err.status === 400 || err.status === 502 || err.status === 503 || err.status === 504)
   )
+}
+
+/** The person's own connection failed, as opposed to the service. */
+function isOffline(err: unknown): boolean {
+  return err instanceof ApiNetworkError || err instanceof ApiTimeoutError
 }
 
 async function showInvoice(next: InvoiceResponse | null): Promise<void> {
@@ -157,14 +207,29 @@ async function load(): Promise<void> {
   txidError.value = ''
   txidNotice.value = ''
   try {
-    await showInvoice(await getCurrentInvoice(NETWORK))
-  } catch (err: unknown) {
+    // One look at each network: an invoice already open on any of them is the
+    // one to show. The screen is unavailable only when EVERY look failed; a
+    // network the service does not serve leaves the other two usable.
+    const looks = await Promise.allSettled(NETWORKS.map((n) => getCurrentInvoice(n.id)))
+    const open = looks.find(
+      (r): r is PromiseFulfilledResult<InvoiceResponse> =>
+        r.status === 'fulfilled' && r.value !== null,
+    )
+    if (open) {
+      const found = NETWORKS.find((n) => n.id === open.value.network)
+      if (found) network.value = found.id
+      await showInvoice(open.value)
+      return
+    }
     // No branch on 404 here: `current` answers null for "no invoice",
     // so a 404 would mean the route is gone -- an unavailability, not
     // an empty state.
-    unavailable.value = isUnavailable(err)
-    if (!unavailable.value) unavailable.value = true
-    invoice.value = null
+    const failures = looks.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    if (failures.length === looks.length) {
+      unavailable.value = true
+      unavailableReason.value = failures.some((f) => isOffline(f.reason)) ? 'offline' : 'service'
+    }
+    await showInvoice(null)
   } finally {
     loading.value = false
   }
@@ -223,11 +288,18 @@ async function create(): Promise<void> {
 
   creating.value = true
   try {
-    await showInvoice(await createInvoice({ network: NETWORK, amount_cents: cents }))
+    await showInvoice(await createInvoice({ network: network.value, amount_cents: cents }))
     amountInput.value = ''
   } catch (err: unknown) {
-    if (isUnavailable(err)) {
+    if (err instanceof ApiResponseError && err.code === 'network_not_supported') {
+      // The service does not serve the network just picked: say so next to the
+      // choice, so another can be picked.
+      amountError.value = t('inv.deposit.networkNotSupported')
+    } else if (isOffline(err)) {
+      amountError.value = t('inv.deposit.offline')
+    } else if (isUnavailable(err)) {
       unavailable.value = true
+      unavailableReason.value = 'service'
     } else {
       amountError.value = t('inv.deposit.createFailed')
     }
@@ -319,6 +391,10 @@ function goBack(): void {
   void safeNavigate(router.push({ name: 'investor-balance' }), '[InvestorDepositView] to balance')
 }
 
+function toSupport(): void {
+  void safeNavigate(router.push({ name: 'investor-support' }), '[InvestorDepositView] to support')
+}
+
 onMounted(load)
 </script>
 
@@ -336,7 +412,11 @@ onMounted(load)
       <div class="dv__center">
         <CEmptyState
           :title="t('inv.deposit.unavailable.title')"
-          :description="t('inv.deposit.unavailable.desc')"
+          :description="
+            unavailableReason === 'offline'
+              ? t('inv.deposit.unavailable.offline')
+              : t('inv.deposit.unavailable.desc')
+          "
         />
         <div class="dv__error-actions">
           <CButton variant="outline" size="sm" inline @click="goBack">
@@ -365,6 +445,29 @@ onMounted(load)
           <p class="dv__hint">
             {{ t('inv.deposit.amountIntro') }}
           </p>
+
+          <!-- The network the money will be sent on: one of three. -->
+          <div class="dv__networks" role="radiogroup" :aria-label="t('inv.deposit.network')">
+            <button
+              v-for="n in NETWORKS"
+              :key="n.id"
+              type="button"
+              role="radio"
+              class="dv__network"
+              :class="{ 'dv__network--active': network === n.id }"
+              :aria-checked="network === n.id"
+              @click="network = n.id"
+            >
+              {{ t(`inv.deposit.networks.${n.key}.name`) }}
+            </button>
+          </div>
+          <p class="dv__hint">
+            {{ t(`inv.deposit.networks.${networkKey(network)}.warning`) }}
+          </p>
+
+          <p v-if="minimumAmount" class="dv__hint">
+            {{ t('inv.deposit.minimum', { amount: minimumAmount }) }}
+          </p>
           <CInput
             v-model="amountInput"
             type="text"
@@ -389,11 +492,13 @@ onMounted(load)
           <section class="dv__card">
             <div class="dv__row">
               <span class="dv__row-label">{{ t('inv.deposit.network') }}</span>
-              <span class="dv__row-value">{{ invoice.network }}</span>
+              <span class="dv__row-value">{{
+                t(`inv.deposit.networks.${shownNetworkKey}.name`)
+              }}</span>
             </div>
             <div class="dv__row">
               <span class="dv__row-label">{{ t('inv.deposit.amountLabel') }}</span>
-              <span class="dv__row-value">{{ amountDisplay }} USDT</span>
+              <span class="dv__row-value">{{ amountDisplay }} {{ t('inv.deposit.coin') }}</span>
             </div>
             <div v-if="expiresDisplay" class="dv__row">
               <span class="dv__row-label">{{ t('inv.deposit.expiresAt') }}</span>
@@ -484,8 +589,18 @@ onMounted(load)
         <section class="dv__card dv__warning">
           <ShieldAlert :size="16" class="dv__warning-icon" />
           <p class="dv__warning-text">
-            {{ t('inv.deposit.warning') }}
+            {{ t(`inv.deposit.networks.${shownNetworkKey}.warning`) }}
           </p>
+        </section>
+
+        <!-- After verification, a deposit by bank goes through support. -->
+        <section v-if="showBankLine" class="dv__card">
+          <p class="dv__hint">
+            {{ t('inv.deposit.bankLine') }}
+          </p>
+          <CButton variant="outline" size="sm" @click="toSupport">
+            {{ t('inv.deposit.bankCta') }}
+          </CButton>
         </section>
       </div>
     </template>
@@ -560,6 +675,31 @@ onMounted(load)
 .dv__row-value {
   font-size: var(--fs-sm);
   color: var(--text-primary);
+}
+
+.dv__networks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dv__network {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dv__network--active {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  color: var(--primary);
 }
 
 .dv__hint {

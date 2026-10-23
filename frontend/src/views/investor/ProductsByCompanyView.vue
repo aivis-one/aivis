@@ -230,7 +230,7 @@ function goBack(): void {
     <div v-else-if="productsStore.error" class="pbc__center">
       <CEmptyState
         :title="t('inv.productsByCompany.errorTitle')"
-        :description="productsStore.error"
+        :description="t('inv.productsByCompany.errorDesc')"
       />
       <CButton variant="outline" size="sm" @click="onRetry">
         {{ t('inv.productsByCompany.errorRetry') }}

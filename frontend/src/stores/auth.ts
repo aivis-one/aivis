@@ -350,6 +350,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Ends every session of the user on every device, then clears this one.
+   * Unlike logout(), a failure is NOT swallowed: the local session is cleared
+   * only after the server has ended them all, so the screen never claims that
+   * other devices were signed out when they were not.
+   */
+  async function logoutAllDevices(): Promise<void> {
+    await api.post<void>('/api/v1/auth/logout-all')
+    _clearSession()
+  }
+
   // ---------------------------------------------------------------------------
   // Register 401 callback
   // ---------------------------------------------------------------------------
@@ -380,5 +391,6 @@ export const useAuthStore = defineStore('auth', () => {
     restoreSession,
     fetchMe,
     logout,
+    logoutAllDevices,
   }
 })

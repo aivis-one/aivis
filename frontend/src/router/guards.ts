@@ -75,8 +75,10 @@ declare module 'vue-router' {
 // route that no longer exists.
 const ONBOARDING_REDIRECTS: Record<string, string> = {
   registered: '/verify',
-  email_verified: '/onboarding/profile',
-  profile_complete: '/onboarding/role',
+  // No profile screen and no role card: an account left on either step is
+  // brought to the documents step, which re-checks the step on its own.
+  email_verified: '/onboarding/docs',
+  profile_complete: '/onboarding/docs',
   role_selected: '/onboarding/docs',
 }
 

@@ -10,11 +10,16 @@
 // by another view, so a store would only duplicate the ref.
 //
 // DATA.
-//   listDocuments() returns rows already resolved by the backend to
-//   the caller's locale (user_language with `en` fallback). One row
-//   per required type; `is_signed` tells whether this specific row
-//   was signed. Server-side order is preserved (decision Q3 in chat:
-//   no client-side sorting).
+//   Two sources, one list. listDocuments() returns the documents the
+//   role must sign (the cabinet terms and the privacy policy, signed by
+//   the registration ticks), resolved by the backend to the caller's
+//   locale with `en` fallback; `is_signed` tells whether each was signed.
+//   READ_TYPES names every legal document the role reads -- a document
+//   no role signs is not in that list, so each is fetched by type
+//   (GET /documents/by-type/{type}); a type with no active document
+//   (404) is left out. The list follows READ_TYPES' order; a required
+//   type outside it comes last. Every row opens for reading and can be
+//   downloaded; only a required, unsigned row offers "Sign".
 //
 // LAYOUT.
 //   Top: inline page-header (h1 title, no back-link) -- iter 2.7
@@ -75,7 +80,7 @@ import { FileText } from 'lucide-vue-next'
 
 import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
-import { listDocuments, signDocument } from '@/api/documents'
+import { getDocumentByType, listDocuments, signDocument } from '@/api/documents'
 import { useToast } from '@/composables/useToast'
 import type { DocumentResponse } from '@/api/types'
 
@@ -92,20 +97,71 @@ const SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i
 // List state
 // ---------------------------------------------------------------------------
 
+// Every legal document a buyer reads in the cabinet, in display order.
+// The AML policy is the staff's; the licence agreement and the company
+// agreement are not a buyer's.
+const READ_TYPES: readonly string[] = [
+  'cabinet_terms',
+  'privacy_policy',
+  'buyer_agreement',
+  'pre_purchase_disclosure',
+  'kyc_notice',
+  'index_rules',
+]
+
 const documents = ref<DocumentResponse[]>([])
+// Ids of the documents the role must sign (from listDocuments()).
+const requiredIds = ref<Set<string>>(new Set())
 const loading = ref<boolean>(false)
 const errored = ref<boolean>(false)
+
+async function fetchReadable(type: string): Promise<DocumentResponse | null> {
+  try {
+    return await getDocumentByType(type)
+  } catch (err) {
+    if (err instanceof ApiResponseError && err.status === 404) return null
+    throw err
+  }
+}
 
 async function fetchDocuments(): Promise<void> {
   loading.value = true
   errored.value = false
   try {
-    documents.value = await listDocuments()
+    const required = await listDocuments()
+    const byType = new Map(required.map((d) => [d.type, d]))
+    const readable = await Promise.all(
+      READ_TYPES.filter((type) => !byType.has(type)).map((type) => fetchReadable(type)),
+    )
+    for (const doc of readable) {
+      if (doc) byType.set(doc.type, doc)
+    }
+    const ordered: DocumentResponse[] = []
+    for (const type of READ_TYPES) {
+      const doc = byType.get(type)
+      if (doc) ordered.push(doc)
+    }
+    for (const doc of required) {
+      if (!READ_TYPES.includes(doc.type)) ordered.push(doc)
+    }
+    requiredIds.value = new Set(required.map((d) => d.id))
+    documents.value = ordered
   } catch {
     errored.value = true
   } finally {
     loading.value = false
   }
+}
+
+function needsSigning(doc: DocumentResponse): boolean {
+  return requiredIds.value.has(doc.id) && !doc.is_signed
+}
+
+// The static file of a document, the same one the reader shows; null when
+// the type or language is not a plain token.
+function fileUrl(doc: DocumentResponse): string | null {
+  if (!SAFE_TOKEN.test(doc.language) || !SAFE_TOKEN.test(doc.type)) return null
+  return `${import.meta.env.BASE_URL}legal/${encodeURIComponent(doc.language)}/${encodeURIComponent(doc.type)}.html`
 }
 
 onMounted(() => {
@@ -254,12 +310,18 @@ function statusLabel(doc: DocumentResponse): string {
   return doc.is_signed ? t('inv.docs.status.signed') : t('inv.docs.status.pending')
 }
 
+// A row shows a status badge only when it was signed or is still to be
+// signed; a document that is only read carries none.
+function showsStatus(doc: DocumentResponse): boolean {
+  return doc.is_signed === true || needsSigning(doc)
+}
+
 function metaLabel(doc: DocumentResponse): string {
   // DocumentResponse does not carry a signed_at timestamp (is_signed
-  // is a derived flag built by the backend on list). Showing just a
-  // signed/pending label here; a per-signature timestamp would need
-  // a second endpoint and is out of B4 scope.
-  return doc.is_signed ? t('inv.docs.meta.signed') : t('inv.docs.meta.pending')
+  // is a derived flag built by the backend on list), so the row says
+  // signed, to sign, or to read.
+  if (doc.is_signed) return t('inv.docs.meta.signed')
+  return needsSigning(doc) ? t('inv.docs.meta.pending') : t('inv.docs.meta.read')
 }
 </script>
 
@@ -311,7 +373,7 @@ function metaLabel(doc: DocumentResponse): string {
               {{ metaLabel(doc) }}
             </div>
           </div>
-          <span class="docs__status" :class="statusClass(doc)">
+          <span v-if="showsStatus(doc)" class="docs__status" :class="statusClass(doc)">
             {{ statusLabel(doc) }}
           </span>
         </button>
@@ -359,8 +421,16 @@ function metaLabel(doc: DocumentResponse): string {
         <!-- Footer actions. Hidden while loading so the user does not
              tap "Sign" on a document body that has not rendered yet. -->
         <div v-if="!viewLoading && !viewError" class="docs-modal__actions">
+          <a
+            v-if="fileUrl(viewingDoc)"
+            class="docs-modal__download"
+            :href="fileUrl(viewingDoc) ?? undefined"
+            :download="`${viewingDoc.type}.${viewingDoc.language}.html`"
+          >
+            {{ t('inv.docs.modal.download') }}
+          </a>
           <CButton
-            v-if="!viewingDoc.is_signed"
+            v-if="needsSigning(viewingDoc)"
             variant="primary"
             :loading="signing"
             @click="onSign"
@@ -520,6 +590,18 @@ function metaLabel(doc: DocumentResponse): string {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   background: #fff;
+}
+
+.docs-modal__download {
+  align-self: center;
+  margin-inline-end: auto;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+}
+.docs-modal__download:hover {
+  text-decoration: underline;
 }
 
 .docs-modal__actions {

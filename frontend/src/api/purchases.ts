@@ -39,3 +39,30 @@ export function createPurchase(
 ): Promise<PurchaseResponse[]> {
   return api.post<PurchaseResponse[]>(`/api/v1/products/${productId}/purchase`, body)
 }
+
+/** Gifts granted to the caller that wait for acceptance. */
+export interface PendingGiftList {
+  items: PurchaseResponse[]
+  total: number
+}
+
+/**
+ * GET /api/v1/purchases/gifts/pending
+ *
+ * The gifts staff granted to the caller that have not been accepted yet.
+ * They credit nothing and are in no portfolio figure until accepted.
+ */
+export function listPendingGifts(): Promise<PendingGiftList> {
+  return api.get<PendingGiftList>('/api/v1/purchases/gifts/pending')
+}
+
+/**
+ * POST /api/v1/purchases/{id}/accept-gift
+ *
+ * Accepts one pending gift: the parts are credited at once and the gift
+ * becomes an active holding. Answers `kyc_required` (400) when the caller's
+ * verification is no longer approved.
+ */
+export function acceptGift(purchaseId: string): Promise<PurchaseResponse> {
+  return api.post<PurchaseResponse>(`/api/v1/purchases/${purchaseId}/accept-gift`)
+}

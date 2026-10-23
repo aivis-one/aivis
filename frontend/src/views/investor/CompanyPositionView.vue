@@ -255,7 +255,7 @@ function viewLabelForLegalBasis(basis: string): string {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale.value, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

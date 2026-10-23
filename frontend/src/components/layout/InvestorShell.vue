@@ -6,14 +6,14 @@ import CHeader from '@/components/layout/CHeader.vue'
 import CTabBar from '@/components/layout/CTabBar.vue'
 import CSideNav from '@/components/layout/CSideNav.vue'
 import CToast from '@/components/ui/CToast.vue'
-import { INVESTOR_TABS } from '@/router/tabs'
+import { INVESTOR_MENU_EXTRA, INVESTOR_TABS } from '@/router/tabs'
 </script>
 
 <template>
   <div class="shell shell--tabbed">
     <CHeader />
     <div class="shell__body">
-      <CSideNav :items="INVESTOR_TABS" />
+      <CSideNav :items="INVESTOR_TABS" :extra="INVESTOR_MENU_EXTRA" />
       <main class="shell__content">
         <div class="shell__measure">
           <RouterView />

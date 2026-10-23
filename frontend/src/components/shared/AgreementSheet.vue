@@ -6,7 +6,8 @@
 //
 // Bottom-sheet that renders a document HTML (per-Purchase agreement OR
 // per-investor-company ownership certificate) in a sandboxed iframe
-// and exposes two actions on it: "Save" and "Email to me".
+// and exposes two actions on it: "Close" and "Download". There is no
+// "send to my e-mail": a document is read and downloaded in the cabinet.
 //
 // Generic over the document surface via the `mode` prop. The two
 // surfaces share identical UX -- inline iframe + save + email + retry
@@ -76,35 +77,15 @@
 //   own close / unmount path (useAgreementBlob) owns its lifetime. The
 //   file name comes from utils/documentFilename.ts.
 //
-// EMAIL CTA.
-//   The send endpoint is rate-limited on the backend
-//   (`agreement_email:{user_id}` or `ownership_email:{user_id}`, both
-//   at 5/60s). The button disables during the in-flight request and
-//   during an additional cooldown window locally (see EMAIL_COOLDOWN_MS
-//   below) so a frustrated double-tap doesn't burn the next quota
-//   second. On success: toast 'sent'; on failure: toast 'could not
-//   send' + unlock the button immediately so the user can retry.
-//
-//   Carried forward from CertificateSheet (B5-post): no narrowing on
-//   the error class -- 429 / 500 / network all surface the same toast.
-//   404 cannot happen once load() has succeeded (caller owns the
-//   resource; backend re-checks ownership on email send but the user
-//   would not have reached this button otherwise).
 // =============================================================================
 
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
-import {
-  emailAgreement,
-  emailOwnershipCertificate,
-  fetchAgreementBlob,
-  fetchOwnershipCertificateBlob,
-} from '@/api/agreements'
+import { fetchAgreementBlob, fetchOwnershipCertificateBlob } from '@/api/agreements'
 import { useAgreementBlob } from '@/composables/useAgreementBlob'
-import { useToast } from '@/composables/useToast'
 import { documentFilename } from '@/utils/documentFilename'
 
 type AgreementMode = 'agreement' | 'ownership'
@@ -120,9 +101,8 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
-const { showToast } = useToast()
 
-// Pick the fetcher and email function based on mode. The mode prop is
+// Pick the fetcher based on mode. The mode prop is
 // expected to be stable for the lifetime of an AgreementSheet instance
 // (parent mounts one instance per surface); we capture the choice at
 // setup time instead of recomputing on every render.
@@ -131,22 +111,6 @@ const isOwnership = props.mode === 'ownership'
 const { blobUrl, loading, errored, load, clear } = useAgreementBlob(
   isOwnership ? fetchOwnershipCertificateBlob : fetchAgreementBlob,
 )
-
-const sendEmail = isOwnership ? emailOwnershipCertificate : emailAgreement
-
-// Local cooldown after a send attempt so rapid taps don't hammer the
-// rate-limited backend route. The number is conservative -- backend
-// guards the actual ceiling, this is a UX nicety.
-const EMAIL_COOLDOWN_MS = 3_000
-
-const emailSending = ref(false)
-const emailLockedUntil = ref<number>(0)
-
-const emailDisabled = computed<boolean>(() => {
-  if (emailSending.value) return true
-  if (!blobUrl.value) return true
-  return Date.now() < emailLockedUntil.value
-})
 
 // ---------------------------------------------------------------------------
 // i18n title resolution
@@ -196,8 +160,6 @@ watch(
       // lifetime. onScopeDispose in the composable also handles
       // full-unmount, but this is the common path.
       clear()
-      emailSending.value = false
-      emailLockedUntil.value = 0
     }
   },
   { immediate: true },
@@ -236,24 +198,6 @@ function onSave(): void {
   anchor.click()
 }
 
-async function onEmail(): Promise<void> {
-  if (!props.id || emailDisabled.value) return
-  emailSending.value = true
-  try {
-    await sendEmail(props.id)
-    showToast(t('inv.agreement.emailSuccess'), 'success')
-    emailLockedUntil.value = Date.now() + EMAIL_COOLDOWN_MS
-  } catch {
-    // 429 / 500 / network all surface the same toast. 404 cannot
-    // happen once load() has succeeded.
-    showToast(t('inv.agreement.emailError'), 'error')
-    // Unlock immediately on failure -- the user should be able to
-    // retry without waiting for the cooldown window.
-    emailLockedUntil.value = 0
-  } finally {
-    emailSending.value = false
-  }
-}
 </script>
 
 <template>
@@ -289,11 +233,8 @@ async function onEmail(): Promise<void> {
           <CButton variant="outline" size="sm" @click="onClose">
             {{ t('inv.agreement.close') }}
           </CButton>
-          <CButton variant="outline" size="sm" @click="onSave">
+          <CButton variant="primary" size="sm" @click="onSave">
             {{ t('inv.agreement.save') }}
-          </CButton>
-          <CButton variant="primary" size="sm" :disabled="emailDisabled" @click="onEmail">
-            {{ emailSending ? t('inv.agreement.emailSending') : t('inv.agreement.emailSend') }}
           </CButton>
         </div>
       </template>

@@ -100,3 +100,30 @@ export function updatePayoutDetails(
 export function deactivateAccount(body: DeactivateAccountRequest): Promise<void> {
   return api.post<void>('/api/v1/users/me/deactivate', body)
 }
+
+// ---------------------------------------------------------------------------
+// Adding an e-mail to an account that has none
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/v1/users/me/email -- an account that signed in without an
+ * e-mail (a Telegram sign-in) adds one. The address is stored unverified
+ * and a 6-digit code goes out to it; POST /api/v1/auth/verify-email
+ * confirms it. Verification of identity starts from a confirmed e-mail.
+ *
+ * Throws ApiResponseError on 409 `email_already_set` (the account has an
+ * e-mail) and 409 `email_taken` (the address belongs to another account).
+ */
+export function attachEmail(email: string): Promise<UserResponse> {
+  return api.post<UserResponse>('/api/v1/users/me/email', { email })
+}
+
+/** POST /api/v1/auth/verify-email -- confirms the e-mail with the 6-digit code. */
+export function confirmEmailCode(code: string): Promise<UserResponse> {
+  return api.post<UserResponse>('/api/v1/auth/verify-email', { code })
+}
+
+/** POST /api/v1/auth/verify-email/resend -- sends a new code (204). */
+export function resendEmailCode(): Promise<void> {
+  return api.post<void>('/api/v1/auth/verify-email/resend')
+}

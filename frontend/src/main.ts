@@ -6,6 +6,7 @@ import { setOnKycRequired } from '@/api/client'
 import { router } from '@/router'
 import { i18n, setupI18n } from '@/i18n'
 import { installUpdateCheck } from '@/pwa/updateCheck'
+import { kycActionForRoute, showKycPrompt } from '@/composables/useKycPrompt'
 
 import '@/styles/variables.css'
 import '@/styles/global.css'
@@ -38,16 +39,17 @@ async function bootstrap(): Promise<void> {
   // must not import the router -- the router imports every view and
   // every view imports the store.
   //
-  // NO TOAST HERE: /verification is a standalone auth card with no
-  // CToast mounted, so a toast raised on the way there would never be
-  // seen. The explanation lives on the verification screen itself.
+  // THE ONE RULE FOR THE FOUR CLOSED ACTIONS: the person stays on the page
+  // they pressed the button on and is told, in a message with a button to the
+  // verification screen, that identity verification (and its cost) comes first
+  // (components/shared/KycRequiredPrompt.vue). Nothing moves them away.
   //
   // The session is left alone, unlike the 401 path: the person is
   // signed in and simply not verified.
   setOnKycRequired(() => {
-    if (router.currentRoute.value.path !== '/verification') {
-      void router.push('/verification').catch(() => undefined)
-    }
+    const current = router.currentRoute.value
+    if (current.path === '/verification') return
+    showKycPrompt(kycActionForRoute(current.name))
   })
 
   // H22 (P-110): an open tab asks for a new service worker whenever the

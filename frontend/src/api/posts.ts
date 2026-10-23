@@ -27,7 +27,7 @@
 
 import { api } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
-import type { PostListResponse } from '@/api/types'
+import type { PostListResponse, PostResponse } from '@/api/types'
 
 export interface ListPostsParams {
   page?: number
@@ -56,4 +56,14 @@ export function listPosts(params?: ListPostsParams): Promise<PostListResponse> {
     tag: params?.tag,
   })
   return api.get<PostListResponse>(`/api/v1/posts${qs}`)
+}
+
+/**
+ * GET /api/v1/posts/{id}
+ *
+ * One published post, readable without signing in. The post screen reads
+ * it by the id a feed row, a roadmap entry or a notification carries.
+ */
+export function getPost(postId: string): Promise<PostResponse> {
+  return api.get<PostResponse>(`/api/v1/posts/${encodeURIComponent(postId)}`)
 }

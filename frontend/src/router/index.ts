@@ -184,17 +184,19 @@ export const router = createRouter({
       component: () => import('@/views/auth/VerifyEmailView.vue'),
       meta: { skipOnboarding: true },
     },
+    // There is no profile screen and no role card: the name, phone and country
+    // are asked on the identity-verification screen, and a new account is an
+    // investor from its first entry. The two old addresses lead to the
+    // documents step, the one entry step that is left.
     {
       path: '/onboarding/profile',
       name: 'onboarding-profile',
-      component: () => import('@/views/auth/OnboardingProfileView.vue'),
-      meta: { skipOnboarding: true },
+      redirect: '/onboarding/docs',
     },
     {
       path: '/onboarding/role',
       name: 'onboarding-role',
-      component: () => import('@/views/auth/OnboardingRoleView.vue'),
-      meta: { skipOnboarding: true },
+      redirect: '/onboarding/docs',
     },
     {
       // H10: the KYC gate's destination -- main.ts sends every 402 here,
@@ -341,6 +343,27 @@ export const router = createRouter({
           path: 'events',
           name: 'investor-events',
           component: () => import('@/views/investor/InvestorEventsView.vue'),
+        },
+        {
+          // "News and events": the common feed of posts and events, reached
+          // from the home screen and from the side menu on the web.
+          path: 'news',
+          name: 'investor-news',
+          component: () => import('@/views/investor/InvestorNewsView.vue'),
+        },
+        {
+          // One event in full; reached from the home screen, the events list
+          // and a notification about an event.
+          path: 'events/:id',
+          name: 'investor-event',
+          component: () => import('@/views/investor/EventDetailView.vue'),
+        },
+        {
+          // One post in full; reached from the home screen, a roadmap entry
+          // linked to a post and a notification about a post.
+          path: 'posts/:id',
+          name: 'investor-post',
+          component: () => import('@/views/investor/PostDetailView.vue'),
         },
         {
           path: 'docs',
@@ -870,6 +893,12 @@ export const router = createRouter({
           path: 'products/:id',
           name: 'public-product-detail',
           component: () => import('@/views/public/PublicProductDetailView.vue'),
+        },
+        {
+          // A post opened from a company's public roadmap.
+          path: 'posts/:id',
+          name: 'public-post',
+          component: () => import('@/views/investor/PostDetailView.vue'),
         },
       ],
     },

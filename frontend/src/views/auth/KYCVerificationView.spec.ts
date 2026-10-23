@@ -53,7 +53,7 @@ vi.mock('@/api/client', () => ({
 
 import KYCVerificationView from './KYCVerificationView.vue'
 
-const STUBS = { AivisLogo: true, CAppControls: true }
+const STUBS = { AivisLogo: true, CAppControls: true, AuthLogoutLink: true, LegalDocModal: true }
 
 /** Put a file on a real <input type="file"> and fire the change the view
  * listens for. happy-dom does not let `files` be assigned, so it is defined
@@ -67,6 +67,15 @@ async function pick(w: VueWrapper, index: number, name: string): Promise<void> {
     configurable: true,
   })
   await inputs[index].trigger('change')
+}
+
+/** The applicant's details the form asks for besides the images: both names
+ * (the text inputs) and the country (the select). */
+async function fillDetails(w: VueWrapper): Promise<void> {
+  const texts = w.findAll('input:not([type="file"])')
+  await texts[0].setValue('Ada')
+  await texts[1].setValue('Lovelace')
+  await w.find('select.c-select').setValue('DE')
 }
 
 function submitButton(w: VueWrapper) {
@@ -97,6 +106,7 @@ describe('KYCVerificationView — a rejected file leaves nothing staged', () => 
     // The pair without which every assertion below would also pass for a form
     // that refuses everything.
     const w = await mountForm()
+    await fillDetails(w)
     await pick(w, 0, 'front.jpg')
     await pick(w, 1, 'selfie.jpg')
     expect(submitButton(w)?.attributes('disabled')).toBeUndefined()
@@ -104,6 +114,7 @@ describe('KYCVerificationView — a rejected file leaves nothing staged', () => 
 
   it('a rejected file clears the slot it was picked for', async () => {
     const w = await mountForm()
+    await fillDetails(w)
     await pick(w, 0, 'front.jpg')
     await pick(w, 1, 'selfie.jpg')
     expect(submitButton(w)?.attributes('disabled')).toBeUndefined()
@@ -125,6 +136,7 @@ describe('KYCVerificationView — a rejected file leaves nothing staged', () => 
     // Clearing on rejection must not be a dead end -- a fix that emptied the
     // slot and left it unfillable would pass the test above.
     const w = await mountForm()
+    await fillDetails(w)
     await pick(w, 0, 'front.heic')
     await pick(w, 0, 'front.jpg')
     await pick(w, 1, 'selfie.jpg')

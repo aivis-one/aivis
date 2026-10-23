@@ -27,28 +27,31 @@
 // forcing a page-number UI onto a cursor API would mean this screen
 // inventing an offset the backend cannot answer.
 //
-// ACTION_DATA IS NOT WIRED TO NAVIGATION (Phase 6 scope). None of the
-// 16 comms-side event producers populate it today (see
-// notifications/schemas.py's own note), so every item renders as a
-// plain title + body row. Tapping a row marks it read; it does not
-// navigate anywhere. Wiring `action_data.action` to a route is
-// explicitly future work once a producer actually sends one.
+// WHERE A TAP LEADS. Tapping a row marks it read and opens the screen of its
+// own event. None of the comms-side event producers populates `action_data`
+// today (see notifications/schemas.py's own note), so the screen is chosen
+// from the notification's type (utils/notificationTarget.ts); an `action_data`
+// that names a post or an event wins when comms sends one.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Bell, CheckCheck } from 'lucide-vue-next'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useAuthStore } from '@/stores/auth'
+import { notificationTarget } from '@/utils/notificationTarget'
 import { formatDateTime } from '@/utils/format'
 import type { NotificationItemOut } from '@/api/generated'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 const store = useNotificationsStore()
 // A genuine Ref, not the unwrapped value store.loadMoreError would
 // give -- useInfiniteScroll's `paused` param is watch()ed internally
@@ -67,9 +70,20 @@ function isUnread(item: NotificationItemOut): boolean {
   return item.read_at === null
 }
 
+// A tap marks the row read and opens the screen of its own event; a row whose
+// type has no screen of its own is only marked read.
 function handleRowTap(item: NotificationItemOut): void {
   if (isUnread(item)) {
     void store.markRead(item.id)
+  }
+  const target = notificationTarget({
+    type: item.type,
+    actionData: item.action_data,
+    kycStatus: authStore.kycStatus,
+    shell: route.meta.shell as string | undefined,
+  })
+  if (target) {
+    void safeNavigate(router.push(target), '[NotificationsInboxView] to event screen')
   }
 }
 

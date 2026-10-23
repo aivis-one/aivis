@@ -26,6 +26,9 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import type { DocumentResponse } from '@/api/types'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
+import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
+import { postEntryTarget } from '@/utils/postAuthReturn'
+import { updateMe } from '@/api/users'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 
 const router = useRouter()
@@ -141,11 +144,22 @@ async function handleSignAll(): Promise<void> {
     // the new user state so the router guard sees onboarding_complete.
     await authStore.fetchMe()
 
+    // An account left on an older step with every document already signed
+    // has no signing to advance it: a profile save that changes nothing asks
+    // the server to re-check the step.
+    if (authStore.user && authStore.user.onboarding_step !== 'onboarding_complete') {
+      await updateMe({ language: authStore.user.language })
+      await authStore.fetchMe()
+    }
+
     // Root resolves to the role-based dashboard via guard.
     // safeNavigate is no-throw by contract -- critical here so a benign
     // NavigationFailure does NOT bubble into the outer docs-signing-error
     // catch and surface as a generic-error toast after successful signing.
-    await safeNavigate(router.push('/'), '[OnboardingDocsView] post-sign to home')
+    await safeNavigate(
+      router.push(postEntryTarget(authStore.user?.onboarding_step)),
+      '[OnboardingDocsView] post-sign to home',
+    )
   } catch (err) {
     if (err instanceof ApiResponseError) {
       error.value = err.detail
@@ -261,6 +275,10 @@ async function handleSignAll(): Promise<void> {
             <span v-if="signing" class="btn-spinner" />
             <span v-else>{{ t('auth.docs.signDocumentsBtn') }}</span>
           </button>
+        </div>
+
+        <div class="entry-logout">
+          <AuthLogoutLink />
         </div>
       </template>
     </div>
@@ -508,5 +526,10 @@ async function handleSignAll(): Promise<void> {
   to {
     transform: rotate(360deg);
   }
+}
+.entry-logout {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
 }
 </style>

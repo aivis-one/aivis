@@ -18,16 +18,19 @@
 //      route.query }) instead. Forwarding `?next=` keeps the visitor's
 //      intended destination alive across the register <-> login pivot.
 //
-//   2. `next` IS DELIBERATELY NOT HONOURED here on success.
-//      A successful registration kicks off multi-step onboarding
-//      (verify -> profile -> role -> KYC -> docs). Carrying `next`
-//      through five hops, persisting it across page reloads during
-//      onboarding, and racing the user's attention is overkill for
-//      this scale of usage. After onboarding completes the user
-//      lands on their role dashboard via the existing globalGuard
-//      flow; they can navigate back to the public page via the
-//      browser back stack or the URL bar. If a real UX pain point
-//      surfaces, we can wire it later. See iter 2.6 plan §A4.
+//   2. `next` IS KEPT for the length of the tab session (utils/postAuthReturn).
+//      A visitor who pressed "Buy" on the open storefront is sent here with
+//      the product page in `next`; once the entry steps are done (e-mail
+//      code, and the documents step where one is left) the product opens.
+//
+// THE TWO CONSENT TICKS. The cabinet terms and the privacy policy each have
+//   their own tick and a link to the full document (in the visitor's
+//   language, in the cabinet's own document window, with the static file as
+//   the fallback link). Registration is not sent until both are ticked, and
+//   once the account exists both acceptances are recorded against the
+//   current documents (POST /documents/{id}/sign through their by-type ids).
+//   A recording that fails does not undo the registration: the documents
+//   step after the e-mail code asks again for whatever is still unsigned.
 //
 // R22 STYLE-22-02:
 //   goToLogin() catches navigation rejections with the standard
@@ -47,6 +50,8 @@ import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
+import { acceptDocumentByType } from '@/api/documents'
+import { rememberReturnPath } from '@/utils/postAuthReturn'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -57,25 +62,45 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
-const accepted = ref(false)
+const acceptedTerms = ref(false)
+const acceptedPrivacy = ref(false)
 
-// Consent line links. The cabinet terms are the static document the cabinet
-// ships under its base (public/legal/<lang>/cabinet_terms.html, the same
-// BASE_URL + legal/ path the document viewers use); the privacy policy is the
-// public site's one page for both site and cabinet. The site and the cabinet
-// share one origin (the site at /, the cabinet under /app/), so the link is
-// root-relative: no deployment address in the code (H35 P-127).
+// The two documents the registration ticks stand for. Both are the cabinet's
+// own static files (public/legal/<lang>/<type>.html, the same BASE_URL + legal/
+// path the document viewers use); the href is the fallback for a click that
+// is not ours and the way to save the file.
 const docLang = computed(() => (locale.value === 'ru' ? 'ru' : 'en'))
-const termsUrl = computed(
-  () => `${import.meta.env.BASE_URL}legal/${docLang.value}/cabinet_terms.html`,
-)
-const privacyUrl = computed(() =>
-  docLang.value === 'ru' ? '/ru/about/privacy/' : '/about/privacy/',
+function docUrl(type: string): string {
+  return `${import.meta.env.BASE_URL}legal/${docLang.value}/${type}.html`
+}
+const termsUrl = computed(() => docUrl('cabinet_terms'))
+const privacyUrl = computed(() => docUrl('privacy_policy'))
+
+// One document window, told which of the two to open.
+const openDoc = ref<'cabinet_terms' | 'privacy_policy' | null>(null)
+const docTitle = computed(() =>
+  openDoc.value === 'privacy_policy'
+    ? t('auth.register.consentPrivacy')
+    : t('auth.register.consentTerms'),
 )
 
-// The cabinet terms open in the cabinet's own document window (the one the
-// onboarding uses); the href stays as the fallback for a click that is not ours.
-const termsOpen = ref(false)
+// A visitor sent here by "Buy" is told that buying comes after the identity
+// check. The page they wanted is kept and opened after the entry steps.
+const buyIntent = computed(() => route.query.intent === 'purchase')
+rememberReturnPath(route.query.next)
+
+const REQUIRED_DOCUMENTS = ['cabinet_terms', 'privacy_policy'] as const
+
+async function recordAcceptances(): Promise<void> {
+  for (const type of REQUIRED_DOCUMENTS) {
+    try {
+      await acceptDocumentByType(type, docLang.value)
+    } catch {
+      // The documents step after the e-mail code asks again for what is
+      // still unsigned; a failed recording never undoes the registration.
+    }
+  }
+}
 
 function goToLogin(): void {
   // Forward `?next=...` so the eventual sign-in returns the visitor
@@ -100,7 +125,7 @@ async function handleRegister(): Promise<void> {
     error.value = t('auth.register.passwordHint')
     return
   }
-  if (!accepted.value) {
+  if (!acceptedTerms.value || !acceptedPrivacy.value) {
     error.value = t('auth.register.consentRequired')
     return
   }
@@ -109,12 +134,13 @@ async function handleRegister(): Promise<void> {
 
   try {
     await authStore.registerViaEmail(email.value, password.value, referralCode)
+    await recordAcceptances()
     // BUG-07 fix: after registration the user is at onboarding_step=registered.
     // Push straight to /verify (meta.skipOnboarding=true) -- going through /
     // would bounce us via root.beforeEnter + globalGuard for no reason.
     //
-    // iter 2.6 batch 2: deliberately NOT forwarding `?next=` here --
-    // see file header for the rationale.
+    // `?next=` is kept by rememberReturnPath (see the file header), not
+    // forwarded through the e-mail step.
     //
     // safeNavigate is no-throw by contract -- critical here so a benign
     // NavigationFailure does NOT bubble into the outer registration-error
@@ -165,6 +191,9 @@ async function handleRegister(): Promise<void> {
       <p class="auth-subtitle">
         {{ t('auth.register.subtitle') }}
       </p>
+      <p v-if="buyIntent" class="auth-note">
+        {{ t('auth.register.buyNote') }}
+      </p>
 
       <div class="auth-form">
         <CInput
@@ -208,16 +237,29 @@ async function handleRegister(): Promise<void> {
         </div>
 
         <label class="auth-consent">
-          <input v-model="accepted" type="checkbox" />
+          <input v-model="acceptedTerms" type="checkbox" />
           <span class="auth-consent-text"
             >{{ t('auth.register.consentPrefix') }}
-            <a :href="termsUrl" target="_blank" rel="noopener" @click.prevent="termsOpen = true">{{
-              t('auth.register.consentTerms')
-            }}</a>
-            {{ t('auth.register.consentAnd') }}
-            <a :href="privacyUrl" target="_blank" rel="noopener">{{
-              t('auth.register.consentPrivacy')
-            }}</a
+            <a
+              :href="termsUrl"
+              target="_blank"
+              rel="noopener"
+              @click.prevent="openDoc = 'cabinet_terms'"
+              >{{ t('auth.register.consentTerms') }}</a
+            >.</span
+          >
+        </label>
+
+        <label class="auth-consent auth-consent--second">
+          <input v-model="acceptedPrivacy" type="checkbox" />
+          <span class="auth-consent-text"
+            >{{ t('auth.register.consentPrefix') }}
+            <a
+              :href="privacyUrl"
+              target="_blank"
+              rel="noopener"
+              @click.prevent="openDoc = 'privacy_policy'"
+              >{{ t('auth.register.consentPrivacy') }}</a
             >.</span
           >
         </label>
@@ -237,11 +279,11 @@ async function handleRegister(): Promise<void> {
     </div>
 
     <LegalDocModal
-      :open="termsOpen"
-      :title="t('auth.register.consentTerms')"
+      :open="openDoc !== null"
+      :title="docTitle"
       :lang="docLang"
-      type="cabinet_terms"
-      @close="termsOpen = false"
+      :type="openDoc ?? 'cabinet_terms'"
+      @close="openDoc = null"
     />
   </div>
 </template>
@@ -416,11 +458,28 @@ async function handleRegister(): Promise<void> {
   align-items: flex-start;
   gap: var(--space-2);
   width: 100%;
-  margin-top: var(--space-4);
-  margin-bottom: var(--space-5);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
   text-align: left;
+  line-height: 1.5;
+}
+
+.auth-consent--second {
+  margin-bottom: var(--space-5);
+}
+
+.auth-note {
+  width: 100%;
+  max-width: var(--maxw-form);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 

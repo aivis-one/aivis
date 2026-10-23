@@ -54,10 +54,13 @@ import { useI18n } from 'vue-i18n'
 
 import CHeader from '@/components/layout/CHeader.vue'
 import CToast from '@/components/ui/CToast.vue'
+import { useAuthStore } from '@/stores/auth'
+import { getRoleDashboard } from '@/router/guards'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Always include the current public path as ?next= so LoginView can
 // replace() back to it post-auth. Exclude the root edge case (a user
@@ -78,15 +81,43 @@ function goToLogin(): void {
     '[PublicShell] to login',
   )
 }
+
+function goToRegister(): void {
+  void safeNavigate(
+    router.push({
+      name: 'register',
+      query: nextQuery.value ? { next: nextQuery.value } : undefined,
+    }),
+    '[PublicShell] to register',
+  )
+}
+
+// A signed-in visitor sees the way into the cabinet in place of "Sign in".
+function goToCabinet(): void {
+  void safeNavigate(router.push(getRoleDashboard(authStore.role)), '[PublicShell] to cabinet')
+}
 </script>
 
 <template>
   <div class="shell">
     <CHeader>
       <template #right>
-        <button type="button" class="shell__login" @click="goToLogin">
-          {{ t('public.shell.loginButton') }}
+        <button
+          v-if="authStore.isAuthenticated"
+          type="button"
+          class="shell__login"
+          @click="goToCabinet"
+        >
+          {{ t('public.shell.cabinetButton') }}
         </button>
+        <template v-else>
+          <button type="button" class="shell__register" @click="goToRegister">
+            {{ t('public.shell.registerButton') }}
+          </button>
+          <button type="button" class="shell__login" @click="goToLogin">
+            {{ t('public.shell.loginButton') }}
+          </button>
+        </template>
       </template>
     </CHeader>
     <main class="shell__content">
@@ -123,6 +154,25 @@ function goToLogin(): void {
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s;
+}
+
+/* "Register" sits beside "Sign in" as the quieter of the two. */
+.shell__register {
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.shell__register:hover {
+  opacity: 0.8;
 }
 
 .shell__login:hover {

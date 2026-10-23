@@ -34,8 +34,7 @@
 //     - investor-product-detail / agent-product-detail   (EXISTS, batch 1 routes)
 //     - investor-company-products / agent-company-products (BATCH 9)
 //   External clicks bypass the router entirely (window.open).
-//   Post clicks are a no-op placeholder until the post-view route
-//   ships (deferred to iter 2.6 or later).
+//   A post click opens the post screen (investor-post).
 //
 // IN-PLACE :id SWAP.
 //   Vue Router reuses the component instance across param changes
@@ -251,11 +250,13 @@ function onRoadmapExternalClick(url: string): void {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-function onRoadmapPostClick(_postId: string): void {
-  // No-op placeholder. The investor-side post view doesn't exist yet
-  // (deferred to iter 2.6 or later). Once it lands, push to its
-  // route name here. Suppressed argument is intentional -- TS6133
-  // is satisfied via the underscore prefix.
+function onRoadmapPostClick(postId: string): void {
+  // The post screen sits under the investor shell, which the agent role may
+  // also open, so one route serves both shells.
+  void safeNavigate(
+    router.push({ name: 'investor-post', params: { id: postId } }),
+    '[CompanyOverviewView] to post',
+  )
 }
 </script>
 
@@ -302,9 +303,6 @@ function onRoadmapPostClick(_postId: string): void {
             <Building v-if="!coverImage" :size="56" />
           </div>
           <div class="co__hero-body">
-            <span class="co__hero-status">
-              {{ t('common.statusActive') }}
-            </span>
             <h1 class="co__hero-name">
               {{ data.name }}
             </h1>
@@ -439,15 +437,6 @@ function onRoadmapPostClick(_postId: string): void {
   gap: var(--space-2);
 }
 
-.co__hero-status {
-  align-self: flex-start;
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--success);
-  background: var(--success-subtle);
-  border-radius: var(--radius-pill);
-}
 
 .co__hero-name {
   margin: 0;

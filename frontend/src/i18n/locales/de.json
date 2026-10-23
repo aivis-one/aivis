@@ -48,16 +48,17 @@
     },
     "register": {
       "title": "Konto erstellen",
-      "subtitle": "Werden Sie Teil der AIVIS.ONE Investitionsplattform",
+      "subtitle": "Create your AIVIS.ONE account to buy parts of projects and follow your holdings",
       "email": "E-Mail",
       "password": "Passwort",
-      "passwordHint": "Mindestens 8 Zeichen, Buchstaben und Zahlen",
+      "passwordHint": "Minimum 8 characters",
       "confirmPassword": "Passwort bestätigen",
       "passPlaceholder": "Mindestens 8 Zeichen",
       "confirmPlaceholder": "Passwort wiederholen",
       "btn": "Konto erstellen",
       "hasAccount": "Haben Sie bereits ein Konto?",
-      "loginLink": "Anmelden"
+      "loginLink": "Anmelden",
+      "buyNote": "Buying opens after identity verification ($10). Register first; after the e-mail code you come back to this product."
     },
     "verify": {
       "title": "Prüfen Sie Ihre E-Mail",
@@ -137,12 +138,13 @@
       "fillAllFields": "Bitte füllen Sie alle Felder aus",
       "networkError": "Verbindungsfehler. Überprüfen Sie Ihr Internet",
       "timeout": "Server hat nicht geantwortet. Versuchen Sie es erneut"
-    }
+    },
+    "logout": "Sign out"
   },
   "tab": {
     "home": "Start",
     "portfolio": "Portfolio",
-    "market": "Markt",
+    "market": "Store",
     "balance": "Kontostand",
     "more": "Mehr",
     "agent": {
@@ -165,7 +167,14 @@
       "kyc": "KYC",
       "payments": "Zahlungen",
       "more": "Mehr"
-    }
+    },
+    "settings": "Settings",
+    "news": "News and events",
+    "installments": "Installment plans",
+    "docs": "Documents",
+    "kyc": "Identity verification",
+    "support": "Support",
+    "faq": "FAQ"
   },
   "staff": {
     "panel": "Staff Panel",
@@ -328,20 +337,20 @@
     "unit": "Anteil",
     "available": "verfügbar",
     "market": {
-      "title": "Marktplatz",
+      "title": "Store",
       "subtitle": "Verfügbare Investitionsprodukte",
       "filter": {
-        "all": "Alle Unternehmen",
-        "company": "Unternehmen",
-        "title": "Nach Unternehmen filtern",
-        "search": "Unternehmen suchen...",
+        "all": "All projects",
+        "company": "Project",
+        "title": "Filter by project",
+        "search": "Search projects...",
         "clear": "Filter zurücksetzen",
-        "empty": "Keine Unternehmen gefunden"
+        "empty": "No projects found"
       },
       "empty": {
         "title": "Noch keine Produkte",
         "desc": "Schauen Sie später für neue Investitionsmöglichkeiten vorbei",
-        "filteredTitle": "Keine Produkte für dieses Unternehmen",
+        "filteredTitle": "No products for this project",
         "filteredDesc": "Versuchen Sie einen anderen Filter oder setzen Sie ihn zurück"
       }
     },
@@ -350,7 +359,7 @@
         "title": "Produkt nicht gefunden",
         "desc": "Dieses Produkt wurde möglicherweise entfernt oder ist nicht mehr verfügbar"
       },
-      "backToMarket": "Zurück zum Marktplatz",
+      "backToMarket": "Back to the store",
       "priceLabel": "Preis pro Anteil",
       "availability": "Verfügbarkeit",
       "description": "Über das Produkt",
@@ -358,7 +367,8 @@
       "installmentsEmpty": "Für dieses Produkt sind keine Ratenzahlungspläne verfügbar",
       "installmentsBonus": "+{n} Bonus-Anteile",
       "buy": "Jetzt kaufen",
-      "soldOut": "Ausverkauft"
+      "soldOut": "Ausverkauft",
+      "backLink": "Back to the store"
     },
     "purchase": {
       "title": "Kauf",
@@ -376,11 +386,18 @@
         "desc": "Bitte gehen Sie zurück und versuchen Sie es erneut"
       },
       "error": {
-        "insufficientBalance": "Nicht genügend Guthaben auf Ihrem aktiven Konto",
+        "insufficientBalance": "Not enough money on your buyer account",
         "kycRequired": "KYC-Verifizierung erforderlich. Weiterleitung zum Onboarding",
         "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
-        "generic": "Kauf fehlgeschlagen. Bitte versuchen Sie es erneut"
-      }
+        "generic": "Kauf fehlgeschlagen. Bitte versuchen Sie es erneut",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "soldOut": "Not enough parts are left for this package"
+      },
+      "pay": "Pay",
+      "backLink": "Back",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up",
+      "successBonus": "Purchase made. Bonus parts: {units}"
     },
     "installment": {
       "title": "Ratenzahlung",
@@ -410,13 +427,18 @@
         "kycRequired": "KYC-Verifizierung erforderlich. Weiterleitung zum Onboarding",
         "templateMismatch": "Der ausgewählte Plan ist für dieses Produkt nicht mehr gültig",
         "productInactive": "Dieses Produkt ist nicht mehr verfügbar",
-        "generic": "Plan konnte nicht erstellt werden. Bitte versuchen Sie es erneut"
-      }
+        "generic": "Plan konnte nicht erstellt werden. Bitte versuchen Sie es erneut",
+        "agreementMissing": "The buyer agreement is not available right now. Try again later.",
+        "poolCapacity": "Not enough parts are left for this plan"
+      },
+      "pay": "Pay",
+      "shortfall": "{amount} is missing",
+      "topUp": "Top up"
     },
     "balance": {
       "title": "Kontostand",
-      "active": "Aktiver Kontostand",
-      "frozen": "Gesperrt",
+      "active": "Buyer account",
+      "frozen": "Awaiting confirmation",
       "deposit": "Einzahlen",
       "history": "Zahlungsverlauf",
       "historyEmpty": "Noch keine Zahlungen",
@@ -436,7 +458,9 @@
         "crypto": "Krypto",
         "bank": "Bank",
         "card": "Karte"
-      }
+      },
+      "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
+      "allOperations": "All operations"
     },
     "deposit": {
       "title": "Einzahlung",
@@ -453,7 +477,6 @@
       "copy": "Adresse kopieren",
       "copied": "Adresse kopiert",
       "copyError": "Adresse konnte nicht kopiert werden",
-      "warning": "Senden Sie nur USDT über TRC20 an diese Adresse. Mittel, die über andere Netzwerke gesendet werden, können nicht wiederhergestellt werden.",
       "qrUnavailable": "QR-Code nicht verfügbar — verwenden Sie bitte die Adresse unten.",
       "backToBalance": "Zurück zum Kontostand",
       "backLink": "Zurück zum Kontostand",
@@ -473,14 +496,15 @@
       "newDeposit": "Neue Einzahlung",
       "unavailable": {
         "title": "Einzahlungen sind vorübergehend nicht verfügbar",
-        "desc": "Krypto-Einzahlungen werden derzeit nicht angenommen. Mit Ihrem Konto stimmt alles — bitte versuchen Sie es später erneut."
+        "desc": "Krypto-Einzahlungen werden derzeit nicht angenommen. Mit Ihrem Konto stimmt alles — bitte versuchen Sie es später erneut.",
+        "offline": "No connection to the service. Check your internet and try again."
       },
       "status": {
         "awaiting_confirmations": "Transaktion gefunden, warten auf Netzwerk-Bestätigungen.",
         "attempts_exhausted": "Keine Versuche mehr übrig. Bitte wenden Sie sich an den Support.",
         "confirmed": "Zahlung bestätigt",
-        "expired": "Diese Rechnung ist abgelaufen",
-        "stalled": "Die Zahlung wurde nicht rechtzeitig bestätigt"
+        "expired": "This invoice has expired — create a new one.",
+        "stalled": "The payment did not confirm in time — try again or write to support."
       },
       "verdict": {
         "not_found": "Diese Transaktion wurde im Netzwerk nicht gefunden. Prüfen Sie den Hash und versuchen Sie es erneut.",
@@ -489,7 +513,13 @@
         "invalid_format": "Das sieht nicht nach einem Transaktions-Hash dieses Netzwerks aus. Es wurde kein Versuch verbraucht.",
         "api_error": "Der Blockchain-Explorer hat nicht geantwortet. Es wurde kein Versuch verbraucht — bitte später erneut versuchen.",
         "unknown": "Der Hash wurde nicht angenommen."
-      }
+      },
+      "coin": "USDT",
+      "minimum": "Minimum: ${amount}",
+      "networkNotSupported": "This network is not available right now. Choose another one.",
+      "offline": "No connection. Check your internet and try again.",
+      "bankLine": "To pay by bank, write to support.",
+      "bankCta": "Write to support"
     },
     "transactions": {
       "title": "Transaktionen",
@@ -501,8 +531,7 @@
         "all": "Alle",
         "deposits": "Einzahlungen",
         "purchases": "Käufe",
-        "installments": "Ratenzahlungen",
-        "withdrawals": "Auszahlungen"
+        "installments": "Ratenzahlungen"
       },
       "type": {
         "deposit:received": "Einzahlung erhalten",
@@ -518,7 +547,8 @@
         "withdrawal:rejected": "Auszahlung abgelehnt",
         "withdrawal:completed": "Auszahlung abgeschlossen",
         "withdrawal:failed": "Auszahlung fehlgeschlagen",
-        "reversal:completed": "Stornierung abgeschlossen"
+        "reversal:completed": "Stornierung abgeschlossen",
+        "kyc:verification_fee": "Identity verification fee"
       },
       "detail": {
         "title": "Transaktionsdetails",
@@ -552,19 +582,19 @@
         "totalValue": "Gesamtwert",
         "products": "Produkte",
         "units": "Einheiten",
-        "companies": "Unternehmen",
+        "companies": "Projects",
         "empty": "Noch keine Investitionen",
-        "emptyCta": "Zum Marktplatz"
+        "emptyCta": "Browse the store"
       },
       "balance": {
-        "title": "Kontostand",
+        "title": "Buyer account",
         "available": "Verfügbar",
-        "frozen": "Gesperrt"
+        "frozen": "Awaiting confirmation"
       },
       "actions": {
         "title": "Schnellaktionen",
         "deposit": "Einzahlen",
-        "market": "Marktplatz"
+        "market": "Store"
       },
       "posts": {
         "title": "Neuigkeiten",
@@ -572,11 +602,21 @@
         "errorTitle": "Neuigkeiten konnten nicht geladen werden",
         "errorRetry": "Wiederholen",
         "seeAll": "Alle anzeigen"
-      }
+      },
+      "gift": "A gift is waiting for you to accept it"
     },
     "portfolio": {
+      "gifts": {
+        "title": "Geschenke warten auf Sie",
+        "units": "{units} Teile als Geschenk",
+        "certificate": "Geschenkurkunde",
+        "accept": "Geschenk annehmen",
+        "accepted": "Das Geschenk ist angenommen: die Teile sind in Ihrem Portfolio",
+        "acceptError": "Das Geschenk konnte nicht angenommen werden, bitte erneut versuchen",
+        "kycRequired": "Um das Geschenk anzunehmen, durchlaufen Sie zuerst die Identitätsprüfung"
+      },
       "title": "Portfolio",
-      "subtitle": "Ihre Bestände über alle Unternehmen",
+      "subtitle": "Your holdings across all projects",
       "totalValue": "Gesamtwert",
       "products": "Produkte",
       "units": "Einheiten",
@@ -591,8 +631,8 @@
       },
       "empty": {
         "title": "Noch keine Investitionen",
-        "description": "Besuchen Sie den Marktplatz, um Ihr Portfolio aufzubauen.",
-        "cta": "Zum Marktplatz"
+        "description": "Browse the store to start your portfolio.",
+        "cta": "Go to the store"
       },
       "errorTitle": "Portfolio konnte nicht geladen werden"
     },
@@ -611,7 +651,8 @@
         "empty": "Noch keine Käufe",
         "legalBasis": {
           "sale": "Kauf",
-          "gift": "Geschenk"
+          "gift": "Geschenk",
+          "installment_tranche": "Installment payment"
         },
         "units": "Einheiten",
         "paid": "Bezahlt",
@@ -621,7 +662,7 @@
       "errorTitle": "Position konnte nicht geladen werden",
       "notFound": {
         "title": "Position nicht gefunden",
-        "description": "Sie haben keine aktiven Käufe in diesem Unternehmen."
+        "description": "You have no active purchases in this project."
       }
     },
     "certificate": {
@@ -649,7 +690,8 @@
       },
       "meta": {
         "signed": "Bereits unterzeichnet",
-        "pending": "Aktion erforderlich"
+        "pending": "Aktion erforderlich",
+        "read": "Zum Lesen und Herunterladen"
       },
       "modal": {
         "loading": "Dokument wird geladen...",
@@ -659,7 +701,8 @@
         "signing": "Wird unterzeichnet...",
         "signSuccess": "Dokument unterzeichnet",
         "signError": "Dokument konnte nicht unterzeichnet werden",
-        "close": "Schließen"
+        "close": "Schließen",
+        "download": "Herunterladen"
       }
     },
     "settings": {
@@ -691,7 +734,7 @@
       },
       "agent": {
         "title": "Agentenprogramm",
-        "apply": "Agent werden",
+        "apply": "Become an integrator",
         "reapply": "Erneut bewerben",
         "pending": "Ihre Bewerbung wird geprüft",
         "cooldown": "Verfügbar in {days} Tagen",
@@ -701,9 +744,13 @@
         "loadError": "Bewerbungsstatus konnte nicht geladen werden"
       },
       "actions": {
-        "title": "Aktionen",
-        "docs": "Meine Dokumente",
-        "logout": "Abmelden"
+        "title": "Security and documents",
+        "docs": "Documents",
+        "logout": "Abmelden",
+        "support": "Support",
+        "faq": "FAQ",
+        "logoutAll": "Sign out of all devices",
+        "logoutAllError": "Could not sign out of all devices. Try again."
       }
     },
     "more": {
@@ -738,6 +785,9 @@
         "me": "Sie",
         "operator": "Support"
       }
+    },
+    "agreement": {
+      "save": "Download"
     }
   },
   "kyc": {
@@ -771,6 +821,27 @@
       "errorEmpty": "Diese Datei ist leer.",
       "errorTooLarge": "Diese Datei ist größer als 10 MB.",
       "errorIncomplete": "Bitte alle angeforderten Bilder anhängen."
-    }
+    },
+    "unlocks": "Verification unlocks buying, instalment plans and the integrator application. Everything else is open without it.",
+    "rejectedReason": "Reason: {reason}",
+    "emailFirst": "Confirm your e-mail first: verification starts from a confirmed e-mail address.",
+    "toSettings": "Go to settings"
+  },
+  "intro": {
+    "what": {
+      "title": "Was AIVIS.ONE ist",
+      "text": "AIVIS.ONE verkauft Teile von Projekten des geistigen Eigentums. Ein Teil ist ein Anteil an 15 Prozent der Bruttoeinnahmen des Projekts, der Verkauf eines bestehenden Rechts; er wird auf Ihren Namen in das Register der Gesellschaft eingetragen."
+    },
+    "where": {
+      "title": "Wo Sie sind",
+      "text": "Dies ist Ihr Kabinett: das Schaufenster der Projekte, Ihr Portfolio mit den Dokumenten jedes Kaufs und Ihr Käuferkonto."
+    },
+    "how": {
+      "title": "Was Sie hier tun",
+      "text": "Legen Sie ein Konto an, durchlaufen Sie die Identitätsprüfung (10 $), laden Sie Ihr Konto in USDT auf und kaufen Sie Teile eines Projekts. Was die Teile einbringen, wird vierteljährlich ausgezahlt."
+    },
+    "next": "Weiter",
+    "skip": "Überspringen",
+    "start": "Los geht's"
   }
 }

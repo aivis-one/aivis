@@ -185,17 +185,21 @@ export async function submitKycApplication(
 
     if (!response.ok) {
       let detail = `HTTP ${response.status}`
+      let code: string | undefined
       if (data && typeof data === 'object') {
-        const obj = data as { detail?: unknown; message?: unknown }
+        const obj = data as { detail?: unknown; message?: unknown; error?: unknown }
         if ('detail' in obj && obj.detail != null) {
           detail = String(obj.detail)
         } else if ('message' in obj && typeof obj.message === 'string') {
           detail = obj.message
         }
+        if (typeof obj.error === 'string' && obj.error) code = obj.error
       }
       const retryAfter =
         response.status === 429 ? parseRetryAfterHeader(response) : undefined
-      throw new ApiResponseError(response.status, detail, retryAfter)
+      const failure = new ApiResponseError(response.status, detail, retryAfter)
+      failure.code = code
+      throw failure
     }
 
     return data as KycSubmitResponse
@@ -237,4 +241,19 @@ export function saveVerificationMode(
     '/api/v1/staff/kyc/verification-mode',
     { mode },
   )
+}
+
+/** GET /api/v1/kyc/status -- where the caller's verification stands. */
+export interface KycStatusSummary {
+  kyc_status: string
+  application_id?: string | null
+  application_status?: string | null
+  /** Why the last decision was a rejection; null otherwise. */
+  rejection_reason?: string | null
+  fee_cents: number
+  available_cents: number
+}
+
+export function getKycStatus(): Promise<KycStatusSummary> {
+  return api.get<KycStatusSummary>('/api/v1/kyc/status')
 }

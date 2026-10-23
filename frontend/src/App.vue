@@ -58,6 +58,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import { useAvatar } from '@/composables/useAvatar'
 import LoadingView from '@/views/auth/LoadingView.vue'
+import KycRequiredPrompt from '@/components/shared/KycRequiredPrompt.vue'
+import IntroCards from '@/components/shared/IntroCards.vue'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -115,6 +117,12 @@ onMounted(() => {
   <div v-else :class="{ 'app--avatar-active': isAvatarActive && authStore.isAuthenticated }">
     <RouterView />
   </div>
+
+  <!-- The message a closed action answers with before verification -->
+  <KycRequiredPrompt />
+
+  <!-- What the service is, shown once before the first entry -->
+  <IntroCards />
 </template>
 
 <style scoped>

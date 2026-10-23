@@ -14,7 +14,7 @@
 // type in onboarding progression).
 // =============================================================================
 
-import { api } from '@/api/client'
+import { api, ApiResponseError } from '@/api/client'
 import type { DocumentResponse, DocumentSigningResponse } from '@/api/types'
 
 /**
@@ -53,4 +53,46 @@ export function getDocument(id: string): Promise<DocumentResponse> {
  */
 export function signDocument(id: string): Promise<DocumentSigningResponse> {
   return api.post<DocumentSigningResponse>(`/api/v1/documents/${id}/sign`)
+}
+
+/**
+ * GET /api/v1/documents/by-type/{type}?lang= -- the current document of a
+ * type in `lang` (the caller's language when omitted, English when that
+ * language has none). Reaches a document no role has to sign, so it can be
+ * read and signed by its id.
+ */
+export function getDocumentByType(type: string, lang?: string): Promise<DocumentResponse> {
+  const qs = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+  return api.get<DocumentResponse>(`/api/v1/documents/by-type/${encodeURIComponent(type)}${qs}`)
+}
+
+/** How a by-type acceptance ended. */
+export type AcceptResult = 'signed' | 'already' | 'missing'
+
+/**
+ * Records the caller's acceptance of the current document of a type:
+ * reads it by type, signs it unless it is signed already.
+ *
+ *   'signed'  -- a signing was recorded now
+ *   'already' -- the caller had signed it (a 409 counts the same)
+ *   'missing' -- no active document of this type exists
+ *
+ * Any other failure is thrown to the caller.
+ */
+export async function acceptDocumentByType(type: string, lang?: string): Promise<AcceptResult> {
+  let doc: DocumentResponse
+  try {
+    doc = await getDocumentByType(type, lang)
+  } catch (err) {
+    if (err instanceof ApiResponseError && err.status === 404) return 'missing'
+    throw err
+  }
+  if (doc.is_signed) return 'already'
+  try {
+    await signDocument(doc.id)
+  } catch (err) {
+    if (err instanceof ApiResponseError && err.status === 409) return 'already'
+    throw err
+  }
+  return 'signed'
 }
