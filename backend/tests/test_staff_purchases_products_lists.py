@@ -42,10 +42,12 @@ def _sql(statement) -> str:  # type: ignore[no-untyped-def]
 
 
 def test_kind_of_each_legal_basis() -> None:
-    assert purchase_kind("sale", None) == "paid"
-    assert purchase_kind("installment_tranche", None) == "installment"
-    assert purchase_kind("gift", None) == "gift"
-    assert purchase_kind("gift", uuid4()) == "bonus"
+    assert purchase_kind("sale", None, "active", False) == "paid"
+    assert purchase_kind("installment_tranche", None, "active", False) == "installment"
+    assert purchase_kind("gift", None, "pending_acceptance", False) == "gift"
+    assert purchase_kind("gift", None, "active", True) == "gift"
+    assert purchase_kind("gift", None, "active", False) == "bonus"
+    assert purchase_kind("gift", uuid4(), "active", False) == "bonus"
 
 
 # --- paging -----------------------------------------------------------------

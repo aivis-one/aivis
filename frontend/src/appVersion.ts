@@ -4,7 +4,7 @@
 //
 // The cabinet's version is the build tag, written into the bundle once at build
 // time as __APP_VERSION__ (vite.config.ts). The tag is this one constant; a
-// release build for another tag sets VITE_APP_VERSION. package.json's own
+// release build for another tag sets VITE_APP_VERSION in the shell (not in a .env file). package.json's own
 // version field is the npm package's and is not shown.
 // =============================================================================
 

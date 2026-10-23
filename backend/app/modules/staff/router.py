@@ -45,7 +45,6 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
-from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import (
     get_current_staff,
     require_staff_permission,
@@ -63,7 +62,7 @@ from app.modules.staff.admin_service import (
     list_users,
     unblock_user,
 )
-from app.modules.staff.constants import is_admin
+from app.modules.staff.permissions import require_admin
 from app.modules.staff.schemas import (
     CreateStaffRequest,
     StaffProfileResponse,
@@ -73,7 +72,6 @@ from app.modules.staff.service import (
     create_staff,
     deactivate_staff,
     get_effective_permissions,
-    get_staff_profile,
     update_permissions,
 )
 from app.modules.users.models import KYCStatus, User, UserRole
@@ -93,13 +91,7 @@ async def _require_admin(staff: User, session: AsyncSession) -> None:
 
     Raises ForbiddenError if not admin.
     """
-    profile = await get_staff_profile(staff.id, session)
-    if profile is None:
-        raise ForbiddenError("Staff profile not found")
-
-    effective = get_effective_permissions(profile)
-    if not is_admin(effective):
-        raise ForbiddenError("Admin access required")
+    await require_admin(staff, session)
 
 
 # ---------------------------------------------------------------------------

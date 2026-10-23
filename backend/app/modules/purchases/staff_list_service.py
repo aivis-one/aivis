@@ -17,8 +17,11 @@
 #   sale                          -> paid
 #   installment_tranche           -> installment
 #   gift with a source purchase   -> bonus (written with a sale or a tranche)
-#   gift without a source         -> gift (granted by staff, or the
-#                                    instalment completion bonus)
+#   gift without a source         -> gift when staff granted it (pending,
+#                                    cancelled, or accepted with the ledger
+#                                    reason gift:grant:company:<id>); else
+#                                    bonus (the instalment completion bonus),
+#                                    the rule of agreement_service.purchase_type_of
 #
 # COMMIT RULE (P-01):
 #   Service never commits and never writes.
@@ -31,8 +34,10 @@ from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.companies.models import CompanyProfile
+from app.modules.ledgers.models import ActiveLedger
 from app.modules.products.models import Product
-from app.modules.purchases.constants import PurchaseLegalBasis
+from app.modules.purchases.agreement_service import STAFF_GIFT_REASON
+from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
 from app.modules.purchases.schemas import StaffPurchaseItem
 from app.modules.users.models import User
@@ -43,15 +48,24 @@ KIND_GIFT = "gift"
 KIND_BONUS = "bonus"
 
 
-def purchase_kind(legal_basis: str, source_purchase_id: UUID | None) -> str:
-    """The type the staff screen shows for a purchase row."""
+def purchase_kind(
+    legal_basis: str,
+    source_purchase_id: UUID | None,
+    status: str,
+    staff_granted: bool,
+) -> str:
+    """The type the staff screen shows; the same rule as
+    agreement_service.purchase_type_of, the staff-grant ledger read for
+    the whole page at once."""
     if legal_basis == PurchaseLegalBasis.SALE:
         return KIND_PAID
     if legal_basis == PurchaseLegalBasis.INSTALLMENT_TRANCHE:
         return KIND_INSTALLMENT
     if source_purchase_id is not None:
         return KIND_BONUS
-    return KIND_GIFT
+    if status in (PurchaseStatus.PENDING_ACCEPTANCE, PurchaseStatus.CANCELLED):
+        return KIND_GIFT
+    return KIND_GIFT if staff_granted else KIND_BONUS
 
 
 def page_offset(page: int, per_page: int) -> int:
@@ -126,6 +140,18 @@ async def list_staff_purchases(
             build_list_statement(conditions, page=page, per_page=per_page)
         )
     ).all()
+    reasons = {
+        STAFF_GIFT_REASON.format(purchase_id=purchase.id): purchase.id
+        for purchase, _, _, _ in rows
+        if purchase.legal_basis == PurchaseLegalBasis.GIFT
+        and purchase.source_purchase_id is None
+    }
+    granted: set[UUID] = set()
+    if reasons:
+        found = await session.execute(
+            select(ActiveLedger.reason).where(ActiveLedger.reason.in_(list(reasons)))
+        )
+        granted = {reasons[r] for r in found.scalars().all()}
     items = [
         StaffPurchaseItem(
             id=purchase.id,
@@ -139,7 +165,12 @@ async def list_staff_purchases(
             product_name=product_name,
             units=purchase.units,
             paid_cents=purchase.paid_cents,
-            kind=purchase_kind(purchase.legal_basis, purchase.source_purchase_id),
+            kind=purchase_kind(
+                purchase.legal_basis,
+                purchase.source_purchase_id,
+                purchase.status,
+                purchase.id in granted,
+            ),
             legal_basis=purchase.legal_basis,
             status=purchase.status,
         )

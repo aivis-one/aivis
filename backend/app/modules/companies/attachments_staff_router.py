@@ -86,7 +86,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.body_limit import upload_body_limit
 from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
-from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.companies.schemas import (
     AttachmentInboxMetadata,
@@ -105,11 +104,7 @@ from app.modules.companies.service import (
     soft_delete_attachment,
     validate_attachment_mime_by_filename,
 )
-from app.modules.staff.constants import is_admin
-from app.modules.staff.service import (
-    get_effective_permissions,
-    get_staff_profile,
-)
+from app.modules.staff.permissions import require_admin
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -131,13 +126,7 @@ async def _require_admin(staff: User, session: AsyncSession) -> None:
     Mirrors staff/router.py::_require_admin so the policy stays in
     lockstep across the codebase. Raises ForbiddenError otherwise.
     """
-    profile = await get_staff_profile(staff.id, session)
-    if profile is None:
-        raise ForbiddenError("Staff profile not found")
-
-    effective = get_effective_permissions(profile)
-    if not is_admin(effective):
-        raise ForbiddenError("Admin access required")
+    await require_admin(staff, session)
 
 
 def _resolve_upload_size(file: UploadFile) -> int:
