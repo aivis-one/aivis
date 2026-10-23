@@ -80,6 +80,7 @@
   --primary-subtle: var(--azure-50);
   --primary-subtle-text: var(--azure-800);
   --on-primary: #FFFFFF;
+  --on-primary-muted: color-mix(in srgb, var(--on-primary) 85%, var(--primary));
   --success: var(--emerald-700);
   --success-subtle: var(--emerald-50);
   --success-subtle-text: var(--emerald-800);
@@ -107,6 +108,8 @@
   --toggle-knob: var(--neutral-0);
   --paper: var(--neutral-0);
   --scrim: color-mix(in srgb, var(--neutral-950) 50%, transparent);
+  --scrim-strong: color-mix(in srgb, var(--neutral-950) 70%, transparent);
+  --text-on-scrim: var(--neutral-0);
   --icon-primary: var(--neutral-900);
   --icon-secondary: var(--neutral-600);
   --icon-disabled: var(--neutral-400);
@@ -227,6 +230,15 @@
   --maxw-form: 360px;
   --maxw-form-wide: 400px;
   --header-height: 64px;
+  /* ---- Layers ---- */
+  --z-content: 1;
+  --z-sticky: 10;
+  --z-header: 20;
+  --z-tooltip: 30;
+  --z-menu: 40;
+  --z-dialog: 60;
+  --z-banner: 80;
+  --z-toast: 100;
   /* ---- Sizes, touch and icons ---- */
   --touch-min: 44px;
   --touch-comfortable: 48px;
