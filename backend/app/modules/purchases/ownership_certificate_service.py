@@ -75,7 +75,13 @@ from app.modules.companies.service import (
     get_template_html_cached,
     make_asset_data_uri_func,
 )
-from app.modules.purchases.agreement_service import TemplateMissingError
+from app.modules.purchases.agreement_service import (
+    PURCHASE_TYPE_INSTALMENT,
+    PURCHASE_TYPE_SALE,
+    TemplateMissingError,
+    purchase_type_of,
+    tranche_position,
+)
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.document_utils import (
     build_document_environment,
@@ -83,6 +89,7 @@ from app.modules.purchases.document_utils import (
     extract_investor_email,
     extract_investor_name,
     format_cents,
+    format_document_date,
 )
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
@@ -105,6 +112,11 @@ class OwnershipPurchaseItem:
     paid_cents: int
     price_per_unit_cents: int
     purchase_date: datetime
+    # The basis the history table prints: sale, instalment, gift or bonus,
+    # and for an instalment its month n of N (0, 0 for the others).
+    purchase_type: str = PURCHASE_TYPE_SALE
+    tranche_number: int = 0
+    tranche_count: int = 0
 
 
 @dataclass
@@ -203,6 +215,13 @@ async def load_ownership_data(
 
         total_paid_cents += p.paid_cents
 
+        purchase_type = await purchase_type_of(p, session)
+        tranche_number, tranche_count = (
+            await tranche_position(p.id, session)
+            if purchase_type == PURCHASE_TYPE_INSTALMENT
+            else (0, 0)
+        )
+
         items.append(
             OwnershipPurchaseItem(
                 id=p.id,
@@ -211,6 +230,9 @@ async def load_ownership_data(
                 paid_cents=p.paid_cents,
                 price_per_unit_cents=p.price_per_unit_cents,
                 purchase_date=p.created_at,
+                purchase_type=purchase_type,
+                tranche_number=tranche_number,
+                tranche_count=tranche_count,
             )
         )
 
@@ -304,7 +326,12 @@ async def render_ownership_html(
             "paid_display": format_cents(item.paid_cents),
             "price_per_unit_cents": item.price_per_unit_cents,
             "price_per_unit_display": format_cents(item.price_per_unit_cents),
-            "date": item.purchase_date.strftime("%B %d, %Y"),
+            "date": format_document_date(item.purchase_date, template.language),
+            # sale / instalment / gift / bonus, and month n of N for an
+            # instalment: the history table's Basis column.
+            "purchase_type": item.purchase_type,
+            "tranche_number": item.tranche_number,
+            "tranche_count": item.tranche_count,
         }
         for item in data.purchases
     ]
@@ -320,7 +347,7 @@ async def render_ownership_html(
         "total_paid_display": format_cents(data.total_paid_cents),
         "current_value_cents": data.current_value_cents,
         "current_value_display": format_cents(data.current_value_cents),
-        "as_of_date": data.as_of_date.strftime("%B %d, %Y"),
+        "as_of_date": format_document_date(data.as_of_date, template.language),
         "purchases": purchases_for_template,
     }
 

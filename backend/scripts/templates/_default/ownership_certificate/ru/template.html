@@ -2,7 +2,7 @@
 <html lang="ru" dir="ltr">
 <head>
   <meta charset="utf-8">
-  <title>Сертификат владения</title>
+  <title>Свидетельство о владении</title>
   <style>
     @page { size: A4 portrait; margin: 18mm 20mm; }
     body {
@@ -78,6 +78,18 @@
       text-align: center;
       margin-top: 8mm;
     }
+  
+    .doc p { margin: 0 0 3mm 0; line-height: 1.45; }
+    .doc h3 { font-size: 13px; margin: 6mm 0 2mm 0; color: #1a1a2e; }
+    .doc table.t { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm 0; }
+    .doc table.t td, .doc table.t th {
+      padding: 1.8mm 3mm; border-bottom: 1px solid #e0e0e8;
+      text-align: left; vertical-align: top;
+    }
+    .doc table.t th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .doc table.t td.k { width: 46%; color: #7a7a8a; }
+    .doc table.t td.v { font-weight: bold; }
+    .doc .sign-line { margin: 6mm 0 0 0; }
   </style>
 </head>
 <body>
@@ -88,42 +100,51 @@
     </tr>
   </table>
 
-  <h2 class="kind-title">Сертификат владения</h2>
+  <h2 class="kind-title">Свидетельство о владении</h2>
 
-    <table class="details">
-      <tr><td class="label">Инвестор:</td><td class="value">{{ investor_name }}</td></tr>
-      <tr><td class="label">Компания:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Всего единиц:</td><td class="value">{{ total_units }}</td></tr>
-      <tr><td class="label">Куплено единиц:</td><td class="value">{{ sale_units }}</td></tr>
-      <tr><td class="label">Подарено единиц:</td><td class="value">{{ gift_units }}</td></tr>
-      <tr><td class="label">Всего оплачено:</td><td class="value">{{ total_paid_cents }}</td></tr>
-      <tr><td class="label">Текущая стоимость:</td><td class="value">{{ current_value_cents }}</td></tr>
-      <tr><td class="label">По состоянию на:</td><td class="value">{{ as_of_date }}</td></tr>
+  <div class="doc">
+    <p>Выдано {{ as_of_date }} через Кабинет на aivis.one/app/</p>
+    <p><strong>AIVIS.ONE LLC</strong>, обществом с ограниченной ответственностью Грузии, идентификационный номер 404804422, юридический адрес: Грузия, Тбилиси, район Мтацминда, с. Окрокана, ул. Акакия Церетели, 14 (&laquo;Компания&raquo;).</p>
+
+    <h3>1. Запись в реестре</h3>
+    <p>1.1. Компания удостоверяет, что её реестр интеллектуальной собственности указанного ниже проекта содержит на дату этого свидетельства следующую запись об указанном ниже Держателе:</p>
+    <table class="t">
+      <tr><td class="k">Держатель</td><td class="v">{{ investor_name }}</td></tr>
+      <tr><td class="k">Проект</td><td class="v">{{ company_name }}</td></tr>
+      <tr><td class="k">Частей (для индекса — единиц) во владении</td><td class="v">{{ total_units }}</td></tr>
+      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ sale_units }}</td></tr>
+      <tr><td class="k">Получено Частей (для индекса — единиц) как бонусные или в дар</td><td class="v">{{ gift_units }}</td></tr>
+      <tr><td class="k">Всего оплачено</td><td class="v">{{ total_paid_display }} USD</td></tr>
+      <tr><td class="k">Стоимость по текущей цене Части</td><td class="v">{{ current_value_display }} USD</td></tr>
+      <tr><td class="k">На дату</td><td class="v">{{ as_of_date }}</td></tr>
     </table>
-    <p class="note">Суммы указаны в центах (USD).</p>
+    <p>1.2. Части во владении — это сумма всех покупок, бонусных Частей и подарков Держателя в этом проекте, внесённых в реестр на эту дату.</p>
 
-    <h3 class="purchases-h">История покупок</h3>
-    <table class="purchases">
-      <thead>
-        <tr>
-          <th>Дата</th>
-          <th>Основание</th>
-          <th>Единицы</th>
-          <th>Оплачено</th>
-        </tr>
-      </thead>
+    <h3>2. История покупок</h3>
+    <p>2.1. Записи, из которых складываются Части Держателя в этом проекте:</p>
+    <table class="t">
+      <thead><tr><th>Дата</th><th>Основание</th><th>Части (для индекса — единицы)</th><th>Оплачено, USD</th></tr></thead>
       <tbody>
         {% for p in purchases %}
         <tr>
           <td>{{ p.date }}</td>
-          <td>{{ p.legal_basis }}</td>
+          <td>{% if p.purchase_type == 'sale' %}Покупка{% elif p.purchase_type == 'instalment' %}Рассрочка{% if p.tranche_number %}, месяц {{ p.tranche_number }} из {{ p.tranche_count }}{% endif %}{% elif p.purchase_type == 'bonus' %}Бонусные Части{% else %}Дар{% endif %}</td>
           <td>{{ p.units }}</td>
-          <td>{{ p.paid_cents }}</td>
+          <td>{{ p.paid_display }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
 
+    <h3>3. Что это за свидетельство</h3>
+    <p>3.1. Это свидетельство — выписка о записи Держателя в реестре на указанную дату. Оно не является договором и ничего не передаёт.</p>
+    <p>3.2. Право Держателя на Части — это запись в реестре; Кабинет хранит её доказательство. Права и обязанности, связанные с Частями, — это права и обязанности по договорам, по которым они куплены или получены.</p>
+    <p>3.3. Указанная стоимость — это Части Держателя, умноженные на текущую цену Части. Она не является предложением купить Части и не обещает никакой выплаты.</p>
+    <p>3.4. Кабинет формирует это свидетельство по запросу Держателя на английском или русском языке — на языке Кабинета Держателя.</p>
+
+    <h3>Подписи</h3>
+    <p>Компания, AIVIS.ONE LLC:</p>
+  </div>
 
   <!-- company seal and director signature: vector, keep whole -->
   <table class="footer">
@@ -145,6 +166,9 @@
     </tr>
   </table>
   <!-- end seal and signature -->
+  <div class="doc">
+    <p class="sign-line">Дата: {{ as_of_date }}</p>
+  </div>
 
 </body>
 </html>

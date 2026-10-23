@@ -78,6 +78,18 @@
       text-align: center;
       margin-top: 8mm;
     }
+  
+    .doc p { margin: 0 0 3mm 0; line-height: 1.45; }
+    .doc h3 { font-size: 13px; margin: 6mm 0 2mm 0; color: #1a1a2e; }
+    .doc table.t { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm 0; }
+    .doc table.t td, .doc table.t th {
+      padding: 1.8mm 3mm; border-bottom: 1px solid #e0e0e8;
+      text-align: left; vertical-align: top;
+    }
+    .doc table.t th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .doc table.t td.k { width: 46%; color: #7a7a8a; }
+    .doc table.t td.v { font-weight: bold; }
+    .doc .sign-line { margin: 6mm 0 0 0; }
   </style>
 </head>
 <body>
@@ -90,21 +102,48 @@
 
   <h2 class="kind-title">Договор купли-продажи</h2>
 
-    <table class="details">
-      <tr><td class="label">Сертификат №:</td><td class="value">{{ certificate_number }}</td></tr>
-      <tr><td class="label">Инвестор:</td><td class="value">{{ investor_name }}</td></tr>
-      <tr><td class="label">Эл. почта:</td><td class="value">{{ investor_email }}</td></tr>
-      <tr><td class="label">Компания:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Юридическое лицо:</td><td class="value">{{ company_legal_name }}</td></tr>
-      <tr><td class="label">Продукт:</td><td class="value">{{ product_name }}</td></tr>
-      <tr><td class="label">Количество:</td><td class="value">{{ units }}</td></tr>
-      <tr><td class="label">Сумма оплаты:</td><td class="value">{{ paid_cents }}</td></tr>
-      <tr><td class="label">Цена за единицу:</td><td class="value">{{ price_per_unit_cents }}</td></tr>
-      <tr><td class="label">Дата:</td><td class="value">{{ purchase_date }}</td></tr>
-      <tr><td class="label">Правовое основание:</td><td class="value">{{ legal_basis }}</td></tr>
-    </table>
-    <p class="note">Суммы указаны в центах (USD).</p>
+  <div class="doc">
+    <p>Сертификат № {{ certificate_number }}</p>
+    <p>Заключён {{ purchase_date }} через Кабинет на aivis.one/app/</p>
+    <p>между</p>
+    <p><strong>AIVIS.ONE LLC</strong>, обществом с ограниченной ответственностью Грузии, идентификационный номер 404804422, юридический адрес: Грузия, Тбилиси, район Мтацминда, с. Окрокана, ул. Акакия Церетели, 14 (&laquo;Компания&raquo;),</p>
+    <p>и</p>
+    <p><strong>{{ investor_name }}</strong>, электронная почта {{ investor_email }}, владельцем учётной записи Кабинета {{ account_number }} (&laquo;Покупатель&raquo;).</p>
 
+    <h3>1. Что куплено</h3>
+    <p>1.1. Компания продала Покупателю, а Покупатель купил части указанного ниже проекта (&laquo;Части&raquo;):</p>
+    <table class="t">
+      <tr><td class="k">Проект</td><td class="v">{{ company_name }}</td></tr>
+      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ units }}</td></tr>
+      <tr><td class="k">Выдано бонусных Частей (для индекса — единиц)</td><td class="v">{% if bonus_parts %}{{ bonus_parts }}{% else %}нет{% endif %}</td></tr>
+      <tr><td class="k">Цена за Часть</td><td class="v">{{ price_per_unit_display }} USD</td></tr>
+      <tr><td class="k">Оплачено</td><td class="v">{{ paid_display }} USD</td></tr>
+      <tr><td class="k">Вид покупки</td><td class="v">{% if purchase_type == 'instalment' %}Рассрочка{% if tranche_number %}, месяц рассрочки {{ tranche_number }} из {{ tranche_count }}{% endif %}{% else %}Разовая покупка{% endif %}</td></tr>
+      <tr><td class="k">Дата покупки</td><td class="v">{{ purchase_date }}</td></tr>
+    </table>
+    <p>1.2. Кабинет формирует этот договор после покупки по тому, что куплено, за какую сумму и в каком количестве.</p>
+
+    <h3>2. Договор покупателя</h3>
+    <p>2.1. Покупатель принял Договор покупателя щелчком в Кабинете{% if buyer_agreement_accepted_at %} {{ buyer_agreement_accepted_at }}{% endif %}. Текст Договора покупателя в версии, которую принял Покупатель, полностью приведён в Приложении ниже и является частью этого договора.</p>
+    <p>2.2. Права и обязанности Сторон в отношении Частей, указанных в этом договоре, — те, которые устанавливает Договор покупателя.</p>
+    <p>2.3. Текст Договора покупателя, записанный в Кабинете при его принятии Покупателем, имеет преимущество над любой его копией.</p>
+
+    <h3>3. Запись в реестре</h3>
+    <p>3.1. Право Покупателя на Части — это запись в реестре интеллектуальной собственности проекта, который ведёт Компания. Номер записи в реестре по этой покупке — {{ certificate_number }}.</p>
+    <p>3.2. Кабинет хранит доказательство записи.</p>
+
+    <h3>4. Отказ</h3>
+    <p>4.1. Покупатель может отказаться от этой покупки в течение 14 дней через поддержку, как это предусмотрено Договором покупателя. 14 дней этой покупки заканчиваются {{ withdrawal_end_date }}.</p>
+
+    <h3>5. Документы</h3>
+    <p>5.1. Этот договор и операции Покупателя можно скачать в Кабинете.</p>
+
+    <h3>6. Язык</h3>
+    <p>6.1. Кабинет формирует этот договор на английском или русском языке — на языке Кабинета Покупателя.</p>
+
+    <h3>Подписи</h3>
+    <p>Компания, AIVIS.ONE LLC:</p>
+  </div>
 
   <!-- company seal and director signature: vector, keep whole -->
   <table class="footer">
@@ -126,6 +165,14 @@
     </tr>
   </table>
   <!-- end seal and signature -->
+  <div class="doc">
+    <p class="sign-line">Дата: {{ purchase_date }}</p>
+    <p>Покупатель: принято щелчком в Кабинете{% if buyer_agreement_accepted_at %} {{ buyer_agreement_accepted_at }}{% endif %}.</p>
+  </div>
+  <div class="doc" style="page-break-before: always">
+    <h3>Приложение. Договор покупателя</h3>
+    {{ buyer_agreement_annex }}
+  </div>
 
 </body>
 </html>

@@ -73,11 +73,11 @@
 # =============================================================================
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
@@ -88,7 +88,12 @@ from app.modules.companies.service import (
     get_template_html_cached,
     make_asset_data_uri_func,
 )
+from app.modules.installments.models import InstallmentTranche
+from app.modules.ledgers.models import ActiveLedger
 from app.modules.products.models import Product
+from app.modules.purchases.buyer_agreement_annex import (
+    load_accepted_buyer_agreement,
+)
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.document_utils import (
     build_document_environment,
@@ -96,8 +101,11 @@ from app.modules.purchases.document_utils import (
     extract_investor_email,
     extract_investor_name,
     format_cents,
+    format_document_date,
+    format_document_datetime,
 )
 from app.modules.purchases.models import Purchase
+from app.modules.users.account_number import resolve_account_number
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -276,6 +284,99 @@ def _short_id(purchase_id: UUID) -> str:
     return str(purchase_id).split("-")[0].upper()
 
 
+# Reason a staff gift writes to the recipient's ledger on acceptance
+# (purchases/engine.py credit_pending_gift): gift:grant:company:<purchase id>.
+STAFF_GIFT_REASON = "gift:grant:company:{purchase_id}"
+
+# The purchase types a document can print. sale and instalment are paid;
+# gift and bonus are parts given without payment.
+PURCHASE_TYPE_SALE = "sale"
+PURCHASE_TYPE_INSTALMENT = "instalment"
+PURCHASE_TYPE_GIFT = "gift"
+PURCHASE_TYPE_BONUS = "bonus"
+
+
+async def purchase_type_of(purchase: Purchase, session: AsyncSession) -> str:
+    """The purchase's type as a document prints it: sale, instalment, gift
+    or bonus.
+
+    Taken from legal_basis. legal_basis=gift holds two things that a
+    document names apart: a staff gift and a bonus (a bonus row of a sale
+    or tranche, or the instalment completion bonus). A bonus row written by
+    the engine carries source_purchase_id and is a bonus. A gift row without
+    a source is a staff gift if it still waits for acceptance or its
+    acceptance wrote the ledger reason gift:grant:company:<id>; otherwise
+    it is the instalment completion bonus.
+    """
+    if purchase.legal_basis == PurchaseLegalBasis.SALE:
+        return PURCHASE_TYPE_SALE
+    if purchase.legal_basis == PurchaseLegalBasis.INSTALLMENT_TRANCHE:
+        return PURCHASE_TYPE_INSTALMENT
+    if purchase.legal_basis != PurchaseLegalBasis.GIFT:
+        return PURCHASE_TYPE_SALE
+    if purchase.source_purchase_id is not None:
+        return PURCHASE_TYPE_BONUS
+    if purchase.status == PurchaseStatus.PENDING_ACCEPTANCE:
+        return PURCHASE_TYPE_GIFT
+    if purchase.status == PurchaseStatus.CANCELLED:
+        # A staff gift cancelled before acceptance: no source, not pending
+        # and no grant ledger, but still a gift (gift_service is the only
+        # writer of CANCELLED).
+        return PURCHASE_TYPE_GIFT
+    granted = await session.execute(
+        select(ActiveLedger.id)
+        .where(
+            ActiveLedger.user_id == purchase.investor_id,
+            ActiveLedger.reason
+            == STAFF_GIFT_REASON.format(purchase_id=purchase.id),
+        )
+        .limit(1)
+    )
+    return (
+        PURCHASE_TYPE_GIFT
+        if granted.first() is not None
+        else PURCHASE_TYPE_BONUS
+    )
+
+
+async def bonus_parts_of(purchase_id: UUID, session: AsyncSession) -> int:
+    """Bonus parts given with one purchase: the sum of the units of the
+    active bonus rows whose source_purchase_id is this purchase. 0 when
+    there are none."""
+    total = await session.scalar(
+        select(func.coalesce(func.sum(Purchase.units), 0)).where(
+            Purchase.source_purchase_id == purchase_id,
+            Purchase.legal_basis == PurchaseLegalBasis.GIFT,
+            Purchase.status == PurchaseStatus.ACTIVE,
+        )
+    )
+    return int(total or 0)
+
+
+async def tranche_position(
+    purchase_id: UUID, session: AsyncSession
+) -> tuple[int, int]:
+    """(number, count) of the instalment tranche this purchase paid: the
+    tranche's number and the number of tranches in its plan. (0, 0) when
+    the purchase is not an instalment tranche."""
+    row = (
+        await session.execute(
+            select(InstallmentTranche.number, InstallmentTranche.plan_id)
+            .where(InstallmentTranche.purchase_id == purchase_id)
+            .limit(1)
+        )
+    ).first()
+    if row is None:
+        return 0, 0
+    number, plan_id = row
+    count = await session.scalar(
+        select(func.count())
+        .select_from(InstallmentTranche)
+        .where(InstallmentTranche.plan_id == plan_id)
+    )
+    return int(number), int(count or 0)
+
+
 async def render_agreement_html(
     data: AgreementData,
     session: AsyncSession,
@@ -340,6 +441,13 @@ async def render_agreement_html(
     template_obj = env.from_string(html_body)
 
     now = datetime.now(UTC)
+    language = data.template.language
+    accepted = await load_accepted_buyer_agreement(
+        data.purchase, session, language
+    )
+    tranche_number, tranche_count = await tranche_position(
+        data.purchase.id, session
+    )
     context = {
         "investor_name": data.investor_name,
         # Bootstrap purchase_agreement templates (R2 §4.4) reference
@@ -365,9 +473,35 @@ async def render_agreement_html(
             data.purchase.price_per_unit_cents
         ),
         "legal_basis": data.purchase.legal_basis,
-        "purchase_date": data.purchase.created_at.strftime("%B %d, %Y"),
-        "issue_date": now.strftime("%B %d, %Y"),
+        "purchase_date": format_document_date(
+            data.purchase.created_at, language
+        ),
+        "issue_date": format_document_date(now, language),
+        # DOC-23 4.1: the 14 days run from the purchase row's creation.
+        "withdrawal_end_date": format_document_date(
+            data.purchase.created_at + timedelta(days=14), language
+        ),
+        # DOC-23 2.1 and Signatures: the time of the Buyer's click on the
+        # Buyer Agreement (a DocumentSigning the purchase click writes),
+        # and the Annex: the text of the version accepted, matched by its
+        # sha256 to the document's content_hash.
+        "buyer_agreement_accepted_at": (
+            format_document_datetime(accepted.signed_at, language)
+            if accepted.signed_at is not None
+            else ""
+        ),
+        "buyer_agreement_annex": accepted.annex_html,
         "certificate_number": _short_id(data.purchase.id),
+        # What the accepted texts need beyond the old field table: the
+        # Cabinet account number, the bonus parts given with this
+        # purchase, the type of purchase, and instalment month n of N.
+        "account_number": await resolve_account_number(
+            data.purchase.investor_id, session
+        ),
+        "bonus_parts": await bonus_parts_of(data.purchase.id, session),
+        "purchase_type": await purchase_type_of(data.purchase, session),
+        "tranche_number": tranche_number,
+        "tranche_count": tranche_count,
     }
 
     return template_obj.render(**context)

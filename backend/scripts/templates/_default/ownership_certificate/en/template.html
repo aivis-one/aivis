@@ -78,6 +78,18 @@
       text-align: center;
       margin-top: 8mm;
     }
+  
+    .doc p { margin: 0 0 3mm 0; line-height: 1.45; }
+    .doc h3 { font-size: 13px; margin: 6mm 0 2mm 0; color: #1a1a2e; }
+    .doc table.t { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm 0; }
+    .doc table.t td, .doc table.t th {
+      padding: 1.8mm 3mm; border-bottom: 1px solid #e0e0e8;
+      text-align: left; vertical-align: top;
+    }
+    .doc table.t th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .doc table.t td.k { width: 46%; color: #7a7a8a; }
+    .doc table.t td.v { font-weight: bold; }
+    .doc .sign-line { margin: 6mm 0 0 0; }
   </style>
 </head>
 <body>
@@ -90,40 +102,49 @@
 
   <h2 class="kind-title">Certificate of Ownership</h2>
 
-    <table class="details">
-      <tr><td class="label">Investor:</td><td class="value">{{ investor_name }}</td></tr>
-      <tr><td class="label">Company:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Total Units:</td><td class="value">{{ total_units }}</td></tr>
-      <tr><td class="label">Purchased Units:</td><td class="value">{{ sale_units }}</td></tr>
-      <tr><td class="label">Gift Units:</td><td class="value">{{ gift_units }}</td></tr>
-      <tr><td class="label">Total Paid:</td><td class="value">{{ total_paid_cents }}</td></tr>
-      <tr><td class="label">Current Value:</td><td class="value">{{ current_value_cents }}</td></tr>
-      <tr><td class="label">As of:</td><td class="value">{{ as_of_date }}</td></tr>
-    </table>
-    <p class="note">Amounts shown in cents (USD).</p>
+  <div class="doc">
+    <p>Issued on {{ as_of_date }} through the Cabinet at aivis.one/app/</p>
+    <p>by <strong>AIVIS.ONE LLC</strong>, a limited liability company of Georgia, identification number 404804422, legal address Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14 (the &ldquo;Company&rdquo;).</p>
 
-    <h3 class="purchases-h">Purchase History</h3>
-    <table class="purchases">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Basis</th>
-          <th>Units</th>
-          <th>Paid</th>
-        </tr>
-      </thead>
+    <h3>1. The register entry</h3>
+    <p>1.1. The Company states that its register of the IP of the project named below holds the following entry for the Holder named below, as of the date of this certificate:</p>
+    <table class="t">
+      <tr><td class="k">Holder</td><td class="v">{{ investor_name }}</td></tr>
+      <tr><td class="k">Project</td><td class="v">{{ company_name }}</td></tr>
+      <tr><td class="k">Parts (for the index: Units) held</td><td class="v">{{ total_units }}</td></tr>
+      <tr><td class="k">Parts (for the index: Units) bought</td><td class="v">{{ sale_units }}</td></tr>
+      <tr><td class="k">Parts (for the index: Units) received as bonus Parts or gifts</td><td class="v">{{ gift_units }}</td></tr>
+      <tr><td class="k">Total paid</td><td class="v">{{ total_paid_display }} USD</td></tr>
+      <tr><td class="k">Value at the current price of a Part</td><td class="v">{{ current_value_display }} USD</td></tr>
+      <tr><td class="k">As of</td><td class="v">{{ as_of_date }}</td></tr>
+    </table>
+    <p>1.2. The Parts held are the sum of all the Holder&rsquo;s purchases, bonus Parts and gifts in this project that are entered in the register on that date.</p>
+
+    <h3>2. Purchase history</h3>
+    <p>2.1. The entries that make up the Holder&rsquo;s Parts in this project:</p>
+    <table class="t">
+      <thead><tr><th>Date</th><th>Basis</th><th>Parts (for the index: Units)</th><th>Paid, USD</th></tr></thead>
       <tbody>
         {% for p in purchases %}
         <tr>
           <td>{{ p.date }}</td>
-          <td>{{ p.legal_basis }}</td>
+          <td>{% if p.purchase_type == 'sale' %}Purchase{% elif p.purchase_type == 'instalment' %}Instalment{% if p.tranche_number %} month {{ p.tranche_number }} of {{ p.tranche_count }}{% endif %}{% elif p.purchase_type == 'bonus' %}Bonus Parts{% else %}Gift{% endif %}</td>
           <td>{{ p.units }}</td>
-          <td>{{ p.paid_cents }}</td>
+          <td>{{ p.paid_display }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
 
+    <h3>3. What this certificate is</h3>
+    <p>3.1. This certificate is a statement of the Holder&rsquo;s entry in the register on the date shown. It is not a contract and transfers nothing.</p>
+    <p>3.2. The Holder&rsquo;s right in the Parts is the entry in the register; the Cabinet holds its proof. The rights and duties attached to the Parts are those of the agreements under which they were bought or received.</p>
+    <p>3.3. The value shown is the Holder&rsquo;s Parts multiplied by the current price of a Part. It is not an offer to buy the Parts and not a promise of any payment.</p>
+    <p>3.4. The Cabinet generates this certificate on the Holder&rsquo;s request, in English or in Russian, in the language of the Holder&rsquo;s Cabinet.</p>
+
+    <h3>Signatures</h3>
+    <p>The Company, AIVIS.ONE LLC:</p>
+  </div>
 
   <!-- company seal and director signature: vector, keep whole -->
   <table class="footer">
@@ -145,6 +166,9 @@
     </tr>
   </table>
   <!-- end seal and signature -->
+  <div class="doc">
+    <p class="sign-line">Date: {{ as_of_date }}</p>
+  </div>
 
 </body>
 </html>

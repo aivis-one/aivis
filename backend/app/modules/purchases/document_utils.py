@@ -14,7 +14,9 @@
 #   extract_investor_name  -- best-effort display name from User.profile
 #   extract_investor_email -- email address from User.credentials JSONB
 #   format_cents           -- "150000" -> "1,500.00"
-#   documents_link         -- the address of one document, for its email
+#   format_document_date   -- a date in the document's language
+#   format_document_datetime -- a date and the UTC time, the same way
+#   documents_link        -- the address of one document, for its email
 #   build_document_environment -- THE Jinja2 environment for document
 #                             templates (renderers and reconcile, H34 P-128)
 #
@@ -24,6 +26,7 @@
 # =============================================================================
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from jinja2 import Environment, StrictUndefined
@@ -108,6 +111,33 @@ def format_cents(cents: int) -> str:
     """
     dollars = cents / 100
     return f"{dollars:,.2f}"
+
+
+# Russian month names in the genitive case ("23 октября 2026 г.").
+_RU_MONTHS_GENITIVE = (
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)
+
+
+def format_document_date(dt: datetime, language: str) -> str:
+    """A date as a document of the given language prints it.
+
+    ru -> '23 октября 2026 г.'; every other language -> 'October 23, 2026'
+    (the English form the templates printed before). Pure; the month
+    names live here so no template carries a month table.
+    """
+    if language == "ru":
+        return f"{dt.day} {_RU_MONTHS_GENITIVE[dt.month - 1]} {dt.year} г."
+    return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
+
+
+def format_document_datetime(dt: datetime, language: str) -> str:
+    """A date and the time of day in UTC, in the document's language:
+    '23 октября 2026 г., 14:05 UTC' / 'October 23, 2026, 14:05 UTC'.
+    A naive datetime is taken as UTC."""
+    moment = dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC)
+    return f"{format_document_date(moment, language)}, {moment:%H:%M} UTC"
 
 
 def documents_link(company_id: UUID, purchase_id: UUID | None = None) -> str:

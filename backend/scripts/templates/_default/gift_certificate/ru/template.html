@@ -2,7 +2,7 @@
 <html lang="ru" dir="ltr">
 <head>
   <meta charset="utf-8">
-  <title>Дарственный сертификат</title>
+  <title>Сертификат частей, переданных без оплаты</title>
   <style>
     @page { size: A4 portrait; margin: 18mm 20mm; }
     body {
@@ -78,6 +78,18 @@
       text-align: center;
       margin-top: 8mm;
     }
+  
+    .doc p { margin: 0 0 3mm 0; line-height: 1.45; }
+    .doc h3 { font-size: 13px; margin: 6mm 0 2mm 0; color: #1a1a2e; }
+    .doc table.t { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm 0; }
+    .doc table.t td, .doc table.t th {
+      padding: 1.8mm 3mm; border-bottom: 1px solid #e0e0e8;
+      text-align: left; vertical-align: top;
+    }
+    .doc table.t th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .doc table.t td.k { width: 46%; color: #7a7a8a; }
+    .doc table.t td.v { font-weight: bold; }
+    .doc .sign-line { margin: 6mm 0 0 0; }
   </style>
 </head>
 <body>
@@ -88,23 +100,42 @@
     </tr>
   </table>
 
-  <h2 class="kind-title">Дарственный сертификат</h2>
+  <h2 class="kind-title">Сертификат частей, переданных без оплаты</h2>
 
-    <table class="details">
-      <tr><td class="label">Сертификат №:</td><td class="value">{{ certificate_number }}</td></tr>
-      <tr><td class="label">Инвестор:</td><td class="value">{{ investor_name }}</td></tr>
-      <tr><td class="label">Эл. почта:</td><td class="value">{{ investor_email }}</td></tr>
-      <tr><td class="label">Компания:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Юридическое лицо:</td><td class="value">{{ company_legal_name }}</td></tr>
-      <tr><td class="label">Продукт:</td><td class="value">{{ product_name }}</td></tr>
-      <tr><td class="label">Количество:</td><td class="value">{{ units }}</td></tr>
-      <tr><td class="label">Сумма оплаты:</td><td class="value">{{ paid_cents }}</td></tr>
-      <tr><td class="label">Цена за единицу:</td><td class="value">{{ price_per_unit_cents }}</td></tr>
-      <tr><td class="label">Дата:</td><td class="value">{{ purchase_date }}</td></tr>
-      <tr><td class="label">Правовое основание:</td><td class="value">{{ legal_basis }}</td></tr>
+  <div class="doc">
+    <p>Сертификат № {{ certificate_number }}</p>
+    <p>Выдан {{ purchase_date }} через Кабинет на aivis.one/app/</p>
+    <p><strong>AIVIS.ONE LLC</strong>, обществом с ограниченной ответственностью Грузии, идентификационный номер 404804422, юридический адрес: Грузия, Тбилиси, район Мтацминда, с. Окрокана, ул. Акакия Церетели, 14 (&laquo;Компания&raquo;),</p>
+    <p>держателю <strong>{{ investor_name }}</strong>, электронная почта {{ investor_email }} (&laquo;Держатель&raquo;).</p>
+
+    <h3>1. Переданные Части</h3>
+    <p>1.1. Компания передаёт Держателю без оплаты части указанного ниже проекта (&laquo;Части&raquo;) — либо как подарок Компании, либо как бонусные Части по Договору покупателя:</p>
+    <table class="t">
+      <tr><td class="k">Держатель</td><td class="v">{{ investor_name }}</td></tr>
+      <tr><td class="k">Электронная почта</td><td class="v">{{ investor_email }}</td></tr>
+      <tr><td class="k">Проект</td><td class="v">{{ company_name }}</td></tr>
+      <tr><td class="k">Передал</td><td class="v">AIVIS.ONE LLC</td></tr>
+      <tr><td class="k">Пакет</td><td class="v">{{ product_name }}</td></tr>
+      <tr><td class="k">Части (для индекса — единицы)</td><td class="v">{{ units }}</td></tr>
+      <tr><td class="k">Основание</td><td class="v">Без оплаты</td></tr>
+      <tr><td class="k">Цена за Часть</td><td class="v">0 USD</td></tr>
+      <tr><td class="k">Дата</td><td class="v">{{ purchase_date }}</td></tr>
     </table>
-    <p class="note">Суммы указаны в центах (USD).</p>
+    <p>1.2. Держатель ничего не платит за Части.</p>
 
+    <h3>2. Принятие подарка</h3>
+    <p>2.1. Подарок Компании совершён, когда Держатель принимает его в Кабинете. Части подарка зачисляются Держателю только после его принятия.</p>
+
+    <h3>3. Запись в реестре</h3>
+    <p>3.1. Право Держателя на Части — это запись в реестре интеллектуальной собственности проекта, который ведёт Компания. Кабинет хранит доказательство записи.</p>
+    <p>3.2. Части несут ту же долю в пуле валовой выручки проекта, что и любая другая Часть проекта.</p>
+
+    <h3>4. Документы</h3>
+    <p>4.1. Этот сертификат можно скачать в Кабинете. Кабинет формирует его на английском или русском языке — на языке Кабинета Держателя.</p>
+
+    <h3>Подписи</h3>
+    <p>Компания, AIVIS.ONE LLC:</p>
+  </div>
 
   <!-- company seal and director signature: vector, keep whole -->
   <table class="footer">
@@ -126,6 +157,9 @@
     </tr>
   </table>
   <!-- end seal and signature -->
+  <div class="doc">
+    <p class="sign-line">Дата: {{ purchase_date }}</p>
+  </div>
 
 </body>
 </html>

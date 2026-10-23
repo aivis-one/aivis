@@ -2,7 +2,7 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
-  <title>Gift Certificate</title>
+  <title>Certificate of Parts Given Without Payment</title>
   <style>
     @page { size: A4 portrait; margin: 18mm 20mm; }
     body {
@@ -78,6 +78,18 @@
       text-align: center;
       margin-top: 8mm;
     }
+  
+    .doc p { margin: 0 0 3mm 0; line-height: 1.45; }
+    .doc h3 { font-size: 13px; margin: 6mm 0 2mm 0; color: #1a1a2e; }
+    .doc table.t { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm 0; }
+    .doc table.t td, .doc table.t th {
+      padding: 1.8mm 3mm; border-bottom: 1px solid #e0e0e8;
+      text-align: left; vertical-align: top;
+    }
+    .doc table.t th { color: #7a7a8a; font-weight: normal; font-size: 11px; }
+    .doc table.t td.k { width: 46%; color: #7a7a8a; }
+    .doc table.t td.v { font-weight: bold; }
+    .doc .sign-line { margin: 6mm 0 0 0; }
   </style>
 </head>
 <body>
@@ -88,23 +100,42 @@
     </tr>
   </table>
 
-  <h2 class="kind-title">Gift Certificate</h2>
+  <h2 class="kind-title">Certificate of Parts Given Without Payment</h2>
 
-    <table class="details">
-      <tr><td class="label">Certificate No.:</td><td class="value">{{ certificate_number }}</td></tr>
-      <tr><td class="label">Investor:</td><td class="value">{{ investor_name }}</td></tr>
-      <tr><td class="label">Email:</td><td class="value">{{ investor_email }}</td></tr>
-      <tr><td class="label">Company:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Legal Entity:</td><td class="value">{{ company_legal_name }}</td></tr>
-      <tr><td class="label">Product:</td><td class="value">{{ product_name }}</td></tr>
-      <tr><td class="label">Units:</td><td class="value">{{ units }}</td></tr>
-      <tr><td class="label">Amount Paid:</td><td class="value">{{ paid_cents }}</td></tr>
-      <tr><td class="label">Price per Unit:</td><td class="value">{{ price_per_unit_cents }}</td></tr>
-      <tr><td class="label">Date:</td><td class="value">{{ purchase_date }}</td></tr>
-      <tr><td class="label">Legal Basis:</td><td class="value">{{ legal_basis }}</td></tr>
+  <div class="doc">
+    <p>Certificate No. {{ certificate_number }}</p>
+    <p>Issued on {{ purchase_date }} through the Cabinet at aivis.one/app/</p>
+    <p>by <strong>AIVIS.ONE LLC</strong>, a limited liability company of Georgia, identification number 404804422, legal address Georgia, Tbilisi, Mtatsminda district, village Okrokana, Akaki Tsereteli str., N14 (the &ldquo;Company&rdquo;),</p>
+    <p>to <strong>{{ investor_name }}</strong>, e-mail {{ investor_email }} (the &ldquo;Holder&rdquo;).</p>
+
+    <h3>1. The Parts given</h3>
+    <p>1.1. The Company gives the Holder, without payment, parts of the project named below (the &ldquo;Parts&rdquo;), either as a gift of the Company or as bonus Parts under the Buyer Agreement:</p>
+    <table class="t">
+      <tr><td class="k">Holder</td><td class="v">{{ investor_name }}</td></tr>
+      <tr><td class="k">E-mail</td><td class="v">{{ investor_email }}</td></tr>
+      <tr><td class="k">Project</td><td class="v">{{ company_name }}</td></tr>
+      <tr><td class="k">Given by</td><td class="v">AIVIS.ONE LLC</td></tr>
+      <tr><td class="k">Package</td><td class="v">{{ product_name }}</td></tr>
+      <tr><td class="k">Parts (for the index: Units)</td><td class="v">{{ units }}</td></tr>
+      <tr><td class="k">Basis</td><td class="v">Without payment</td></tr>
+      <tr><td class="k">Price per Part</td><td class="v">0 USD</td></tr>
+      <tr><td class="k">Date</td><td class="v">{{ purchase_date }}</td></tr>
     </table>
-    <p class="note">Amounts shown in cents (USD).</p>
+    <p>1.2. The Holder pays nothing for the Parts.</p>
 
+    <h3>2. Acceptance of a gift</h3>
+    <p>2.1. A gift of the Company is complete when the Holder accepts it in the Cabinet. The Parts of a gift are credited to the Holder only on his acceptance.</p>
+
+    <h3>3. The register entry</h3>
+    <p>3.1. The Holder&rsquo;s right in the Parts is the entry in the Company&rsquo;s register of the IP of the project. The Cabinet holds the proof of the entry.</p>
+    <p>3.2. The Parts carry the same share of the pool of the project&rsquo;s gross receipts as any other Part of the project.</p>
+
+    <h3>4. Documents</h3>
+    <p>4.1. This certificate is downloadable in the Cabinet. The Cabinet generates it in English or in Russian, in the language of the Holder&rsquo;s Cabinet.</p>
+
+    <h3>Signatures</h3>
+    <p>The Company, AIVIS.ONE LLC:</p>
+  </div>
 
   <!-- company seal and director signature: vector, keep whole -->
   <table class="footer">
@@ -126,6 +157,9 @@
     </tr>
   </table>
   <!-- end seal and signature -->
+  <div class="doc">
+    <p class="sign-line">Date: {{ purchase_date }}</p>
+  </div>
 
 </body>
 </html>
