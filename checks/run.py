@@ -33,6 +33,7 @@ sys.path.insert(0, HERE)
 import breakpoints  # noqa: E402
 import comms_profile  # noqa: E402
 import deploy_addresses  # noqa: E402
+import ds_copies  # noqa: E402
 import nginx_headers  # noqa: E402
 import preauth  # noqa: E402
 import reftruth  # noqa: E402
@@ -52,6 +53,7 @@ CHECKS = [
     ("nginx headers", "every frontend nginx response keeps the security headers",
      nginx_headers),
     ("deploy addresses", "no deployment address in the product's code", deploy_addresses),
+    ("ds copies", "the design system's copies under frontend/ equal their source", ds_copies),
 ]
 
 
