@@ -1,93 +1,31 @@
 <script setup lang="ts">
-// =============================================================================
-// AIVIS.ONE Frontend -- CBackLink (iter 2.7 batch B3)
-// =============================================================================
-//
-// Inline back-link button. The single source of truth for the back-link
-// shape introduced in iter 2.6 batch 4 (PublicAttachmentLandingView /
-// PublicProductDetailView) and adopted across the auth-flow in iter 2.7
-// batches B1 + B2 as part of the CHeader paradigm migration.
-//
-// Before this component the back-link CSS lived inline in 7 views
-// (.ppd__back / .pd__back / .co__back / .cp__back / .iv__back /
-// .dv__back / .pbc__back) -- the same ~25 lines of CSS copy-pasted
-// seven times, plus a `<button>` + `<ArrowLeft>` markup in each
-// template. R32 STYLE-32-02 flagged it as accumulating style debt;
-// this component closes the debt.
-//
-// API.
-//   <CBackLink :label="t('inv.product.backLink')" @click="goBack" />
-//
-//   - `label`: already-translated string. Caller owns i18n -- the same
-//     contract as CButton (caller provides the slot content) and
-//     CEmptyState (caller passes the translated title/description).
-//   - `@click`: standard Vue event, propagated from the root <button>.
-//     The view supplies a history-aware handler (router.back() with
-//     a deep-link push fallback, per the paradigm in cheader-paradigm-
-//     plan.md).
-//
-// POSITIONING.
-//   The component carries no margin -- only the visual shape of the
-//   button itself (padding, icon, label, hover, focus). Views own
-//   positioning: pattern A (back-link above hero) wraps in a
-//   `.<prefix>__back-row` with margin; pattern B (page-header block)
-//   nests inside `.<prefix>__page-header` whose padding handles
-//   spacing. Decoupling spacing from the button keeps the component
-//   composable -- a future "back-link inside a card" use-case can
-//   set its own surrounding gap without fighting hard-coded margins.
-//
-// FOCUS RING.
-//   `:focus-visible` outline is provided here once, fixing R32
-//   A11Y-32-01 across all consumers at the same time. Uses
-//   `var(--accent)` to match the rest of the design system's focus
-//   treatment. `:focus:not(:focus-visible)` is implicit -- only
-//   keyboard / programmatic focus shows the ring; mouse focus is
-//   suppressed by the browser default.
-// =============================================================================
+// The back control, on the design system's Button (K01): the ghost look with
+// the arrow. With a label it is the button with the arrow and the words; with
+// `icon-only` it is the ghost icon button the header's leading slot holds (the
+// label is then its accessible name). Given a `to` it is a link (a real anchor
+// to the parent screen); without one it is a button and the caller's @click
+// does the going.
 
+import { RouterLink } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { ArrowLeft } from '@/components/ui/icons'
 
 defineProps<{
   label: string
+  iconOnly?: boolean
+  to?: RouteLocationRaw
 }>()
 </script>
 
 <template>
-  <button type="button" class="c-back-link">
-    <ArrowLeft :size="16" />
-    {{ label }}
-  </button>
+  <component
+    :is="to ? RouterLink : 'button'"
+    v-bind="to ? { to } : { type: 'button' }"
+    class="ds-button ds-button--ghost"
+    :class="{ 'ds-button--icon': iconOnly }"
+    :aria-label="iconOnly ? label : undefined"
+  >
+    <ArrowLeft size="sm" />
+    <span v-if="!iconOnly">{{ label }}</span>
+  </component>
 </template>
-
-<style scoped>
-.c-back-link {
-  min-block-size: var(--touch-min);
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-block: var(--space-2);
-  padding-inline: var(--space-2) var(--space-3);
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  border-radius: var(--radius-control);
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-
-.c-back-link:hover {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-}
-
-/* The system's focus indicator. */
-.c-back-link:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-</style>

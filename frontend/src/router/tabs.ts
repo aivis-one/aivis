@@ -8,6 +8,8 @@
 // The staff tabs: home / users / finance / platform / settings (STAFF_TABS below).
 // =============================================================================
 
+import type { Shell } from './helpers'
+
 export interface TabItem {
   id: string
   path: string
@@ -127,3 +129,20 @@ export const STAFF_TABS: TabItem[] = [
   { id: 'platform', path: '/staff/platform', labelKey: 'tab.staff.platform', icon: 'LayoutGrid' },
   { id: 'settings', path: '/staff/settings', labelKey: 'tab.staff.settings', icon: 'Settings' },
 ]
+
+// The tabs of a shell, as the frame draws them; none for a route outside the four
+// cabinets (the storefront has no menu).
+export function tabsFor(shell: Shell | undefined): TabItem[] | undefined {
+  switch (shell) {
+    case 'investor':
+      return INVESTOR_TABS
+    case 'agent':
+      return AGENT_TABS
+    case 'company':
+      return COMPANY_TABS
+    case 'staff':
+      return STAFF_TABS
+    default:
+      return undefined
+  }
+}
