@@ -17,7 +17,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, ExternalLink, MapPin } from 'lucide-vue-next'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
-import { listPublicEvents, listUpcomingEvents } from '@/api/events'
+import { getPublicEvent } from '@/api/events'
+import { ApiResponseError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDateTime } from '@/utils/format'
 import type { EventResponse } from '@/api/types'
@@ -32,25 +33,15 @@ const errored = ref(false)
 
 const eventId = computed(() => route.params.id as string)
 
-const UPCOMING_LIMIT = 50
-const PAST_PAGE_SIZE = 100
-
-async function find(id: string): Promise<EventResponse | null> {
-  const upcoming = await listUpcomingEvents(UPCOMING_LIMIT)
-  const inUpcoming = upcoming.find((e) => e.id === id)
-  if (inUpcoming) return inUpcoming
-  const past = await listPublicEvents({ upcoming: false, page: 1, per_page: PAST_PAGE_SIZE })
-  return past.items.find((e) => e.id === id) ?? null
-}
-
 async function load(): Promise<void> {
   loading.value = true
   errored.value = false
   try {
-    event.value = await find(eventId.value)
-  } catch {
+    event.value = await getPublicEvent(eventId.value)
+  } catch (err) {
     event.value = null
-    errored.value = true
+    // 404 = no such published event: the "not found" state, not an error.
+    errored.value = !(err instanceof ApiResponseError && err.status === 404)
   } finally {
     loading.value = false
   }

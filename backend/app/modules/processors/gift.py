@@ -45,6 +45,65 @@ from app.modules.processors.base import (
 )
 
 
+def bonus_condition_met(
+    bonus: dict, amount_cents: int, portfolio_cents: int
+) -> bool:
+    """Check whether one bonus condition holds for a purchase.
+
+    Shared by the purchase (GiftProcessor) and the pre-payment bonus
+    preview so both always apply the same rule.
+    """
+    condition = bonus.get("condition", "always")
+
+    if condition == "always":
+        return True
+
+    if condition == "portfolio_size_gte":
+        threshold = bonus.get("threshold_cents", 0)
+        # Portfolio includes current purchase.
+        return portfolio_cents + amount_cents >= threshold
+
+    if condition == "purchase_amount_gte":
+        # This purchase alone, not the portfolio.
+        return amount_cents >= bonus.get("threshold_cents", 0)
+
+    # Unknown condition -- skip (defensive).
+    return False
+
+
+def bonus_units_for(bonus: dict, units: int) -> int:
+    """Bonus units of one bonus: floor(units * percent / 100)."""
+    pct = bonus.get("bonus_units_percent", 0)
+    if pct <= 0:
+        return 0
+    return math.floor(units * pct / 100)
+
+
+def total_bonus_units(
+    bonuses: list[dict],
+    units: int,
+    amount_cents: int,
+    portfolio_cents: int,
+) -> tuple[int, float]:
+    """Sum the bonuses a purchase triggers.
+
+    Returns (bonus_units, bonus_percent): the total units across every
+    bonus whose condition holds and that yields at least one unit, and
+    the sum of those bonuses' percentages.
+    """
+    total_units = 0
+    total_percent = 0.0
+    for bonus in bonuses or []:
+        if not bonus_condition_met(bonus, amount_cents, portfolio_cents):
+            continue
+        b_units = bonus_units_for(bonus, units)
+        if b_units <= 0:
+            continue
+        total_units += b_units
+        total_percent += float(bonus.get("bonus_units_percent", 0))
+    return total_units, total_percent
+
+
 class GiftProcessor:
     """Process bonus allocations from purchase_config.bonuses[]."""
 
@@ -128,29 +187,12 @@ class GiftProcessor:
         self, bonus: dict, context: PurchaseContext
     ) -> bool:
         """Check if bonus condition is satisfied."""
-        condition = bonus.get("condition", "always")
-
-        if condition == "always":
-            return True
-
-        if condition == "portfolio_size_gte":
-            threshold = bonus.get("threshold_cents", 0)
-            # Portfolio includes current purchase.
-            total = self._portfolio_cents + context.amount_cents
-            return total >= threshold
-
-        if condition == "purchase_amount_gte":
-            # This purchase alone, not the portfolio.
-            return context.amount_cents >= bonus.get("threshold_cents", 0)
-
-        # Unknown condition -- skip (defensive).
-        return False
+        return bonus_condition_met(
+            bonus, context.amount_cents, self._portfolio_cents
+        )
 
     def _calc_bonus_units(
         self, bonus: dict, context: PurchaseContext
     ) -> int:
         """Calculate bonus units from percentage."""
-        pct = bonus.get("bonus_units_percent", 0)
-        if pct <= 0:
-            return 0
-        return math.floor(context.units * pct / 100)
+        return bonus_units_for(bonus, context.units)

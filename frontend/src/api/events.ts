@@ -10,6 +10,7 @@
 // ENDPOINTS WRAPPED (iter 2.7b):
 //   GET  /api/v1/events?upcoming=<bool>   -- paginated list (Block C)
 //   GET  /api/v1/events/upcoming?limit=N  -- next N, soonest first (Block B)
+//   GET  /api/v1/events/{id}              -- one published event
 //
 // SCOPE NOTE.
 //   listUpcomingEvents (the /upcoming probe) feeds the dashboard
@@ -70,4 +71,14 @@ export function listPublicEvents(params?: {
 export function listUpcomingEvents(limit?: number): Promise<EventResponse[]> {
   const qs = buildQueryString({ limit })
   return api.get<EventResponse[]>(`/api/v1/events/upcoming${qs}`)
+}
+
+/**
+ * GET /api/v1/events/{id} -- one published event.
+ *
+ * Responds 404 (ApiResponseError) when the event does not exist or is
+ * not published.
+ */
+export function getPublicEvent(id: string): Promise<EventResponse> {
+  return api.get<EventResponse>(`/api/v1/events/${encodeURIComponent(id)}`)
 }

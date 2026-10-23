@@ -38,6 +38,7 @@
 # =============================================================================
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -67,6 +68,12 @@ class EmailRegisterRequest(BaseModel):
         default=None,
         max_length=20,
         description="Referral code from agent link (optional)",
+    )
+    # Interface language chosen at sign-up; the first verification
+    # letter goes out in it. Omitted -> the column default ("en").
+    language: Literal["en", "ru", "ar", "de"] | None = Field(
+        default=None,
+        description="Interface language: en, ru, ar or de (optional)",
     )
 
 

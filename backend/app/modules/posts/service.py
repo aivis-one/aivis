@@ -1088,3 +1088,21 @@ async def _get_event_or_404(
     if event is None:
         raise NotFoundError("Event not found")
     return event
+
+
+async def get_event(session: AsyncSession, event_id: UUID) -> Event:
+    """Get a single published, non-deleted event by ID.
+
+    Raises:
+        NotFoundError: Event not found, deleted, or not published.
+    """
+    stmt = select(Event).where(
+        Event.id == event_id,
+        Event.is_published.is_(True),
+        Event.is_deleted.is_(False),
+    )
+    result = await session.execute(stmt)
+    event = result.scalar_one_or_none()
+    if event is None:
+        raise NotFoundError("Event not found")
+    return event

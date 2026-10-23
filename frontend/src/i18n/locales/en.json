@@ -720,6 +720,7 @@
       "title": "Purchase",
       "orderSummary": "Order summary",
       "packageSize": "Package size",
+      "bonusParts": "Bonus parts",
       "pricePerPack": "Price per pack",
       "total": "Total",
       "yourBalance": "Your balance",

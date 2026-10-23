@@ -517,6 +517,7 @@ async def register_email(
     session: AsyncSession,
     *,
     referral_code: str | None = None,
+    language: str | None = None,
 ) -> User:
     """Register a new user via email + password.
 
@@ -556,6 +557,7 @@ async def register_email(
         role=UserRole.INVESTOR,
         referred_by=referred_by,
         referred_by_link_id=referred_by_link_id,
+        **({"language": language} if language else {}),
         credentials={
             "email": {
                 "email": email_lower,

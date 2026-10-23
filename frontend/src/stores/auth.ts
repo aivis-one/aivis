@@ -80,7 +80,7 @@ import {
 } from '@/api/types'
 import { platform } from '@/platform'
 import { setAvatarActive } from '@/composables/avatarState'
-import { setLocale } from '@/i18n'
+import { i18n, setLocale } from '@/i18n'
 import { resetAllDataStores } from '@/stores/sessionReset'
 
 /**
@@ -259,7 +259,14 @@ export const useAuthStore = defineStore('auth', () => {
         // literal "" -- the backend's referral_code field has no
         // min_length, so empty string would silently masquerade as a
         // valid (always-missed) referral lookup.
-        { email, password, referral_code: referralCode || null },
+        {
+          email,
+          password,
+          referral_code: referralCode || null,
+          // The interface language chosen on the register screen: the
+          // first verification letter goes out in it.
+          language: i18n.global.locale.value,
+        },
       )
       _setSession(response)
       // Clear referral code after successful registration.

@@ -4,6 +4,7 @@
 #
 # ENDPOINTS:
 #   POST /api/v1/products/{id}/purchase -- instant purchase
+#   GET  /api/v1/products/{id}/purchase-preview -- bonus parts before paying
 #
 # AUTH:
 #   Requires authenticated buyer (role=investor or role=agent).
@@ -19,15 +20,16 @@ import structlog
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_session
+from app.core.database import get_db_reader, get_db_session
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.avatar_guard import forbid_avatar
-from app.modules.auth.dependencies import get_current_user_write
+from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.purchases.schemas import (
     CreatePurchaseRequest,
+    PurchasePreviewResponse,
     PurchaseResponse,
 )
-from app.modules.purchases.service import execute_purchase
+from app.modules.purchases.service import execute_purchase, get_purchase_preview
 from app.modules.users.models import User, UserRole
 
 logger = structlog.get_logger()
@@ -71,3 +73,28 @@ async def purchase_product(
     )
 
     return [PurchaseResponse.model_validate(p) for p in purchases]
+
+
+@router.get(
+    "/{product_id}/purchase-preview",
+    response_model=PurchasePreviewResponse,
+)
+async def purchase_preview(
+    product_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> PurchasePreviewResponse:
+    """Bonus parts one package of the product brings the caller now.
+
+    Read-only. Applies the same bonus rule as the purchase and returns
+    only the totals; the product's bonus rules stay hidden.
+    """
+    if user.role not in _BUYER_ROLES:
+        raise ForbiddenError("Only investors and agents can purchase products")
+
+    bonus_units, bonus_percent = await get_purchase_preview(
+        product_id, user, session
+    )
+    return PurchasePreviewResponse(
+        bonus_units=bonus_units, bonus_percent=bonus_percent
+    )

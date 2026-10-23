@@ -8,6 +8,7 @@
 #   POST /api/v1/posts/{id}/dismiss -- dismiss banner
 #   GET  /api/v1/events            -- event list (paginated, ?upcoming)
 #   GET  /api/v1/events/upcoming   -- next N events (?limit, default 3)
+#   GET  /api/v1/events/{id}       -- single published event
 #
 # AUTH:
 #   GET endpoints use get_optional_user (anonymous allowed).
@@ -35,6 +36,7 @@ from app.modules.posts.schemas import (
 )
 from app.modules.posts.service import (
     dismiss_post,
+    get_event,
     get_post,
     list_events,
     list_posts,
@@ -180,3 +182,17 @@ async def upcoming_events_endpoint(
     """
     events = await list_upcoming_events(session, limit=limit)
     return [EventResponse.model_validate(e) for e in events]
+
+
+@events_router.get(
+    "/{event_id}",
+    response_model=EventResponse,
+)
+async def get_event_endpoint(
+    event_id: UUID,
+    user: User | None = Depends(get_optional_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> EventResponse:
+    """Get a single published event by ID (anonymous access allowed)."""
+    event = await get_event(session, event_id)
+    return EventResponse.model_validate(event)

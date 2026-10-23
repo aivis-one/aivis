@@ -51,7 +51,6 @@ import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { acceptDocumentByType } from '@/api/documents'
-import { updateMe } from '@/api/users'
 import { rememberReturnPath } from '@/utils/postAuthReturn'
 
 const { t, locale } = useI18n()
@@ -134,17 +133,10 @@ async function handleRegister(): Promise<void> {
   const referralCode = sessionStorage.getItem(REFERRAL_KEY)
 
   try {
-    // The language and the texts are the ones on this screen, taken before
-    // the new session sets the account's language.
-    const chosenLocale = locale.value
+    // The text language is the one on this screen; the account language is
+    // sent with the registration.
     const readLang = docLang.value
     await authStore.registerViaEmail(email.value, password.value, referralCode)
-    try {
-      await updateMe({ language: chosenLocale })
-      await authStore.fetchMe()
-    } catch {
-      // The language can be changed in the settings; registration stands.
-    }
     await recordAcceptances(readLang)
     // BUG-07 fix: after registration the user is at onboarding_step=registered.
     // Push straight to /verify (meta.skipOnboarding=true) -- going through /

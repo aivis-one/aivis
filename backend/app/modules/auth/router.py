@@ -217,6 +217,7 @@ async def auth_email_register(
         body.password,
         session,
         referral_code=body.referral_code,
+        language=body.language,
     )
     token = await create_session(
         user,

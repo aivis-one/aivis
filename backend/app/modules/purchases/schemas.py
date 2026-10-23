@@ -108,3 +108,10 @@ class GiftListResponse(BaseModel):
 
     items: list[PurchaseResponse]
     total: int
+
+
+class PurchasePreviewResponse(BaseModel):
+    """Bonus parts one package of a product brings the caller right now."""
+
+    bonus_units: int
+    bonus_percent: float

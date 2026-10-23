@@ -60,3 +60,18 @@ export function listProducts(params?: {
 export function getProduct(id: string): Promise<PublicProductDetailResponse> {
   return api.get<PublicProductDetailResponse>(`/api/v1/public/products/${id}`)
 }
+
+/** Bonus parts one package brings the caller if bought now. */
+export interface PurchasePreview {
+  bonus_units: number
+  bonus_percent: number
+}
+
+/**
+ * GET /api/v1/products/{id}/purchase-preview -- the bonus parts one
+ * package of the product brings the signed-in buyer right now,
+ * computed by the server by the same rule the purchase applies.
+ */
+export function getPurchasePreview(id: string): Promise<PurchasePreview> {
+  return api.get<PurchasePreview>(`/api/v1/products/${encodeURIComponent(id)}/purchase-preview`)
+}

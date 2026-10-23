@@ -97,6 +97,7 @@ from app.modules.pools.constants import POOL_STATUS_ACTIVE
 from app.modules.pools.models import OptionPool
 from app.modules.pools.service import get_active_pool, get_pool_remaining, lock_pool
 from app.modules.processors.base import PurchaseContext
+from app.modules.processors.gift import total_bonus_units
 from app.modules.products.models import Product, ProductStatus
 from app.modules.purchases.constants import PurchaseLegalBasis, PurchaseStatus
 from app.modules.purchases.models import Purchase
@@ -566,3 +567,44 @@ async def execute_purchase(
     )
 
     return purchases
+
+
+# ---------------------------------------------------------------------------
+# Bonus preview (read-only)
+# ---------------------------------------------------------------------------
+
+
+def compute_bonus_preview(
+    bonuses: list[dict],  # type: ignore[type-arg]
+    package_size: int,
+    price_per_unit_cents: int,
+    portfolio_cents: int,
+) -> tuple[int, float]:
+    """Bonus parts one package brings, by the rule the purchase applies.
+
+    Returns (bonus_units, bonus_percent). Uses the gift processor's own
+    condition and unit functions, so the preview and the purchase cannot
+    drift apart. Bonuses are always granted to the buyer.
+    """
+    return total_bonus_units(
+        bonuses,
+        package_size,
+        package_size * price_per_unit_cents,
+        portfolio_cents,
+    )
+
+
+async def get_purchase_preview(
+    product_id: UUID,
+    investor: User,
+    session: AsyncSession,
+) -> tuple[int, float]:
+    """Bonus parts of buying one package of the product now (no writes)."""
+    product = await _load_product(product_id, session)
+    portfolio_cents = await get_investor_portfolio_cents(session, investor.id)
+    return compute_bonus_preview(
+        _resolve_bonuses(product),
+        product.package_size,
+        product.price_per_unit_cents,
+        portfolio_cents,
+    )

@@ -75,7 +75,7 @@ import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { ApiResponseError } from '@/api/client'
 import { acceptDocumentByType } from '@/api/documents'
-import { getProduct } from '@/api/products'
+import { getProduct, getPurchasePreview, type PurchasePreview } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -106,6 +106,7 @@ const product = ref<ProductWithOptionalCurrency | null>(null)
 const loading = ref(true)
 const errored = ref(false)
 const submitting = ref(false)
+const bonusPreview = ref<PurchasePreview | null>(null)
 
 const productId = computed(() => route.params.id as string)
 const agentShell = computed(() => isAgentShell(route))
@@ -171,6 +172,12 @@ async function load(): Promise<void> {
     // gate already handles gracefully.
     const [p] = await Promise.all([getProduct(productId.value), dashboardStore.refresh()])
     product.value = p
+    // The bonus preview is informational: a failure hides the row only.
+    try {
+      bonusPreview.value = await getPurchasePreview(productId.value)
+    } catch {
+      bonusPreview.value = null
+    }
   } catch {
     product.value = null
     errored.value = true
@@ -382,6 +389,16 @@ onMounted(load)
             </span>
             <span class="pv__row-value">
               {{ formatPrice(product.price_per_pack_cents, product.currency) }}
+            </span>
+          </div>
+
+          <div v-if="bonusPreview && bonusPreview.bonus_units > 0" class="pv__row">
+            <span class="pv__row-label">
+              {{ t('inv.purchase.bonusParts') }}
+            </span>
+            <span class="pv__row-value">
+              +{{ formatNumber(bonusPreview.bonus_units, locale) }}
+              ({{ formatNumber(bonusPreview.bonus_percent, locale) }}%)
             </span>
           </div>
 
