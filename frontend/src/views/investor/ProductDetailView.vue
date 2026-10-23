@@ -56,6 +56,8 @@ import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { getProduct } from '@/api/products'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
+import { useAuthStore } from '@/stores/auth'
+import { showKycPrompt } from '@/composables/useKycPrompt'
 import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
@@ -69,6 +71,7 @@ type ProductWithOptionalCurrency = PublicProductDetailResponse & {
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const authStore = useAuthStore()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
 const loading = ref(true)
@@ -127,6 +130,11 @@ function goBack(): void {
 
 function buyNow(): void {
   if (!product.value) return
+  // Without a passed verification the press answers with the message first.
+  if (authStore.kycStatus !== 'approved') {
+    showKycPrompt('purchase')
+    return
+  }
   const name = agentShell.value ? 'agent-purchase' : 'investor-purchase'
   void safeNavigate(
     router.push({ name, params: { id: product.value.id } }),
@@ -140,6 +148,10 @@ function buyNow(): void {
 function openInstallmentPlan(planId: string): void {
   if (!product.value) return
   if (available.value <= 0) return
+  if (authStore.kycStatus !== 'approved') {
+    showKycPrompt('installment')
+    return
+  }
   const name = agentShell.value ? 'agent-installment' : 'investor-installment'
   void safeNavigate(
     router.push({

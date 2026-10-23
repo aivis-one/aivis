@@ -77,6 +77,7 @@ import { ApiResponseError } from '@/api/client'
 import { acceptDocumentByType } from '@/api/documents'
 import { getProduct } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
+import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useToast } from '@/composables/useToast'
@@ -97,6 +98,7 @@ type ProductWithOptionalCurrency = PublicProductDetailResponse & {
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const authStore = useAuthStore()
 const { showToast } = useToast()
 const dashboardStore = useDashboardStore()
 
@@ -179,6 +181,11 @@ async function load(): Promise<void> {
 
 async function confirm(): Promise<void> {
   if (!canConfirm.value) return
+  // A deep link records no acceptance for an unverified buyer.
+  if (authStore.kycStatus !== 'approved') {
+    showKycPrompt('purchase')
+    return
+  }
   submitting.value = true
   try {
     // The acceptance of the buyer agreement is recorded BEFORE the money

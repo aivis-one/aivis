@@ -67,6 +67,7 @@ import { createInstallmentPlan } from '@/api/installments'
 import { acceptDocumentByType } from '@/api/documents'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { showKycPrompt } from '@/composables/useKycPrompt'
+import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -90,6 +91,7 @@ type ProductWithOptionalCurrency = PublicProductDetailResponse & {
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const authStore = useAuthStore()
 const { showToast } = useToast()
 const dashboardStore = useDashboardStore()
 
@@ -244,6 +246,11 @@ function pickPlan(plan: InstallmentResponse): void {
 
 async function confirm(): Promise<void> {
   if (!canConfirm.value || !selectedPlan.value) return
+  // A deep link records no acceptance for an unverified buyer.
+  if (authStore.kycStatus !== 'approved') {
+    showKycPrompt('installment')
+    return
+  }
   submitting.value = true
   try {
     // The acceptance is recorded before the first payment is taken; nothing is

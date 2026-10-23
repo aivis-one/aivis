@@ -186,7 +186,7 @@ onUnmounted(() => {
 // ---------------------------------------------------------------------------
 
 const backFallbackRouteName = computed<string>(() => {
-  return getShell(route) === 'agent' ? 'agent-more' : 'investor-more'
+  return getShell(route) === 'agent' ? 'agent-more' : 'investor-settings'
 })
 
 function goBack(): void {

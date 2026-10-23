@@ -229,7 +229,7 @@ const backFallbackRouteName = computed<string>(() => {
   const shell = getShell(route)
   if (shell === 'agent') return 'agent-more'
   if (shell === 'company') return 'company-settings'
-  return 'investor-more'
+  return 'investor-settings'
 })
 
 function goBack(): void {

@@ -51,6 +51,7 @@ import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { acceptDocumentByType } from '@/api/documents'
+import { updateMe } from '@/api/users'
 import { rememberReturnPath } from '@/utils/postAuthReturn'
 
 const { t, locale } = useI18n()
@@ -91,10 +92,10 @@ rememberReturnPath(route.query.next)
 
 const REQUIRED_DOCUMENTS = ['cabinet_terms', 'privacy_policy'] as const
 
-async function recordAcceptances(): Promise<void> {
+async function recordAcceptances(lang: string): Promise<void> {
   for (const type of REQUIRED_DOCUMENTS) {
     try {
-      await acceptDocumentByType(type, docLang.value)
+      await acceptDocumentByType(type, lang)
     } catch {
       // The documents step after the e-mail code asks again for what is
       // still unsigned; a failed recording never undoes the registration.
@@ -133,8 +134,18 @@ async function handleRegister(): Promise<void> {
   const referralCode = sessionStorage.getItem(REFERRAL_KEY)
 
   try {
+    // The language and the texts are the ones on this screen, taken before
+    // the new session sets the account's language.
+    const chosenLocale = locale.value
+    const readLang = docLang.value
     await authStore.registerViaEmail(email.value, password.value, referralCode)
-    await recordAcceptances()
+    try {
+      await updateMe({ language: chosenLocale })
+      await authStore.fetchMe()
+    } catch {
+      // The language can be changed in the settings; registration stands.
+    }
+    await recordAcceptances(readLang)
     // BUG-07 fix: after registration the user is at onboarding_step=registered.
     // Push straight to /verify (meta.skipOnboarding=true) -- going through /
     // would bounce us via root.beforeEnter + globalGuard for no reason.

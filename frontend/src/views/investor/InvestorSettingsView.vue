@@ -179,6 +179,10 @@ const confirmEmail = computed<boolean>(
   () => route.query.confirm_email === '1' && email.value.length > 0,
 )
 
+// Taken once when the screen opens: the section must not vanish when an
+// address added here makes `email` non-empty before its code is entered.
+const showEmailSection = ref<boolean>(!email.value || confirmEmail.value)
+
 const roleLabel = computed<string>(() => {
   const role = authStore.user?.role ?? 'investor'
   // FP-15: server-driven enum -> tOrRaw with raw fallback.
@@ -547,7 +551,7 @@ onMounted(() => {
     </section>
 
     <!-- The e-mail: added and confirmed here when the account has none -->
-    <section v-if="!email || confirmEmail" class="sett__section">
+    <section v-if="showEmailSection || confirmEmail" class="sett__section">
       <EmailSection :confirm="confirmEmail" />
     </section>
 
