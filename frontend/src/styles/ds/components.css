@@ -2003,7 +2003,7 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-auth { display: flex; flex-direction: column; box-sizing: border-box; min-block-size: 100dvh; background: var(--bg-page); color: var(--text-primary); }
 .ds-auth--framed { min-block-size: 100%; }
 /* the banner row of the frame (K25, .ds-shell__banner) stands above the header here too, as the first child: sticky at the top, in the flow,
-   one line high; the header below it no longer pads for the top safe-area inset, the banner took it, and the banner text starts where the logo does */
+   one line high; the header below it no longer pads for the top safe-area inset, the banner took it, and the banner's content (its icon, then its text) starts where the logo does */
 .ds-auth { --_banner-h: calc(var(--size-3xl) + var(--space-safe-top)); }
 .ds-auth > .ds-shell__banner {
   flex: none;
