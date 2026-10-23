@@ -42,10 +42,10 @@ describe('useScreenHeader', () => {
   })
 
   it('follows a ref the screen passes', () => {
-    const title = ref('One')
-    const w = mount(screen({ title }))
+    const heading = ref('One')
+    const w = mount(screen({ title: heading }))
     expect(current().title).toBe('One')
-    title.value = 'Two'
+    heading.value = 'Two'
     expect(current().title).toBe('Two')
     w.unmount()
   })
