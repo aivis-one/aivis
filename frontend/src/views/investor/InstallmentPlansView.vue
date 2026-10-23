@@ -347,7 +347,7 @@ onMounted(() => {
   appearance: none;
   background: var(--bg-page);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   margin: 0;
   padding: var(--space-4);
   font: inherit;
@@ -436,7 +436,7 @@ onMounted(() => {
   margin-top: var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-align: center;

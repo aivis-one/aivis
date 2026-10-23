@@ -178,9 +178,9 @@ function onCardClick(): void {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-/* B-3.0 2026-08-24: was 900px, the only site in the tree using it. Folded onto 960, which
-   is what .pps__grid and .pbc__grid already use for three-up. 900 is now RETIRED. */
-@media (min-width: 960px) {
+/* Three-up from the system's 1120 width, which
+   .pps__grid and .pbc__grid use for three-up too. */
+@media (min-width: 1120px) {
   .cprods__grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -212,14 +212,14 @@ function onCardClick(): void {
   text-align: start;
   cursor: pointer;
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   color: var(--text-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
 }
 .cprods__cover {
   aspect-ratio: 16 / 9;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
 }
@@ -243,7 +243,7 @@ function onCardClick(): void {
   font-weight: 600;
   padding: 2px var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   color: var(--text-secondary);
 }
 </style>

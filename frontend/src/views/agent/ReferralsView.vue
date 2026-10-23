@@ -283,7 +283,7 @@ onMounted(() => {
 /* -- Card -- */
 
 .ref__card {
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-4);
@@ -374,7 +374,7 @@ onMounted(() => {
    An earlier attempt used auto-fit and did exactly that: the cap, not a lack
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .ref__card-counters {
     max-width: calc(3 * var(--tile-max));
   }

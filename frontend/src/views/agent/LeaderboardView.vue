@@ -220,7 +220,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -228,7 +228,7 @@ onMounted(() => {
 
 .lb__row--me {
   border-color: var(--primary);
-  background: var(--primary-dim);
+  background: var(--primary-subtle);
 }
 
 .lb__rank {

@@ -544,7 +544,7 @@ onMounted(load)
 .pv__card {
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
 }
 .pv__card-title {
   font-size: var(--fs-xs);

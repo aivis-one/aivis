@@ -153,7 +153,7 @@ onMounted(load)
 }
 
 /* On a wide screen the text keeps a reading measure instead of the full row. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .post__article {
     max-width: var(--maxw-prose);
   }

@@ -552,7 +552,7 @@ onUnmounted(() => {
 /* Aggregate block */
 .cp__aggregate {
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: var(--on-primary);
   display: flex;
@@ -630,7 +630,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .cp__item-icon--sale {
-  background: var(--primary-dim);
+  background: var(--primary-subtle);
   color: var(--primary);
 }
 .cp__item-icon--gift {
@@ -722,7 +722,7 @@ onUnmounted(() => {
    An earlier attempt used auto-fit and did exactly that: the cap, not a lack
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .cp__agg-grid {
     max-width: calc(2 * var(--tile-max));
   }

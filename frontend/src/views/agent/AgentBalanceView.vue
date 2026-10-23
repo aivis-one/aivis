@@ -631,7 +631,7 @@ onMounted(() => {
 
 .abal__card {
   padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
@@ -698,7 +698,7 @@ onMounted(() => {
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;

@@ -111,7 +111,7 @@ onMounted(() => {
 }
 .cpub__section {
   border: 1px solid var(--border-default);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   overflow: hidden;
 }

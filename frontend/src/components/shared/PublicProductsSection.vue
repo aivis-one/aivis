@@ -319,7 +319,7 @@ function onRetry(): void {
   }
 }
 
-@media (min-width: 960px) {
+@media (min-width: 1120px) {
   .pps__grid {
     grid-template-columns: repeat(3, 1fr);
   }

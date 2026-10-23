@@ -620,7 +620,7 @@ onMounted(() => {
 
 .cbal__card {
   padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
@@ -683,7 +683,7 @@ onMounted(() => {
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
@@ -881,7 +881,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--warning);
 }

@@ -464,7 +464,7 @@ async function submitDisable(): Promise<void> {
   gap: var(--space-2);
 }
 .tfs__status-badge {
-  font-size: var(--fs-2xs, 0.6875rem);
+  font-size: var(--fs-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -515,7 +515,7 @@ async function submitDisable(): Promise<void> {
   border-radius: var(--radius-sm);
 }
 .tfs__secret-label {
-  font-size: var(--fs-2xs, 0.6875rem);
+  font-size: var(--fs-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;

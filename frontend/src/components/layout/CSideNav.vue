@@ -136,7 +136,7 @@ function navigate(tab: TabItem): void {
   display: none;
 }
 
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .c-sidenav {
     display: flex;
     flex-direction: column;
@@ -210,7 +210,7 @@ function navigate(tab: TabItem): void {
    modelled. The value must stay equal to --bp-tier-lg; a media query cannot
    read a custom property, and checks/breakpoints.py is what holds them in
    step. See the tier table in variables.css. */
-@media (min-width: 1472px) {
+@media (min-width: 1120px) {
   .c-sidenav {
     width: 232px;
     padding: var(--space-3);

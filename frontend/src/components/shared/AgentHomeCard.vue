@@ -110,7 +110,7 @@ onMounted(() => {
   gap: var(--space-2);
   padding: var(--space-3);
   min-height: 92px;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -150,7 +150,7 @@ onMounted(() => {
   align-self: stretch;
 }
 
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .ahc__tiles {
     max-width: calc(3 * var(--tile-max));
   }

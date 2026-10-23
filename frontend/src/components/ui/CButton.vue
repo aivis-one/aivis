@@ -141,7 +141,7 @@ withDefaults(
   color: var(--on-telegram);
 }
 .c-btn--telegram:hover:not(:disabled) {
-  background: var(--telegram-dark);
+  background: var(--telegram-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(42, 171, 238, 0.3);
 }

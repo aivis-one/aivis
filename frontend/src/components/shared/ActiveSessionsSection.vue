@@ -317,7 +317,7 @@ async function confirmRevoke(sessionId: string): Promise<void> {
   color: var(--text-primary);
 }
 .sas__current-badge {
-  font-size: var(--fs-2xs, 0.6875rem);
+  font-size: var(--fs-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;

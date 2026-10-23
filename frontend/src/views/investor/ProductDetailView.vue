@@ -529,7 +529,7 @@ onMounted(loadProduct)
   gap: var(--space-3);
   padding-top: var(--space-2);
 }
-@media (min-width: 520px) {
+@media (min-width: 480px) {
   .pd__actions {
     flex-direction: row;
   }
@@ -548,7 +548,7 @@ onMounted(loadProduct)
    An earlier attempt used auto-fit and did exactly that: the cap, not a lack
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .pd__stats {
     max-width: calc(2 * var(--tile-max));
   }

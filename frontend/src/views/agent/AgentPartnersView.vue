@@ -227,7 +227,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
 }
@@ -309,7 +309,7 @@ onMounted(() => {
   width: 100%;
   min-height: 44px;
   padding: var(--space-3) var(--space-4);
-  background: var(--surface);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -345,7 +345,7 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .partners__link,
   .partners__rows {
     max-width: calc(3 * var(--tile-max));

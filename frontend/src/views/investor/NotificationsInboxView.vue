@@ -278,7 +278,7 @@ onMounted(() => {
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   cursor: pointer;
@@ -355,7 +355,7 @@ onMounted(() => {
   margin-top: var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-default);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-align: center;

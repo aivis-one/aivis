@@ -655,7 +655,7 @@ onMounted(load)
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md);
 }
 

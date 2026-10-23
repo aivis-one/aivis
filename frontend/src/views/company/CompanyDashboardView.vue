@@ -322,7 +322,7 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
@@ -368,7 +368,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
@@ -399,7 +399,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }
@@ -460,7 +460,7 @@ onMounted(() => {
   color: var(--text-secondary);
   margin: 0;
   padding: var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px dashed var(--border-default);
   text-align: center;
@@ -544,7 +544,7 @@ onMounted(() => {
 }
 .dash__link--tile {
   display: block;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
 }
 .dash__balance-head {
   display: flex;
@@ -568,7 +568,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   border: 1px dashed var(--border-default);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
@@ -598,7 +598,7 @@ onMounted(() => {
    An earlier attempt used auto-fit and did exactly that: the cap, not a lack
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .dash__metrics {
     max-width: calc(3 * var(--tile-max));
   }

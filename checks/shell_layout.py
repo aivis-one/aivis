@@ -1,7 +1,7 @@
 """The shell chrome has ONE source, and the storefront is deliberately outside it.
 
 WHY THIS EXISTS. Four shells -- AgentShell, CompanyShell, InvestorShell,
-StaffShell -- each carried the same `@media (min-width: 820px)` block byte for
+StaffShell -- each carried the same `@media (min-width: 880px)` block byte for
 byte, plus the same `.shell` / `.shell__content` / `.shell__measure` rules and
 the same two comments. A tier change had to be made in four places and would
 one day have been made in three. It now lives once, in
@@ -9,7 +9,7 @@ one day have been made in three. It now lives once, in
 
 FOUR THINGS ARE EASY TO UNDO BY ACCIDENT, AND EACH IS ASSERTED HERE:
 
-1. ONE SOURCE. Exactly one `@media (min-width: 820px)` block in the whole of
+1. ONE SOURCE. Exactly one `@media (min-width: 880px)` block in the whole of
    frontend/src sets `--tab-bar-height`, and it is in shell.css.
 
 2. THE TIER RULES ARE GATED ON `.shell--tabbed`, WHICH PublicShell DOES NOT
@@ -31,7 +31,7 @@ FOUR THINGS ARE EASY TO UNDO BY ACCIDENT, AND EACH IS ASSERTED HERE:
    question, so it stays visible in one place rather than being folded into a
    single value here.
 
-CSideNav is NOT part of this. It has its own 820 and 1472 blocks plus a
+CSideNav is NOT part of this. It has its own 880 and 1120 blocks plus a
 reduced-motion block, and they are its own rules, not the shell tier. The check
 asserts it still holds three and that the shell rules have not leaked into them.
 """
@@ -69,10 +69,10 @@ def run(root: str) -> tuple[bool, list[str]]:
                 continue
             path = os.path.join(dirpath, name)
             for condition, _whole, body in media_blocks(_css_of(path)):
-                if "820px" in condition and "tab-bar-height" in body:
+                if "880px" in condition and "tab-bar-height" in body:
                     tier.append(path)
     if len(tier) != 1:
-        problems.append("the 820 tier block must exist exactly ONCE in frontend/src; found %d: %s"
+        problems.append("the 880 tier block must exist exactly ONCE in frontend/src; found %d: %s"
                         % (len(tier), [os.path.relpath(p, root) for p in tier]))
     elif os.path.abspath(tier[0]) != os.path.abspath(shell_css):
         problems.append("the tier block is in %s, not styles/shell.css"
@@ -128,11 +128,11 @@ def run(root: str) -> tuple[bool, list[str]]:
     sidenav = _css_of(os.path.join(layout, "CSideNav.vue"))
     blocks = media_blocks(sidenav)
     if len(blocks) != 3:
-        problems.append("CSideNav should hold THREE @media blocks (820, 1472, reduced-motion), "
+        problems.append("CSideNav should hold THREE @media blocks (880, 1120, reduced-motion), "
                         "found %d" % len(blocks))
     for condition, _whole, body in blocks:
-        if "820px" in condition and "tab-bar-height" in body:
-            problems.append("CSideNav's 820 block has absorbed the shell tier rules")
+        if "880px" in condition and "tab-bar-height" in body:
+            problems.append("CSideNav's 880 block has absorbed the shell tier rules")
 
     return (not problems), (notes + problems)
 
@@ -197,10 +197,10 @@ def selftest(root: str) -> list[str]:
           'class="shell"', "a cabinet shell losing the tier gate")
     plant("styles/shell.css", ".shell.shell--tabbed .c-tabbar",
           ".shell--tabbed .c-tabbar", "the hide rule dropped to (0,2,0)")
-    plant("components/layout/StaffShell.vue", "max-width: var(--maxw-wide);",
-          "max-width: var(--maxw);", "StaffShell's wide cap silently removed")
-    plant("styles/shell.css", "@media (min-width: 820px) {\n  .shell--tabbed {",
-          "@media (min-width: 900px) {\n  .shell--tabbed {", "the tier block moved off 820")
+    plant("components/layout/StaffShell.vue", "max-inline-size: var(--maxw-wide);",
+          "max-inline-size: var(--maxw);", "StaffShell's wide cap silently removed")
+    plant("styles/shell.css", "@media (min-width: 880px) {\n  .shell--tabbed {",
+          "@media (min-width: 900px) {\n  .shell--tabbed {", "the tier block moved off 880")
 
     # A SURVIVAL PLANT, not a break: a slot template ABOVE the root <div>. This is
     # legal Vue and changes nothing the check is about, so the check must still

@@ -895,7 +895,7 @@ onMounted(() => {
   gap: var(--space-4);
   padding: var(--space-4);
   margin: 0 var(--space-4) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
 }

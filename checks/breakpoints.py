@@ -5,7 +5,7 @@ WHY THIS EXISTS. The product had seven different width breakpoints spread over
 other five were one-off literals inside individual views, so nobody could tell
 a deliberate breakpoint from a number somebody typed once.
 
-The set is now declared in `frontend/src/styles/variables.css` as `--bp-*`
+The set is now declared in `frontend/src/styles/ds/tokens.css` (a copy of the design system's tokens) as `--bp-*`
 tokens. This check reads the declared set FROM THAT FILE -- it does not carry
 its own copy -- and fails if any media query uses a width that is not in it.
 Add a breakpoint to the stylesheet and this check starts accepting it; delete
@@ -51,9 +51,9 @@ SCRIPT_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
 
 
 def declared_set(root: str) -> dict[int, str]:
-    """{pixels: token-name} read from variables.css, comments masked first so a
+    """{pixels: token-name} read from styles/ds/tokens.css, comments masked first so a
     breakpoint merely discussed in prose is not read as a declaration."""
-    path = os.path.join(root, "frontend", "src", "styles", "variables.css")
+    path = os.path.join(root, "frontend", "src", "styles", "ds", "tokens.css")
     text = mask_comments(open(path, encoding="utf-8").read())
     return {int(float(m.group(2))): "--bp-" + m.group(1) for m in BP_TOKEN.finditer(text)}
 
@@ -130,7 +130,7 @@ def run(root: str) -> tuple[bool, list[str]]:
     sites = used(root)
     undeclared = sorted({px for _f, _l, _k, px in sites} - set(declared))
     lines = [
-        "declared in variables.css : " + ", ".join(
+        "declared in ds/tokens.css : " + ", ".join(
             "%d (%s)" % (px, declared[px]) for px in sorted(declared)),
         "used in frontend/src      : %d width queries over %d files, values %s" % (
             len(sites), len({f for f, _l, _k, _p in sites}),
@@ -189,10 +189,10 @@ def selftest(root: str) -> list[str]:
                         os.path.join(base, "frontend", "src"))
         clean, _ = run(base)
         assert clean, "the untouched copy already fails"
-        variables = os.path.join(base, "frontend", "src", "styles", "variables.css")
+        variables = os.path.join(base, "frontend", "src", "styles", "ds", "tokens.css")
         original = open(variables, encoding="utf-8", newline="").read()
-        anchor = "  --bp-tier-md: "
-        assert anchor in original, "selftest anchor missing in variables.css"
+        anchor = "  --bp-sm: "
+        assert anchor in original, "selftest anchor missing in ds/tokens.css"
         orphan = "  --bp-zz-orphan: 777px;\n"
         nl = "\r\n" if "\r\n" in original else "\n"
 

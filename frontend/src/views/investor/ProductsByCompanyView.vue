@@ -290,7 +290,7 @@ function goBack(): void {
   }
 }
 
-@media (min-width: 960px) {
+@media (min-width: 1120px) {
   .pbc__grid {
     grid-template-columns: repeat(3, 1fr);
   }

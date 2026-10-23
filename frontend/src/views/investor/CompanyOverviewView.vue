@@ -537,7 +537,7 @@ function onRoadmapPostClick(postId: string): void {
    An earlier attempt used auto-fit and did exactly that: the cap, not a lack
    of room, was what pushed the third tile onto its own line. Mobile-first, so
    this is a min-width and the phone is untouched. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .co__stats {
     max-width: calc(2 * var(--tile-max));
   }

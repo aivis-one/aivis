@@ -339,7 +339,7 @@ onMounted(() => {
 /* Card base */
 .bv__card {
   padding: var(--space-4-lg);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md);
   margin: var(--space-4) var(--space-4) 0;
 }
@@ -444,7 +444,7 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
 }

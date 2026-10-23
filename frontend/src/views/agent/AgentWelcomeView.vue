@@ -244,7 +244,7 @@ onMounted(() => {
 }
 
 /* On a tablet and a desktop the card gets more room above it. */
-@media (min-width: 820px) {
+@media (min-width: 880px) {
   .welcome__card {
     padding-top: var(--space-6, 32px);
   }
