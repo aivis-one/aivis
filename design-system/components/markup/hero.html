@@ -1,0 +1,18 @@
+<!-- AIVIS Hero (K47): a cover with the title over the photo. The text is --text-on-scrim (white in both themes) over --scrim-strong, 7.63 on a white photo (tokens/contrast.json); the veil under the text is the full strength
+     and fades only over the padding above the first line. Sizes data-size="sm" (200) or the default (320). Without a photo the fallback tile (.ds-hero__fallback) carries a centred icon on --bg-subtle.
+     A chip on the photo is .ds-hero__tag. The picture is decorative here (alt=""): the title says what it is. -->
+<section class="ds-hero" aria-labelledby="hero-t">
+  <img class="ds-hero__image" src="photo.jpg" alt="">
+  <span class="ds-hero__tag">Installment plan</span>
+  <div class="ds-hero__content">
+    <h2 class="ds-hero__title" id="hero-t">Trade-in lounge, 40 seats</h2>
+    <p class="ds-hero__meta">Brenner Logistik GmbH</p>
+  </div>
+</section>
+<section class="ds-hero" data-size="sm" aria-labelledby="hero-t2">
+  <span class="ds-hero__fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></span>
+  <div class="ds-hero__content">
+    <h2 class="ds-hero__title" id="hero-t2">Product without a photo</h2>
+    <p class="ds-hero__meta">The fallback tile</p>
+  </div>
+</section>

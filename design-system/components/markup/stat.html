@@ -1,0 +1,21 @@
+<!-- AIVIS Stat tile (K46): a label above a figure, an optional change and a sub line. The figure is mono and tabular; the app writes the sign and the unit in the text, so the change is never colour alone
+     (data-trend="up|down" tints it --success or --danger and the arrow icon repeats it). An interactive tile holds ONE link (a.ds-stat__link) in its label, which stretches over the tile.
+     .ds-stats lays tiles out two across on a phone and as many as fit above. -->
+<div class="ds-stats">
+  <div class="ds-stat">
+    <p class="ds-stat__label">Portfolio value</p>
+    <p class="ds-stat__value">12,480.00</p>
+    <p class="ds-stat__change" data-trend="up"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg><span>+3.2%</span></p>
+    <p class="ds-stat__sub">since 1 October</p>
+  </div>
+  <div class="ds-stat">
+    <p class="ds-stat__label">Pending payouts</p>
+    <p class="ds-stat__value">340.50</p>
+    <p class="ds-stat__change" data-trend="down"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg><span>-12.0%</span></p>
+  </div>
+  <div class="ds-stat ds-stat--interactive">
+    <p class="ds-stat__label"><a class="ds-stat__link" href="/balance">Balance</a></p>
+    <p class="ds-stat__value">1,020.00</p>
+    <p class="ds-stat__sub">Open the balance</p>
+  </div>
+</div>

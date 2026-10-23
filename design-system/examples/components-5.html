@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIVIS components, additions for the cabinets</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../tokens/tokens-dark.css">
+<link rel="stylesheet" href="../components/components.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-page); color: var(--text-primary); font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal); }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); margin: 0; }
+code { font-family: var(--font-mono); font-size: 0.875em; }
+.wrap { max-inline-size: var(--maxw-wide); margin-inline: auto; padding-inline: var(--space-gutter-mobile); }
+header.top { padding-block: var(--space-6) var(--space-4); border-block-end: thin solid var(--border-default); }
+header.top h1 { font-size: var(--fs-h1); }
+header.top p { color: var(--text-secondary); margin-block: var(--space-2) 0; max-inline-size: var(--maxw-prose); }
+.toolbar { position: sticky; inset-block-start: 0; z-index: 70; background: var(--bg-page); border-block-end: thin solid var(--border-subtle); padding-block: var(--space-3); }
+.toolbar .wrap { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); align-items: center; }
+.toolbar .grp { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.toolbar .lbl { font-size: var(--fs-sm); color: var(--text-secondary); }
+.toolbar a { color: var(--primary); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+.toolbar a:hover { text-decoration: underline; }
+.toolbar a:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+section.blk { scroll-margin-block-start: 4rem; padding-block: var(--space-7); border-block-end: thin solid var(--border-subtle); }
+section.blk h2 { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
+section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--space-2); }
+.lead { color: var(--text-secondary); max-inline-size: var(--maxw-prose); margin-block: 0 var(--space-4); }
+.note { color: var(--text-secondary); font-size: var(--fs-sm); max-inline-size: var(--maxw-prose); margin-block: var(--space-3) 0; }
+.cols { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); align-items: start; }
+.cols-s { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); align-items: start; }
+.opt { border: thin solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-page); color: var(--text-primary); padding: var(--space-4); display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.opt > h4 { font-size: var(--fs-body); }
+.opt .tag { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); }
+.stack { display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.padded { padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
+.desk { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; }
+.phone { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; max-inline-size: 30rem; }
+.phone-wrap { display: grid; gap: var(--space-2); justify-items: center; margin: 0; min-inline-size: 0; }
+.phone-wrap figcaption { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); text-align: center; }
+.announce { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; min-block-size: 1.5em; }
+.lbl-s { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); margin: 0; }
+.menu-room { min-block-size: calc(var(--center-lg) + var(--size-4xl)); }
+.specimen { block-size: 34rem; overflow: auto; border: thin solid var(--border-default); border-radius: var(--radius-lg); }
+.photo-row { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+@media (max-width: 480px) { .toolbar { position: static; } }
+footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-size: var(--fs-sm); }
+/* simulated states, drawn only so every state is visible at once */
+.ds-menu__item.sim-hover { background: var(--bg-subtle); }
+.ds-menu__item.sim-pressed { background: var(--bg-inset); box-shadow: var(--shadow-inset-hex); }
+.sim-focus { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-row.sim-hover { border-color: var(--border-default); }
+.ds-row.sim-pressed { border-color: var(--border-input-hover); }
+.ds-row.sim-focus { z-index: 1; }
+.ds-button.sim-hover { background: var(--_bg-hover); }
+.ds-barchart__bar.sim-hover { fill: var(--primary-hover); }
+.frag-sources { display: none; }
+.ds-checkbox.sim-hover .ds-checkbox__input + .ds-checkbox__box { border-color: var(--border-input-hover); }
+.ds-checkbox.sim-cbfocus .ds-checkbox__input + .ds-checkbox__box { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-header__figure.sim-hover { border-color: var(--primary); }
+.ds-header__figure.sim-hover .ds-header__figure-amount { color: var(--primary); }
+.ds-stat.sim-hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
+.ds-subnav__link.sim-hover { color: var(--text-primary); box-shadow: inset 0 calc(var(--border-input-width) * -2) 0 var(--border-default); }
+
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>AIVIS components, additions for the cabinets</h1><p>The Checkbox, Stat tile, Hero, Empty state, Key-value list, Avatar, Chat thread, Dialog, Copyable value and Timeline, and the additions to the Card, Badge, Row list, App shell, Action menu, Accordion, Date picker, Stepper and Booking card, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#b1">Batch 1</a><a href="#b2">Batch 2</a><a href="#b3">Batch 3</a><a href="#b4">Batch 4</a></div></div></div>
+<section class="blk" id="b1"><div class="wrap"><h2>Batch 1 additions: Checkbox, Stat tile, Card variants, Hero, Badge count and dot</h2>
+<p class="lead">The Checkbox (K45) is a tick for an agreement, with links in its label; the Stat tile (K46); the brand and media variants of the Card (K07); the Hero (K47) over three photos (white, mid-grey and black: the three bracket any photo) on the stronger scrim; the count on an icon button and the unread dot (K08). Hover and focus are drawn where the pointer cannot be.</p>
+<div class="cols"><div class="stack" data-frag="b1a"><div class="padded desk"><h3>Checkbox</h3><label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="agree" required>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">I have read the <a href="/terms">purchase terms</a> and the <a href="/privacy">privacy policy</a> and I agree to them.</span>
+</label>
+<label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="digest" checked>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">Send me the weekly digest<span class="ds-checkbox__hint">One message on Monday.</span></span>
+</label>
+<label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="locked" disabled>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">Not available for this account</span>
+</label><label class="ds-checkbox"><input class="ds-checkbox__input" type="checkbox" aria-invalid="true" aria-describedby="cb-err"><span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-checkbox__text">I accept the terms</span></label><p class="ds-field__error" id="cb-err"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg><span>Accept the terms to continue.</span></p><label class="ds-checkbox sim-hover"><input class="ds-checkbox__input" type="checkbox"><span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-checkbox__text">Hover (drawn)</span></label><label class="ds-checkbox sim-cbfocus"><input class="ds-checkbox__input" type="checkbox" checked><span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-checkbox__text">Focus, checked (drawn)</span></label></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Checkbox on a phone" data-src="components-5.html?fragment=b1a" height="900"></iframe><figcaption>480 phone frame</figcaption></figure>
+<div class="stack" data-frag="b1b"><div class="padded desk"><h3>Stat tile</h3><div class="ds-stats">
+  <div class="ds-stat">
+    <p class="ds-stat__label">Portfolio value</p>
+    <p class="ds-stat__value">12,480.00</p>
+    <p class="ds-stat__change" data-trend="up"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg><span>+3.2%</span></p>
+    <p class="ds-stat__sub">since 1 October</p>
+  </div>
+  <div class="ds-stat">
+    <p class="ds-stat__label">Pending payouts</p>
+    <p class="ds-stat__value">340.50</p>
+    <p class="ds-stat__change" data-trend="down"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg><span>-12.0%</span></p>
+  </div>
+  <div class="ds-stat ds-stat--interactive">
+    <p class="ds-stat__label"><a class="ds-stat__link" href="/balance">Balance</a></p>
+    <p class="ds-stat__value">1,020.00</p>
+    <p class="ds-stat__sub">Open the balance</p>
+  </div>
+</div><h3>Badge count and dot</h3><div class="ds-chip-row"><button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+<span class="ds-dot" role="img" aria-label="Unread"></span>
+<span class="ds-dot ds-dot--danger" role="img" aria-label="Needs attention"></span></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Stat tiles on a phone" data-src="components-5.html?fragment=b1b" height="700"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+<section class="blk" id="b1c"><div class="wrap"><h2>Card: brand and media variants</h2>
+<p class="lead">The brand card carries every text in --on-primary or --on-primary-muted; the media card has a cover, a fallback and a chip on the photo.</p>
+<div class="cols"><div class="stack" data-frag="b1c"><div class="padded desk"><div class="cols-s"><article class="ds-card ds-card--brand">
+  <p class="ds-card__label">Portfolio value</p>
+  <p class="ds-card__figure">12,480.00</p>
+  <p class="ds-card__delta">+380.00 (+3.1%)</p>
+  <footer class="ds-card__foot"><button type="button" class="ds-button" data-size="sm">Details</button></footer>
+</article>
+
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img data-photo="grey" alt=""><span class="ds-card__tag">Brenner Logistik GmbH</span></div>
+  <div class="ds-card__content">
+    <h3 class="ds-card__title"><a class="ds-card__link" href="#product">Trade-in lounge</a></h3>
+    <div class="ds-card__body">40 seats, opening in January.</div>
+  </div>
+</article>
+<article class="ds-card ds-card--media">
+  <div class="ds-card__media ds-card__media--fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></div>
+  <div class="ds-card__content"><h3 class="ds-card__title">No photo yet</h3></div>
+</article></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Card variants on a phone" data-src="components-5.html?fragment=b1c" height="1250"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+<section class="blk" id="b1d"><div class="wrap"><h2>Hero</h2>
+<p class="lead">White text on --scrim-strong over a white photo reaches 7.63, over a mid-grey photo 13.81 and over a black photo 20.17, in both themes (tokens/contrast.json). The first hero is the full height with a photo; the second has no photo.</p>
+<div class="cols"><div class="stack" data-frag="b1d"><div class="padded desk"><div class="photo-row"><section class="ds-hero" data-size="sm" aria-labelledby="hp-white"><img class="ds-hero__image" data-photo="white" alt=""><span class="ds-hero__tag">White photo</span><div class="ds-hero__content"><h3 class="ds-hero__title" id="hp-white">Trade-in lounge</h3><p class="ds-hero__meta">Brenner Logistik GmbH</p></div></section><section class="ds-hero" data-size="sm" aria-labelledby="hp-mid-grey"><img class="ds-hero__image" data-photo="grey" alt=""><span class="ds-hero__tag">Mid-grey photo</span><div class="ds-hero__content"><h3 class="ds-hero__title" id="hp-mid-grey">Trade-in lounge</h3><p class="ds-hero__meta">Brenner Logistik GmbH</p></div></section><section class="ds-hero" data-size="sm" aria-labelledby="hp-black"><img class="ds-hero__image" data-photo="black" alt=""><span class="ds-hero__tag">Black photo</span><div class="ds-hero__content"><h3 class="ds-hero__title" id="hp-black">Trade-in lounge</h3><p class="ds-hero__meta">Brenner Logistik GmbH</p></div></section></div><h3>Full height, and the fallback</h3><section class="ds-hero" aria-labelledby="hero-t">
+  <img class="ds-hero__image" data-photo="grey" alt="">
+  <span class="ds-hero__tag">Installment plan</span>
+  <div class="ds-hero__content">
+    <h2 class="ds-hero__title" id="hero-t">Trade-in lounge, 40 seats</h2>
+    <p class="ds-hero__meta">Brenner Logistik GmbH</p>
+  </div>
+</section>
+<section class="ds-hero" data-size="sm" aria-labelledby="hero-t2">
+  <span class="ds-hero__fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></span>
+  <div class="ds-hero__content">
+    <h2 class="ds-hero__title" id="hero-t2">Product without a photo</h2>
+    <p class="ds-hero__meta">The fallback tile</p>
+  </div>
+</section></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Hero on a phone" data-src="components-5.html?fragment=b1d" height="1300"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+<section class="blk" id="b2"><div class="wrap"><h2>Batch 2 additions: App shell parts</h2>
+<p class="lead">The shell with a banner above the header (the warning look, kept at the top), a leading back control, a header figure and the bell with its count, the AIVIS mark at the head of the menu on the rails (none on the phone), a lead line, a toolbar with a primary action, a sub-navigation, the action strip and the nav-less variant. The main region keeps a measure.</p>
+<div class="cols"><div class="stack" data-frag="b2a"><div class="padded"><h3>Labelled rail (1120 and up)</h3><div class="specimen"><div class="ds-shell ds-shell--framed" data-tier="wide">
+  <div class="ds-shell__banner" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-shell__banner-text">You are acting as Anna Weber</span><button type="button" class="ds-button ds-button--secondary ds-shell__banner-action" data-size="sm">Exit</button></div>
+  <header class="ds-header">
+    <div class="ds-header__lead"><a class="ds-button ds-button--ghost ds-button--icon" href="/portfolio" aria-label="Back"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg></a></div>
+    <h1 class="ds-header__title">Position</h1>
+    <div class="ds-header__actions">
+      <a class="ds-header__figure" href="/balance"><span class="ds-header__figure-label">Balance</span><span class="ds-header__figure-amount">1,020.00</span></a>
+      <button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+    </div>
+  </header>
+  <main class="ds-shell__main" id="main2" data-measure="wide">
+    <p class="ds-shell__lead">Your units in this project and what they earned.</p>
+    <div class="ds-shell__toolbar"><div class="ds-shell__filters"><button type="button" class="ds-chip" aria-pressed="true">All</button><button type="button" class="ds-chip" aria-pressed="false">Open</button></div><div class="ds-shell__primary"><button type="button" class="ds-button" data-size="sm">Export</button></div></div>
+    <nav class="ds-subnav" aria-label="Sections"><ul class="ds-subnav__list"><li><a class="ds-subnav__link" href="/a" aria-current="page">Profile</a></li><li><a class="ds-subnav__link" href="/b">Documents</a></li><li><a class="ds-subnav__link" href="/c">Roadmap</a></li></ul></nav>
+    <div class="ds-shell__action"><button type="button" class="ds-button">Buy more</button></div>
+  </main>
+  <nav class="ds-nav" aria-label="Main">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../../brand/aivis-mark.svg" alt=""></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+    </ul>
+  </nav>
+</div></div><h3>Icon rail (880)</h3><div class="specimen"><div class="ds-shell ds-shell--framed" data-tier="rail">
+  <div class="ds-shell__banner" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-shell__banner-text">You are acting as Anna Weber</span><button type="button" class="ds-button ds-button--secondary ds-shell__banner-action" data-size="sm">Exit</button></div>
+  <header class="ds-header">
+    <div class="ds-header__lead"><a class="ds-button ds-button--ghost ds-button--icon" href="/portfolio" aria-label="Back"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg></a></div>
+    <h1 class="ds-header__title">Position</h1>
+    <div class="ds-header__actions">
+      <a class="ds-header__figure" href="/balance"><span class="ds-header__figure-label">Balance</span><span class="ds-header__figure-amount">1,020.00</span></a>
+      <button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+    </div>
+  </header>
+  <main class="ds-shell__main" id="main3" data-measure="wide">
+    <p class="ds-shell__lead">Your units in this project and what they earned.</p>
+    <div class="ds-shell__toolbar"><div class="ds-shell__filters"><button type="button" class="ds-chip" aria-pressed="true">All</button><button type="button" class="ds-chip" aria-pressed="false">Open</button></div><div class="ds-shell__primary"><button type="button" class="ds-button" data-size="sm">Export</button></div></div>
+    <nav class="ds-subnav" aria-label="Sections"><ul class="ds-subnav__list"><li><a class="ds-subnav__link" href="/a" aria-current="page">Profile</a></li><li><a class="ds-subnav__link" href="/b">Documents</a></li><li><a class="ds-subnav__link" href="/c">Roadmap</a></li></ul></nav>
+    <div class="ds-shell__action"><button type="button" class="ds-button">Buy more</button></div>
+  </main>
+  <nav class="ds-nav" aria-label="Main">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../../brand/aivis-mark.svg" alt=""></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+    </ul>
+  </nav>
+</div></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Shell with a tab bar" data-src="components-5.html?fragment=b2b" height="700"></iframe><figcaption>480 phone frame: tab bar, no mark, the action strip above the bar</figcaption></figure>
+<div class="stack" data-frag="b2b"><div class="padded desk" style="block-size:42rem;overflow:auto"><div class="ds-shell ds-shell--framed">
+  <div class="ds-shell__banner" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-shell__banner-text">You are acting as Anna Weber</span><button type="button" class="ds-button ds-button--secondary ds-shell__banner-action" data-size="sm">Exit</button></div>
+  <header class="ds-header">
+    <div class="ds-header__lead"><a class="ds-button ds-button--ghost ds-button--icon" href="/portfolio" aria-label="Back"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg></a></div>
+    <h1 class="ds-header__title">Position</h1>
+    <div class="ds-header__actions">
+      <a class="ds-header__figure" href="/balance"><span class="ds-header__figure-label">Balance</span><span class="ds-header__figure-amount">1,020.00</span></a>
+      <button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+    </div>
+  </header>
+  <main class="ds-shell__main" id="main4" data-measure="wide">
+    <p class="ds-shell__lead">Your units in this project and what they earned.</p>
+    <div class="ds-shell__toolbar"><div class="ds-shell__filters"><button type="button" class="ds-chip" aria-pressed="true">All</button><button type="button" class="ds-chip" aria-pressed="false">Open</button></div><div class="ds-shell__primary"><button type="button" class="ds-button" data-size="sm">Export</button></div></div>
+    <nav class="ds-subnav" aria-label="Sections"><ul class="ds-subnav__list"><li><a class="ds-subnav__link" href="/a" aria-current="page">Profile</a></li><li><a class="ds-subnav__link" href="/b">Documents</a></li><li><a class="ds-subnav__link" href="/c">Roadmap</a></li></ul></nav>
+    <div class="ds-shell__action"><button type="button" class="ds-button">Buy more</button></div>
+  </main>
+  <nav class="ds-nav" aria-label="Main">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../../brand/aivis-mark.svg" alt=""></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+    </ul>
+  </nav>
+</div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Nav-less shell on a phone" data-src="components-5.html?fragment=b2c" height="420"></iframe><figcaption>480 phone frame: the nav-less shell</figcaption></figure>
+<div class="stack" data-frag="b2c"><div class="padded desk" style="block-size:22rem;overflow:auto"><h3>Nav-less shell (the storefront)</h3><div class="ds-shell ds-shell--navless ds-shell--framed">
+  <header class="ds-header"><h1 class="ds-header__title">Store</h1><div class="ds-header__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/login">Sign in</a></div></header>
+  <main class="ds-shell__main"></main>
+</div></div></div>
+
+</div></div></section>
+<section class="blk" id="b2d"><div class="wrap"><h2>Empty state, row tones, key-value list</h2>
+<p class="lead">The Empty state (K48) neutral and as a failed load; the tone of a row lead icon (K23) and the same box outside a row; the Key-value list (K49) inline, with a total and stacked.</p>
+<div class="cols"><div class="stack" data-frag="b2d"><div class="padded desk"><div class="ds-empty">
+  <span class="ds-empty__icon"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></span>
+  <h3 class="ds-empty__title">No documents yet</h3>
+  <p class="ds-empty__text">Documents appear here after your first purchase.</p>
+  <div class="ds-empty__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/store">Open the store</a></div>
+</div>
+<div class="ds-empty ds-empty--framed" data-tone="danger" role="alert">
+  <span class="ds-empty__icon"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span>
+  <h3 class="ds-empty__title">The list did not load</h3>
+  <p class="ds-empty__text">Check the connection and try again.</p>
+  <div class="ds-empty__actions"><button type="button" class="ds-button" data-size="sm"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-refresh-cw"/></svg><span>Retry</span></button></div>
+</div><h3>Row lead tones</h3><ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Deposit</span><span class="ds-row__meta">12 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value">+500.00</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Withdrawal</span><span class="ds-row__meta">10 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value">-120.00</span></span></li>
+</ul><div class="ds-chip-row"><span class="ds-lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><span class="ds-lead" data-tone="warning"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-ban"/></svg></span><span class="ds-lead" data-tone="accent"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-gift"/></svg></span><span class="ds-lead" data-tone="neutral"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-clock"/></svg></span></div><h3>Key-value</h3><dl class="ds-kv">
+  <div class="ds-kv__row"><dt>Units</dt><dd>4</dd></div>
+  <div class="ds-kv__row"><dt>Price per unit</dt><dd>300.00</dd></div>
+  <div class="ds-kv__row"><dt>Fee</dt><dd>12.00</dd></div>
+  <div class="ds-kv__row ds-kv__row--total"><dt>Total</dt><dd>1,212.00</dd></div>
+</dl>
+<dl class="ds-kv ds-kv--stacked">
+  <div class="ds-kv__row"><dt>Network</dt><dd>TRC20</dd></div>
+  <div class="ds-kv__row"><dt>Deadline</dt><dd>25 Oct 2026, 18:00</dd></div>
+</dl></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Empty state, tones, key-value on a phone" data-src="components-5.html?fragment=b2d" height="1500"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+<section class="blk" id="b3"><div class="wrap"><h2>Batch 3 additions: Avatar, Chat thread, Time input</h2>
+<p class="lead">The Avatar (K50) in three sizes, as initials and as a photo; the Chat thread and composer (K51) with an own and an other message; the time input drawn as the date input (K29).</p>
+<div class="cols"><div class="stack" data-frag="b3"><div class="padded desk"><span class="ds-avatar" role="img" aria-label="Anna Weber">AW</span>
+<span class="ds-avatar ds-avatar--subtle" data-size="lg" role="img" aria-label="Brenner Logistik GmbH">BL</span>
+<span class="ds-avatar" data-size="sm"><img data-photo="grey" alt="Anna Weber"></span><h3>Chat thread</h3><section class="ds-thread" aria-label="Support chat" style="block-size: var(--center-lg)">
+  <ul class="ds-thread__feed" role="log" aria-live="polite" tabindex="0">
+    <li class="ds-thread__day">12 Oct 2026</li>
+    <li class="ds-message" data-from="other"><span class="ds-message__author">Support</span><p class="ds-message__bubble">Hello, how can we help?</p><time class="ds-message__time" datetime="2026-10-12T09:14">09:14</time></li>
+    <li class="ds-message" data-from="own"><p class="ds-message__bubble">I cannot find the signed agreement.</p><time class="ds-message__time" datetime="2026-10-12T09:15">09:15</time></li>
+  </ul>
+  <form class="ds-composer">
+    <div class="ds-field ds-composer__input"><label class="ds-sr-only" for="chat-msg">Message</label><textarea class="ds-input" id="chat-msg" rows="1" placeholder="Write a message"></textarea></div>
+    <button type="submit" class="ds-button" disabled>Send</button>
+  </form>
+</section><h3>Time input</h3><div class="ds-field"><label class="ds-field__label" for="ti-a">Quiet hours from</label><input class="ds-input" id="ti-a" type="time" value="22:00"></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Avatar, chat, time on a phone" data-src="components-5.html?fragment=b3" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+<section class="blk" id="b4"><div class="wrap"><h2>Batch 4 additions: Dialog, Copyable value, Step dots, Timeline, Listbox, FAQ</h2>
+<p class="lead">The Dialog (K52) live (a modal and a sheet: Escape and the scrim close, Tab stays inside) and drawn in the flow; the Copyable value (K53); step dots (K32); the Timeline (K54); the language listbox (K26); the FAQ (K27); the Booking card (KN1) with the amount paid.</p>
+<div class="cols"><div class="stack" data-frag="b4a"><div class="padded desk"><h3>Dialog (live)</h3><button type="button" class="ds-button ds-button--danger" data-dialog-open="dlg-confirm">Deactivate account</button>
+<div class="ds-dialog" id="dlg-confirm" data-variant="modal" hidden>
+  <div class="ds-dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="dlg-confirm-t" aria-describedby="dlg-confirm-d" tabindex="-1">
+    <div class="ds-dialog__head">
+      <h2 class="ds-dialog__title" id="dlg-confirm-t">Deactivate the account?</h2>
+      <button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" data-dialog-close aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="ds-dialog__body"><p class="ds-dialog__text" id="dlg-confirm-d">You can sign in again within 30 days to restore it.</p></div>
+    <div class="ds-dialog__actions">
+      <button type="button" class="ds-button ds-button--secondary" data-dialog-close>Cancel</button>
+      <button type="button" class="ds-button ds-button--danger" data-dialog-close>Deactivate</button>
+    </div>
+  </div>
+</div><button type="button" class="ds-button ds-button--secondary" data-dialog-open="dlg-sheet">Open a sheet</button><div class="ds-dialog" id="dlg-sheet" hidden><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="dlg-sheet-t" tabindex="-1"><div class="ds-dialog__head"><h2 class="ds-dialog__title" id="dlg-sheet-t">Transaction details</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" data-dialog-close aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div><div class="ds-dialog__body"><dl class="ds-kv"><div class="ds-kv__row"><dt>Amount</dt><dd>500.00</dd></div><div class="ds-kv__row"><dt>Status</dt><dd>Paid</dd></div></dl></div><div class="ds-dialog__actions"><button type="button" class="ds-button" data-dialog-close>Done</button></div></div></div><h3>Dialog (drawn in the flow)</h3><div class="ds-dialog ds-dialog--inline" data-variant="modal"><div class="ds-dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="di-t" tabindex="-1"><div class="ds-dialog__head"><h2 class="ds-dialog__title" id="di-t">Remove this item?</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div><div class="ds-dialog__body"><p class="ds-dialog__text">It will be gone from the list.</p></div><div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Cancel</button><button type="button" class="ds-button ds-button--danger">Remove</button></div></div></div><div class="ds-dialog ds-dialog--inline"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="ds-t" tabindex="-1"><div class="ds-dialog__head"><h2 class="ds-dialog__title" id="ds-t">Edit the name</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div><div class="ds-dialog__body"><div class="ds-field"><label class="ds-field__label" for="dn">Name</label><input class="ds-input" id="dn" value="Brenner Logistik GmbH"></div></div><div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Cancel</button><button type="button" class="ds-button">Save</button></div></div></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Dialog on a phone" data-src="components-5.html?fragment=b4a" height="1300"></iframe><figcaption>480 phone frame</figcaption></figure>
+<div class="stack" data-frag="b4b"><div class="padded desk"><h3>Copyable value</h3><div class="ds-copy">
+  <div class="ds-copy__box">
+    <p class="ds-copy__value" id="cv-code">AIVIS-7K2Q-91XD</p>
+    <button type="button" class="ds-button ds-button--ghost ds-button--icon ds-copy__button" data-size="sm" data-copy-target="cv-code" data-msg-copied="Copied" data-msg-failed="Copy failed. Select the text and copy it." aria-label="Copy the code"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg></button>
+  </div>
+  <p class="ds-copy__status" role="status" aria-live="polite"></p>
+</div><h3>Step dots</h3><ol class="ds-dots" aria-label="Step 2 of 4"><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol><h3>Timeline</h3><ol class="ds-timeline" aria-label="Project milestones">
+  <li class="ds-timeline__item" data-state="done"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-03">Mar 2026</time><span class="ds-timeline__title">Site selected</span><span class="ds-badge ds-badge--success">Done</span></div></div></li>
+  <li class="ds-timeline__item" data-state="current"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <details class="ds-timeline__card" open><summary class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-10">Oct 2026</time><span class="ds-timeline__title">Fit-out</span><span class="ds-badge ds-badge--info">In progress</span><svg class="ds-icon ds-timeline__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary>
+      <div class="ds-timeline__body"><p>Walls and floors are done; furniture arrives in November.</p></div></details></li>
+  <li class="ds-timeline__item" data-state="upcoming"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2027-01">Jan 2027</time><span class="ds-timeline__title">Opening</span><span class="ds-badge">Upcoming</span></div></div></li>
+</ol></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Copy, dots, timeline on a phone" data-src="components-5.html?fragment=b4b" height="900"></iframe><figcaption>480 phone frame</figcaption></figure>
+<div class="stack" data-frag="b4c"><div class="padded desk"><h3>Language listbox</h3><div class="menu-room"><div class="ds-menu">
+  <button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="lb-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="lb-list" aria-label="Language">
+    <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-globe"/></svg><span class="ds-menu__value">English</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>
+  </button>
+  <ul class="ds-menu__list" role="listbox" id="lb-list" aria-labelledby="lb-btn" hidden>
+    <li role="none"><button type="button" role="option" class="ds-menu__item" aria-selected="true" data-value="en" tabindex="-1"><span class="ds-menu__label">English</span><svg class="ds-icon ds-menu__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></button></li>
+    <li role="none"><button type="button" role="option" class="ds-menu__item" aria-selected="false" data-value="ru" tabindex="-1"><span class="ds-menu__label">Russian</span><svg class="ds-icon ds-menu__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></button></li>
+  </ul>
+</div></div><h3>FAQ</h3><div class="ds-field ds-accordion__search"><label class="ds-field__label" for="faq-q">Search the questions</label><input class="ds-input" id="faq-q" type="search" data-faq-search aria-controls="faq-list"></div>
+<div class="ds-accordion ds-accordion--faq" id="faq-list">
+  <details class="ds-accordion__item" name="faq"><summary class="ds-accordion__summary"><span>How is the fee charged?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary><div class="ds-accordion__panel"><p>Once, at the purchase.</p></div></details>
+  <details class="ds-accordion__item" name="faq"><summary class="ds-accordion__summary"><span>Can I cancel a purchase?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary><div class="ds-accordion__panel"><p>Until it is confirmed, yes.</p></div></details>
+</div>
+<p class="ds-accordion__none" hidden>No question matches. Try other words.</p><h3>FAQ read from headings</h3><div data-faq-source="h2"><h2>Where do I find my documents?</h2><p>Open Settings, then Documents.</p><h2>How do I change the language?</h2><p>Use the language list in the header.</p></div></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Listbox and FAQ on a phone" data-src="components-5.html?fragment=b4c" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+<div class="stack" data-frag="b4d"><div class="padded desk"><h3>Booking card with the amount paid</h3><article class="ds-card ds-booking" aria-labelledby="bk-1-t">
+  <header class="ds-booking__head">
+    <span class="ds-booking__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-shopping-cart"/></svg></span>
+    <h3 class="ds-booking__title" id="bk-1-t">Purchase agreement</h3>
+    <span class="ds-badge ds-badge--info">Purchase</span>
+  </header>
+  <dl class="ds-booking__facts">
+    <div><dt>Booked</dt><dd>12 Oct 2026</dd></div>
+    <div><dt>Units</dt><dd>4</dd></div>
+    <div><dt>Amount paid</dt><dd>1,200.00</dd></div>
+  </dl>
+  <p class="ds-booking__basis">Basis: a purchase made through the platform, confirmed by you.</p>
+  <ul class="ds-booking__docs">
+    <li class="ds-row ds-docrow">
+      <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+      <span class="ds-row__body"><button type="button" class="ds-button ds-button--ghost" data-size="sm" disabled>View agreement</button></span>
+    </li>
+    <li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true">
+      <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-signature"/></svg></span>
+      <span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span>
+    </li>
+  </ul>
+</article></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Booking card on a phone" data-src="components-5.html?fragment=b4d" height="700"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></div></section>
+
+<footer class="end"><div class="wrap">Sample data throughout.</div></footer>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var frag = qs.get('fragment');
+  if (frag) {
+    var el = document.querySelector('[data-frag="' + frag + '"]');
+    var clone = el ? el.cloneNode(true) : null;
+    Array.prototype.slice.call(document.body.children).forEach(function (c) { if (c.tagName !== 'SCRIPT') c.remove(); });
+    if (clone) { document.body.insertBefore(clone, document.body.firstChild); }
+  } else {
+    document.querySelectorAll('iframe[data-src]').forEach(function (f) { f.src = f.getAttribute('data-src'); });
+  }
+  if (qs.get('theme')) document.documentElement.setAttribute('data-theme', qs.get('theme'));
+  fetch('../components/icons/icons.svg').then(function (r) { return r.text(); }).then(function (t) {
+    document.body.insertAdjacentHTML('afterbegin', t);
+  });
+  /* sample photos: flat grounds, white, mid-grey and black, so the text on the photo is measured against the three that bracket any photo */
+  var grounds = { white: '#ffffff', grey: '#808080', black: '#000000' };
+  document.querySelectorAll('img[data-photo]').forEach(function (i) {
+    var c = grounds[i.getAttribute('data-photo')] || grounds.grey;
+    var cv = document.createElement('canvas'); cv.width = 4; cv.height = 3;
+    var cx = cv.getContext('2d'); cx.fillStyle = c; cx.fillRect(0, 0, 4, 3);
+    i.src = cv.toDataURL();
+  });
+  function frames() { return Array.prototype.slice.call(document.querySelectorAll('iframe[data-src]')); }
+  function press(attr, val) { document.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+  function applyTo(doc, theme, dir) { try { doc.documentElement.setAttribute('data-theme', theme); doc.documentElement.setAttribute('dir', dir); } catch (e) {} }
+  var state = { theme: document.documentElement.getAttribute('data-theme') || 'light', dir: 'ltr' };
+  function apply() {
+    applyTo(document, state.theme, state.dir);
+    frames().forEach(function (f) { if (f.contentDocument) applyTo(f.contentDocument, state.theme, state.dir); });
+    press('data-theme-set', state.theme); press('data-dir-set', state.dir);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-theme-set]'); if (t) { state.theme = t.getAttribute('data-theme-set'); apply(); }
+    var d = e.target.closest('[data-dir-set]'); if (d) { state.dir = d.getAttribute('data-dir-set'); apply(); }
+  });
+  frames().forEach(function (f) { f.addEventListener('load', apply); });
+})();
+</script>
+<script src="../components/components.js"></script>
+</body>
+</html>

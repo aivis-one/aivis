@@ -24,3 +24,6 @@
 <li class="ds-schedule__item" aria-current="step"><div class="ds-schedule__head"><span class="ds-schedule__num">Address checked</span><span class="ds-badge ds-badge--info">Current</span></div></li>
 <li class="ds-schedule__item"><div class="ds-schedule__head"><span class="ds-schedule__num">Approved</span><span class="ds-badge">Upcoming</span></div></li>
 </ol>
+
+<!-- K32 addition: step dots. ol.ds-dots of li.ds-dots__dot; the current one carries aria-current="step" and is wider (shape, not only colour). Say the position in words as well: the list has an aria-label ("Step 2 of 4") and a visible p.ds-dots__text may repeat it. -->
+<ol class="ds-dots" aria-label="Step 2 of 4"><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol>

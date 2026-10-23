@@ -1,0 +1,14 @@
+<!-- AIVIS Empty state (K48): nothing here yet, or a load that failed. An icon at --icon-size-xl, a title, a description capped at --maxw-prose and an actions slot (Retry, Create).
+     data-tone="danger" tints the icon for a failed load and the block takes role="alert" then; the title and the text say it in words. .ds-empty--framed draws a dashed frame (inside a page that has no card around it). -->
+<div class="ds-empty">
+  <span class="ds-empty__icon"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></span>
+  <h3 class="ds-empty__title">No documents yet</h3>
+  <p class="ds-empty__text">Documents appear here after your first purchase.</p>
+  <div class="ds-empty__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/store">Open the store</a></div>
+</div>
+<div class="ds-empty ds-empty--framed" data-tone="danger" role="alert">
+  <span class="ds-empty__icon"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span>
+  <h3 class="ds-empty__title">The list did not load</h3>
+  <p class="ds-empty__text">Check the connection and try again.</p>
+  <div class="ds-empty__actions"><button type="button" class="ds-button" data-size="sm"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-refresh-cw"/></svg><span>Retry</span></button></div>
+</div>

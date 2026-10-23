@@ -1,0 +1,9 @@
+<!-- AIVIS Copyable value (K53): a value that wraps anywhere (a referral code, a link, a transaction hash, a two-factor secret) with a copy button. The value is a left-to-right island in the mono face and selects whole on a click.
+     The button is a ghost icon button with data-copy-target (the id of the value), data-msg-copied and data-msg-failed; components.js copies it, switches the icon to a check, writes the polite status line and puts the button back after three seconds. -->
+<div class="ds-copy">
+  <div class="ds-copy__box">
+    <p class="ds-copy__value" id="cv-code">AIVIS-7K2Q-91XD</p>
+    <button type="button" class="ds-button ds-button--ghost ds-button--icon ds-copy__button" data-size="sm" data-copy-target="cv-code" data-msg-copied="Copied" data-msg-failed="Copy failed. Select the text and copy it." aria-label="Copy the code"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-copy"/></svg></button>
+  </div>
+  <p class="ds-copy__status" role="status" aria-live="polite"></p>
+</div>

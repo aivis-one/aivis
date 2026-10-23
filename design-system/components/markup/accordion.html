@@ -11,3 +11,13 @@
     <div class="ds-accordion__panel"><p>Until it is confirmed, yes. After that, write to support.</p></div>
   </details>
 </div>
+
+<!-- K27 addition: the FAQ. An accordion with a search above it and a line for "nothing matches"; one item open at a time is the shared name attribute above, already part of the component.
+     The search is input.ds-input[type=search][data-faq-search][aria-controls="the id of the .ds-accordion"]; components.js hides the items whose text does not contain the typed words and shows p.ds-accordion__none when none is left.
+     A list read from the headings of a document: a container with data-faq-source="h2" (the heading level) is replaced by the built accordion, or call AivisDS.faq.fromHeadings(fragment, "h2") for the same list; the source nodes are copied. -->
+<div class="ds-field ds-accordion__search"><label class="ds-field__label" for="faq-q">Search the questions</label><input class="ds-input" id="faq-q" type="search" data-faq-search aria-controls="faq-list"></div>
+<div class="ds-accordion ds-accordion--faq" id="faq-list">
+  <details class="ds-accordion__item" name="faq"><summary class="ds-accordion__summary"><span>How is the fee charged?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary><div class="ds-accordion__panel"><p>Once, at the purchase.</p></div></details>
+  <details class="ds-accordion__item" name="faq"><summary class="ds-accordion__summary"><span>Can I cancel a purchase?</span><svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary><div class="ds-accordion__panel"><p>Until it is confirmed, yes.</p></div></details>
+</div>
+<p class="ds-accordion__none" hidden>No question matches. Try other words.</p>

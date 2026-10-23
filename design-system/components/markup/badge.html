@@ -4,3 +4,9 @@
 <span class="ds-badge ds-badge--warning">Pending</span>
 <span class="ds-badge ds-badge--danger">Rejected</span>
 <span class="ds-badge ds-badge--info">New</span>
+
+<!-- K08 additions. The count on an icon button (ds-badge--count): the danger ground, --on-danger, 3xs mono figures, placed at the top corner of a ghost icon button and ignoring the pointer; the button's aria-label carries the number ("Notifications, 3 unread"), so the badge is aria-hidden. The app caps the figure ("99+").
+     The unread dot (ds-dot, ds-dot--danger): 8 px; it is never alone, a row that has one says "Unread" in text (role="img" and aria-label here). -->
+<button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+<span class="ds-dot" role="img" aria-label="Unread"></span>
+<span class="ds-dot ds-dot--danger" role="img" aria-label="Needs attention"></span>

@@ -17,3 +17,16 @@
     <li role="none"><button type="button" role="menuitem" class="ds-menu__item ds-menu__item--danger" data-value="deactivate" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-ban"/></svg>Deactivate link</button></li>
   </ul>
 </div>
+
+<!-- K26 addition: the single-choice listbox (a language list). The same menu button pattern with button[aria-haspopup="listbox"] and ul[role=listbox] of button[role=option][aria-selected]; the chosen option carries the check icon .ds-menu__tick (not colour alone)
+     and a flag slot .ds-menu__flag may stand first. The same keys as the menu; the list opens on the chosen option. components.js sets aria-selected on a pick, writes .ds-menu__label into .ds-menu__value on the button and emits ds-menu-select (detail.value = data-value).
+     The languages are NOT written in a screen: the app builds the list from the shared setting (reference/conventions.md). The two below are examples. -->
+<div class="ds-menu">
+  <button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="lb-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="lb-list" aria-label="Language">
+    <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-globe"/></svg><span class="ds-menu__value">English</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>
+  </button>
+  <ul class="ds-menu__list" role="listbox" id="lb-list" aria-labelledby="lb-btn" hidden>
+    <li role="none"><button type="button" role="option" class="ds-menu__item" aria-selected="true" data-value="en" tabindex="-1"><span class="ds-menu__label">English</span><svg class="ds-icon ds-menu__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></button></li>
+    <li role="none"><button type="button" role="option" class="ds-menu__item" aria-selected="false" data-value="ru" tabindex="-1"><span class="ds-menu__label">Russian</span><svg class="ds-icon ds-menu__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></button></li>
+  </ul>
+</div>

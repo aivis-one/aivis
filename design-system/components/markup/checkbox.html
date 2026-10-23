@@ -1,0 +1,19 @@
+<!-- AIVIS Checkbox (K45): a tick, never a switch. Use it for an agreement ("it is like a signature"), a consent, a permission, a choice confirmed by Save; a setting that applies at once is a Toggle (K06).
+     label.ds-checkbox holds the native input.ds-checkbox__input[type=checkbox], span.ds-checkbox__box (the tick, an icon of the set) and span.ds-checkbox__text. The text may hold links: a link opens its page and does not toggle the box.
+     States: unchecked, hover (the border takes --border-input-hover), pressed, checked (--primary), focus (the outline outside the box), invalid (aria-invalid="true" with a message under it), disabled.
+     A group of boxes is a fieldset.ds-fieldset with a legend. The strings come from the translation tables; the English strings are examples. -->
+<label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="agree" required>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">I have read the <a href="/terms">purchase terms</a> and the <a href="/privacy">privacy policy</a> and I agree to them.</span>
+</label>
+<label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="digest" checked>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">Send me the weekly digest<span class="ds-checkbox__hint">One message on Monday.</span></span>
+</label>
+<label class="ds-checkbox">
+  <input class="ds-checkbox__input" type="checkbox" name="locked" disabled>
+  <span class="ds-checkbox__box"><svg class="ds-icon ds-checkbox__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span>
+  <span class="ds-checkbox__text">Not available for this account</span>
+</label>

@@ -1,6 +1,6 @@
 > WHAT THIS IS:  the components of batches 1, 2, 3 and 4 of the AIVIS design system: what each is for, how to choose and use it, its states, its tokens and its accessibility contract.
 > FOR WHOM:      an agent or a person with no memory of earlier work, building a screen or a component.
-> WHEN:          before using or changing Button, Text field, Radio, Toggle, Card, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Reorder list, Payout form, Auth shell, Action menu, Stepper, Document viewer, Document row, Booking card, Invoice and QR block or Bar chart.
+> WHEN:          before using or changing Button, Text field, Radio, Toggle, Checkbox, Card, Stat tile, Hero, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Key-value list, Empty state, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Avatar, Chat thread, Reorder list, Payout form, Auth shell, Action menu, Stepper, Dialog, Document viewer, Document row, Booking card, Copyable value, Invoice and QR block, Timeline or Bar chart.
 > WHO WRITES:    the maintainers of the AIVIS design system.
 
 # components, batch 1
@@ -56,9 +56,13 @@ Markup: `markup/text-field.html`. A field is `.ds-field` (label, control, hint, 
 
 `.ds-card` is outlined; `--flat` (card ground), `--elevated` (`--shadow-1`), `--interactive` (the title holds the single `a.ds-card__link`). `data-size` sm, md, lg sets the padding. Slots: `.ds-card__head`, `.ds-card__title`, `.ds-card__body`, `.ds-card__foot`. The tick is not part of the card (`../elements/README.md` places it, and not on a form, an alert or a single summary card). Markup: `markup/card.html`.
 
+Additions. The brand card `ds-card--brand` is a summary on the primary colour: a gradient from `--primary` to `--primary-hover`, the title and figures in `--on-primary`, the quiet text (`.ds-card__label`, the body) in `--on-primary-muted`, a Button inside with the `--on-primary` border; a figure on it takes `--on-primary` with its sign written in the text, never `--success` or `--danger` (1.35 and 1.08 on the day primary). Parts for a figure: `.ds-card__label`, `.ds-card__figure` (mono), `.ds-card__delta`. The media card `ds-card--media` has a cover on top: `.ds-card__media` (an `img` that covers; `--fallback` with a centred icon on `--bg-subtle`; `data-size="sm|lg"` changes its height), `.ds-card__tag` (a chip on the photo, on `--scrim-strong`) and `.ds-card__content` (the padded body). Markup: `markup/card.html`.
+
 ## K08 Badge
 
 A status label with text, one size, radius `--radius-sm`. Variants: neutral (no modifier), `success`, `warning`, `danger`, `info`; no accent badge (its colours equal the warning badge's), a mark such as "Public" takes the neutral badge; one size and the subtle style only (the owner's answer of 2026-10-17). Each uses the status subtle ground with its subtle text; amber and grey text are never set on the card ground, which this pairing respects. Markup: `markup/badge.html`.
+
+Additions. The count on an icon button `ds-badge--count` (the danger ground, `--on-danger`, 3xs mono figures) sits at the top corner of a `.ds-button--icon`, ignores the pointer and is `aria-hidden`: the button's `aria-label` carries the number, and the app caps it ("99+"). The unread dot `ds-dot` (`ds-dot--danger`) is 8 px and is never alone: a row that has one says "Unread" in text. Markup: `markup/badge.html`.
 
 ## K09 Alert
 
@@ -71,6 +75,18 @@ A status label with text, one size, radius `--radius-sm`. Variants: neutral (no 
 ## K13 Filter chip
 
 `button.ds-chip[aria-pressed]` holding the `check` icon (`.ds-chip__check`, shown when pressed), the label and an optional `.ds-chip__count`; `.ds-chip-row` lays a group out and carries `role="group"` with an `aria-label`. The border is `--border-input`. Removable: `span.ds-chip.ds-chip--removable` with `button.ds-chip__remove` and its own `aria-label`. Markup: `markup/filter-chip.html`.
+
+## K45 Checkbox
+
+`label.ds-checkbox` holds `input.ds-checkbox__input[type=checkbox]`, `span.ds-checkbox__box` (the tick, an icon of the set) and `span.ds-checkbox__text`, which may hold links and a `.ds-checkbox__hint` line. A tick for an agreement ("it is like a signature"), a consent, a permission, or a choice confirmed by Save; a setting that applies at once is the Toggle (K06). States: unchecked, hover (the border takes `--border-input-hover`), pressed, checked (`--primary`, the tick in `--on-primary`), focus (the outline outside the box), invalid (`aria-invalid`), disabled. A link in the text opens its page and does not toggle the box. Markup: `markup/checkbox.html`.
+
+## K46 Stat tile
+
+`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one link in the label. `.ds-stats` lays tiles out two across on a phone and as many as fit above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
+
+## K47 Hero
+
+`section.ds-hero` is a cover with the title over the photo: `.ds-hero__image` (or `.ds-hero__fallback` with a centred icon), `.ds-hero__tag` (a chip on the photo) and `.ds-hero__content` (the title and a meta line). All text is `--text-on-scrim` over `--scrim-strong`: 7.63 over a white photo, 13.81 over a mid-grey one and 20.17 over a black one, in both themes, because a photo does not turn dark at night (`../tokens/contrast.json`). The flat `--scrim` does not reach 4.5 over a bright photo and is not used under text. Heights: the default `--center-lg`, `data-size="sm"` `--center-md`. Markup: `markup/hero.html`.
 
 ## Kit fixes
 
@@ -116,6 +132,23 @@ Markup: `markup/app-shell.html`. `.ds-shell` is a grid of `.ds-header` (a `heade
 
 The rail width has no token: it is composed from `--size-4xl` and `--space-4` (72, the kit's rail) and `--size-4xl` times four plus `--space-2` (232, the kit's labelled rail), kept as two custom properties on `.ds-shell`.
 
+Additions, all parts of the same shell (`markup/app-shell.html`).
+
+| Part | Rule |
+|---|---|
+| banner | `div.ds-shell__banner`, the first child of `.ds-shell`: one line above the header in the look of the warning Alert (K09), kept at the top while the page scrolls; the header and the rail list stand below it. The staff-acting-as-a-user banner is this part, with its Exit action (`.ds-shell__banner-action`) |
+| leading slot | `.ds-header__lead` before the title: the back control, a ghost icon button with `aria-label` |
+| figure | `.ds-header__figure` in `.ds-header__actions`: a 3xs label (`__figure-label`) over a mono amount (`__figure-amount`), a link or a button, `--touch-min` high, the border and the amount take `--primary` on hover; the bell's count is the Badge count (K08) |
+| menu mark | `li.ds-nav__brand` at the head of `ul.ds-nav__list`: the colour mark of `../brand/` (`--size-sm`), shown with the rails from 880 and never on the tab bar |
+| measure | the main region is `--maxw` wide and centred (the least padding is the gutter); `data-measure="wide"` gives `--maxw-wide` for the staff tables and lists |
+| lead line | `p.ds-shell__lead`, the first element of main: `--fs-sm`, `--text-secondary`, at most `--maxw-prose` wide |
+| toolbar | `div.ds-shell__toolbar`: `.ds-shell__filters` at the start, one `.ds-shell__primary` at the end (full width on a phone) |
+| action strip | `div.ds-shell__action`, the last element of main: the screen's one primary action, sticky above the tab bar on a phone (the bar height and the safe-area inset from `--space-safe-bottom`), in the flow from 880 |
+| sub-navigation | `nav.ds-subnav > ul.ds-subnav__list > li > a.ds-subnav__link[aria-current="page"]`: links between the child screens of a hub in the Tabs look (K12), scrolling sideways on a phone, sticky under the header; it is navigation, so the links are not `role="tab"` |
+| nav-less | `ds-shell--navless`: header and main only, no nav element (the public storefront) |
+
+The layers are the `--z-*` tokens (`../tokens/tokens.md`): the header `--z-header`, the bars `--z-sticky`, the banner `--z-banner`.
+
 ## K15 Tooltip
 
 Markup: `markup/tooltip.html`. `span.ds-tooltip-anchor` holds the trigger (`button.ds-tooltip-trigger`, usually `.ds-button--ghost.ds-button--icon` with the `info` icon and an `aria-label`) and `span.ds-tooltip[role=tooltip][id]`; the trigger carries `aria-describedby` naming it. It opens on hover, on focus and, on a phone, by a tap. A tooltip is one short sentence of text; a link, a button or a field makes it a popover, which this batch does not have.
@@ -143,6 +176,8 @@ Markup: `markup/skeleton.html`. `.ds-skeleton` with `--text`, `--title`, `--avat
 
 Markup: `markup/row-list.html`. `ul.ds-rows` of `li.ds-row`: `.ds-row__lead` (an icon box), `.ds-row__body` (`.ds-row__title`, `.ds-row__meta`), `.ds-row__trail` (`.ds-row__value`, a badge, the chevron). A row that opens a screen holds ONE `a.ds-row__link` on its title; its `::after` stretches the hit area over the whole row, so the row and not the anchor is the touch target, and the focus outline is drawn around the row. A row with no link is plain; `aria-disabled="true"` on the `li` dims one that cannot be opened. Title `--text-primary`, meta `--text-tertiary` on the white `--bg-surface` of the row only (decided by the owner, 2026-10-17; a row never takes a fill), figures mono and tabular. States: rest, hover (`--border-default`), pressed (`--border-input-hover`), focus, disabled. 48 high, `--touch-min` at the 480 width and below. No tick: a list of rows is not a list of cards. Use a table (K24) when the reader compares columns.
 
+Addition. The tone of the lead icon: `data-tone="success|warning|danger|accent|neutral"` on `.ds-row__lead` (the primary tint without it); `span.ds-lead` is the same box outside a row. The tone is a second sign: the title and meta of the row say the same in words. Markup: `markup/row-list.html`.
+
 ## K24 Table
 
 Markup: `markup/table.html`. `.ds-table-wrap` (a `role="region"` named by the caption, `tabindex="0"`, scrolls sideways) around `table.ds-table`: `caption.ds-table__caption` (visible), `th scope="col"`, the first cell of a row `th scope="row"`, numbers `.ds-table__num` (end-aligned, mono). A link in a cell is `a.ds-table__link`. States: rest, row hover (`--bg-subtle`), link rest, hover and focus, disabled row (`aria-disabled="true"` on the `tr`), focus of the scroll region. The header is `--text-secondary` on `--bg-subtle` (the card ground, where secondary stands).
@@ -152,6 +187,8 @@ On a phone (the 480 width and below) the table collapses to rows (decided by the
 ## K27 Accordion
 
 Markup: `markup/accordion.html`. Native `details.ds-accordion__item` with `summary.ds-accordion__summary` (the title and the `chevron-down` icon `.ds-accordion__chev`) and `div.ds-accordion__panel`; no script. The summary is the button: Enter and Space toggle it; the browser announces the open state. The chevron turns 180 degrees when open, as the site FAQ does (`landing/site/assets/site.css` lines 150 to 167, of which this is the port, with the chevron in `--icon-secondary`). The same `name` on the `details` lets one open at a time. States: closed, hover (`--bg-subtle`), pressed (`--bg-inset`), focus, expanded (`--shadow-1`). The summary is `--touch-comfortable` high. Do not hide what a reader must see to act, and do not nest one in another.
+
+Addition, the FAQ (`ds-accordion--faq`). One item open at a time is the shared `name` attribute the component already has. A search sits above the list: `input.ds-input[type=search][data-faq-search][aria-controls]` names the accordion's id; `components.js` hides the items whose text does not contain the typed words (`hidden`) and shows `p.ds-accordion__none` when none is left. A list read from the headings of a document: a container with `data-faq-source="h2"` is replaced by the built accordion, or `AivisDS.faq.fromHeadings(fragment, "h2")` returns it; the source nodes are copied. Markup: `markup/accordion.html`.
 
 ## K31 Segmented control
 
@@ -164,6 +201,14 @@ The look (decided by the owner, 2026-10-17) is a track on `--bg-subtle` with an 
 Markup: `markup/nav-tile.html`. `.ds-navtiles` (a grid) of `a.ds-navtile`: `.ds-navtile__icon` (an icon box), `.ds-navtile__text` (`.ds-navtile__title`, `.ds-navtile__desc`), an optional `.ds-navtile__badge` (a badge, in the row before the chevron) and `.ds-navtile__go` (the chevron at the end). The whole tile is one anchor; one that cannot be opened has `aria-disabled="true"` and no `href`. States: rest, hover (`--border-default`, `--shadow-2`), pressed (`--bg-inset`), focus, disabled. At least `--touch-min` high. Title `--text-primary`, description `--text-secondary`. Use a row list (K23) when each destination carries a value or a status. No tick.
 
 The tile is wide (decided by the owner, 2026-10-17): the icon at the start, the title and one line of text, the chevron at the end, one column on a phone (the grid takes columns of `--tile-max` and wraps).
+
+## K48 Empty state
+
+`div.ds-empty`: an icon (`.ds-empty__icon`, `--icon-size-xl`), a title (`.ds-empty__title`), a description (`.ds-empty__text`, at most `--maxw-prose` wide) and an actions slot (`.ds-empty__actions`: Retry, Create). `data-tone="danger"` tints the icon for a failed load and the block takes `role="alert"`; `ds-empty--framed` draws a dashed frame. It is not a message in context (Alert, K09) and not a loading state (Skeleton, K19). Markup: `markup/empty-state.html`.
+
+## K49 Key-value list
+
+`dl.ds-kv` of `div.ds-kv__row` each holding a `dt` (the term, at the start) and a `dd` (the value, at the end, mono and tabular). `ds-kv__row--total` closes a breakdown with a rule above and the bolder pair; `ds-kv--stacked` puts the term over the value for a narrow column. The Booking card (KN1) and the Invoice block (K43) keep their own facts lists. Markup: `markup/key-value.html`.
 
 ## Tokens used, batch 2
 
@@ -187,6 +232,8 @@ Markup: `markup/otp-input.html`. `div.ds-field.ds-otp[role=group]` named by a vi
 
 Markup: `markup/date-picker.html`. The browser's own date input, drawn as a Text field: `.ds-field` with a visible label, `input.ds-input[type=date]` (the mono family for the figures, `color-scheme` following the theme, so the browser's picker is dark by night), the allowed period as `min` and `max` and written in the hint (`aria-describedby`), an invalid value with `aria-invalid="true"` and a message with an icon and text. The picker that opens and its keys are the browser's. States: rest, hover, focus, filled, invalid, disabled, read-only (those of K03). A period is two inputs; the screen sets the second's `min` from the first. The component has no script.
 
+Addition. The time input is drawn the same way: `.ds-input[type="time"]` in the mono face with tabular figures, and the browser's picker follows the theme. Markup: `markup/date-picker.html`.
+
 ## K30 File input
 
 Markup: `markup/file-input.html`. `.ds-field.ds-file` holds the visible label, the control (`label.ds-button.ds-button--secondary.ds-file__pick` around the real `input.ds-file__input[type=file]`), the hint with the limits as text (JPG or PNG, up to 8 MB: never only in `accept`) and `ul.ds-file__list`. The page fills `data-accept`, `data-max-size` (bytes) and the messages (`data-msg-type`, `data-msg-size` with `{name}` and `{max}`, `data-msg-ready`, `data-msg-done`, `data-label-remove` with `{name}`). A file that fails the type or the size check is listed as an error item whose message is a `role="alert"` paragraph with an icon. An item (`li.ds-file__item[data-state]`: selected, uploading, done, error) has a thumb (a local preview for an image, an icon otherwise), the name, a status line (size and state, `--text-tertiary` on the white item), a remove button named "Remove <name>", and for uploading a Progress (`role=progressbar` named by the file) set through `AivisDS.file.progress(item, pct)`, `.done(item)` and `.fail(item, message)`. A field without `multiple` keeps one file. States: rest, hover, focus, selected, uploading, done, error, disabled (`data-disabled`). The item takes the Row list's look.
@@ -207,13 +254,21 @@ Markup: `markup/payout-form.html`. `form.ds-payout` named by its heading, with a
 
 Markup: `markup/auth-shell.html`. `.ds-auth` is a column of `header.ds-auth__header` (the logo at the start, `.ds-auth__controls` at the end: the language and theme ghost icon buttons) and `main.ds-auth__main` holding `.ds-auth__panel`: an optional `.ds-auth__icon`, one `h1.ds-auth__title`, `p.ds-auth__subtitle`, `form.ds-auth__form`, `.ds-auth__foot` with links. The panel is a surface panel: `--bg-surface` (white by day, the night surface) with a `--border-subtle` border and `--radius-card`, over the page ground (`--bg-page`), its content at most `--maxw-form` wide; on it the input border measures 3.03 by day and 3.01 by night. Text on the panel is `--text-primary`, `--text-secondary`, `--primary` and `--danger`. Phone rules: gutter `--space-gutter-mobile`, the header padded by the safe-area insets, every link and control at least `--touch-min` high. On a phone the panel starts from the top, on every auth screen; at desktop widths it is centred. The logo: the colour mark `../brand/aivis-mark.svg` as an image, `--size-sm` square and unchanged, then the wordmark of `../brand/aivis-wordmark.svg` inline in `currentColor` (`--text-primary`), half that height, `--space-3` apart, so the lettering follows the theme; the stacked lockup image is not used in the shell because its lettering has no fill and goes dark at night. The pair is one `role=img` named "AIVIS.ONE".
 
+## K50 Avatar
+
+`.ds-avatar`: a disc with the initials in `--on-primary` on `--primary`, or an `img` that covers; `ds-avatar--subtle` is the quiet disc (`--primary-subtle`). Sizes `data-size`: `sm` 32, the default 40, `lg` 56 (`--size-md`, `--size-xl`, `--size-4xl`). A photo carries alt text naming the person or the company; initials are a `span` with `role="img"` and `aria-label`, or `aria-hidden` when the name stands beside the disc. The combobox (K38) keeps its own 32 px disc as its slot. Markup: `markup/avatar.html`.
+
+## K51 Chat thread and composer
+
+`section.ds-thread` is a column: `ul.ds-thread__feed` (`role="log"`, `aria-live="polite"`, `tabindex="0"`; it scrolls) and `form.ds-composer` under it (a labelled textarea in `.ds-composer__input` and a Button). `li.ds-message[data-from="own|other"]` holds the bubble on `--primary-subtle` (own) or `--bg-subtle` (other), an author line for staff views, the time in the mono face; `.ds-thread__day` names a day. The screen gives the thread its height; an empty thread is an Empty state (K48). Markup: `markup/chat-thread.html`.
+
 ## Tokens used, batch 3
 
 Every value is a token (`components.json` lists them per component). No token was added. The literal numbers of the batch 3 css, besides those already listed above for batches 1 and 2: `100dvh` on the auth shell (as the app shell); `1 / -1` grid lines; the disabled `0.55` opacity again; the hidden file input's `opacity: 0` and `clip-path: inset(50%)`; halves and doubles of tokens (`/ 2`, `* 2`); the keyword `thin`; one more `@media (max-width: 480px)`. Needed and not present as tokens: none.
 
 # components, batch 4
 
-Batch 4 adds K26 Action menu, K32 Stepper and schedule list, K36 Document sheet and viewer, K44 Document row with download, K43 Invoice and QR block, the Booking card (its id KN1 is a placeholder) and K37 Bar chart with a text alternative to the same files: `components.css` (after its batch 4 banner), `components.js` (the batch 4 block at its end), `components.json` (one entry each, the same schema), `markup/<name>.html` (`action-menu`, `stepper`, `document-viewer`, `document-row`, `booking-card`, `invoice-qr`, `bar-chart`) and `../examples/components-4.html` (every component in use on cabinet-like fragments, every state, day and night, left-to-right and right-to-left, desktop and the 480 phone frame). Everything under "Use" for batch 1 holds. The behaviour is in `components.js` by delegation: no network, no storage; every text it shows comes from `data-*` attributes the page fills from the translation tables. Events: `ds-menu-select`, `ds-menu-open`, `ds-menu-close`, `ds-docviewer-open`, `ds-docviewer-close`, `ds-docrow-download`, `ds-copy`; the app listens, nothing here acts, submits or uploads. The document, the booking card and the invoice block carry no price and no payment term as written content (decided by the owner, 2026-10-14); every figure on the page is plainly sample data.
+Batch 4 adds K26 Action menu, K32 Stepper and schedule list, K36 Document sheet and viewer, K44 Document row with download, K43 Invoice and QR block, the Booking card (its id KN1 is a placeholder) and K37 Bar chart with a text alternative to the same files: `components.css` (after its batch 4 banner), `components.js` (the batch 4 block at its end), `components.json` (one entry each, the same schema), `markup/<name>.html` (`action-menu`, `stepper`, `document-viewer`, `document-row`, `booking-card`, `invoice-qr`, `bar-chart`) and `../examples/components-4.html` (every component in use on cabinet-like fragments, every state, day and night, left-to-right and right-to-left, desktop and the 480 phone frame). Everything under "Use" for batch 1 holds. The behaviour is in `components.js` by delegation: no network, no storage; every text it shows comes from `data-*` attributes the page fills from the translation tables. Events: `ds-menu-select`, `ds-menu-open`, `ds-menu-close`, `ds-docviewer-open`, `ds-docviewer-close`, `ds-docrow-download`, `ds-copy`; the app listens, nothing here acts, submits or uploads. The booking card carries the amount paid and never the price of a part or a payment term (decided by the owner, 2026-10-23); the document and the invoice block carry no price and no payment term as written content (decided by the owner, 2026-10-14); every figure on the page is plainly sample data.
 
 The owner's decisions of 2026-10-18 are built in: the veil behind the document dialog is the token `--scrim`; in-page document text follows the theme; the months of the bar chart follow the reading direction; the QR pad and the frame of a sandboxed document are the token `--paper`, white in both themes; the stepper sample is Submitted, Reviewed, Signed.
 
@@ -230,6 +285,8 @@ Markup: `markup/action-menu.html`. The menu button pattern: `div.ds-menu` holds 
 
 Look: no AIVIS source holds an action menu (map K26 MISSING; the cabinet's language picker is a listbox), so it is built from the system's own parts: the surface, border, radius and shadow of the combobox list and the hover tint of the Row list.
 
+Addition, the single-choice listbox. The same menu button pattern with `button[aria-haspopup="listbox"]` and `ul[role="listbox"]` of `button[role="option"][aria-selected]`; the chosen option carries the check `.ds-menu__tick` and the tint (never colour alone), a flag slot `.ds-menu__flag` may stand first, and `components.js` sets `aria-selected` on a pick, writes the option's `.ds-menu__label` into the button's `.ds-menu__value` and emits `ds-menu-select`. The list opens on the chosen option. The languages come from the shared setting, never from a list written in a screen. Markup: `markup/action-menu.html`.
+
 ## K32 Stepper and schedule list
 
 Markup: `markup/stepper.html`. `ol.ds-stepper` of `li.ds-step[data-state=done|current|upcoming|problem]`; the step in progress also has `aria-current="step"`. A marker holds a check (done), a triangle (problem) or the number, and `.ds-step__meta` says the state in words, so a state is never colour alone; the marker is `aria-hidden`. `data-orientation="horizontal"` lays the steps in a row from 640 up, below it they stack. The connector is decoration (`--border-default`, `--success` after a done step). The schedule list is `ol.ds-schedule` of `li.ds-schedule__item`: a title (`.ds-schedule__num`), a Badge with the state in words, and optionally a `dl` of stats and a foot line that the screen fills; `aria-current="step"` marks the current item, `data-status="problem"` tints an item that needs attention (`--danger-subtle`, a `--danger` border).
@@ -242,6 +299,8 @@ Markup: `markup/stepper.html`. `ol.ds-stepper` of `li.ds-step[data-state=done|cu
 | states | done, current, upcoming, problem; schedule: done, current, upcoming, problem |
 
 Look: the schedule is bordered rows with status badges; the stepper's vocabulary is the Badge and Progress one: success, primary, danger.
+
+Addition, step dots: `ol.ds-dots` of `li.ds-dots__dot`; the current one carries `aria-current="step"` and is wider (shape, not only colour); the list's `aria-label` says "Step 2 of 4" and a visible `.ds-dots__text` may repeat it. Markup: `markup/stepper.html`.
 
 ## K36 Document sheet and viewer
 
@@ -272,7 +331,7 @@ Look: an icon box, a title, the description, the file name and size and a downlo
 
 ## The Booking card (KN1)
 
-Markup: `markup/booking-card.html`. A Card (`article.ds-card.ds-booking`, named by its heading): `header.ds-booking__head` (an icon box by basis, the title, a Badge with the basis in words), `dl.ds-booking__facts` (booked date, units), `p.ds-booking__basis` (the basis in plain words), and `ul.ds-booking__docs`: a row with the "View agreement" button that opens K36, and a K44 row for the signed PDF, or the unavailable row. It carries no price and no payment term (decided by the owner, 2026-10-14). The kind is a Badge: purchase, `info` or neutral (the gift is a second kind the app names). Look: a purchase row (an icon by basis, the kind, the date, the units, a view button) on the Card; states: rest, PDF available, PDF not uploaded.
+Markup: `markup/booking-card.html`. A Card (`article.ds-card.ds-booking`, named by its heading): `header.ds-booking__head` (an icon box by basis, the title, a Badge with the basis in words), `dl.ds-booking__facts` (booked date, units), `p.ds-booking__basis` (the basis in plain words), and `ul.ds-booking__docs`: a row with the "View agreement" button that opens K36, and a K44 row for the signed PDF, or the unavailable row. It carries the amount paid for the purchase, as the app gives it (a fact in the `dl`), and never the price of a part or a payment term (decided by the owner, 2026-10-23, correcting the rule of 2026-10-14). The kind is a Badge: purchase, `info` or neutral (the gift is a second kind the app names). Look: a purchase row (an icon by basis, the kind, the date, the units, the amount paid, a view button) on the Card; states: rest, PDF available, PDF not uploaded.
 
 ## K43 Invoice and QR block
 
@@ -280,12 +339,26 @@ Markup: `markup/invoice-qr.html`. `section.ds-invoice[data-state=open|expired|un
 
 The QR and the address are left-to-right islands (`direction: ltr`) and the QR pad is `--paper` (white in both themes), because a camera scanner needs dark on white. Text never stands on the white pad: the note and the status sit on the page or card ground. The states are open, copy hover, pressed and focus, copied, copy failed, expired, QR unavailable, disabled copy.
 
+The copy script is shared with the Copyable value (K53): the same button serves a block that has `.ds-invoice` or `.ds-copy` around it.
+
 ## K37 Bar chart with a text alternative
 
 Markup: `markup/bar-chart.html`. `figure.ds-barchart`: a head (the title and a range line), `div.ds-barchart__plot` holding `svg.ds-barchart__svg[role=img][aria-labelledby]` (the title and the range line) of `rect.ds-barchart__bar` in a `viewBox` of N columns by 100 rows with `preserveAspectRatio="none"`, three `line.ds-barchart__grid`, and `ul.ds-barchart__labels` (`aria-hidden`: the table names the months), then `details.ds-barchart__alt[open]` with the data table (`th scope`, a named region): the text alternative. The svg holds no text. The height of a bar is value over the maximum times 100, a value above zero at least one row; the highest bar takes `data-peak` (a darker fill and a `--text-primary` outline; both are only a shade apart from a plain bar, 1.73 and 1.24 by day, so the peak is carried in words by the range line and the table, never by the bar alone). One series in `--primary` on `--bg-surface`; a second series is not built. Empty data shows `.ds-barchart__empty`. Look: a framed surface plot, primary bars, 3xs uppercase month labels, the plot `--center-lg` (320) high; the values are carried by the table, not by `title` tooltips; because the svg is stretched the bar corners are square.
 
 The months follow the reading direction, as the cabinet's flex row does: the label list follows the page direction by its grid, and in a right-to-left page the svg is drawn turned end for end (`scale: -1 1` under `:dir(rtl)`; the svg holds no text), so the first bar stands under the first label.
 
+## K52 Dialog
+
+`div.ds-dialog[hidden]` holds `div.ds-dialog__panel[role="dialog|alertdialog"][aria-modal="true"][aria-labelledby][tabindex="-1"]` with a head (`.ds-dialog__title` and a ghost icon close button), a body (`.ds-dialog__body`: any content, a form) and an actions row (`.ds-dialog__actions`: a secondary Cancel and the confirm; a destructive confirm is a danger Button). It is a sheet from the bottom on a phone, capped at `--maxw-prose`; `data-variant="modal"` centres it, capped at `--maxw-form-wide`. `components.js`: `[data-dialog-open="id"]` opens it and moves the focus in, Tab stays inside, Escape and the scrim close it (`data-lock="true"` keeps the scrim from closing it), the focus returns to what opened it; events `ds-dialog-open` and `ds-dialog-close`. The document sheet (K36) keeps its framed body for a document. Markup: `markup/dialog.html`.
+
+## K53 Copyable value
+
+`div.ds-copy` holds `div.ds-copy__box` (`p.ds-copy__value`, mono, wraps anywhere, a left-to-right island that selects whole, and a ghost icon button `.ds-copy__button` with `data-copy-target`) and `p.ds-copy__status` (`role="status"`, polite). The script is the invoice block's: it copies, switches the icon to a check for three seconds, writes `data-msg-copied` or `data-msg-failed` into the status, with a selection copy as the fallback. Markup: `markup/copyable-value.html`.
+
+## K54 Timeline
+
+`ol.ds-timeline` of `li.ds-timeline__item[data-state="done|current|upcoming"]`: a marker (decorative), a connector to the next item and an entry as a card, `div.ds-timeline__card` (`.ds-timeline__head` with the date, the title and a Badge for the kind) or, when it opens, `details.ds-timeline__card` with `summary.ds-timeline__head` (the same parts and a chevron) and `div.ds-timeline__body`. The state is said by the Badge or the title, not by the marker alone. Progress through a flow is the Stepper (K32). Markup: `markup/timeline.html`.
+
 ## Tokens used, batch 4
 
-Every value is a token (`components.json` lists them per component, equal to the tokens the rules of that component use). Two tokens were added with this batch: `--scrim` and `--paper` (`../tokens/tokens.md`). The literal numbers of the batch 4 css, besides those listed above for batches 1 to 3: `max-width: 480px` and `min-width: 640px` (`--bp-md`, a media query writes the number); `90dvh` on the viewer dialog (as the shell's `100dvh`); the opacities 0.55 (disabled, again), 0.45 and 1 (the downloading pulse) and 1 (the unavailable document row, which keeps full opacity over the Row list's 0.55); `z-index` 40 (the menu list) and 60 (the viewer); `line-height: 1` on the step marker; `rotate: 180deg` (as the accordion chevron); `scale: -1 1` (the bar chart's svg in a right-to-left page); halves and doubles of tokens (`/ 2`, `* 2`, `* -1`); the keyword `thin`; `0`, `auto` and `1 1 auto`; the svg's own geometry in the markup (a viewBox of N by 100). Needed and not present as tokens: a z-index scale.
+Every value is a token (`components.json` lists them per component, equal to the tokens the rules of that component use). Two tokens were added with this batch: `--scrim` and `--paper` (`../tokens/tokens.md`). The literal numbers of the batch 4 css, besides those listed above for batches 1 to 3: `max-width: 480px` and `min-width: 640px` (`--bp-md`, a media query writes the number); `90dvh` on the viewer dialog (as the shell's `100dvh`); the opacities 0.55 (disabled, again), 0.45 and 1 (the downloading pulse) and 1 (the unavailable document row, which keeps full opacity over the Row list's 0.55); `line-height: 1` on the step marker; `rotate: 180deg` (as the accordion chevron); `scale: -1 1` (the bar chart's svg in a right-to-left page); halves and doubles of tokens (`/ 2`, `* 2`, `* -1`); the keyword `thin`; `0`, `auto` and `1 1 auto`; the svg's own geometry in the markup (a viewBox of N by 100). The layer numbers are now the `--z-*` tokens (`../tokens/tokens.md`).

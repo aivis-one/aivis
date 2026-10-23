@@ -1,0 +1,11 @@
+<!-- AIVIS Timeline (K54): dated milestones. ol.ds-timeline > li.ds-timeline__item[data-state=done|current|upcoming] with a marker (decorative), a connector to the next item and an entry as a card.
+     The card is a div.ds-timeline__card (date, title, a Badge for the kind) or, when it opens, details.ds-timeline__card with summary.ds-timeline__head (the same parts and the chevron) and div.ds-timeline__body (text and links). The state is said in words by the date and title or a Badge, not by the marker alone. -->
+<ol class="ds-timeline" aria-label="Project milestones">
+  <li class="ds-timeline__item" data-state="done"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-03">Mar 2026</time><span class="ds-timeline__title">Site selected</span><span class="ds-badge ds-badge--success">Done</span></div></div></li>
+  <li class="ds-timeline__item" data-state="current"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <details class="ds-timeline__card" open><summary class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-10">Oct 2026</time><span class="ds-timeline__title">Fit-out</span><span class="ds-badge ds-badge--info">In progress</span><svg class="ds-icon ds-timeline__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></summary>
+      <div class="ds-timeline__body"><p>Walls and floors are done; furniture arrives in November.</p></div></details></li>
+  <li class="ds-timeline__item" data-state="upcoming"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2027-01">Jan 2027</time><span class="ds-timeline__title">Opening</span><span class="ds-badge">Upcoming</span></div></div></li>
+</ol>

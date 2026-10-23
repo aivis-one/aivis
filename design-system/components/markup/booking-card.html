@@ -1,5 +1,5 @@
 <!-- AIVIS Booking card: one purchase of an investor's position: what was booked (date, units), the basis in plain words, the agreement as HTML (opens K36) and the signed agreement as a PDF row (K44),
-     or a row that says plainly that the PDF is not uploaded yet. Built on the Card (K07). It carries NO price and NO payment term (decided by the owner, 2026-10-14: the documents carry none for now).
+     or a row that says plainly that the PDF is not uploaded yet. Built on the Card (K07). It carries the amount PAID for the purchase, as the app gives it, and never the price of a part or a payment term (decided by the owner, 2026-10-23).
      The kind badge says the basis in words (Purchase, Gift); the title is the same kind in plain words. The facts are a dl. Every string comes from the translation tables; the English strings are examples. -->
 <article class="ds-card ds-booking" aria-labelledby="bk-1-t">
   <header class="ds-booking__head">
@@ -10,6 +10,7 @@
   <dl class="ds-booking__facts">
     <div><dt>Booked</dt><dd>12 Oct 2026</dd></div>
     <div><dt>Units</dt><dd>4</dd></div>
+    <div><dt>Amount paid</dt><dd>1,200.00</dd></div>
   </dl>
   <p class="ds-booking__basis">Basis: a purchase made through the platform, confirmed by you.</p>
   <ul class="ds-booking__docs">

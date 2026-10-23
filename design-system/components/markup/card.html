@@ -15,3 +15,25 @@
   <header class="ds-card__head"><h3 class="ds-card__title"><a class="ds-card__link" href="#company">Brenner Logistik GmbH</a></h3></header>
   <div class="ds-card__body">Open the company page.</div>
 </article>
+
+<!-- K07 additions. The brand card (ds-card--brand): a summary on the primary colour, the text --on-primary, the quiet text --on-primary-muted (.ds-card__label), the figure and its change in --on-primary with the sign written in the text
+     (never --success or --danger there: 1.35 and 1.08 on the day primary); a Button inside takes the --on-primary border. -->
+<article class="ds-card ds-card--brand">
+  <p class="ds-card__label">Portfolio value</p>
+  <p class="ds-card__figure">12,480.00</p>
+  <p class="ds-card__delta">+380.00 (+3.1%)</p>
+  <footer class="ds-card__foot"><button type="button" class="ds-button" data-size="sm">Details</button></footer>
+</article>
+
+<!-- The media card (ds-card--media): a cover (.ds-card__media, an img that covers, or --fallback with a centred icon on --bg-subtle; data-size sm|lg changes its height), a chip on the photo (.ds-card__tag, on the stronger scrim) and the content (.ds-card__content). -->
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img src="cover.jpg" alt=""><span class="ds-card__tag">Brenner Logistik GmbH</span></div>
+  <div class="ds-card__content">
+    <h3 class="ds-card__title"><a class="ds-card__link" href="#product">Trade-in lounge</a></h3>
+    <div class="ds-card__body">40 seats, opening in January.</div>
+  </div>
+</article>
+<article class="ds-card ds-card--media">
+  <div class="ds-card__media ds-card__media--fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></div>
+  <div class="ds-card__content"><h3 class="ds-card__title">No photo yet</h3></div>
+</article>

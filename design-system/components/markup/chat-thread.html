@@ -1,0 +1,14 @@
+<!-- AIVIS Chat thread and composer (K51): a column; the feed scrolls (role="log", aria-live="polite", tabindex="0" so a keyboard can scroll it) and the composer stays under it. The screen gives the thread its height.
+     li.ds-message data-from="own|other": a bubble on --primary-subtle (own) or --bg-subtle (other), the author (staff views), the time in the mono face. p.ds-thread__day names a day.
+     The composer is a textarea (.ds-input) and a Button; the send button is disabled while the field is empty. An empty thread is an Empty state (K48). -->
+<section class="ds-thread" aria-label="Support chat" style="block-size: var(--center-lg)">
+  <ul class="ds-thread__feed" role="log" aria-live="polite" tabindex="0">
+    <li class="ds-thread__day">12 Oct 2026</li>
+    <li class="ds-message" data-from="other"><span class="ds-message__author">Support</span><p class="ds-message__bubble">Hello, how can we help?</p><time class="ds-message__time" datetime="2026-10-12T09:14">09:14</time></li>
+    <li class="ds-message" data-from="own"><p class="ds-message__bubble">I cannot find the signed agreement.</p><time class="ds-message__time" datetime="2026-10-12T09:15">09:15</time></li>
+  </ul>
+  <form class="ds-composer">
+    <div class="ds-field ds-composer__input"><label class="ds-sr-only" for="chat-msg">Message</label><textarea class="ds-input" id="chat-msg" rows="1" placeholder="Write a message"></textarea></div>
+    <button type="submit" class="ds-button" disabled>Send</button>
+  </form>
+</section>

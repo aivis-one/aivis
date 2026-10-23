@@ -394,7 +394,7 @@
   function emit(el, name, detail) { el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: detail })); }
 
   /* ---------- K26 Action menu ---------- */
-  function menuItems(menu) { return Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]')).filter(function (i) { return i.getAttribute('aria-disabled') !== 'true'; }); }
+  function menuItems(menu) { return Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"], [role="option"]')).filter(function (i) { return i.getAttribute('aria-disabled') !== 'true'; }); }
   function menuClose(menu, refocus) {
     var btn = menu.querySelector('.ds-menu__button'), list = menu.querySelector('.ds-menu__list');
     if (!btn || !list || list.hidden) return;
@@ -409,7 +409,8 @@
     list.hidden = false; btn.setAttribute('aria-expanded', 'true');
     var items = menuItems(menu);
     menuItems(menu).forEach(function (i) { i.tabIndex = -1; });
-    if (items.length) (which === 'last' ? items[items.length - 1] : items[0]).focus();
+    var chosen = items.filter(function (i) { return i.getAttribute('aria-selected') === 'true'; })[0];
+    if (items.length) (which === 'last' ? items[items.length - 1] : (chosen || items[0])).focus();
     emit(menu, 'ds-menu-open', {});
   }
   document.addEventListener('click', function (e) {
@@ -423,6 +424,11 @@
     if (item) {
       if (item.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
       var m = item.closest('.ds-menu');
+      if (item.getAttribute('role') === 'option') {
+        m.querySelectorAll('[role="option"]').forEach(function (o) { o.setAttribute('aria-selected', o === item ? 'true' : 'false'); });
+        var shown = m.querySelector('.ds-menu__value'), name = item.querySelector('.ds-menu__label');
+        if (shown && name) shown.textContent = name.textContent;
+      }
       emit(m, 'ds-menu-select', { value: item.dataset.value || item.textContent.trim(), item: item });
       menuClose(m, true);
       return;
@@ -518,8 +524,8 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest('[data-copy-target]');
     if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return;
-    var src = document.getElementById(b.getAttribute('data-copy-target')), box = b.closest('.ds-invoice') || document;
-    var status = box.querySelector('.ds-invoice__status'), label = b.querySelector('.ds-invoice__copy-label'), use = b.querySelector('use');
+    var src = document.getElementById(b.getAttribute('data-copy-target')), box = b.closest('.ds-invoice, .ds-copy') || document;
+    var status = box.querySelector('.ds-invoice__status, .ds-copy__status'), label = b.querySelector('.ds-invoice__copy-label, .ds-copy__label'), use = b.querySelector('use');
     if (!src) return;
     var text = src.textContent.trim();
     function ok() {
@@ -544,5 +550,96 @@
       } catch (x) { fail(); }
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback();
+  });
+})();
+
+/* Additions to batch 4. Dialog (K52: a dialog for a confirm, an edit or details: the focus moves in, Tab stays inside, Escape and the scrim close,
+   the focus returns to what opened it; data-lock on the .ds-dialog keeps the scrim from closing it), and the FAQ of the Accordion (K27: a search
+   that hides the items that do not match, and a list built from the headings of a document). No network, no storage; every text comes from data-*
+   attributes. Events: ds-dialog-open, ds-dialog-close. The listbox and the copy button are in the blocks above. */
+(function () {
+  'use strict';
+  function emit(el, name, detail) { el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: detail })); }
+
+  /* ---------- K52 Dialog ---------- */
+  var dialogOpener = null;
+  function focusables(root) {
+    return Array.prototype.slice.call(root.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(function (x) { return !x.closest('[hidden]'); });
+  }
+  function dialogOpen(d, opener) {
+    if (!d) return;
+    dialogOpener = opener || document.activeElement;
+    d.hidden = false;
+    var p = d.querySelector('.ds-dialog__panel');
+    if (p) p.focus();
+    emit(d, 'ds-dialog-open', {});
+  }
+  function dialogClose(d) {
+    if (!d || d.hidden) return;
+    d.hidden = true;
+    var o = dialogOpener; dialogOpener = null;
+    if (o && o.isConnected) o.focus();
+    emit(d, 'ds-dialog-close', {});
+  }
+  document.addEventListener('click', function (e) {
+    var op = e.target.closest('[data-dialog-open]');
+    if (op) { dialogOpen(document.getElementById(op.getAttribute('data-dialog-open')), op); return; }
+    var cl = e.target.closest('[data-dialog-close]');
+    if (cl) { dialogClose(cl.closest('.ds-dialog')); return; }
+    var t = e.target;
+    if (t.classList && t.classList.contains('ds-dialog') && !t.classList.contains('ds-dialog--inline') && t.getAttribute('data-lock') !== 'true') dialogClose(t);
+  });
+  document.addEventListener('keydown', function (e) {
+    var d = e.target.closest && e.target.closest('.ds-dialog:not(.ds-dialog--inline):not([hidden])');
+    if (!d) return;
+    if (e.key === 'Escape') { e.preventDefault(); dialogClose(d); return; }
+    if (e.key !== 'Tab') return;
+    var panel = d.querySelector('.ds-dialog__panel'), f = focusables(panel);
+    if (!f.length) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  /* ---------- K27 FAQ: the search ---------- */
+  function faqFilter(input) {
+    var list = document.getElementById(input.getAttribute('aria-controls'));
+    if (!list) return;
+    var q = input.value.trim().toLowerCase(), shown = 0;
+    list.querySelectorAll('.ds-accordion__item').forEach(function (item) {
+      var hit = !q || item.textContent.toLowerCase().indexOf(q) !== -1;
+      item.hidden = !hit;
+      if (hit) shown += 1;
+    });
+    var none = list.parentNode.querySelector('.ds-accordion__none');
+    if (none) none.hidden = shown !== 0;
+  }
+  document.addEventListener('input', function (e) { var i = e.target.closest && e.target.closest('[data-faq-search]'); if (i) faqFilter(i); });
+
+  /* ---------- K27 FAQ: the list read from the headings of a document ---------- */
+  /* AivisDS.faq.fromHeadings(source, level) reads the headings of the given level (h2 by default) of a document fragment and the nodes after each
+     up to the next heading of that level, and returns a div.ds-accordion of details (one open at a time, by one shared name). It copies; the source stays. */
+  var faqCount = 0;
+  function fromHeadings(source, level) {
+    var tag = (level || 'h2').toUpperCase(), name = 'ds-faq-' + (faqCount += 1);
+    var root = document.createElement('div'); root.className = 'ds-accordion ds-accordion--faq';
+    var item = null, panel = null;
+    Array.prototype.slice.call(source.childNodes).forEach(function (n) {
+      if (n.nodeType === 1 && n.tagName === tag) {
+        item = document.createElement('details'); item.className = 'ds-accordion__item'; item.setAttribute('name', name);
+        var s = document.createElement('summary'); s.className = 'ds-accordion__summary';
+        var t = document.createElement('span'); t.textContent = n.textContent.trim(); s.appendChild(t);
+        s.insertAdjacentHTML('beforeend', '<svg class="ds-icon ds-icon--md ds-accordion__chev" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>');
+        panel = document.createElement('div'); panel.className = 'ds-accordion__panel';
+        item.appendChild(s); item.appendChild(panel); root.appendChild(item);
+      } else if (panel) { panel.appendChild(n.cloneNode(true)); }
+    });
+    return root;
+  }
+  window.AivisDS = window.AivisDS || {};
+  window.AivisDS.faq = { fromHeadings: fromHeadings };
+  document.querySelectorAll('[data-faq-source]').forEach(function (src) {
+    var built = fromHeadings(src, src.getAttribute('data-faq-source') || 'h2');
+    src.textContent = ''; src.appendChild(built);
   });
 })();

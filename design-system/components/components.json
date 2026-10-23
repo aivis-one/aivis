@@ -252,14 +252,16 @@
   "name": "Card",
   "status": "built",
   "markup": "markup/card.html",
-  "class_root": ".ds-card",
+  "class_root": ".ds-card, .ds-card--brand, .ds-card--media, .ds-card__media",
   "variants": {
    "shared": [
     "outlined (default)",
     "flat",
     "elevated",
     "interactive"
-   ]
+   ],
+   "brand": "ds-card--brand: a summary on the primary colour; text --on-primary, quiet text --on-primary-muted, the sign of a figure written in the text",
+   "media": "ds-card--media: a cover (.ds-card__media, an img or the fallback with an icon), a chip on the photo (.ds-card__tag) and .ds-card__content"
   },
   "sizes": [
    "sm",
@@ -278,30 +280,49 @@
    "--bg-surface",
    "--border-default",
    "--border-subtle",
+   "--center-lg",
+   "--center-md",
+   "--center-sm",
    "--dur-fast",
    "--ease-standard",
    "--focus-offset",
    "--focus-ring",
    "--focus-width",
    "--font-display",
+   "--font-mono",
+   "--fs-h3",
    "--fs-h4",
    "--fs-sm",
+   "--fs-xs",
+   "--icon-secondary",
+   "--icon-size-xl",
    "--lh-normal",
    "--lh-snug",
+   "--lh-tight",
+   "--on-primary",
+   "--on-primary-muted",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
    "--radius-card",
+   "--radius-sm",
+   "--scrim-strong",
    "--shadow-1",
    "--shadow-2",
+   "--space-1",
+   "--space-2",
    "--space-3",
    "--space-4",
    "--space-5",
    "--space-6",
+   "--text-on-scrim",
    "--text-primary",
    "--text-secondary",
    "--tracking-tight"
   ],
-  "accessibility": "An interactive card holds exactly one link in its title; the link stretches over the card and takes the focus outline for the whole card. No click handler on the container. The title is a heading whose level fits the page.",
+  "accessibility": "An interactive card holds exactly one link in its title; the link stretches over the card and takes the focus outline for the whole card. No click handler on the container. The title is a heading whose level fits the page. The brand card's text is --on-primary (8.48 day, 5.85 night) and its quiet text --on-primary-muted (6.63 day, 4.51 night on --primary); a Button inside takes the --on-primary border. A chip on a photo is --text-on-scrim over --scrim-strong (7.63 on a white photo). A cover that only decorates has alt=\"\".",
   "purpose": "A bounded group of related content.",
-  "usage": "The decorative tick is placed by elements/README.md and is not part of this component; a card keeps --border-subtle.",
+  "usage": "The decorative tick is placed by elements/README.md and is not part of this component; a card keeps --border-subtle. The brand card is for a summary; a figure on it takes --on-primary with its sign written, never --success or --danger. The media card is for a cover and its content.",
   "notes": ""
  },
  {
@@ -309,7 +330,7 @@
   "name": "Badge",
   "status": "built",
   "markup": "markup/badge.html",
-  "class_root": ".ds-badge",
+  "class_root": ".ds-badge, .ds-badge--count, .ds-dot",
   "variants": {
    "shared": [
     "neutral",
@@ -317,7 +338,9 @@
     "warning",
     "danger",
     "info"
-   ]
+   ],
+   "count": "ds-badge--count: the number of unread items on an icon button",
+   "dot": "ds-dot, ds-dot--danger: an unread dot, 8 px"
   },
   "sizes": [
    "one size (text --fs-xs)"
@@ -327,25 +350,35 @@
   ],
   "tokens": [
    "--bg-subtle",
+   "--border-input",
    "--border-subtle",
+   "--danger",
    "--danger-subtle",
    "--danger-subtle-text",
+   "--dur-fast",
+   "--ease-standard",
+   "--font-mono",
+   "--fs-3xs",
    "--fs-xs",
    "--info-subtle",
    "--info-subtle-text",
    "--lh-tight",
+   "--on-danger",
+   "--primary",
+   "--radius-pill",
    "--radius-sm",
    "--space-1",
    "--space-2",
+   "--space-4",
    "--success-subtle",
    "--success-subtle-text",
    "--text-secondary",
    "--warning-subtle",
    "--warning-subtle-text"
   ],
-  "accessibility": "A badge always carries text; meaning is never colour alone. Badges use the status subtle ground and subtle text (7.12 and better). A decorative badge is aria-hidden.",
+  "accessibility": "A badge always carries text; meaning is never colour alone. Badges use the status subtle ground and subtle text (7.12 and better). A decorative badge is aria-hidden. The count is aria-hidden and the button's aria-label carries the number; --on-danger on --danger is 7.86 day. A dot is never alone: it has role=\"img\" with a text label and the row says it in words.",
   "purpose": "A short status label.",
-  "usage": "One to two words; the status text, not an action.",
+  "usage": "One to two words; the status text, not an action. The app caps the count (\"99+\").",
   "notes": ""
  },
  {
@@ -554,7 +587,8 @@
    "--shadow-2",
    "--space-1",
    "--space-2",
-   "--text-inverse"
+   "--text-inverse",
+   "--z-tooltip"
   ],
   "accessibility": "The trigger is a real button or link with class ds-tooltip-trigger and aria-describedby naming the tooltip; the tooltip is role=\"tooltip\", holds text only (no link, button or field: that is a popover) and stays in the tree while hidden so the description resolves. It opens at once, with no delay, on hover (only a pointer that can hover), on keyboard focus and on a tap (components.js toggles data-open; a tap elsewhere closes it); Escape closes it and it stays closed until the pointer or the focus leaves. A transparent border bridges the gap, so the tooltip stays while it is hovered. An icon-only trigger needs aria-label. Ground: --bg-emphasis with --text-inverse (17 or better in both themes). At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
   "purpose": "A short hint on one part: what an icon means, why a value is what it is.",
@@ -618,7 +652,8 @@
    "--text-secondary",
    "--warning",
    "--warning-subtle",
-   "--warning-subtle-text"
+   "--warning-subtle-text",
+   "--z-toast"
   ],
   "accessibility": "Kit fix: the region is aria-live=\"polite\" and present from the start; a toast is inserted into it. A danger toast has role=\"alert\". A dismiss button is present. The toast ground is opaque (the subtle tint over --bg-surface) so the page behind never shows through.",
   "purpose": "A short confirmation that needs no decision.",
@@ -810,7 +845,7 @@
   "name": "Row list",
   "status": "built",
   "markup": "markup/row-list.html",
-  "class_root": ".ds-rows, .ds-row",
+  "class_root": ".ds-rows, .ds-row, .ds-lead",
   "variants": {
    "row": [
     "plain",
@@ -820,7 +855,8 @@
     "lead",
     "body (title, meta)",
     "trail (value, badge, chevron)"
-   ]
+   ],
+   "tone": "data-tone=\"success|warning|danger|accent|neutral\" on .ds-row__lead (and on .ds-lead, the same box outside a row); the primary tint without it"
   },
   "sizes": [
    "one size (touch-min on a phone)"
@@ -833,10 +869,16 @@
    "disabled (aria-disabled)"
   ],
   "tokens": [
+   "--accent-subtle",
+   "--accent-subtle-text",
+   "--bg-subtle",
    "--bg-surface",
    "--border-default",
    "--border-input-hover",
    "--border-subtle",
+   "--danger",
+   "--danger-subtle",
+   "--danger-subtle-text",
    "--dur-fast",
    "--ease-standard",
    "--focus-offset",
@@ -855,11 +897,16 @@
    "--space-1",
    "--space-2",
    "--space-3",
+   "--success-subtle",
+   "--success-subtle-text",
    "--text-primary",
    "--text-secondary",
-   "--text-tertiary"
+   "--text-tertiary",
+   "--warning-subtle",
+   "--warning-subtle-text",
+   "--z-content"
   ],
-  "accessibility": "A ul of li. A linked row holds one anchor on its title; its ::after stretches the hit area over the whole row (the row, not the 26 px anchor, is the touch target); the focus outline is drawn around the row at --focus-offset. Title text-primary, meta text-tertiary on the white --bg-surface of the row only (decided by the owner, 2026-10-17; a row never takes a fill); the figure is mono and tabular. A disabled row has aria-disabled=\"true\" and no link. The chevron is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "A ul of li. A linked row holds one anchor on its title; its ::after stretches the hit area over the whole row (the row, not the 26 px anchor, is the touch target); the focus outline is drawn around the row at --focus-offset. Title text-primary, meta text-tertiary on the white --bg-surface of the row only (decided by the owner, 2026-10-17; a row never takes a fill); the figure is mono and tabular. A disabled row has aria-disabled=\"true\" and no link. The chevron is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The tone is a second sign: the row's title and meta say the same in words. The tinted text stands on its tinted ground (--*-subtle-text on --*-subtle).",
   "purpose": "A list of records one under another: transactions, documents, notifications, referrals.",
   "usage": "Use for a list read top to bottom with one main fact per row and an optional status; use a table (K24) when the reader compares columns. Do not put two links or a button inside a linked row.",
   "notes": "No tick (rule 3 of the tick: a list of rows is not a list of cards)."
@@ -928,14 +975,29 @@
   "name": "App shell and navigation",
   "status": "built",
   "markup": "markup/app-shell.html",
-  "class_root": ".ds-shell, .ds-header, .ds-nav, .ds-navitem",
+  "class_root": ".ds-shell, .ds-header, .ds-nav, .ds-navitem, .ds-shell__banner, .ds-header__lead, .ds-header__figure, .ds-nav__brand, .ds-shell__lead, .ds-shell__toolbar, .ds-shell__action, .ds-shell--navless, .ds-subnav",
   "variants": {
    "tier": [
     "bar (tab bar)",
     "rail (icon rail)",
     "wide (labelled rail)"
    ],
-   "tier_widths": "bar below 880, rail from 880, wide from 1120 (media queries on a shell with no data-tier; decided by the owner, 2026-10-17); data-tier forces a tier in a specimen only, never on a product screen"
+   "tier_widths": "bar below 880, rail from 880, wide from 1120 (media queries on a shell with no data-tier; decided by the owner, 2026-10-17); data-tier forces a tier in a specimen only, never on a product screen",
+   "parts": [
+    "banner (.ds-shell__banner, above the header, the look of the warning Alert, kept at the top)",
+    "leading slot (.ds-header__lead, the back control)",
+    "figure (.ds-header__figure, a balance or a commission as a button)",
+    "menu mark (.ds-nav__brand, from 880 with the rails, never on the tab bar)",
+    "measure (the main region is --maxw wide and centred; data-measure=\"wide\": --maxw-wide)",
+    "lead line (.ds-shell__lead)",
+    "toolbar (.ds-shell__toolbar: filters at the start, one primary action at the end)",
+    "action strip (.ds-shell__action: sticky above the tab bar, in the flow from 880)",
+    "sub-navigation of a hub (.ds-subnav)"
+   ],
+   "frame": [
+    "with a nav (default)",
+    "nav-less (.ds-shell--navless: header and main, the public storefront)"
+   ]
   },
   "sizes": [
    "tab bar item 56 (48 minimum on a phone), rail item 48"
@@ -946,15 +1008,20 @@
    "pressed",
    "focus",
    "current (aria-current=\"page\" with a mark)",
-   "disabled (aria-disabled)"
+   "disabled (aria-disabled)",
+   "figure: rest, hover, pressed, focus",
+   "sub-navigation link: rest, hover, pressed, focus, current"
   ],
   "tokens": [
    "--accent",
    "--bg-page",
    "--bg-subtle",
    "--bg-surface",
+   "--border-default",
+   "--border-input",
    "--border-input-width",
    "--border-subtle",
+   "--control-height-lg",
    "--dur-fast",
    "--ease-standard",
    "--focus-offset",
@@ -962,18 +1029,29 @@
    "--focus-width",
    "--font-body",
    "--font-display",
+   "--font-mono",
+   "--fs-3xs",
    "--fs-h4",
    "--fs-sm",
    "--fs-xs",
    "--header-height",
+   "--lh-normal",
    "--lh-snug",
    "--lh-tight",
+   "--maxw",
+   "--maxw-prose",
+   "--maxw-wide",
+   "--on-warning",
    "--primary",
    "--primary-subtle",
+   "--radius-card",
    "--radius-control",
    "--radius-pill",
+   "--radius-xs",
+   "--shadow-2",
    "--size-3xl",
    "--size-4xl",
+   "--size-sm",
    "--space-1",
    "--space-2",
    "--space-3",
@@ -987,11 +1065,19 @@
    "--space-safe-top",
    "--text-primary",
    "--text-secondary",
-   "--tracking-tight"
+   "--touch-min",
+   "--tracking-tight",
+   "--tracking-wide",
+   "--warning",
+   "--warning-subtle",
+   "--warning-subtle-text",
+   "--z-banner",
+   "--z-header",
+   "--z-sticky"
   ],
-  "accessibility": "Three landmarks: header, main, and one nav with an aria-label; the nav items are links and the current one has aria-current=\"page\" (in the tab bar --primary text with the kit's --accent dot below, in the rails a --primary-subtle tint with a 2 line --primary bar at the start: not colour alone), they are not role=\"tab\". In the icon rail the label stays in the tree as the accessible name (visually hidden). The header holds one h1; its icon buttons carry aria-label. Safe-area insets pad the bar. The nav padding keeps the focus outline inside the nav. Current item text --primary on --bg-surface in the tab bar (8.48 day, 6.72 night) and on --primary-subtle in the rails (7.61, 5.46); others --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "Three landmarks: header, main, and one nav with an aria-label; the nav items are links and the current one has aria-current=\"page\" (in the tab bar --primary text with the kit's --accent dot below, in the rails a --primary-subtle tint with a 2 line --primary bar at the start: not colour alone), they are not role=\"tab\". In the icon rail the label stays in the tree as the accessible name (visually hidden). The header holds one h1; its icon buttons carry aria-label. Safe-area insets pad the bar. The nav padding keeps the focus outline inside the nav. Current item text --primary on --bg-surface in the tab bar (8.48 day, 6.72 night) and on --primary-subtle in the rails (7.61, 5.46); others --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The banner has role=\"status\" and one line of text with its action; the header and the rail list stand below it. The back control is a link or a button with aria-label. A figure chip is a link or button whose text is its label and amount, at least --touch-min high. The menu mark is a link with aria-label. The sub-navigation is a nav with an aria-label of links, the current one aria-current=\"page\" with the Tabs look (colour and an underline), not role=tab. The layers are the --z-* tokens.",
   "purpose": "The frame of every cabinet screen: where the user is and where else they can go.",
-  "usage": "One shell per role, five nav items at most; the tier follows the viewport (bar below 880, rail from 880, wide from 1120); data-tier on .ds-shell forces one only in a specimen (a shell drawn inside a page narrower than the tier it shows); a product screen never sets it. A screen is the content of .ds-shell__main; a screen title is the header's h1. Use the Tabs (K12) to change a view in place, never for navigation between screens.",
+  "usage": "One shell per role, five nav items at most; the tier follows the viewport (bar below 880, rail from 880, wide from 1120); data-tier on .ds-shell forces one only in a specimen (a shell drawn inside a page narrower than the tier it shows); a product screen never sets it. A screen is the content of .ds-shell__main; a screen title is the header's h1. Use the Tabs (K12) to change a view in place, never for navigation between screens. A screen in main may open with the lead line, then the toolbar; its one primary action may be the sticky action strip, the last element of main. A hub under a tab uses the sub-navigation; a view changed in place is the Tabs (K12). The public storefront uses the nav-less shell.",
   "notes": ""
  },
  {
@@ -999,12 +1085,13 @@
   "name": "Accordion",
   "status": "built",
   "markup": "markup/accordion.html",
-  "class_root": ".ds-accordion, .ds-accordion__item, .ds-accordion__summary, .ds-accordion__panel",
+  "class_root": ".ds-accordion, .ds-accordion__item, .ds-accordion__summary, .ds-accordion__panel, .ds-accordion--faq",
   "variants": {
    "behaviour": [
     "independent",
     "exclusive (the same name attribute on the details)"
-   ]
+   ],
+   "faq": "ds-accordion--faq: a search above the list (input[type=search][data-faq-search] with aria-controls), a line when nothing matches (.ds-accordion__none) and a list read from the headings of a document (data-faq-source, AivisDS.faq.fromHeadings); one item at a time is the shared name attribute the component already has"
   },
   "sizes": [
    "one size"
@@ -1020,6 +1107,7 @@
    "--bg-inset",
    "--bg-subtle",
    "--bg-surface",
+   "--border-default",
    "--border-subtle",
    "--dur-base",
    "--dur-fast",
@@ -1030,6 +1118,7 @@
    "--font-display",
    "--fs-body",
    "--fs-h4",
+   "--fs-sm",
    "--icon-secondary",
    "--lh-normal",
    "--lh-snug",
@@ -1044,7 +1133,7 @@
    "--touch-comfortable",
    "--tracking-tight"
   ],
-  "accessibility": "Native details and summary: the summary is the button (Enter and Space toggle it, the open state is announced by the browser), no script. The chevron is aria-hidden and turns 180 degrees when open (as the site FAQ does). The summary is at least --touch-comfortable high. Title --text-primary on --bg-surface, panel --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "Native details and summary: the summary is the button (Enter and Space toggle it, the open state is announced by the browser), no script. The chevron is aria-hidden and turns 180 degrees when open (as the site FAQ does). The summary is at least --touch-comfortable high. Title --text-primary on --bg-surface, panel --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The search is a labelled input; the items that do not match are hidden, and the line \"nothing matches\" appears in the flow.",
   "purpose": "Shows many short answers or settings groups without a long page: FAQ, settings sections.",
   "usage": "Use when readers want one of several blocks; give each summary a plain question or a section name. Do not hide content a reader must see to act, and do not nest an accordion in an accordion.",
   "notes": ""
@@ -1111,7 +1200,8 @@
   "markup": "markup/date-picker.html",
   "class_root": ".ds-input[type=date]",
   "variants": {
-   "input": "the browser's own date input, drawn as a Text field (mono figures); the period is its min and max"
+   "input": "the browser's own date input, drawn as a Text field (mono figures); the period is its min and max",
+   "time": "input type=\"time\", drawn the same way (the mono face, the browser's picker follows the theme)"
   },
   "sizes": [
    "the Text field's: sm 32, md 38 (default), lg 44"
@@ -1250,7 +1340,8 @@
    "--space-1",
    "--space-2",
    "--space-4",
-   "--text-primary"
+   "--text-primary",
+   "--z-content"
   ],
   "accessibility": "A fieldset with a legend (visible or .ds-sr-only) holding native radios with one name: the arrow keys move and choose, the group is one tab stop, the checked radio is the selected choice. A control that switches panels is Tabs (K12). The track's outline is --border-input (3.03 day, 3.01 night on --bg-surface; 2.84 day on --bg-page) and carries no state; the selected choice is raised with a --primary border and differs in text colour, not colour alone. Selected text --primary-subtle-text on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
   "purpose": "Chooses one of two to five short options that change the view of the same content: a period, a list filter.",
@@ -1559,7 +1650,7 @@
   "name": "Action menu",
   "status": "built",
   "markup": "markup/action-menu.html",
-  "class_root": ".ds-menu, .ds-menu__button, .ds-menu__list, .ds-menu__item",
+  "class_root": ".ds-menu, .ds-menu__button, .ds-menu__list, .ds-menu__item, .ds-menu__flag, .ds-menu__tick",
   "variants": {
    "align": "data-align=\"end\" opens toward the end edge",
    "item": "default, --danger, aria-disabled, data-state=\"done\"",
@@ -1567,7 +1658,8 @@
     "ds-menu-select",
     "ds-menu-open",
     "ds-menu-close"
-   ]
+   ],
+   "listbox": "single choice: button[aria-haspopup=\"listbox\"], ul[role=listbox] of button[role=option][aria-selected]; the chosen option carries the check, a flag slot may stand first"
   },
   "sizes": [
    "the trigger is a Button (sm 32, md 38, lg 44); items --size-xl high, --touch-min at the 480 width"
@@ -1582,7 +1674,8 @@
    "item focus (the outline outside the item, in the list's padding)",
    "item disabled (aria-disabled)",
    "danger item",
-   "done item"
+   "done item",
+   "option: selected"
   ],
   "tokens": [
    "--bg-inset",
@@ -1590,6 +1683,7 @@
    "--bg-surface",
    "--border-default",
    "--border-input-hover",
+   "--border-input-width",
    "--border-subtle",
    "--center-lg",
    "--danger",
@@ -1599,24 +1693,31 @@
    "--focus-ring",
    "--focus-width",
    "--font-body",
+   "--fs-body",
    "--fs-sm",
    "--icon-secondary",
    "--lh-snug",
+   "--lh-tight",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
    "--radius-md",
    "--radius-sm",
    "--shadow-2",
    "--shadow-inset-hex",
    "--size-xl",
+   "--size-xs",
    "--space-1",
    "--space-2",
    "--space-3",
    "--success",
    "--text-primary",
-   "--touch-min"
+   "--touch-min",
+   "--z-menu"
   ],
-  "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. The listbox follows the menu's keys and opens on the chosen option; the chosen option is marked by the check icon and the tint, not by colour alone. The languages come from the shared setting, never from a list written in a screen.",
   "purpose": "Offer a short list of actions for one object: the share actions of a hub link (A-2) and the row actions of a staff list (S-2).",
-  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger is a Button with the share icon before its word and the chevron after it.",
+  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger is a Button with the share icon before its word and the chevron after it. A language list is this listbox variant.",
   "notes": "No AIVIS source holds an action menu (map K26: MISSING; the cabinet language picker is a listbox), so the look is built from the system: the surface, border, radius and shadow of the combobox list, the row hover tint of the Row list. The open trigger takes --bg-subtle and the chevron turns, as the accordion chevron does."
  },
  {
@@ -1624,11 +1725,12 @@
   "name": "Stepper and schedule list",
   "status": "built",
   "markup": "markup/stepper.html",
-  "class_root": ".ds-stepper, .ds-step, .ds-schedule, .ds-schedule__item",
+  "class_root": ".ds-stepper, .ds-step, .ds-schedule, .ds-schedule__item, .ds-dots",
   "variants": {
    "orientation": "vertical (default); data-orientation=\"horizontal\" in a row from 640 up, stacked below",
    "step state": "data-state done, current, upcoming, problem",
-   "schedule row": "default, aria-current=\"step\" (the current item), data-status=\"problem\" (a tinted item that needs attention)"
+   "schedule row": "default, aria-current=\"step\" (the current item), data-status=\"problem\" (a tinted item that needs attention)",
+   "dots": "ds-dots: n dots, the current one wider (aria-current=\"step\"), with the position said in words"
   },
   "sizes": [
    "marker --size-xl; schedule stats in columns of at least --center-sm"
@@ -1649,6 +1751,8 @@
    "--center-sm",
    "--danger",
    "--danger-subtle",
+   "--dur-fast",
+   "--ease-standard",
    "--font-display",
    "--font-mono",
    "--fs-3xs",
@@ -1666,13 +1770,14 @@
    "--space-1",
    "--space-2",
    "--space-3",
+   "--space-4",
    "--space-5",
    "--success",
    "--text-primary",
    "--text-secondary",
    "--tracking-wide"
   ],
-  "accessibility": "An ordered list (ol) named by aria-label or aria-labelledby; the step in progress carries aria-current=\"step\". A state is never colour alone: done holds a check icon, problem a triangle, current and upcoming their number, and the meta line says the state in words; the markers are aria-hidden. The schedule is an ol of rows; each row has a title and a Badge with the state in words; the current row carries aria-current=\"step\"; a dl of stats and a foot line are optional and the screen fills them. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "accessibility": "An ordered list (ol) named by aria-label or aria-labelledby; the step in progress carries aria-current=\"step\". A state is never colour alone: done holds a check icon, problem a triangle, current and upcoming their number, and the meta line says the state in words; the markers are aria-hidden. The schedule is an ol of rows; each row has a title and a Badge with the state in words; the current row carries aria-current=\"step\"; a dl of stats and a foot line are optional and the screen fills them. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. Step dots: the list has an aria-label with the position (\"Step 2 of 4\"); the current dot differs in width, not only in colour; the dots reach 3:1 against the surface (--border-input).",
   "purpose": "Show progress through a flow (purchase, onboarding, KYC) and the review steps of a document.",
   "usage": "Use the stepper for three to six steps in a fixed order; the schedule list for a list of items that each have a state. The connector line is decoration; the state is read from the marker and the words.",
   "notes": "The schedule rows are bordered rows on the page ground, the problem row on --danger-subtle with a --danger border, a three column stats grid, with status badges; the labels use --text-secondary because tertiary does not stand on the page ground by day. The stepper's look is built from the Badge and Progress vocabulary: success for done, primary for current, danger for problem."
@@ -1737,7 +1842,8 @@
    "--space-5",
    "--space-safe-bottom",
    "--text-primary",
-   "--text-secondary"
+   "--text-secondary",
+   "--z-dialog"
   ],
   "accessibility": "A dialog: role=\"dialog\" with aria-modal=\"true\" and aria-labelledby naming its heading, tabindex=\"-1\" so the focus can enter it. The focus moves to the dialog on open, Tab and Shift+Tab stay inside it, Escape, the close button and a click on the veil close it, and the focus returns to the button that opened it (components.js). The body is a scrollable region with tabindex=\"0\" and a name so the keyboard can scroll it. A download is a real link (a with the app href and download). An iframe keeps sandbox=\"\" and a title. Loading sets aria-busy and a status text; an error is an Alert with role=\"alert\". At the 480 width the actions take the full width and the sheet starts from the safe-area inset. The page behind is not made inert and its scroll is not locked by this component. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Read a document (a purchase agreement, an ownership certificate, a legal text of the sign-up) and take a copy of it.",
@@ -1830,8 +1936,8 @@
   ],
   "accessibility": "An article named by its heading (aria-labelledby). The facts are a dl (booked date, units). The basis is a sentence. The agreement as HTML opens K36 from a button; the signed agreement is a K44 row. The icon box is aria-hidden; the kind is in the badge text. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Show one purchase of an investor's position with its basis and its two documents.",
-  "usage": "One card per purchase. The card carries no price and no payment term (decided by the owner, 2026-10-14: the documents carry none for now). KN1 is a placeholder id.",
-  "notes": "An icon by basis, the kind, the date, the units, a view button, on the Card (K07), with the K44 row for the PDF and the K36 button."
+  "usage": "One card per purchase. The card carries the amount paid for the purchase, as the app gives it, and never the price of a part or a payment term (decided by the owner, 2026-10-23, correcting the rule of 2026-10-14). KN1 is a placeholder id.",
+  "notes": "An icon by basis, the kind, the date, the units, the amount paid, a view button, on the Card (K07), with the K44 row for the PDF and the K36 button."
  },
  {
   "id": "K43",
@@ -1865,21 +1971,26 @@
    "--fs-sm",
    "--fs-xs",
    "--lh-normal",
+   "--lh-snug",
    "--on-success",
    "--paper",
+   "--radius-control",
    "--radius-sm",
    "--size-4xl",
+   "--space-1",
+   "--space-2",
    "--space-3",
    "--space-4",
    "--space-6",
    "--success",
    "--text-primary",
    "--text-secondary",
+   "--touch-min",
    "--tracking-wide"
   ],
   "accessibility": "A section named by a heading. The fields are a dl. The QR is an img with alt text that says what it is; the same address is text in a selectable element (dir=\"ltr\"), so the data is never only in the picture. The Copy button names its action; on success components.js switches its label and icon (data-label-copied) and writes the confirmation into a role=\"status\" element (polite), and puts the button back after three seconds; a failure writes data-msg-failed. When the invoice is expired or the QR cannot be drawn the image is hidden and a sentence says why. The QR and the address are left-to-right islands (direction: ltr). Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Pay a deposit: the invoice fields, the QR and the address to copy.",
-  "usage": "The app fills the network, the amount and the deadline; the component writes no amount, fee or term. The QR pad is white in both themes because a camera scanner needs dark on white; the QR image is the app's. No value of a wallet is stored by the component.",
+  "usage": "The app fills the network, the amount and the deadline; the component writes no amount, fee or term. The QR pad is white in both themes because a camera scanner needs dark on white; the QR image is the app's. No value of a wallet is stored by the component. The copy script is shared with the Copyable value (K53), which is the same job outside an invoice.",
   "notes": "The three fields, the QR and the address; the QR is drawn in a forced light palette. The pad is --paper, white in both themes, because a camera scanner needs dark on white. A warning card is an Alert of the system."
  },
  {
@@ -1934,5 +2045,530 @@
   "purpose": "Show a series by month on the analytics screen of a company (C-4).",
   "usage": "One series, oldest first; the height is value / max with a value above zero at least one row. A second series needs a design of its own (patterns, labels) and is not built. The chart is stretched to the width by preserveAspectRatio=\"none\", so the bars have square corners (the cabinet's flex bars have a rounded top).",
   "notes": "A --bg-surface plot with a border, --primary bars, a 3xs uppercase month label; the plot is --center-lg, 320 high; the values are carried by the table, not by title-attribute tooltips. The month labels use --text-secondary: they stand on the plot's --bg-surface, where tertiary would be allowed by day; secondary is darker for the 3xs uppercase size. The row of month labels follows the reading direction, and so does this chart."
+ },
+ {
+  "id": "K45",
+  "name": "Checkbox",
+  "status": "built",
+  "markup": "markup/checkbox.html",
+  "class_root": ".ds-checkbox",
+  "variants": {
+   "use": [
+    "agreement or consent (a tick, never a switch)",
+    "a choice confirmed by Save",
+    "a group of permissions in a fieldset"
+   ]
+  },
+  "sizes": [
+   "a row of at least 40, at least --touch-min high at the 480 width; the box is --size-2xs"
+  ],
+  "states": [
+   "unchecked",
+   "hover",
+   "pressed",
+   "checked",
+   "focus",
+   "invalid (aria-invalid)",
+   "disabled"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-input",
+   "--border-input-hover",
+   "--border-input-width",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--on-primary",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--primary-subtle",
+   "--radius-xs",
+   "--size-2xs",
+   "--size-xl",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min"
+  ],
+  "accessibility": "A native input[type=checkbox] inside a label, so the whole row is the target and the name is the text; the box is decorative. Links inside the text open their pages and do not toggle the box. An invalid box takes aria-invalid=\"true\" and a .ds-field__error message under it. A group is a fieldset with a legend. The checked box is --primary with --on-primary (8.48 day, 5.85 night) and its border reaches 3:1 against the surface (--border-input 3.03 day, 3.01 night). Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A tick the person sets to agree or to choose.",
+  "usage": "An agreement stays a tick (\"it is like a signature\"), never a Toggle; a setting that applies at once is a Toggle (K06). The label may hold links to the documents agreed to. Use one markup everywhere: the cabinet had three.",
+  "notes": ""
+ },
+ {
+  "id": "K46",
+  "name": "Stat tile",
+  "status": "built",
+  "markup": "markup/stat.html",
+  "class_root": ".ds-stat, .ds-stats",
+  "variants": {
+   "look": [
+    "plain (default)",
+    "interactive (one link in the label)"
+   ],
+   "change": [
+    "up (data-trend=\"up\")",
+    "down (data-trend=\"down\")",
+    "none"
+   ],
+   "layout": [
+    ".ds-stats: two across on a phone, as many as fit above"
+   ]
+  },
+  "sizes": [
+   "one size; the tiles fill the columns of .ds-stats (--tile-min)"
+  ],
+  "states": [
+   "rest",
+   "hover (interactive)",
+   "pressed (interactive)",
+   "focus (interactive)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-surface",
+   "--border-default",
+   "--border-subtle",
+   "--danger",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-mono",
+   "--fs-lg",
+   "--fs-xs",
+   "--lh-snug",
+   "--lh-tight",
+   "--radius-card",
+   "--shadow-1",
+   "--shadow-2",
+   "--space-1",
+   "--space-3",
+   "--space-4",
+   "--success",
+   "--text-primary",
+   "--text-secondary",
+   "--tile-min"
+  ],
+  "accessibility": "A label above a figure, read in that order. The change is said in text with its sign and repeated by an arrow icon, so it is never colour alone; --success and --danger stand on the white surface (6.30 and 7.86 day). An interactive tile holds one link in its label that stretches over the tile; no click handler on the container. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A figure with its label, and often how it moved.",
+  "usage": "Use it for a KPI or a balance line; a summary on the primary colour is the brand Card (K07). The app writes the figure, the unit and the sign.",
+  "notes": ""
+ },
+ {
+  "id": "K47",
+  "name": "Hero",
+  "status": "built",
+  "markup": "markup/hero.html",
+  "class_root": ".ds-hero",
+  "variants": {
+   "cover": [
+    "photo (.ds-hero__image)",
+    "fallback tile (.ds-hero__fallback with an icon)"
+   ],
+   "chip": [
+    ".ds-hero__tag on the photo"
+   ]
+  },
+  "sizes": [
+   "default (min height --center-lg)",
+   "sm (--center-md)"
+  ],
+  "states": [
+   "with a photo",
+   "without a photo"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--center-lg",
+   "--center-md",
+   "--font-display",
+   "--fs-2xl",
+   "--fs-sm",
+   "--fs-xs",
+   "--icon-secondary",
+   "--icon-size-xl",
+   "--lh-snug",
+   "--lh-tight",
+   "--radius-card",
+   "--radius-sm",
+   "--scrim-strong",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-5",
+   "--space-6",
+   "--text-on-scrim",
+   "--tracking-tight"
+  ],
+  "accessibility": "A section named by its title (aria-labelledby). The picture is decorative (alt=\"\"): the title says what it is. Every text on it is --text-on-scrim over --scrim-strong, so it reaches 7.63 on a white photo, 13.81 on a mid-grey one and 20.17 on a black one (tokens/contrast.json), in both themes, because a photo does not change with the theme. The veil under the text is at full strength and fades only over the padding above the first line.",
+  "purpose": "A cover with the title laid over the photo.",
+  "usage": "The text over a photo is --text-on-scrim and the veil is --scrim-strong; the flat --scrim does not reach 4.5 over a bright photo. A product, a purchase, an instalment, a public product or a company overview opens with it.",
+  "notes": ""
+ },
+ {
+  "id": "K48",
+  "name": "Empty state",
+  "status": "built",
+  "markup": "markup/empty-state.html",
+  "class_root": ".ds-empty",
+  "variants": {
+   "tone": [
+    "neutral (default)",
+    "danger (data-tone=\"danger\": a load that failed)"
+   ],
+   "frame": [
+    "plain",
+    "framed (.ds-empty--framed, a dashed frame)"
+   ]
+  },
+  "sizes": [
+   "one size; the icon is --icon-size-xl"
+  ],
+  "states": [
+   "rest"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-default",
+   "--danger",
+   "--font-display",
+   "--fs-h4",
+   "--fs-sm",
+   "--icon-secondary",
+   "--icon-size-xl",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw-prose",
+   "--radius-card",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-6",
+   "--space-7",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-tight"
+  ],
+  "accessibility": "An icon (decorative), a heading, a description capped at --maxw-prose and an actions slot. A failed load takes role=\"alert\"; the title and the text say it in words and the danger tint is only a second sign. Buttons keep their own focus.",
+  "purpose": "Nothing here yet, or the load failed, with the way forward.",
+  "usage": "Use it where a list, a page or a section has no content; it is not a message in context (Alert, K09) and not a loading state (Skeleton, K19). Give it a Retry button when the cause is a failed load, a Create or Open button when it is just empty.",
+  "notes": ""
+ },
+ {
+  "id": "K49",
+  "name": "Key-value list",
+  "status": "built",
+  "markup": "markup/key-value.html",
+  "class_root": ".ds-kv",
+  "variants": {
+   "row": [
+    "plain",
+    "total (.ds-kv__row--total)"
+   ],
+   "layout": [
+    "inline (default)",
+    "stacked (.ds-kv--stacked)"
+   ]
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "rest"
+  ],
+  "tokens": [
+   "--border-default",
+   "--border-subtle",
+   "--font-mono",
+   "--fs-body",
+   "--fs-sm",
+   "--lh-snug",
+   "--space-1",
+   "--space-2",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary"
+  ],
+  "accessibility": "A dl with a div around each dt and dd, which the accessibility tree reads as pairs. The values are text in the mono face with tabular figures.",
+  "purpose": "One pair per row: a term at the start and its value at the end.",
+  "usage": "Use it for a price breakdown, a balance line, the fields of an invoice or the details of a transaction inside a Card or a Dialog. The Booking card (KN1) and the Invoice block (K43) keep their own facts lists.",
+  "notes": ""
+ },
+ {
+  "id": "K50",
+  "name": "Avatar",
+  "status": "built",
+  "markup": "markup/avatar.html",
+  "class_root": ".ds-avatar",
+  "variants": {
+   "content": [
+    "initials on --primary",
+    "a photo",
+    "initials, quiet (.ds-avatar--subtle)"
+   ]
+  },
+  "sizes": [
+   "sm 32 (--size-md)",
+   "md 40 (--size-xl, default)",
+   "lg 56 (--size-4xl)"
+  ],
+  "states": [
+   "rest"
+  ],
+  "tokens": [
+   "--font-body",
+   "--fs-h4",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-tight",
+   "--on-primary",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-pill",
+   "--size-4xl",
+   "--size-md",
+   "--size-xl"
+  ],
+  "accessibility": "A photo is an img with alt text naming the person or the company; initials are a span with role=\"img\" and aria-label, or aria-hidden when the name stands beside the disc. The initials are --on-primary on --primary (8.48 day, 5.85 night).",
+  "purpose": "Who a person or a company is, in one disc.",
+  "usage": "A company logo disc is an Avatar. The combobox (K38) keeps its own 32 px disc as its slot.",
+  "notes": ""
+ },
+ {
+  "id": "K51",
+  "name": "Chat thread and composer",
+  "status": "built",
+  "markup": "markup/chat-thread.html",
+  "class_root": ".ds-thread, .ds-message, .ds-composer",
+  "variants": {
+   "message": [
+    "other (default)",
+    "own (data-from=\"own\")"
+   ],
+   "parts": [
+    "author (staff views)",
+    "time",
+    "day line"
+   ]
+  },
+  "sizes": [
+   "a bubble is at most 520 wide"
+  ],
+  "states": [
+   "rest",
+   "sending (the Button busy)",
+   "empty (an Empty state)"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--border-subtle",
+   "--center-lg",
+   "--center-md",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-mono",
+   "--fs-3xs",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-normal",
+   "--primary-subtle",
+   "--radius-md",
+   "--radius-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-wide"
+  ],
+  "accessibility": "The feed is a ul with role=\"log\", aria-live=\"polite\" and tabindex=\"0\" so a keyboard user can scroll it. Own and other messages are told apart by the side and the ground and, in staff views, by the author line, not by colour alone. Text is --text-primary on --primary-subtle or --bg-subtle (16.0 or better day). The composer is a labelled textarea and a Button. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A conversation: messages in a feed and a field to write the next one.",
+  "usage": "The screen gives the thread its height; the feed scrolls and the composer stays under it.",
+  "notes": ""
+ },
+ {
+  "id": "K52",
+  "name": "Dialog",
+  "status": "built",
+  "markup": "markup/dialog.html",
+  "class_root": ".ds-dialog",
+  "variants": {
+   "placement": [
+    "sheet (default: from the bottom, a cap of --maxw-prose)",
+    "modal (data-variant=\"modal\": centred, a cap of --maxw-form-wide)"
+   ],
+   "role": [
+    "dialog (edit, details)",
+    "alertdialog (a confirm)"
+   ],
+   "specimen": [
+    "inline (.ds-dialog--inline)"
+   ]
+  },
+  "sizes": [
+   "sheet or modal; at most 90dvh high, the body scrolls"
+  ],
+  "states": [
+   "closed (hidden)",
+   "open",
+   "focus"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-subtle",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--fs-h4",
+   "--fs-sm",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw-form-wide",
+   "--maxw-prose",
+   "--radius-lg",
+   "--radius-modal",
+   "--scrim",
+   "--shadow-2",
+   "--shadow-deep",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-safe-bottom",
+   "--text-primary",
+   "--text-secondary",
+   "--tracking-tight",
+   "--z-dialog"
+  ],
+  "accessibility": "role=\"dialog\" or \"alertdialog\" with aria-modal=\"true\", aria-labelledby the title and, for a confirm, aria-describedby the text. components.js moves the focus to the panel on open, keeps Tab inside, closes on Escape and on a click on the scrim (data-lock=\"true\" keeps the scrim from closing it) and returns the focus to what opened it. The close button is a ghost icon button with aria-label. A destructive confirm is a danger Button and the cancel stays first in the order of reading. Events ds-dialog-open and ds-dialog-close are the app's hooks.",
+  "purpose": "A confirm, an edit form or the details of an item, over the page.",
+  "usage": "Use it for anything that is not a document; the document sheet and viewer (K36) keeps the framed body, Close and Save of a document. A confirm says what will happen in the text and puts the action in the button.",
+  "notes": ""
+ },
+ {
+  "id": "K53",
+  "name": "Copyable value",
+  "status": "built",
+  "markup": "markup/copyable-value.html",
+  "class_root": ".ds-copy",
+  "variants": {
+   "state": [
+    "rest",
+    "copied",
+    "copy failed"
+   ]
+  },
+  "sizes": [
+   "one size; the button is a small ghost icon button"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "copied (three seconds)",
+   "copy failed"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--border-default",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-snug",
+   "--radius-control",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--success",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min"
+  ],
+  "accessibility": "The value is selectable text (user-select: all) and a left-to-right island. The button has an aria-label that names the value; components.js writes the result into the polite status line (data-msg-copied, data-msg-failed) and switches the icon to a check, with the clipboard and a selection copy as the fallback. The copied tint is --success on --bg-subtle (5.55 day). Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "A value to copy: a code, a link, a hash, a secret.",
+  "usage": "Use it for a referral code or link, a transaction hash, a two-factor secret. The Invoice block (K43) keeps its own copy button and shares the script.",
+  "notes": ""
+ },
+ {
+  "id": "K54",
+  "name": "Timeline",
+  "status": "built",
+  "markup": "markup/timeline.html",
+  "class_root": ".ds-timeline",
+  "variants": {
+   "item": [
+    "done",
+    "current",
+    "upcoming (data-state)"
+   ],
+   "entry": [
+    "card (div)",
+    "opening card (details with a summary)"
+   ]
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "done",
+   "current",
+   "upcoming",
+   "hover (an opening card)",
+   "focus",
+   "open"
+  ],
+  "tokens": [
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input",
+   "--border-input-width",
+   "--border-subtle",
+   "--center-sm",
+   "--dur-base",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-display",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--icon-secondary",
+   "--lh-normal",
+   "--lh-snug",
+   "--primary",
+   "--primary-subtle",
+   "--radius-md",
+   "--radius-pill",
+   "--size-xs",
+   "--space-1",
+   "--space-3",
+   "--space-4",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-min"
+  ],
+  "accessibility": "An ordered list with an aria-label. The marker is decorative; the state is said by the Badge or the title, not by the marker alone. An opening entry is native details and summary (Enter and Space toggle it) with a chevron that turns. Dates are time elements. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "purpose": "Dated milestones of a project, in order.",
+  "usage": "Use it where the dates matter and an entry has a body; progress through a flow is the Stepper (K32).",
+  "notes": ""
  }
 ]

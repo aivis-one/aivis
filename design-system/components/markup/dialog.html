@@ -1,0 +1,18 @@
+<!-- AIVIS Dialog (K52): a dialog for a confirm, an edit form or details. A sheet from the bottom on a phone (a cap of --maxw-prose), data-variant="modal" a centred modal on a wide screen (a cap of --maxw-form-wide).
+     div.ds-dialog[hidden] > div.ds-dialog__panel[role=dialog|alertdialog][aria-modal=true][aria-labelledby][tabindex=-1] > head (title + a ghost icon close button with aria-label), body (any content; a form), actions (a secondary Cancel and the confirm; a destructive confirm is a danger Button).
+     components.js: [data-dialog-open="id"] opens it and moves the focus in; Tab stays inside; Escape and the scrim close (data-lock="true" on .ds-dialog keeps the scrim from closing it); the focus returns to what opened it.
+     Events ds-dialog-open and ds-dialog-close. The document dialog (K36) keeps its own look. -->
+<button type="button" class="ds-button ds-button--danger" data-dialog-open="dlg-confirm">Deactivate account</button>
+<div class="ds-dialog" id="dlg-confirm" data-variant="modal" hidden>
+  <div class="ds-dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="dlg-confirm-t" aria-describedby="dlg-confirm-d" tabindex="-1">
+    <div class="ds-dialog__head">
+      <h2 class="ds-dialog__title" id="dlg-confirm-t">Deactivate the account?</h2>
+      <button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" data-dialog-close aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="ds-dialog__body"><p class="ds-dialog__text" id="dlg-confirm-d">You can sign in again within 30 days to restore it.</p></div>
+    <div class="ds-dialog__actions">
+      <button type="button" class="ds-button ds-button--secondary" data-dialog-close>Cancel</button>
+      <button type="button" class="ds-button ds-button--danger" data-dialog-close>Deactivate</button>
+    </div>
+  </div>
+</div>

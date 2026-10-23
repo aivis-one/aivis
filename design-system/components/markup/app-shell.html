@@ -22,3 +22,45 @@
     </ul>
   </nav>
 </div>
+
+<!-- K25 additions (all optional parts of the same shell).
+     banner: div.ds-shell__banner, the first child, one line above the header in the look of the warning Alert (K09), kept at the top while the page scrolls; the staff-acting-as-a-user banner is this. The alert icon is .ds-alert__icon.
+     lead slot: div.ds-header__lead before the title, for the back control (a ghost icon button with aria-label).
+     figure: a.ds-header__figure or button.ds-header__figure in .ds-header__actions: a 3xs label over a mono amount, --touch-min high, the border takes --primary on hover.
+     bell count: the Badge count (markup/badge.html) inside the bell button.
+     menu mark: li.ds-nav__brand at the head of ul.ds-nav__list, shown from 880 with the rails and never on the tab bar; the colour mark of brand/ as an img.
+     measure: the main region keeps --maxw and is centred; data-measure="wide" gives --maxw-wide (staff tables and lists).
+     lead line: p.ds-shell__lead, the first element of main. toolbar: div.ds-shell__toolbar with div.ds-shell__filters at the start and one div.ds-shell__primary at the end.
+     action strip: div.ds-shell__action, the last element of main: sticky above the tab bar on a phone, in the flow from 880.
+     sub-navigation of a hub: nav.ds-subnav > ul.ds-subnav__list > li > a.ds-subnav__link[aria-current=page], sticky under the header.
+     nav-less variant: ds-shell--navless, header and main only (the public storefront), with no nav element. -->
+<div class="ds-shell">
+  <div class="ds-shell__banner" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-shell__banner-text">You are acting as Anna Weber</span><button type="button" class="ds-button ds-button--secondary ds-shell__banner-action" data-size="sm">Exit</button></div>
+  <header class="ds-header">
+    <div class="ds-header__lead"><a class="ds-button ds-button--ghost ds-button--icon" href="/portfolio" aria-label="Back"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg></a></div>
+    <h1 class="ds-header__title">Position</h1>
+    <div class="ds-header__actions">
+      <a class="ds-header__figure" href="/balance"><span class="ds-header__figure-label">Balance</span><span class="ds-header__figure-amount">1,020.00</span></a>
+      <button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications, 3 unread"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="ds-badge ds-badge--count" aria-hidden="true">3</span></button>
+    </div>
+  </header>
+  <main class="ds-shell__main" id="main2" data-measure="wide">
+    <p class="ds-shell__lead">Your units in this project and what they earned.</p>
+    <div class="ds-shell__toolbar"><div class="ds-shell__filters"><button type="button" class="ds-chip" aria-pressed="true">All</button><button type="button" class="ds-chip" aria-pressed="false">Open</button></div><div class="ds-shell__primary"><button type="button" class="ds-button" data-size="sm">Export</button></div></div>
+    <nav class="ds-subnav" aria-label="Sections"><ul class="ds-subnav__list"><li><a class="ds-subnav__link" href="/a" aria-current="page">Profile</a></li><li><a class="ds-subnav__link" href="/b">Documents</a></li><li><a class="ds-subnav__link" href="/c">Roadmap</a></li></ul></nav>
+    <!-- the screen -->
+    <div class="ds-shell__action"><button type="button" class="ds-button">Buy more</button></div>
+  </main>
+  <nav class="ds-nav" aria-label="Main">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../../brand/aivis-mark.svg" alt=""></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+    </ul>
+  </nav>
+</div>
+<!-- The nav-less shell (the public storefront): -->
+<div class="ds-shell ds-shell--navless">
+  <header class="ds-header"><h1 class="ds-header__title">Store</h1><div class="ds-header__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/login">Sign in</a></div></header>
+  <main class="ds-shell__main"><!-- the storefront --></main>
+</div>
