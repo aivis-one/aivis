@@ -63,3 +63,4 @@ Thumbs.db
 # as a dirty tree.
 .claude/
 /docs/
+checks/ds-copies-*/
