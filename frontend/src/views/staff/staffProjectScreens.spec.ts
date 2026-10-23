@@ -23,9 +23,12 @@ vi.mock('@/api/admin', () => ({
 }))
 vi.mock('@/api/support', () => ({ listStaffSupportQueue: vi.fn() }))
 vi.mock('@/api/products', () => ({ listProducts: vi.fn() }))
-vi.mock('@/api/staff-products', () => ({
+vi.mock('@/api/staff-products', async (importActual) => ({
+  ...(await importActual<typeof import('@/api/staff-products')>()),
   createStaffProduct: vi.fn(),
   updateStaffProduct: vi.fn(),
+  fetchStaffCompanyProducts: vi.fn(),
+  updateStaffProductStatus: vi.fn(),
 }))
 vi.mock('@/api/staff-companies', () => ({
   fetchStaffCompanyPool: vi.fn(),
@@ -57,6 +60,8 @@ const fetchWithdrawalsStaff = vi.mocked(admin.fetchWithdrawalsStaff)
 const listStaffSupportQueue = vi.mocked(support.listStaffSupportQueue)
 const listProducts = vi.mocked(products.listProducts)
 const createStaffProduct = vi.mocked(staffProducts.createStaffProduct)
+const fetchStaffCompanyProducts = vi.mocked(staffProducts.fetchStaffCompanyProducts)
+const updateStaffProductStatus = vi.mocked(staffProducts.updateStaffProductStatus)
 const fetchStaffCompanyPool = vi.mocked(staffCompanies.fetchStaffCompanyPool)
 const createStaffCompanyPool = vi.mocked(staffCompanies.createStaffCompanyPool)
 const fetchStaffCompanyAttachments = vi.mocked(staffCompanies.fetchStaffCompanyAttachments)
@@ -153,7 +158,8 @@ describe('the staff Settings tab', () => {
     expect(text).toContain('Sam Staff')
     expect(text).toContain('staff@example.com')
     expect(text).toContain('staff.settings.roleStaff')
-    expect(text).toContain('0.0.0-test')
+    expect(text).toContain('cabinets-1.5')
+    expect(text).not.toContain('0.1.0')
     expect(text).toContain('staff.settings.documents')
     wrapper.unmount()
   })
@@ -255,48 +261,148 @@ describe('a project: the pool of parts for sale', () => {
 })
 
 describe('a project: products', () => {
-  const PRODUCT = {
-    id: 'prod-1',
-    company_id: 'proj-1',
-    name: 'Starter',
-    description: 'A package',
-    package_size: 1000,
-    price_per_unit_cents: 5,
-    price_per_pack_cents: 5000,
-    available_packages: 7,
-    company_name: 'Project One',
+  function product(id: string, status: string, name: string) {
+    return {
+      id,
+      company_id: 'proj-1',
+      pool_id: 'pool-1',
+      name,
+      description: 'A package',
+      package_size: 1000,
+      cover_url: null,
+      purchase_config: null,
+      price_per_unit_cents: 5,
+      status,
+      created_at: '2026-10-01T10:00:00Z',
+      updated_at: null,
+    }
+  }
+  const ALL_STATUSES = [
+    product('p-active', 'active', 'Alpha'),
+    product('p-hidden', 'hidden', 'Beta'),
+    product('p-archived', 'archived', 'Gamma'),
+  ]
+
+  function listAll(): void {
+    fetchStaffCompanyProducts.mockResolvedValue({
+      items: ALL_STATUSES,
+      total: 3,
+      page: 1,
+      per_page: 20,
+    } as never)
   }
 
-  it('lists the products on sale and offers edit and create to a member who may', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+  /** The buttons of one product's row, by their text. */
+  function buttonsOf(wrapper: ReturnType<typeof mount>, name: string): string[] {
+    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes(name))!
+    return row.findAll('button').map((b) => b.text())
+  }
+
+  it('reads the project products in every status and shows the status on each card', async () => {
+    listAll()
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffCompanyProductsSection)
     await flushPromises()
-    expect(listProducts).toHaveBeenCalledWith({ company_id: 'proj-1', per_page: 100 })
-    expect(wrapper.text()).toContain('Starter')
-    expect(wrapper.text()).toContain('staff.platform.products.create')
-    expect(wrapper.text()).toContain('common.edit')
+    expect(fetchStaffCompanyProducts).toHaveBeenCalledWith('proj-1', { page: 1, per_page: 20 })
+    expect(listProducts).not.toHaveBeenCalled()
+    const text = wrapper.text()
+    expect(text).toContain('Alpha')
+    expect(text).toContain('Beta')
+    expect(text).toContain('Gamma')
+    expect(text).toContain('active')
+    expect(text).toContain('hidden')
+    expect(text).toContain('archived')
+    expect(text).toContain('staff.platform.products.create')
     wrapper.unmount()
   })
 
-  it('offers neither create nor edit to a member who only reads', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+  it('offers only the moves the server allows from each status', async () => {
+    listAll()
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffCompanyProductsSection)
+    await flushPromises()
+    // active -> hide, archive; hidden -> return, archive; archived -> nothing
+    expect(buttonsOf(wrapper, 'Alpha')).toEqual([
+      'staff.platform.products.hide',
+      'staff.platform.products.archive',
+      'common.edit',
+    ])
+    expect(buttonsOf(wrapper, 'Beta')).toEqual([
+      'staff.platform.products.return',
+      'staff.platform.products.archive',
+      'common.edit',
+    ])
+    expect(buttonsOf(wrapper, 'Gamma')).toEqual(['common.edit'])
+    wrapper.unmount()
+  })
+
+  it('hides a product through the status endpoint and reads the list again', async () => {
+    listAll()
+    updateStaffProductStatus.mockResolvedValue(product('p-active', 'hidden', 'Alpha') as never)
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffCompanyProductsSection)
+    await flushPromises()
+    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Alpha'))!
+    await row.findAll('button')[0]!.trigger('click')
+    await flushPromises()
+    expect(updateStaffProductStatus).toHaveBeenCalledWith('p-active', 'hidden')
+    expect(fetchStaffCompanyProducts).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('returns a hidden product to sale', async () => {
+    listAll()
+    updateStaffProductStatus.mockResolvedValue(product('p-hidden', 'active', 'Beta') as never)
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffCompanyProductsSection)
+    await flushPromises()
+    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Beta'))!
+    await row.findAll('button')[0]!.trigger('click')
+    await flushPromises()
+    expect(updateStaffProductStatus).toHaveBeenCalledWith('p-hidden', 'active')
+    wrapper.unmount()
+  })
+
+  it('asks before archiving, and archives only on the confirmation', async () => {
+    listAll()
+    updateStaffProductStatus.mockResolvedValue(product('p-active', 'archived', 'Alpha') as never)
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffCompanyProductsSection, { attachTo: document.body })
+    await flushPromises()
+    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Alpha'))!
+    await row.findAll('button')[1]!.trigger('click')
+    await flushPromises()
+    expect(updateStaffProductStatus).not.toHaveBeenCalled()
+    const confirm = Array.from(document.body.querySelectorAll('.c-modal-dialog button')).find((b) =>
+      (b.textContent ?? '').includes('staff.platform.products.archive'),
+    ) as HTMLButtonElement
+    confirm.click()
+    await flushPromises()
+    expect(updateStaffProductStatus).toHaveBeenCalledWith('p-active', 'archived')
+    wrapper.unmount()
+  })
+
+  it('offers neither create, edit nor a status move to a member who only reads', async () => {
+    listAll()
     signInAs([])
     const wrapper = mount(StaffCompanyProductsSection)
     await flushPromises()
-    expect(wrapper.text()).toContain('Starter')
+    expect(wrapper.text()).toContain('Alpha')
     expect(wrapper.text()).not.toContain('staff.platform.products.create')
     expect(wrapper.text()).not.toContain('common.edit')
+    expect(wrapper.text()).not.toContain('staff.platform.products.hide')
+    expect(wrapper.text()).not.toContain('staff.platform.products.archive')
+    expect(wrapper.text()).not.toContain('staff.platform.products.return')
+    expect(createStaffProduct).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
-  it('has no control that takes a product off sale', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+  it('shows a failed read as a failure', async () => {
+    fetchStaffCompanyProducts.mockRejectedValue(new Error('500'))
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffCompanyProductsSection)
     await flushPromises()
-    expect(wrapper.text()).not.toMatch(/hide|archive/i)
-    expect(createStaffProduct).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('common.error')
     wrapper.unmount()
   })
 })

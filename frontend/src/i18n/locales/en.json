@@ -830,8 +830,14 @@
         "created": "The pool is created"
       },
       "products": {
-        "hint": "The products of the project that are on sale. A product taken off sale does not appear in this list, so this screen has no control that takes one off sale.",
-        "empty": "No products on sale",
+        "hint": "The products of the project in every status. Hide takes a product off sale, Return puts a hidden one back, Archive closes a product for good.",
+        "empty": "No products",
+        "hide": "Hide",
+        "archive": "Archive",
+        "return": "Return",
+        "statusChanged": "The product status is changed",
+        "archiveTitle": "Archive the product?",
+        "archiveBody": "An archived product leaves the sale for good and cannot be returned.",
         "create": "Create a product",
         "createTitle": "Create a product",
         "editTitle": "Edit the product",
@@ -843,7 +849,7 @@
         "packageSizeNote": "The number of parts in a package cannot be changed after the product is created.",
         "created": "Product created",
         "updated": "Product updated",
-        "meta": "{size} parts in a package · {price} a part · {left} packages left"
+        "meta": "{size} parts in a package · {price} a part"
       },
       "urlPlaceholder": "Web address"
     },
@@ -858,6 +864,7 @@
       "finance": {
         "payments": "Payments",
         "withdrawals": "Withdrawals",
+        "purchases": "Purchases",
         "gifts": "Gifts",
         "reconciliation": "Money check"
       }
@@ -969,6 +976,27 @@
         "error": "Error"
       }
     },
+    "purchases": {
+      "hint": "The purchases of the platform, newest first. The list is read-only; a gift that its recipient has not accepted yet can be cancelled here.",
+      "filterStatus": "Status",
+      "filterProject": "Project",
+      "filterBuyer": "Buyer",
+      "filterAll": "All",
+      "empty": "No purchases match",
+      "partsCount": "{n} parts",
+      "kinds": {
+        "paid": "Paid",
+        "installment": "Installment",
+        "gift": "Gift",
+        "bonus": "Bonus"
+      },
+      "statuses": {
+        "active": "Active",
+        "pending_acceptance": "Waiting for acceptance",
+        "reversed": "Reversed",
+        "cancelled": "Cancelled"
+      }
+    },
     "gifts": {
       "hint": "A gift of the company is parts of a project given to a person from the list of the deed of gift, after that person has passed the paid identity check. The gift waits for the person to press \"accept the gift\" in their cabinet; nothing is credited before that.",
       "limit": "The limit of the gift (10 percent of the project's parts, from its reserve) is not checked by the system. Check it yourself before you grant.",
@@ -987,8 +1015,8 @@
       "cancel": "Cancel the gift",
       "cancelled": "The gift is cancelled",
       "cancelError": "The gift could not be cancelled",
-      "sessionTitle": "Gifts granted in this session",
-      "sessionNote": "The list is kept on this page only and is empty after a reload.",
+      "sessionTitle": "Just granted",
+      "listPointer": "Every gift, with its cancel while it waits for acceptance, is in Finance > Purchases.",
       "partsCount": "{n} parts",
       "statuses": {
         "pending_acceptance": "Waiting for acceptance",

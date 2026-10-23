@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from './client'
-import { deactivateStaff, fetchAgentApplications, fetchUsers } from './admin'
+import { deactivateStaff, fetchAgentApplications, fetchStaffPurchases, fetchUsers } from './admin'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -77,5 +77,35 @@ describe('deactivateStaff', () => {
     const post = vi.spyOn(api, 'post').mockResolvedValue({ id: 'p1', is_active: false })
     await deactivateStaff('p1')
     expect(post.mock.calls[0]?.[0]).toBe('/api/v1/staff/users/p1/deactivate')
+  })
+})
+
+describe('fetchStaffPurchases', () => {
+  it('reads the staff purchases list with its filters and page', async () => {
+    const get = vi
+      .spyOn(api, 'get')
+      .mockResolvedValue({ items: [], total: 0, page: 2, per_page: 20 })
+    await fetchStaffPurchases({
+      status: 'pending_acceptance',
+      company_id: 'c1',
+      buyer_id: 'u1',
+      page: 2,
+      per_page: 20,
+    })
+    const url = String(get.mock.calls[0]?.[0])
+    expect(url.startsWith('/api/v1/staff/purchases?')).toBe(true)
+    expect(url).toContain('status=pending_acceptance')
+    expect(url).toContain('company_id=c1')
+    expect(url).toContain('buyer_id=u1')
+    expect(url).toContain('page=2')
+    expect(url).toContain('per_page=20')
+  })
+
+  it('sends no query when it is given no filter and no page', async () => {
+    const get = vi
+      .spyOn(api, 'get')
+      .mockResolvedValue({ items: [], total: 0, page: 1, per_page: 20 })
+    await fetchStaffPurchases()
+    expect(get.mock.calls[0]?.[0]).toBe('/api/v1/staff/purchases')
   })
 })

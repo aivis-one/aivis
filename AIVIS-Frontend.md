@@ -649,7 +649,8 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 /staff/users/support       → StaffSupportView
 /staff/finance/payments    → StaffPaymentsView (top-ups in their hour, then all payments)
 /staff/finance/withdrawals → StaffWithdrawalsView
-/staff/finance/gifts       → StaffGiftsView
+/staff/finance/purchases  → StaffPurchasesView
+/staff/finance/gifts       → StaffGiftsView   (the grant: administrator only)
 /staff/finance/reconciliation → StaffReconciliationView (administrator)
 /staff/platform/news       → StaffNewsView
 /staff/platform/events     → StaffEventsView

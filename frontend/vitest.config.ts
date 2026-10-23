@@ -20,12 +20,13 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath } from 'node:url'
+import { DEFAULT_APP_VERSION } from './src/appVersion'
 
 export default defineConfig({
   plugins: [vue()],
   define: {
-    // The build's version (vite.config.ts writes the real one); the tests read a fixed one.
-    __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    // The build's version (vite.config.ts writes it); the tests read the default build tag.
+    __APP_VERSION__: JSON.stringify(DEFAULT_APP_VERSION),
   },
   resolve: {
     alias: {

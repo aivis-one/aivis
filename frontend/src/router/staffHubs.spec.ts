@@ -54,9 +54,9 @@ describe('where a hub opens', () => {
     expect(hubStart(FINANCE_SECTIONS)).toBe('/staff/finance/payments')
   })
 
-  it('opens Finance on gifts for a member who has only the financial operations', () => {
+  it('opens Finance on purchases for a member who has only the financial operations', () => {
     signInAsStaff(['financial_operations'])
-    expect(hubStart(FINANCE_SECTIONS)).toBe('/staff/finance/gifts')
+    expect(hubStart(FINANCE_SECTIONS)).toBe('/staff/finance/purchases')
   })
 
   it('opens Finance on payments for the administrator, and the money check is open to them', () => {

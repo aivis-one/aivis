@@ -2,16 +2,12 @@ import { defineConfig, loadEnv, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
-import { readFileSync } from 'node:fs'
 import { requireOrigin } from './src/api/deployOrigin'
+import { resolveAppVersion } from './src/appVersion'
 
-// The version the staff cabinet shows is the one this build is made from:
-// package.json's, read at build time and written into the bundle.
-const APP_VERSION = (
-  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
-    version: string
-  }
-).version
+// The version the staff cabinet shows is the build tag (src/appVersion.ts: `cabinets-1.5`,
+// or the VITE_APP_VERSION of a build for another tag), written into the bundle.
+const APP_VERSION = resolveAppVersion(process.env.VITE_APP_VERSION)
 
 const config: UserConfig = {
   // Row 31: the cabinet is served under the site's /app/. Vite prefixes every

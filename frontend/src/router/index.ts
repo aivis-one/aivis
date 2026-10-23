@@ -816,6 +816,12 @@ export const router = createRouter({
               component: () => import('@/views/staff/StaffWithdrawalsView.vue'),
             },
             {
+              path: 'purchases',
+              name: 'staff-purchases',
+              meta: sectionMeta(FINANCE_SECTIONS, 'purchases'),
+              component: () => import('@/views/staff/StaffPurchasesView.vue'),
+            },
+            {
               path: 'gifts',
               name: 'staff-gifts',
               meta: sectionMeta(FINANCE_SECTIONS, 'gifts'),

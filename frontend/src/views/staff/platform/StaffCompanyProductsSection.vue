@@ -3,36 +3,41 @@
 // AIVIS.ONE Frontend -- StaffCompanyProductsSection (a project's products)
 // =============================================================================
 //
-// The products on sale of one project, with the two things a staff member does
-// to them: create a product (a package of a fixed number of parts at the
-// project's price of a part) and change an existing product's text (name,
-// description, cover). A product can be created only after the project has a
-// pool of parts for sale (the Parts section).
+// The products of one project in EVERY status (active, hidden, archived), with
+// what a staff member does to them: create a product (a package of a fixed
+// number of parts at the project's price of a part), change an existing
+// product's text (name, description, cover) and move it between statuses --
+// Hide, Archive and Return. A product can be created only after the project has
+// a pool of parts for sale (the Parts section).
 //
-// WHAT THE LIST SHOWS. The storefront's list of the project's active products
-// is the only list there is for staff; a product that is hidden or archived is
-// not in it. For that reason the screen has no control that takes a product off
-// sale: it would drop out of the only list the screen has. The project's own
-// account shows its products in every status.
+// Only the moves the server allows are offered: an active product can be hidden
+// or archived, a hidden one returned or archived, an archived one stays.
 //
-// GET  /api/v1/public/products?company_id=   (the storefront's list)
-// POST /api/v1/staff/products                (project_manage AND financial_operations)
-// PATCH /api/v1/staff/products/{id}          (project_manage)
+// GET   /api/v1/staff/companies/{id}/products  (company_manage; every status, paged)
+// POST  /api/v1/staff/products                 (project_manage AND financial_operations)
+// PATCH /api/v1/staff/products/{id}            (project_manage)
+// PATCH /api/v1/staff/products/{id}/status     (project_manage)
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Package } from 'lucide-vue-next'
-import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
-import { listProducts } from '@/api/products'
-import { createStaffProduct, updateStaffProduct } from '@/api/staff-products'
-import type { StaffUpdateProductRequest } from '@/api/staff-products'
+import {
+  allowedProductStatuses,
+  createStaffProduct,
+  fetchStaffCompanyProducts,
+  updateStaffProduct,
+  updateStaffProductStatus,
+} from '@/api/staff-products'
+import type { StaffProductStatus, StaffUpdateProductRequest } from '@/api/staff-products'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { useToast } from '@/composables/useToast'
+import { tOrRaw } from '@/utils/i18n'
 import { formatNumber, formatPrice } from '@/utils/format'
-import type { PublicProductResponse } from '@/api/types'
+import type { ProductResponse } from '@/api/generated'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -48,9 +53,14 @@ const companyId = computed<string>(() => {
   return typeof raw === 'string' ? raw : ''
 })
 
-const items = ref<PublicProductResponse[]>([])
+const items = ref<ProductResponse[]>([])
+const total = ref(0)
+const page = ref(1)
+const perPage = 20
 const loading = ref(true)
 const error = ref(false)
+
+const totalPages = computed(() => Math.ceil(total.value / perPage))
 
 async function load(): Promise<void> {
   const id = companyId.value
@@ -58,7 +68,9 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    items.value = (await listProducts({ company_id: id, per_page: 100 })).items
+    const resp = await fetchStaffCompanyProducts(id, { page: page.value, per_page: perPage })
+    items.value = resp.items
+    total.value = resp.total
   } catch {
     error.value = true
   } finally {
@@ -66,14 +78,74 @@ async function load(): Promise<void> {
   }
 }
 
+function goToPrevPage(): void {
+  page.value--
+  void load()
+}
+
+function goToNextPage(): void {
+  page.value++
+  void load()
+}
+
 function serverReason(err: unknown): string {
   return err instanceof ApiResponseError && err.detail ? err.detail : t('common.error')
+}
+
+// -- Status: Hide, Archive, Return ------------------------------------------------
+
+function statusLabel(status: string): string {
+  return tOrRaw(t, `comp.products.status.${status}`, status)
+}
+
+function statusVariant(status: string): 'success' | 'warning' | 'neutral' {
+  if (status === 'active') return 'success'
+  if (status === 'hidden') return 'warning'
+  return 'neutral'
+}
+
+/** The moves offered on a product: the server's table, and only for a member who may change a status. */
+function movesOf(product: ProductResponse): StaffProductStatus[] {
+  return canEdit.value ? allowedProductStatuses(product.status) : []
+}
+
+function moveKey(to: StaffProductStatus): string {
+  if (to === 'hidden') return 'staff.platform.products.hide'
+  if (to === 'archived') return 'staff.platform.products.archive'
+  return 'staff.platform.products.return'
+}
+
+const movingId = ref<string | null>(null)
+const archiveTarget = ref<ProductResponse | null>(null)
+
+async function applyMove(product: ProductResponse, to: StaffProductStatus): Promise<void> {
+  if (movingId.value) return
+  movingId.value = product.id
+  try {
+    await updateStaffProductStatus(product.id, to)
+    showToast(t('staff.platform.products.statusChanged'), 'success')
+    archiveTarget.value = null
+    await load()
+  } catch (err) {
+    showToast(serverReason(err), 'error')
+  } finally {
+    movingId.value = null
+  }
+}
+
+function requestMove(product: ProductResponse, to: StaffProductStatus): void {
+  // Archiving is final, so it asks first; hiding and returning are undone by each other.
+  if (to === 'archived') {
+    archiveTarget.value = product
+    return
+  }
+  void applyMove(product, to)
 }
 
 // -- The form (create and edit) -------------------------------------------------
 
 const showForm = ref(false)
-const editing = ref<PublicProductResponse | null>(null)
+const editing = ref<ProductResponse | null>(null)
 const saving = ref(false)
 
 const draftName = ref('')
@@ -106,7 +178,7 @@ function openCreate(): void {
   showForm.value = true
 }
 
-function openEdit(product: PublicProductResponse): void {
+function openEdit(product: ProductResponse): void {
   if (!canEdit.value) return
   editing.value = product
   draftName.value = product.name
@@ -185,23 +257,65 @@ onMounted(load)
     <ul v-else class="scprod__list">
       <li v-for="p in items" :key="p.id" class="scprod__item">
         <div class="scprod__info">
-          <div class="scprod__name">{{ p.name }}</div>
+          <div class="scprod__name">
+            {{ p.name }}
+            <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
+          </div>
           <div v-if="p.description" class="scprod__desc">{{ p.description }}</div>
           <div class="scprod__meta">
             {{
               t('staff.platform.products.meta', {
                 size: formatNumber(p.package_size, locale),
                 price: formatPrice(p.price_per_unit_cents, 'USD'),
-                left: formatNumber(p.available_packages, locale),
               })
             }}
           </div>
         </div>
-        <CButton v-if="canEdit" variant="outline" size="sm" @click="openEdit(p)">
-          {{ t('common.edit') }}
-        </CButton>
+        <div class="scprod__actions">
+          <CButton
+            v-for="to in movesOf(p)"
+            :key="to"
+            variant="outline"
+            size="sm"
+            :disabled="movingId === p.id"
+            @click="requestMove(p, to)"
+          >
+            {{ t(moveKey(to)) }}
+          </CButton>
+          <CButton v-if="canEdit" variant="outline" size="sm" @click="openEdit(p)">
+            {{ t('common.edit') }}
+          </CButton>
+        </div>
       </li>
     </ul>
+
+    <div v-if="!loading && !error && totalPages > 1" class="scprod__pagination">
+      <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
+        &larr;
+      </CButton>
+      <span class="scprod__page">{{ page }} / {{ totalPages }}</span>
+      <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
+        &rarr;
+      </CButton>
+    </div>
+
+    <CModal :open="archiveTarget !== null" @close="archiveTarget = null">
+      <h3 class="scprod__modal-title">{{ t('staff.platform.products.archiveTitle') }}</h3>
+      <p class="scprod__modal-note">{{ t('staff.platform.products.archiveBody') }}</p>
+      <div class="scprod__modal-actions">
+        <CButton variant="outline" size="sm" @click="archiveTarget = null">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="movingId !== null"
+          @click="archiveTarget && applyMove(archiveTarget, 'archived')"
+        >
+          {{ t('staff.platform.products.archive') }}
+        </CButton>
+      </div>
+    </CModal>
 
     <CModal :open="showForm" @close="showForm = false">
       <h3 class="scprod__modal-title">
@@ -306,6 +420,9 @@ onMounted(load)
 }
 
 .scprod__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
@@ -316,6 +433,26 @@ onMounted(load)
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   max-width: var(--maxw-prose);
+}
+
+.scprod__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.scprod__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.scprod__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 
 .scprod__meta {

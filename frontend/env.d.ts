@@ -21,5 +21,5 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-/** The version of this build (package.json's), written into the bundle by vite.config.ts. */
+/** The version of this build: its tag (src/appVersion.ts), written into the bundle by vite.config.ts. */
 declare const __APP_VERSION__: string

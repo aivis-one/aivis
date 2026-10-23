@@ -11,7 +11,7 @@
 // CREDITED until the person presses "accept the gift" in their own cabinet --
 // until then the gift can be cancelled here.
 //
-// POST /api/v1/staff/purchases/gifts        (needs financial_operations)
+// POST /api/v1/staff/purchases/gifts        (needs financial_operations AND the administrator)
 // POST /api/v1/staff/purchases/gifts/{id}/cancel
 //
 // THE LIMIT IS NOT CHECKED BY THE SYSTEM. The share of a project's parts that
@@ -19,8 +19,8 @@
 // by hand; the screen says so above the form, and the server refuses only what
 // it can know (an inactive or unverified recipient, an inactive product).
 //
-// There is no server list of gifts, so the screen keeps the gifts granted in
-// this session on the page, each with its cancel while it is still waiting.
+// A gift just granted is listed here with its cancel while it waits; every gift
+// of every date, cancel included, is in Finance > Purchases (GET /api/v1/staff/purchases).
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -225,7 +225,7 @@ onMounted(loadProducts)
       <h3 class="gifts__list-title">
         {{ t('staff.gifts.sessionTitle') }}
       </h3>
-      <p class="gifts__list-note">{{ t('staff.gifts.sessionNote') }}</p>
+      <p class="gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
       <div v-for="entry in granted" :key="entry.gift.id" class="gifts__row">
         <div class="gifts__row-info">
           <div class="gifts__row-main">

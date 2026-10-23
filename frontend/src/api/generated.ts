@@ -26,6 +26,9 @@ export type KYCStatus = 'not_started' | 'submitted' | 'approved' | 'rejected' | 
 /** Post owner type. */
 export type OwnerType = 'platform' | 'company'
 
+/** Purchase lifecycle status. */
+export type PurchaseStatus = 'active' | 'reversed' | 'pending_acceptance' | 'cancelled'
+
 /** Roadmap item surface kind (R1 §5, iter 2.4). A roadmap row carries one of three shapes; the API surface differs per kind: milestone -- traditional planned-progress-completed item with target_date. Subject to the planned -> in_progress -> completed state machine. Most existing rows fall here; migration 0033 backfills the column to this value. event -- date-bound event (target_date required, valid_until required, valid_until > target_date). Status is irrelevant; events are shown as long as today <= valid_until. announcement -- dateless message (no target_date / valid_until / status). Visible until soft-deleted. `kind` is immutable after create. To switch kind, Staff soft-deletes the row and creates a fresh one with the new kind. */
 export type RoadmapItemKind = 'milestone' | 'event' | 'announcement'
 
@@ -47,6 +50,29 @@ export type VerificationMode = 'manual' | 'automatic'
 export interface AgentApplicationListResponse {
   items: AgentApplicationResponse[]
   total: number
+}
+
+/** One pending application in the staff queue, with the applicant. Name, e-mail and KYC status are read from the applicant's user row: staff decide on the person, not on an id. e-mail is null for an account that came in through Telegram without one. */
+export interface AgentApplicationQueueItem {
+  id: string
+  user_id: string
+  status: string
+  rejection_reason?: string | null
+  cooldown_until?: string | null
+  reviewed_at?: string | null
+  reviewed_by?: string | null
+  created_at: string
+  applicant_name: string
+  applicant_email?: string | null
+  applicant_kyc_status: string
+}
+
+/** Paged staff queue of pending agent (integrator) applications. */
+export interface AgentApplicationQueueResponse {
+  items: AgentApplicationQueueItem[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** Single agent application record. */
@@ -76,6 +102,11 @@ export interface AssignCompanyRequest {
   shares_per_option?: number
 }
 
+/** POST /api/v1/users/me/email -- an account without an e-mail adds one. */
+export interface AttachEmailRequest {
+  email: string
+}
+
 /** A short-lived link to one attachment (H32 P-121). The download endpoints return the link instead of a 302 to it: the frontend opens it as a navigation, so the browser follows it like any link -- no fetch across origins, no CORS, no Authorization header carried through a redirect. The link carries response-content-disposition=attachment, so it downloads under its original name and an SVG/HTML payload is never rendered (Round 4 SEC-01). Same shape as KYCDocumentURLResponse. */
 export interface AttachmentDownloadURLResponse {
   url: string
@@ -87,7 +118,7 @@ export interface AttachmentPatchBody {
   title?: string | null
   description?: string | null
   category?: string | null
-  language?: 'en' | 'ru' | 'de' | 'ar' | null
+  language?: 'en' | 'ru' | 'ar' | 'de' | null
   order?: number | null
   is_published?: boolean | null
   is_public?: boolean | null
@@ -588,6 +619,7 @@ export interface EmailRegisterRequest {
   email: string
   password: string
   referral_code?: string | null
+  language?: 'en' | 'ru' | 'ar' | 'de' | null
 }
 
 /** A body with no fields at all, for the two verbs that need none. Opening a request and marking it read are fully determined by the session: there is nothing to say beyond the verb itself. The model exists ONLY so that a body carrying an actor field is refused instead of ignored -- a handler with no body model at all would accept and discard it without a word. */
@@ -616,6 +648,12 @@ export interface EventResponse {
   created_by: string
   created_at: string
   updated_at?: string | null
+}
+
+/** Gifts waiting for the caller's acceptance. */
+export interface GiftListResponse {
+  items: PurchaseResponse[]
+  total: number
 }
 
 /** GET /api/v1/notifications -- newest-first feed plus the badge. `unread` rides along in the same round trip as comms' own contract promises, so a page render never needs a second call just to paint the badge next to the list it is already fetching. */
@@ -761,6 +799,7 @@ export interface KYCStatusResponse {
   kyc_status: string
   application_id?: string | null
   application_status?: string | null
+  rejection_reason?: string | null
   fee_cents: number
   available_cents: number
 }
@@ -946,6 +985,14 @@ export interface PriceHistoryResponse {
   changed_by: string
 }
 
+/** Paginated list of products (staff). */
+export interface ProductListResponse {
+  items: ProductResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
 /** Product info for staff view. */
 export interface ProductResponse {
   id: string
@@ -1063,6 +1110,12 @@ export interface PurchaseItemResponse {
   price_per_unit_cents: number
   status: string
   created_at: string
+}
+
+/** Bonus parts one package of a product brings the caller right now. */
+export interface PurchasePreviewResponse {
+  bonus_units: number
+  bonus_percent: number
 }
 
 /** Single purchase record. */
@@ -1273,6 +1326,13 @@ export interface StaffAttachmentResponse {
   created_by_id?: string | null
 }
 
+/** Staff grants gift parts to a user. The product names the project and the price snapshot the gift certificate is rendered against. The recipient must have passed KYC. Nothing is credited until the recipient accepts. */
+export interface StaffGrantGiftRequest {
+  user_id: string
+  product_id: string
+  units: number
+}
+
 /** Paginated payment list for staff. */
 export interface StaffPaymentListResponse {
   items: StaffPaymentResponse[]
@@ -1302,6 +1362,32 @@ export interface StaffProfileResponse {
   permissions: Record<string, unknown>
   is_active: boolean
   created_at: string
+}
+
+/** One row of the staff purchases list (read-only). */
+export interface StaffPurchaseItem {
+  id: string
+  created_at: string
+  buyer_id: string
+  buyer_email: string | null
+  buyer_name: string | null
+  company_id: string
+  company_name: string
+  product_id: string
+  product_name: string
+  units: number
+  paid_cents: number
+  kind: string
+  legal_basis: string
+  status: string
+}
+
+/** Paged staff list of purchases. */
+export interface StaffPurchaseListResponse {
+  items: StaffPurchaseItem[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** Request body for manual purchase reversal (R-2.2 Block B). */

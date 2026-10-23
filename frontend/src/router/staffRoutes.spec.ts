@@ -65,8 +65,9 @@ describe('the lock of a route is the lock of its chip', () => {
     ['staff-platform-settings', PLATFORM_SECTIONS[3]!],
     ['staff-payments', FINANCE_SECTIONS[0]!],
     ['staff-withdrawals', FINANCE_SECTIONS[1]!],
-    ['staff-gifts', FINANCE_SECTIONS[2]!],
-    ['staff-reconciliation', FINANCE_SECTIONS[3]!],
+    ['staff-purchases', FINANCE_SECTIONS[2]!],
+    ['staff-gifts', FINANCE_SECTIONS[3]!],
+    ['staff-reconciliation', FINANCE_SECTIONS[4]!],
     ['staff-agent-apps', USERS_SECTIONS[1]!],
     ['staff-avatar', USERS_SECTIONS[2]!],
   ]
@@ -74,6 +75,11 @@ describe('the lock of a route is the lock of its chip', () => {
   it.each(cases)('%s carries the right its chip needs', (name, section) => {
     expect(record(name).meta.permission).toBe(section.permission)
     expect(record(name).meta.admin === true).toBe(section.admin === true)
+  })
+
+  it('opens the gift grant to the administrator only', () => {
+    expect(record('staff-gifts').meta.admin).toBe(true)
+    expect(record('staff-purchases').meta.admin).toBeUndefined()
   })
 
   it('opens the money check to the administrator only', () => {

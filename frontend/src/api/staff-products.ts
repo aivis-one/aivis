@@ -2,21 +2,26 @@
 // AIVIS.ONE Frontend -- Staff Products API
 // =============================================================================
 //
-// Typed wrappers for /api/v1/staff/products (backend products/staff_router.py).
-// Creating a product needs project_manage AND financial_operations (it shapes
-// what a buyer is offered); updating its text needs project_manage.
+// Typed wrappers for the staff products of a project (backend
+// products/staff_router.py and companies/staff_router.py). Creating a product
+// needs project_manage AND financial_operations (it shapes what a buyer is
+// offered); updating its text and changing its status need project_manage; the
+// list of a project's products in every status needs company_manage.
 //
-// WHAT IS NOT HERE, and why. There is no staff READ of a project's products:
-// the list a staff member sees is the storefront's (GET /public/products), which
-// carries the active products only. So the staff screen creates a product and
-// edits an active one's text, and offers no status change -- a product taken
-// off sale would drop out of the only list the screen has and could not be
-// found again. The status endpoint (PATCH /staff/products/{id}/status) waits
-// for a staff list that shows every status.
+//   GET   /api/v1/staff/companies/{id}/products   -- every status, paged
+//   POST  /api/v1/staff/products                  -- create
+//   PATCH /api/v1/staff/products/{id}             -- text
+//   PATCH /api/v1/staff/products/{id}/status      -- hide / archive / return
+//
+// The status moves the server allows (products/constants.py,
+// VALID_PRODUCT_STATUS_TRANSITIONS), mirrored below so the screen offers only
+// those: hidden -> active | archived; active -> hidden | archived; archived is
+// final.
 // =============================================================================
 
 import { api } from '@/api/client'
-import type { ProductResponse } from '@/api/generated'
+import { buildQueryString } from '@/utils/querystring'
+import type { ProductListResponse, ProductResponse } from '@/api/generated'
 
 /** The body of a product creation. `package_size` is the number of parts in one package; it never changes after creation. */
 export interface StaffCreateProductRequest {
@@ -34,6 +39,31 @@ export interface StaffUpdateProductRequest {
   cover_url?: string | null
 }
 
+/** The statuses of a product. */
+export type StaffProductStatus = 'active' | 'hidden' | 'archived'
+
+/**
+ * The statuses a product can move to from `from`; the server's table. An unknown
+ * status has no move. Archived is final: no button is offered.
+ */
+export function allowedProductStatuses(from: string): StaffProductStatus[] {
+  if (from === 'active') return ['hidden', 'archived']
+  if (from === 'hidden') return ['active', 'archived']
+  return []
+}
+
+/**
+ * GET /api/v1/staff/companies/{id}/products -- one project's products in EVERY
+ * status, newest first, paged (per_page at most 100). Needs company_manage.
+ */
+export function fetchStaffCompanyProducts(
+  companyId: string,
+  params?: { page?: number; per_page?: number },
+): Promise<ProductListResponse> {
+  const qs = buildQueryString({ page: params?.page, per_page: params?.per_page })
+  return api.get<ProductListResponse>(`/api/v1/staff/companies/${companyId}/products${qs}`)
+}
+
 /**
  * POST /api/v1/staff/products -- create a product of a project. The project
  * must have an active pool of parts for sale (409/400 from the server when it
@@ -49,4 +79,15 @@ export function updateStaffProduct(
   body: StaffUpdateProductRequest,
 ): Promise<ProductResponse> {
   return api.patch<ProductResponse>(`/api/v1/staff/products/${productId}`, body)
+}
+
+/**
+ * PATCH /api/v1/staff/products/{id}/status -- hide, archive or return a
+ * product. Needs project_manage; a move the server does not allow answers 400.
+ */
+export function updateStaffProductStatus(
+  productId: string,
+  status: StaffProductStatus,
+): Promise<ProductResponse> {
+  return api.patch<ProductResponse>(`/api/v1/staff/products/${productId}/status`, { status })
 }

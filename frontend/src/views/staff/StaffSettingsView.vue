@@ -12,8 +12,8 @@
 //   3. Account -- two-factor authentication, active sessions, notification
 //      preferences (the shared sections), the notifications inbox, the staff
 //      member's legal documents (the AML policy among them), sign-out.
-//   4. About -- the version of this build (package.json's, written into the
-//      bundle at build time).
+//   4. About -- the version of this build: its tag, written into the bundle at
+//      build time (src/appVersion.ts).
 // =============================================================================
 
 import { computed, ref } from 'vue'

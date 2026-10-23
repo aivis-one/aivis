@@ -13,8 +13,10 @@
 //      administrator marks with one press.
 //   3. THE ADMINISTRATOR MARK: the rights only the administrator holds
 //      (appoint staff, change rights, change an e-mail, take a member off
-//      duty). The backend decides them by "every permission is on"; the
-//      screen reads the same fact (useStaffPermissions().isAdmin).
+//      duty, grant a gift of the company, the money check). The backend
+//      decides them by "every permission is on"; the screen reads the same
+//      fact (useStaffPermissions().isAdmin). Cancelling a gift not yet
+//      accepted stays with financial_operations.
 //
 // The backend re-checks every call. Hiding is what the member is OFFERED, not
 // the lock.
@@ -86,7 +88,7 @@ export const USERS_SECTIONS: readonly StaffSection[] = [
   { id: 'support', path: '/staff/users/support', labelKey: 'staff.hub.users.support' },
 ]
 
-/** Finance: payments with the top-up queue, withdrawals, gifts, the money check. */
+/** Finance: payments with the top-up queue, withdrawals, purchases, gifts (administrator), the money check. */
 export const FINANCE_SECTIONS: readonly StaffSection[] = [
   {
     id: 'payments',
@@ -101,10 +103,17 @@ export const FINANCE_SECTIONS: readonly StaffSection[] = [
     permission: 'payment_review',
   },
   {
+    id: 'purchases',
+    path: '/staff/finance/purchases',
+    labelKey: 'staff.hub.finance.purchases',
+    permission: 'financial_operations',
+  },
+  {
     id: 'gifts',
     path: '/staff/finance/gifts',
     labelKey: 'staff.hub.finance.gifts',
     permission: 'financial_operations',
+    admin: true,
   },
   {
     id: 'reconciliation',

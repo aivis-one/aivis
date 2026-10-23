@@ -43,7 +43,11 @@ import type {
   AgentApplicationResponse,
   RejectAgentApplicationRequest,
 } from '@/api/types'
-import type { ConsistencyResponse, PurchaseResponse } from '@/api/generated'
+import type {
+  ConsistencyResponse,
+  PurchaseResponse,
+  StaffPurchaseListResponse,
+} from '@/api/generated'
 
 // ---------------------------------------------------------------------------
 // Dashboard (Sprint 3.3)
@@ -368,6 +372,28 @@ export interface StaffGrantGiftRequest {
  */
 export function grantGift(body: StaffGrantGiftRequest): Promise<PurchaseResponse> {
   return api.post<PurchaseResponse>('/api/v1/staff/purchases/gifts', body)
+}
+
+/**
+ * GET /api/v1/staff/purchases -- the purchases list, read-only and paged, newest
+ * first (needs financial_operations). Filters: status, company_id (the project),
+ * buyer_id (the buyer). per_page is at most 100.
+ */
+export function fetchStaffPurchases(params?: {
+  status?: string
+  company_id?: string
+  buyer_id?: string
+  page?: number
+  per_page?: number
+}): Promise<StaffPurchaseListResponse> {
+  const qs = buildQueryString({
+    status: params?.status,
+    company_id: params?.company_id,
+    buyer_id: params?.buyer_id,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<StaffPurchaseListResponse>(`/api/v1/staff/purchases${qs}`)
 }
 
 /** POST /api/v1/staff/purchases/gifts/{id}/cancel -- cancel a gift not yet accepted. */

@@ -55,14 +55,15 @@ describe('the sections a member may use', () => {
     ])
   })
 
-  it('hides the money check from everyone who is not the administrator', () => {
+  it('hides the gift grant and the money check from everyone who is not the administrator', () => {
     const financeMember = rights(['payment_review', 'financial_operations'])
     const ids = allowedSections(FINANCE_SECTIONS, financeMember).map((s) => s.id)
-    expect(ids).toEqual(['payments', 'withdrawals', 'gifts'])
+    expect(ids).toEqual(['payments', 'withdrawals', 'purchases'])
+    expect(ids).not.toContain('gifts')
     expect(ids).not.toContain('reconciliation')
-    expect(allowedSections(FINANCE_SECTIONS, EVERYTHING).map((s) => s.id)).toContain(
-      'reconciliation',
-    )
+    const everything = allowedSections(FINANCE_SECTIONS, EVERYTHING).map((s) => s.id)
+    expect(everything).toContain('gifts')
+    expect(everything).toContain('reconciliation')
   })
 
   it('does not let the administrator mark alone open a section that needs a permission', () => {
