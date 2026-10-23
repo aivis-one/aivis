@@ -1993,6 +1993,14 @@ textarea.ds-input {
 /* the page ground carries the shell; the form stands on .ds-auth__panel, decided by the owner, 2026-10-17 */
 .ds-auth { display: flex; flex-direction: column; box-sizing: border-box; min-block-size: 100dvh; background: var(--bg-page); color: var(--text-primary); }
 .ds-auth--framed { min-block-size: 100%; }
+/* the banner row of the frame (K25, .ds-shell__banner) stands above the header here too, as the first child: sticky at the top, in the flow,
+   one line high; the header below it no longer pads for the top safe-area inset, the banner took it, and the banner text starts where the logo does */
+.ds-auth { --_banner-h: calc(var(--size-3xl) + var(--space-safe-top)); }
+.ds-auth > .ds-shell__banner {
+  flex: none;
+  padding-inline: max(var(--space-5), var(--space-safe-left)) max(var(--space-5), var(--space-safe-right));
+}
+.ds-auth:has(> .ds-shell__banner) .ds-auth__header { padding-block-start: var(--space-4); }
 .ds-auth__header {
   display: flex;
   align-items: center;
@@ -2128,7 +2136,8 @@ textarea.ds-input {
   .ds-combobox__option { min-block-size: var(--touch-min); }
   .ds-reorder__move { inline-size: var(--touch-min); block-size: var(--touch-min); }
   .ds-payout__actions > .ds-button { flex: 1 1 100%; }
-  .ds-auth__header { padding-inline: max(var(--space-4), var(--space-safe-left)) max(var(--space-4), var(--space-safe-right)); }
+  .ds-auth__header,
+  .ds-auth > .ds-shell__banner { padding-inline: max(var(--space-4), var(--space-safe-left)) max(var(--space-4), var(--space-safe-right)); }
   .ds-auth__main { justify-content: flex-start; padding-inline: var(--space-gutter-mobile); padding-block: var(--space-4) var(--space-6); }
   .ds-auth__panel { padding: var(--space-4); max-inline-size: calc(var(--maxw-form) + var(--space-4) * 2); }
   .ds-auth__link { display: inline-flex; align-items: center; min-block-size: var(--touch-min); }

@@ -1352,9 +1352,10 @@
   "name": "Auth shell",
   "status": "built",
   "markup": "markup/auth-shell.html",
-  "class_root": ".ds-auth, .ds-auth__header, .ds-auth__main, .ds-auth__panel",
+  "class_root": ".ds-auth, .ds-auth__header, .ds-auth__main, .ds-auth__panel, .ds-shell__banner (the banner slot)",
   "variants": {
    "slots": [
+    "banner (optional, the first child: div.ds-shell__banner of the App shell, K25, above the header)",
     "logo",
     "controls",
     "icon",
@@ -1387,8 +1388,10 @@
    "--lh-normal",
    "--lh-snug",
    "--maxw-form",
+   "--on-warning",
    "--primary",
    "--radius-card",
+   "--size-3xl",
    "--size-sm",
    "--space-1",
    "--space-2",
@@ -1403,12 +1406,16 @@
    "--text-primary",
    "--text-secondary",
    "--touch-min",
-   "--tracking-tight"
+   "--tracking-tight",
+   "--warning",
+   "--warning-subtle",
+   "--warning-subtle-text",
+   "--z-banner"
   ],
-  "accessibility": "One header landmark with the logo (one role=img named AIVIS.ONE: the mark image with empty alt and the inline wordmark aria-hidden) and the language and theme controls (ghost icon buttons with aria-label), one main landmark holding one h1 and the form, on a panel of --bg-surface (white by day, the night surface; --border-subtle border, --radius-card) over the page ground (--bg-page), centred at desktop widths and from the top on a phone. The panel is one column at every width; at the 480 width the gutter is --space-gutter-mobile, the safe-area insets pad the header, every link and control is at least --touch-min high. Text on the panel is --text-primary, --text-secondary, --primary and --danger (no amber). Reading order is logo, controls, title, text, form, links. Screens that use it (login, register, verify, reset, Telegram entry, 404) put their own form inside .ds-auth__form.",
+  "accessibility": "One header landmark with the logo (one role=img named AIVIS.ONE: the mark image with empty alt and the inline wordmark aria-hidden) and the language and theme controls (ghost icon buttons with aria-label), one main landmark holding one h1 and the form, on a panel of --bg-surface (white by day, the night surface; --border-subtle border, --radius-card) over the page ground (--bg-page), centred at desktop widths and from the top on a phone. The panel is one column at every width; at the 480 width the gutter is --space-gutter-mobile, the safe-area insets pad the header, every link and control is at least --touch-min high. Text on the panel is --text-primary, --text-secondary, --primary and --danger (no amber). The banner slot, when present, is the App shell banner (K25) as the first child of .ds-auth: role=\"status\", one line of text with its action, sticky at the top, in the flow, in the look of the warning Alert (K09); the header below it takes the top safe-area inset no more, the banner took it. Reading order is banner, logo, controls, title, text, form, links. Screens that use it (login, register, verify, reset, Telegram entry, 404) put their own form inside .ds-auth__form.",
   "purpose": "The frame of every screen before sign-in.",
   "usage": "Use for the sign-in, registration (with the demo path and the customer type), verification, password reset and onboarding screens, the Telegram first entry, and the 404 and loading pages. A screen that is not an auth screen uses the App shell (K25). The form starts from the top on a phone, on every auth screen; at desktop widths the panel is centred.",
-  "notes": "A header, the title --fs-h3 700, the subtitle --fs-sm --text-secondary, the form at --maxw-form, over the page ground; the phone rules (gutter, safe areas, touch targets) follow the system's phone rules. The header puts the logo at the start and the controls at the end on every auth screen. The logo is the colour mark brand/aivis-mark.svg (an image, --size-sm, unchanged) and the wordmark of brand/aivis-wordmark.svg inline in currentColor (--text-primary), half the mark's height, --space-3 apart; the lockup image is not used here because its lettering has no fill and goes dark at night. The form sits on a --bg-surface panel and starts from the top on a phone: decided by the owner, 2026-10-17."
+  "notes": "A header, the title --fs-h3 700, the subtitle --fs-sm --text-secondary, the form at --maxw-form, over the page ground; the phone rules (gutter, safe areas, touch targets) follow the system's phone rules. The header puts the logo at the start and the controls at the end on every auth screen. The logo is the colour mark brand/aivis-mark.svg (an image, --size-sm, unchanged) and the wordmark of brand/aivis-wordmark.svg inline in currentColor (--text-primary), half the mark's height, --space-3 apart; the lockup image is not used here because its lettering has no fill and goes dark at night. The form sits on a --bg-surface panel and starts from the top on a phone: decided by the owner, 2026-10-17. The staff-acting-as-a-user banner stands above the auth header as it stands above the shell header: the same part (.ds-shell__banner with .ds-shell__banner-text and .ds-shell__banner-action), no second banner look; its text starts where the logo starts."
  },
  {
   "id": "K34",
