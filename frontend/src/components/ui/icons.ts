@@ -8,14 +8,27 @@
 // main.ts. The exports keep the names and the `size` prop of the lucide icons
 // they replace, so a screen that passes an icon as a component keeps working.
 //
-// A key the set does not have stays the lucide icon, re-exported at the end
-// (a GAP, listed in the build record): ListChecks.
-// =============================================================================
-
 import { defineComponent, h } from 'vue'
 
-// size: a number of pixels (the screens' own sizes), or 'sm' (16) or 'md' (24, the
-// default), the system's two icon sizes, which the stylesheet draws.
+// size: 'sm' (16) or 'md' (24, the default), the system's two icon classes, or a
+// number of pixels the screens write (`:size="20"`). A number is read as the NEAREST
+// STEP of the system's icon scale and drawn from its token, never as pixels:
+// 16 is --icon-size-sm (14 and 18 round to it), 20 is --size-2xs, 24 --icon-size-md,
+// 32 --icon-size-lg, 40 --size-xl and 48 --icon-size-xl (56, 64 and 72 round to it;
+// a larger picture is the empty state's or the hero's own piece).
+const STEPS: Array<{ px: number; token?: string; md?: boolean }> = [
+  { px: 16 },
+  { px: 20, token: '--size-2xs' },
+  { px: 24, md: true },
+  { px: 32, token: '--icon-size-lg' },
+  { px: 40, token: '--size-xl' },
+  { px: 48, token: '--icon-size-xl' },
+]
+
+function nearestStep(px: number) {
+  return STEPS.reduce((best, step) => (Math.abs(step.px - px) < Math.abs(best.px - px) ? step : best))
+}
+
 export function icon(name: string, key: string) {
   return defineComponent({
     name,
@@ -23,14 +36,17 @@ export function icon(name: string, key: string) {
     setup(props) {
       return () => {
         const px = Number(props.size)
-        const own = Number.isFinite(px)
+        const step = Number.isFinite(px) ? nearestStep(px) : undefined
+        const md = props.size === 'md' || step?.md === true
         return h(
           'svg',
           {
-            class: ['ds-icon', props.size === 'md' && 'ds-icon--md'],
+            class: ['ds-icon', md && 'ds-icon--md'],
             'aria-hidden': 'true',
             viewBox: '0 0 24 24',
-            style: own ? { inlineSize: px + 'px', blockSize: px + 'px' } : undefined,
+            style: step?.token
+              ? { inlineSize: `var(${step.token})`, blockSize: `var(${step.token})` }
+              : undefined,
           },
           [h('use', { href: '#i-' + key })],
         )
@@ -121,5 +137,4 @@ export const Video = icon('Video', 'video')
 export const Wallet = icon('Wallet', 'wallet')
 export const X = icon('X', 'x')
 
-// Not in the system's set.
-export { ListChecks } from 'lucide-vue-next'
+export const ListChecks = icon('ListChecks', 'list-checks')
