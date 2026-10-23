@@ -61,8 +61,8 @@ export const AGENT_TABS: TabItem[] = [
 
 // The web side menu of the integrator: the five tabs, then one line each for
 // the sections that lie inside a tab on a phone -- the news feed (inside
-// Home), the instalment plans (inside Portfolio), the balance (inside
-// Partners), and the documents, identity verification, support and FAQ
+// Home), the instalment plans (inside Portfolio), the network, the
+// commissions, the rating and the balance (inside Partners), and the documents, identity verification, support and FAQ
 // (inside Settings).
 export const AGENT_MENU_EXTRA: TabItem[] = [
   { id: 'news', path: '/agent/news', labelKey: 'tab.news', icon: 'Newspaper' },
@@ -72,6 +72,9 @@ export const AGENT_MENU_EXTRA: TabItem[] = [
     labelKey: 'tab.installments',
     icon: 'CalendarClock',
   },
+  { id: 'network', path: '/agent/partners/network', labelKey: 'agent.partners.network', icon: 'Users' },
+  { id: 'commissions', path: '/agent/partners/commissions', labelKey: 'agent.partners.commissions', icon: 'Coins' },
+  { id: 'rating', path: '/agent/partners/rating', labelKey: 'agent.partners.rating', icon: 'BarChart3' },
   { id: 'balance', path: '/agent/partners/balance', labelKey: 'tab.balance', icon: 'Wallet' },
   { id: 'docs', path: '/agent/docs', labelKey: 'tab.docs', icon: 'FileText' },
   { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },

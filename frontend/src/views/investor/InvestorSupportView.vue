@@ -10,8 +10,8 @@
 // a tab-bar top level (contrast InvestorDocsView, which dropped its
 // back-link when it was promoted to a tab).
 //
-// TASK-39 item 4: also mounted at /agent/support (AgentMoreView's
-// Support tile) and /company/support (a row inside
+// TASK-39 item 4: also mounted at /agent/support (the Support row of
+// Settings) and /company/support (a row inside
 // CompanySettingsView) -- same "shared component lives physically
 // under views/investor/, other shells' route records import it
 // directly" convention as PortfolioView / NotificationsInboxView /

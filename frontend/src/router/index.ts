@@ -408,6 +408,18 @@ export const router = createRouter({
     },
 
     // -----------------------------------------------------------------
+    // The acceptance screen of the agent-integrator agreement: a full screen
+    // outside every shell. The guard holds an integrator here until the
+    // agreement is accepted (router/guards.ts).
+    // -----------------------------------------------------------------
+    {
+      path: '/agent-welcome',
+      name: 'agent-welcome',
+      component: () => import('@/views/agent/AgentWelcomeView.vue'),
+      meta: { roles: ['agent'] },
+    },
+
+    // -----------------------------------------------------------------
     // Agent shell — agent only
     // Includes duplicated investor screens (market, portfolio,
     // products, purchase, installment) under AgentShell layout

@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- NotificationPreferencesSection (TASK-38 item 4)
 // =============================================================================
 //
-// Shared across InvestorSettingsView / AgentSettingsView /
+// Shared across InvestorSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
 // TwoFactorSection.vue / ActiveSessionsSection.vue / DeactivateAccountSection.vue.
 // Backend: notifications/router.py + service.py's preferences pair,

@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- TwoFactorSection (TASK-38)
 // =============================================================================
 //
-// Shared across InvestorSettingsView / AgentSettingsView /
+// Shared across InvestorSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
 // ActiveSessionsSection.vue / DeactivateAccountSection.vue.
 // Backend: auth/router.py "Two-Factor Authentication

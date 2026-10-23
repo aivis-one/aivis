@@ -3,14 +3,15 @@
 // =============================================================================
 //
 // An integrator has exactly one referral link. The platform issues it once,
-// after the integrator-agent agreement is accepted; asking again returns the
+// after the agent-integrator agreement is accepted; asking again returns the
 // same link. This composable carries the whole of that:
 //
 //   - `agreement`: where the agreement stands for this person -- 'loading',
-//     'unsigned' (the screen offers the one click), 'signed' or 'missing' (no
-//     active document of that type; the link is then asked for directly);
-//   - `accept()`: the one click -- records the acceptance of the agreement,
-//     then asks the platform for the link;
+//     'unsigned' (the acceptance screen is due), 'signed' or 'missing' (no
+//     active document of that type; no link can be issued until it is
+//     published);
+//   - `accept()`: the acceptance -- records it, then asks the platform for the
+//     link; true when both are done;
 //   - `link`, `shareUrl()`, `copy()`, `share()`: the link as the screens use it.
 //
 // The share address is the cabinet's own capture route, `<origin><base>r/<code>`;
@@ -24,9 +25,8 @@ import { useI18n } from 'vue-i18n'
 import { acceptDocumentByType, getDocumentByType } from '@/api/documents'
 import { ApiResponseError } from '@/api/client'
 import { useAgentStore } from '@/stores/agent'
+import { AGENT_AGREEMENT_TYPE, useAgentAgreementStore } from '@/stores/agentAgreement'
 import { useToast } from '@/composables/useToast'
-
-export const AGENT_AGREEMENT_TYPE = 'agent_integrator_agreement'
 
 export type AgreementState = 'loading' | 'unsigned' | 'signed' | 'missing' | 'error'
 
@@ -39,6 +39,7 @@ export function useAgentLink() {
   const { t } = useI18n()
   const { showToast } = useToast()
   const agentStore = useAgentStore()
+  const agreementStore = useAgentAgreementStore()
 
   const agreement = ref<AgreementState>('loading')
   const accepting = ref(false)
@@ -75,7 +76,7 @@ export function useAgentLink() {
           throw err
         }
       }
-      if (agreement.value === 'signed' || agreement.value === 'missing') {
+      if (agreement.value === 'signed') {
         await issueLink()
       }
     } catch {
@@ -83,18 +84,26 @@ export function useAgentLink() {
     }
   }
 
-  /** The one click: accept the agreement, then take the link. */
-  async function accept(): Promise<void> {
-    if (accepting.value) return
+  /** The acceptance: record it, then take the link. True when both are done. */
+  async function accept(): Promise<boolean> {
+    if (accepting.value) return false
     accepting.value = true
     try {
       const result = await acceptDocumentByType(AGENT_AGREEMENT_TYPE)
-      agreement.value = result === 'missing' ? 'missing' : 'signed'
+      if (result === 'missing') {
+        agreement.value = 'missing'
+        agreementStore.markMissing()
+        return false
+      }
       await agentStore.createLink()
+      agreement.value = 'signed'
+      agreementStore.markSigned()
       void agentStore.fetchStats()
       showToast(t('agent.link.accepted'), 'success')
+      return true
     } catch {
       showToast(t('agent.link.acceptError'), 'error')
+      return false
     } finally {
       accepting.value = false
     }

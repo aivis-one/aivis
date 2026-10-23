@@ -40,9 +40,8 @@
 //            empty renders a single CEmptyState, no scaffolding.
 //
 // ENTRY POINT (open note, Task 3 report).
-//   Nothing in the shipped Hub / Dashboard links here yet; the entry
-//   point is expected from AgentMoreView (Block D), where Leaderboard
-//   also lives. Tracked there -- AgentHubView is not rewritten for it.
+//   Reached from the Partners tab (AgentPartnersView, the "My network"
+//   row), where the rating lives as well.
 // =============================================================================
 
 import { computed, onMounted } from 'vue'

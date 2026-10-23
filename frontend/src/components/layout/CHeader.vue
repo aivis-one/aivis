@@ -88,15 +88,28 @@ function goToNotifications(): void {
 // The buyer account (investor and integrator shells)
 // ---------------------------------------------------------------------------
 //
-// The top bar shows the buyer account -- the top-up balance, spent only on
-// AIVIS parts and returned only through support. A press opens the Balance
-// screen. The figure is the one BalanceView reads (`activeBalance.confirmed`).
+// The buyer's top bar shows one figure: the buyer account -- the top-up
+// balance, spent only on AIVIS parts and returned only through support
+// (`activeBalance.confirmed`, the one BalanceView reads). The integrator's top
+// bar shows two labelled figures, never combined: the commission (the
+// withdrawal account, `passiveBalance.confirmed`) first, then the buyer
+// account. A press on either opens the Balance screen.
 const dashboardStore = useDashboardStore()
 
-const showBalance = computed(() => authStore.isAuthenticated && route.meta.shell === 'investor')
+const showBalance = computed(
+  () =>
+    authStore.isAuthenticated &&
+    (route.meta.shell === 'investor' || route.meta.shell === 'agent'),
+)
+
+const isAgentShell = computed(() => route.meta.shell === 'agent')
 
 const balanceDisplay = computed(() =>
   formatPrice(dashboardStore.summary?.active_balance?.confirmed ?? 0, 'USD'),
+)
+
+const commissionDisplay = computed(() =>
+  formatPrice(dashboardStore.summary?.passive_balance?.confirmed ?? 0, 'USD'),
 )
 
 function goToBalance(): void {
@@ -151,8 +164,28 @@ watch(showBell, (isAuth) => {
       <span v-if="title" class="c-header__title">{{ title }}</span>
     </div>
     <div class="c-header__right">
+      <template v-if="showBalance && isAgentShell">
+        <button
+          type="button"
+          class="c-header__balance c-header__balance--labelled"
+          :aria-label="t('agent.header.commission')"
+          @click="goToBalance"
+        >
+          <span class="c-header__balance-label">{{ t('agent.header.commission') }}</span>
+          <span class="c-header__balance-amount">{{ commissionDisplay }}</span>
+        </button>
+        <button
+          type="button"
+          class="c-header__balance c-header__balance--labelled"
+          :aria-label="t('inv.header.balance')"
+          @click="goToBalance"
+        >
+          <span class="c-header__balance-label">{{ t('inv.header.balance') }}</span>
+          <span class="c-header__balance-amount">{{ balanceDisplay }}</span>
+        </button>
+      </template>
       <button
-        v-if="showBalance"
+        v-else-if="showBalance"
         type="button"
         class="c-header__balance"
         :aria-label="t('inv.header.balance')"
@@ -252,6 +285,18 @@ watch(showBell, (isAuth) => {
 }
 .c-header__balance-amount {
   white-space: nowrap;
+}
+.c-header__balance--labelled {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  line-height: 1.2;
+}
+.c-header__balance-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .c-header__bell {

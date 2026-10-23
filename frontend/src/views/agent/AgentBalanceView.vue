@@ -5,11 +5,12 @@
 //
 // The integrator's balance, reached from Partners (and from the balance in the
 // top bar):
-//   1. The account card -- what the integrator tops up and spends on parts of
-//      AIVIS -- with "Top up" and "All operations".
-//   2. The commission card -- confirmed + frozen commission from the shared
-//      stores/dashboard.ts (commissions land on the passive ledger) -- with
-//      the withdrawal button.
+//   1. The commission card -- confirmed + frozen commission from the shared
+//      stores/dashboard.ts (commissions land on the passive ledger, the
+//      withdrawal account) -- with the withdrawal button and "All operations".
+//   2. The buyer account card -- what the integrator tops up and spends on
+//      parts of AIVIS only -- with "Top up". The two are different accounts
+//      and are never added together.
 //   3. The withdrawal sheet: the NETWORK and the WALLET are asked here, at the
 //      withdrawal, with the amount. They are saved as the payout details
 //      (PUT /users/me/payout-details, a free-form object on the backend) just
@@ -387,31 +388,7 @@ onMounted(() => {
 
     <!-- Loaded -->
     <template v-else>
-      <!-- The account: topped up, spent on parts of AIVIS -->
-      <section class="abal__card abal__balance">
-        <div class="abal__balance-head">
-          <Wallet :size="16" />
-          <span>{{ t('agent.balance.account.title') }}</span>
-        </div>
-        <div class="abal__balance-value">
-          {{ formatPrice(accountConfirmed) }}
-        </div>
-        <div v-if="accountFrozen > 0" class="abal__balance-frozen">
-          {{ t('agent.balance.account.frozen') }}: {{ formatPrice(accountFrozen) }}
-        </div>
-        <div class="abal__cta-row">
-          <CButton variant="primary" @click="goDeposit">
-            <ArrowDownToLine :size="16" />
-            {{ t('agent.balance.account.deposit') }}
-          </CButton>
-          <CButton variant="outline" @click="goOperations">
-            <ListChecks :size="16" />
-            {{ t('agent.balance.account.operations') }}
-          </CButton>
-        </div>
-      </section>
-
-      <!-- The commission: withdrawn on request -->
+      <!-- The commission, the withdrawal account: withdrawn on request; All operations -->
       <section class="abal__card abal__balance">
         <div class="abal__balance-head">
           <Wallet :size="16" />
@@ -428,6 +405,10 @@ onMounted(() => {
             <ArrowUpFromLine :size="16" />
             {{ t('agent.balance.withdrawals.newButton') }}
           </CButton>
+          <CButton variant="outline" @click="goOperations">
+            <ListChecks :size="16" />
+            {{ t('agent.balance.account.operations') }}
+          </CButton>
           <span v-if="!canWithdraw" class="abal__cta-hint">
             {{ t('agent.balance.withdrawals.lowBalance') }}
           </span>
@@ -435,6 +416,29 @@ onMounted(() => {
         <p class="abal__rule">
           {{ t('agent.balance.withdrawals.rule', { min: formatPrice(MIN_WITHDRAWAL_CENTS) }) }}
         </p>
+      </section>
+
+      <!-- The buyer account: topped up, spent on parts of AIVIS only -->
+      <section class="abal__card abal__balance">
+        <div class="abal__balance-head">
+          <Wallet :size="16" />
+          <span>{{ t('agent.balance.account.title') }}</span>
+        </div>
+        <div class="abal__balance-value">
+          {{ formatPrice(accountConfirmed) }}
+        </div>
+        <div v-if="accountFrozen > 0" class="abal__balance-frozen">
+          {{ t('agent.balance.account.frozen') }}: {{ formatPrice(accountFrozen) }}
+        </div>
+        <p class="abal__rule">
+          {{ t('agent.balance.account.hint') }}
+        </p>
+        <div class="abal__cta-row">
+          <CButton variant="primary" @click="goDeposit">
+            <ArrowDownToLine :size="16" />
+            {{ t('agent.balance.account.deposit') }}
+          </CButton>
+        </div>
       </section>
 
       <!-- Withdrawal history -->

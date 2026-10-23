@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- ActiveSessionsSection (TASK-38)
 // =============================================================================
 //
-// Shared across InvestorSettingsView / AgentSettingsView /
+// Shared across InvestorSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
 // TwoFactorSection.vue / DeactivateAccountSection.vue. Unlike those
 // two this is not a wizard -- opening the row fetches and shows a

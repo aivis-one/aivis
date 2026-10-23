@@ -13,7 +13,7 @@ describe('the integrator stays in the integrator shell', () => {
 
   it('leaves other routes alone', () => {
     expect(agentCounterpart('agent-deposit')).toBeNull()
-    expect(agentCounterpart('investor-more')).toBeNull()
+    expect(agentCounterpart('investor-more')).toBe('agent-settings')
     expect(agentCounterpart('login')).toBeNull()
     expect(agentCounterpart(undefined)).toBeNull()
   })

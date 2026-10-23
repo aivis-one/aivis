@@ -13,7 +13,7 @@
 
 import { ref } from 'vue'
 
-export type KycPromptAction = 'purchase' | 'installment' | 'generic'
+export type KycPromptAction = 'purchase' | 'installment' | 'integrator' | 'generic'
 
 const open = ref(false)
 const action = ref<KycPromptAction>('generic')

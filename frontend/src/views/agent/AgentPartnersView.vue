@@ -10,8 +10,8 @@
 // balance as a line of its own as well.
 //
 // THE LINK. An integrator has exactly one link, issued by the platform once,
-// after the integrator-agent agreement is accepted (useAgentLink). Until then
-// the screen offers that one click instead. The link has two buttons, "Copy
+// after the agent-integrator agreement is accepted (useAgentLink; the
+// acceptance screen comes before the cabinet). The link has two buttons, "Copy
 // link" and "Share" (the system menu of the phone; on a device without one it
 // copies). There is no "create link" button and no list of links.
 //
@@ -26,7 +26,6 @@ import { useI18n } from 'vue-i18n'
 import { ChevronRight, Coins, Copy, Share2, Trophy, Users, Wallet } from 'lucide-vue-next'
 
 import { CButton, CLoader } from '@/components/ui'
-import AgentAgreementPrompt from '@/components/shared/AgentAgreementPrompt.vue'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -37,7 +36,7 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
 const dashboardStore = useDashboardStore()
-const { agreement, accepting, link, accept, copy, share, shareUrl, load } = useAgentLink()
+const { agreement, link, copy, share, shareUrl, load } = useAgentLink()
 
 const registrations = computed<string>(() =>
   agentStore.statsError || !agentStore.stats
@@ -79,12 +78,6 @@ onMounted(() => {
     <div v-if="agreement === 'loading'" class="partners__center">
       <CLoader :size="24" />
     </div>
-
-    <AgentAgreementPrompt
-      v-else-if="agreement === 'unsigned'"
-      :loading="accepting"
-      @accept="accept"
-    />
 
     <section v-else-if="link" class="partners__link">
       <h2 class="partners__link-title">

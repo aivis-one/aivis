@@ -6,7 +6,7 @@
 // Static FAQ page for investor + representative (agent) -- ONE shared
 // view (investor.html or agent.html by route), mounted at /investor/faq (route name
 // investor-faq) AND /agent/faq (route name agent-faq). Reached from
-// the FAQ tile in InvestorMoreView / AgentMoreView. Same "shared
+// the FAQ row of Settings. Same "shared
 // component lives physically under views/investor/, other shells'
 // route records import it directly" convention as InvestorSupportView
 // / PortfolioView / InstallmentPlansView / NotificationsInboxView.

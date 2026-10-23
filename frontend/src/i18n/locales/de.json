@@ -756,14 +756,28 @@
       },
       "agent": {
         "title": "Agentenprogramm",
-        "apply": "Become an integrator",
+        "apply": "Integrator werden",
         "reapply": "Erneut bewerben",
         "pending": "Ihre Bewerbung wird geprüft",
         "cooldown": "Verfügbar in {days} Tagen",
         "kycRequired": "KYC-Verifizierung erforderlich, um sich zu bewerben",
         "submitSuccess": "Bewerbung eingereicht",
         "submitError": "Bewerbung konnte nicht eingereicht werden",
-        "loadError": "Bewerbungsstatus konnte nicht geladen werden"
+        "loadError": "Bewerbungsstatus konnte nicht geladen werden",
+        "underReview": "Bewerbung wird geprüft",
+        "modal": {
+          "title": "Integrator werden",
+          "what": "Ein Integrator bringt Menschen zu AIVIS und erhält eine Provision auf deren Käufe.",
+          "pointLink": "Sie erhalten einen persönlichen Link zum Teilen.",
+          "pointCommission": "Sie erhalten eine Provision auf die Käufe der Personen, die Sie bringen, auf drei Ebenen.",
+          "pointWithdrawal": "Die Provision lassen Sie auf Ihre Wallet auszahlen.",
+          "readAgreement": "Agent-Integrator-Vertrag lesen",
+          "readFaq": "FAQ für Integratoren lesen",
+          "submit": "Bewerbung absenden",
+          "sentTitle": "Bewerbung gesendet",
+          "sentText": "Schreiben Sie an den Support. Ohne Ihre Nachricht wird die Bewerbung nicht geprüft.",
+          "toSupport": "An den Support schreiben"
+        }
       },
       "actions": {
         "title": "Security and documents",
@@ -920,7 +934,8 @@
       "generic": "Bestehen Sie die Identitätsprüfung: 10 $",
       "text": "Die Gebühr wird für jeden Versuch erhoben und nicht erstattet.",
       "later": "Jetzt nicht",
-      "go": "Identität prüfen lassen"
+      "go": "Identität prüfen lassen",
+      "integrator": "Um Integrator zu werden, bestehen Sie die Identitätsprüfung: 10 $"
     }
   },
   "intro": {
@@ -955,12 +970,9 @@
       "share": "Teilen",
       "shareTitle": "Mein AIVIS-Link",
       "copyProject": "Projektlink kopieren",
-      "accept": "Akzeptieren",
       "accepted": "Vertrag akzeptiert. Ihr Link ist bereit.",
       "acceptError": "Die Annahme konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
-      "agreementTitle": "Integrator-Vertrag",
-      "agreementText": "Ihre Bewerbung wurde genehmigt. Akzeptieren Sie den Integrator-Vertrag mit einem Klick, und die Plattform stellt Ihren Link aus.",
-      "agreementRead": "Vertrag lesen"
+      "agreementTitle": "Agent-Integrator-Vertrag"
     },
     "home": {
       "title": "Integrator",
@@ -991,13 +1003,15 @@
       "subtitle": "Ihr Konto, Ihre Provision und Ihre Auszahlungen",
       "backLink": "Zurück zu Partner",
       "account": {
-        "title": "Konto",
+        "title": "Käuferkonto",
         "frozen": "Wartet auf Bestätigung",
         "deposit": "Aufladen",
-        "operations": "Alle Vorgänge"
+        "operations": "Alle Vorgänge",
+        "hint": "Wird nur für Projektanteile ausgegeben."
       },
       "card": {
-        "title": "Provision zur Auszahlung"
+        "title": "Provision zur Auszahlung",
+        "frozen": "Eingefroren"
       },
       "withdrawals": {
         "rule": "Die Mindestauszahlung beträgt {min}. Die Auszahlung erfolgt nach 14 Tagen.",
@@ -1018,6 +1032,24 @@
         "other": "Sonstige Gutschrift"
       },
       "level": "Stufe {n}"
+    },
+    "header": {
+      "commission": "Provision"
+    },
+    "welcome": {
+      "title": "Glückwunsch, Sie sind Agent-Integrator",
+      "intro": "Ihre Bewerbung wurde genehmigt. Das erhalten Sie:",
+      "possLink": "Einen persönlichen Link, mit dem Sie Menschen zu AIVIS bringen",
+      "possPartners": "„Partner“: Ihr Netzwerk, die Rangliste und jede Provision im Detail",
+      "possCommission": "Provision auf die Käufe der Personen, die Sie bringen, auf drei Ebenen",
+      "possWithdrawal": "Ein Auszahlungskonto für die Provision",
+      "readAgreement": "Agent-Integrator-Vertrag lesen",
+      "tick": "Ich habe den Agent-Integrator-Vertrag gelesen",
+      "accept": "Ich akzeptiere den Vertrag",
+      "unavailableTitle": "Der Vertrag ist noch nicht verfügbar",
+      "unavailableText": "Der Agent-Integrator-Vertrag kann derzeit nicht angezeigt und daher nicht akzeptiert werden. Schreiben Sie an den Support.",
+      "toSupport": "An den Support schreiben",
+      "errorTitle": "Der Vertrag konnte nicht geprüft werden"
     }
   }
 }

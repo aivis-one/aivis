@@ -1,9 +1,7 @@
 <script setup lang="ts">
 // The integrator's card on Home, under the buyer's own Home: the commission of
 // the month, the rank and the registrations -- each tile opens its section of
-// Partners -- and the main button, "Copy link", one click. While the
-// integrator-agent agreement is not accepted the card offers that one click
-// instead (the link is issued when it is accepted).
+// Partners -- and the main button, "Copy link", one click.
 
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -11,7 +9,6 @@ import { useI18n } from 'vue-i18n'
 import { Coins, Copy, Trophy, UserPlus } from 'lucide-vue-next'
 
 import { CButton, CLoader } from '@/components/ui'
-import AgentAgreementPrompt from '@/components/shared/AgentAgreementPrompt.vue'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -20,7 +17,7 @@ import { formatNumber, formatPrice } from '@/utils/format'
 const router = useRouter()
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
-const { agreement, accepting, accept, copy, load } = useAgentLink()
+const { link, copy, load } = useAgentLink()
 
 function go(name: string): void {
   void safeNavigate(router.push({ name }), `[AgentHomeCard] to ${name}`)
@@ -79,13 +76,7 @@ onMounted(() => {
       </button>
     </div>
 
-    <AgentAgreementPrompt v-if="agreement === 'unsigned'" :loading="accepting" @accept="accept" />
-    <CButton
-      v-else-if="agreement !== 'loading'"
-      variant="primary"
-      class="ahc__copy"
-      @click="copy()"
-    >
+    <CButton v-if="link" variant="primary" class="ahc__copy" @click="copy()">
       <Copy :size="16" />
       {{ t('agent.link.copy') }}
     </CButton>

@@ -4,8 +4,8 @@
 // =============================================================================
 //
 // List of the authenticated buyer's installment plans, newest first.
-// Reached from the "Installment plans" tile in InvestorMoreView /
-// AgentMoreView (see those files' TILES arrays) and mounted under both
+// Reached from the "Installment plans" line of the web side menu and from
+// the portfolio, and mounted under both
 // /investor/installments and /agent/installments via role-distinct
 // route names -- same "shared component lives physically under
 // views/investor/, other shells' routes import it directly" convention

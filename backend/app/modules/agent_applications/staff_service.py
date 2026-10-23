@@ -37,6 +37,41 @@ from app.modules.users.models import User, UserRole
 
 logger = structlog.get_logger()
 
+# The in-app notice is stored as one text, so it is written in the applicant's
+# language: Russian for a Russian account, English for every other one.
+_APPROVED_TEXT = {
+    "en": (
+        "Application approved",
+        "Your application has been approved. You are now an agent-integrator. "
+        "Accept the agent-integrator agreement to open your cabinet.",
+    ),
+    "ru": (
+        "Заявка одобрена",
+        "Ваша заявка одобрена. Вы теперь агент-интегратор. "
+        "Примите соглашение агента-интегратора, чтобы открыть кабинет.",
+    ),
+}
+
+
+def _approved_text(language: str | None) -> tuple[str, str]:
+    return _APPROVED_TEXT["ru" if language == "ru" else "en"]
+
+
+def _rejected_text(
+    language: str | None, reason: str, reapply_after: str
+) -> tuple[str, str]:
+    if language == "ru":
+        return (
+            "Заявка отклонена",
+            f"Ваша заявка агента-интегратора отклонена: {reason}. "
+            f"Подать новую заявку можно после {reapply_after}.",
+        )
+    return (
+        "Application rejected",
+        f"Your agent-integrator application was rejected: {reason}. "
+        f"You can reapply after {reapply_after}.",
+    )
+
 
 async def agent_application_queue(
     session: AsyncSession,
@@ -122,6 +157,7 @@ async def agent_application_approve(
     # allows PENDING -> APPROVED, a one-way edge), so the application id
     # alone is a safe, permanent dedup key.
     if comms_configured():
+        title, body = _approved_text(user.language)
         await emit_event(
             session,
             EVENT_NOTIFICATION_REQUEST,
@@ -130,11 +166,8 @@ async def agent_application_approve(
                 "type": "agent_application.approved",
                 "target_type": "user",
                 "target_value": str(application.user_id),
-                "title": "Agent application approved",
-                "body": (
-                    "Your agent application has been approved. "
-                    "You are now an agent."
-                ),
+                "title": title,
+                "body": body,
             },
         )
 
@@ -197,6 +230,12 @@ async def agent_application_reject(
     # precedent withdrawal.rejected's emitter relies on) and the
     # cooldown_until date so the applicant knows when they can reapply.
     if comms_configured():
+        applicant = (
+            await session.execute(select(User).where(User.id == application.user_id))
+        ).scalar_one()
+        title, body = _rejected_text(
+            applicant.language, reason, application.cooldown_until.date().isoformat()
+        )
         await emit_event(
             session,
             EVENT_NOTIFICATION_REQUEST,
@@ -205,12 +244,8 @@ async def agent_application_reject(
                 "type": "agent_application.rejected",
                 "target_type": "user",
                 "target_value": str(application.user_id),
-                "title": "Agent application rejected",
-                "body": (
-                    f"Your agent application was rejected: {reason}. "
-                    f"You can reapply after "
-                    f"{application.cooldown_until.date().isoformat()}."
-                ),
+                "title": title,
+                "body": body,
             },
         )
 

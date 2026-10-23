@@ -1327,7 +1327,21 @@
         "kycRequired": "Complete KYC verification to apply",
         "submitSuccess": "Application submitted",
         "submitError": "Could not submit your application",
-        "loadError": "Could not load application status"
+        "loadError": "Could not load application status",
+        "underReview": "Application under review",
+        "modal": {
+          "title": "Become an integrator",
+          "what": "An integrator brings people to AIVIS and earns commission on what they buy.",
+          "pointLink": "You get one personal link to share.",
+          "pointCommission": "You earn commission on the purchases of the people you bring, on three levels.",
+          "pointWithdrawal": "You withdraw the commission to your wallet.",
+          "readAgreement": "Read the agent-integrator agreement",
+          "readFaq": "Read the integrator FAQ",
+          "submit": "Submit the application",
+          "sentTitle": "Application sent",
+          "sentText": "Write to support. Without your message the application is not reviewed.",
+          "toSupport": "Write to support"
+        }
       },
       "actions": {
         "title": "Security and documents",
@@ -2184,10 +2198,11 @@
       },
       "backLink": "Back to Partners",
       "account": {
-        "title": "Account",
+        "title": "Buyer account",
         "frozen": "Awaiting confirmation",
         "deposit": "Top up",
-        "operations": "All operations"
+        "operations": "All operations",
+        "hint": "Spent only on parts of projects."
       }
     },
     "link": {
@@ -2198,12 +2213,9 @@
       "share": "Share",
       "shareTitle": "My AIVIS link",
       "copyProject": "Copy project link",
-      "accept": "Accept",
       "accepted": "Agreement accepted. Your link is ready.",
       "acceptError": "Could not record the acceptance. Please try again.",
-      "agreementTitle": "Integrator agreement",
-      "agreementText": "Your application is approved. Accept the integrator agreement with one click, and the platform issues your link.",
-      "agreementRead": "Read the agreement"
+      "agreementTitle": "Agent-integrator agreement"
     },
     "home": {
       "title": "Integrator",
@@ -2228,6 +2240,24 @@
       "rankNone": "not ranked yet",
       "balance": "Balance",
       "balanceSub": "{amount} available to withdraw"
+    },
+    "header": {
+      "commission": "Commission"
+    },
+    "welcome": {
+      "title": "Congratulations, you are an agent-integrator",
+      "intro": "Your application is approved. Here is what you get:",
+      "possLink": "Your one personal link to bring people to AIVIS",
+      "possPartners": "Partners: your network, the rating and every commission in detail",
+      "possCommission": "Commission on the purchases of the people you bring, on three levels",
+      "possWithdrawal": "A withdrawal account for the commission",
+      "readAgreement": "Read the agent-integrator agreement",
+      "tick": "I have read the agent-integrator agreement",
+      "accept": "I accept the agreement",
+      "unavailableTitle": "The agreement is not available yet",
+      "unavailableText": "The agent-integrator agreement cannot be shown right now, so it cannot be accepted. Write to support.",
+      "toSupport": "Write to support",
+      "errorTitle": "Could not check the agreement"
     }
   },
   "public": {
@@ -2355,7 +2385,8 @@
       "generic": "Pass identity verification: $10",
       "text": "The fee is charged for each attempt and is not returned.",
       "later": "Not now",
-      "go": "Verify identity"
+      "go": "Verify identity",
+      "integrator": "To become an integrator, pass identity verification: $10"
     }
   },
   "intro": {

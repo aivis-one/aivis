@@ -8,6 +8,8 @@
 //   1. Auth — unauthenticated users → /login (with ?next= propagation)
 //   2. Onboarding — incomplete onboarding → appropriate step
 //   3. Role — wrong role → role-specific dashboard
+//   4. Agreement — an integrator who has not accepted the agent-integrator
+//      agreement sees the acceptance screen and nothing else
 //
 // Route meta flags:
 //   public         — skip all checks, allow unauthenticated access
@@ -34,6 +36,8 @@ import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useStaffPermissions, type StaffPermissionKey } from '@/composables/useStaffPermissions'
 import { useAuthStore } from '@/stores/auth'
+import { useAgentAgreementStore } from '@/stores/agentAgreement'
+import { avatarActive } from '@/composables/avatarState'
 import type { Shell } from './helpers'
 
 // ---------------------------------------------------------------------------
@@ -133,10 +137,14 @@ const SHARED_SCREENS: ReadonlySet<string> = new Set([
   'notifications',
 ])
 
+/** The acceptance screen an integrator is held on until the agreement is accepted. */
+export const AGENT_WELCOME_ROUTE = 'agent-welcome'
+
 /** The integrator-shell route for a buyer-shell route name, or null. */
 export function agentCounterpart(name: unknown): string | null {
   if (typeof name !== 'string' || !name.startsWith('investor-')) return null
   const suffix = name.slice('investor-'.length)
+  if (suffix === 'more') return 'agent-settings'
   return SHARED_SCREENS.has(suffix) ? `agent-${suffix}` : null
 }
 
@@ -211,6 +219,22 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
     const userRole = authStore.role
     if (!userRole || !allowedRoles.includes(userRole)) {
       return getRoleDashboard(userRole)
+    }
+  }
+
+  // --- The agent-integrator agreement ---
+  // Until it is accepted an integrator can do nothing in the cabinet but accept
+  // it: every screen leads to the acceptance screen. When the document does not
+  // exist (nothing can be accepted) the support screen stays open, so the
+  // person can write to support. A staff member operating as the person only
+  // looks and never accepts for them.
+  if (authStore.role === 'agent' && !avatarActive.value) {
+    const status = await useAgentAgreementStore().ensure()
+    if (to.name === AGENT_WELCOME_ROUTE) {
+      if (status === 'signed') return { name: 'agent-dashboard' }
+    } else if (status !== 'signed') {
+      if (status === 'missing' && to.name === 'agent-support') return
+      return { name: AGENT_WELCOME_ROUTE }
     }
   }
 

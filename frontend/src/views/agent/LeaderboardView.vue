@@ -24,8 +24,7 @@
 //            is neither push nor replace, so it stays bare).
 //
 // ENTRY POINT (open note, Task 3 report).
-//   Same as ReferralsView: no shipped Hub/Dashboard link points here
-//   yet; the entry point is expected from AgentMoreView (Block D).
+//   Reached from the Partners tab (AgentPartnersView, the "Rating" row).
 // =============================================================================
 
 import { computed, onMounted } from 'vue'

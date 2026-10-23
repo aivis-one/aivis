@@ -861,8 +861,8 @@ export type { RoadmapItemKind } from './generated'
 // ---------------------------------------------------------------------------
 // Agent referrals + commissions (Task 2 Block A, Phase F6.1)
 //
-// Read/write surfaces for AgentHubView / AgentDashboardView and the
-// upcoming Task 3 views (CommissionsView / LeaderboardView reuse this
+// Read/write surfaces for AgentPartnersView / AgentHomeCard and the
+// CommissionsView / LeaderboardView (which reuse this
 // exact layer -- do not re-declare there).
 //
 // ReferralLinkResponse carries the per-link funnel counters added by
@@ -905,7 +905,7 @@ export type { CommissionSummaryResponse } from './generated'
 // ---------------------------------------------------------------------------
 // Self-deactivation (TASK-38)
 //
-// Consumed by api/users.ts + InvestorSettingsView / AgentSettingsView /
+// Consumed by api/users.ts + InvestorSettingsView /
 // CompanySettingsView's Actions section. See users/service.py for why
 // deactivation is its own endpoint with its own re-auth gate rather
 // than folded into UserUpdate.

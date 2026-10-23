@@ -36,6 +36,7 @@
 // =============================================================================
 
 import { useAgentStore } from '@/stores/agent'
+import { useAgentAgreementStore } from '@/stores/agentAgreement'
 import { useAttachmentsStore } from '@/stores/attachments'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyListStore } from '@/stores/companyList'
@@ -65,8 +66,8 @@ import { useTransactionsStore } from '@/stores/transactions'
  * the catalogue moved to CompanyListView and per-company products
  * live in ProductsByCompanyView (R1 §1.4). One fewer reset call.
  *
- * Task 2 Block A (F6.1): +useAgentStore (AgentHubView referral links
- * and stats, AgentDashboardView rank/commission widgets). Without
+ * Task 2 Block A (F6.1): +useAgentStore (the integrator's referral link
+ * and stats, rank/commission widgets). Without
  * this line the agent's links and earnings would survive logout.
  *
  * Ф-1: +useSupportStore (user's own request thread, operator queue).
@@ -90,6 +91,7 @@ export function resetAllDataStores(): void {
   useCompanyProfileStore().reset()
   useCompanyDashboardStore().reset()
   useAgentStore().reset()
+  useAgentAgreementStore().reset()
   useSupportStore().reset()
   useNotificationsStore().reset()
 }

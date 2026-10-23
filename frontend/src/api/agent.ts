@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Typed wrappers for the agent-side endpoints consumed by
-// AgentHubView / AgentDashboardView (and, in Task 3, the full
+// AgentPartnersView / AgentHomeCard (and the full
 // CommissionsView / LeaderboardView -- reuse this module there, do
 // not duplicate the layer).
 //

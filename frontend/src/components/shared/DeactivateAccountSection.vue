@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- DeactivateAccountSection (TASK-38)
 // =============================================================================
 //
-// Shared across InvestorSettingsView / AgentSettingsView /
+// Shared across InvestorSettingsView /
 // CompanySettingsView's Actions section, same drop-in-row pattern as
 // TwoFactorSection.vue. Backend: users/service.py::deactivate_own_account
 // -- soft/reversible (is_active=False + a "self" discriminator so

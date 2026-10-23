@@ -71,13 +71,16 @@
 //                      pending application server-side; clicking
 //                      caused a 409 with a generic toast. Showing the
 //                      retry surface keeps the UI honest.
-//     kyc_required  -- Disabled row pointing to /verification (decision
-//                      Q6 in chat).
-//     pending       -- Disabled "under review" line, no button.
+//     kyc_required  -- The "Become an integrator" button greyed; a press
+//                      opens the verification prompt.
+//     pending       -- The button reads "Application under review"; a press
+//                      opens the message about writing to support.
 //     cooldown      -- Disabled row with N-days-left label (ceiling days
 //                      to avoid "0 days left" on the last hour).
-//     can_reapply   -- Active button labelled "Apply again".
-//     can_apply     -- Active button labelled "Become an agent".
+//     can_reapply   -- Active button labelled "Apply again"; a press opens
+//                      the application window.
+//     can_apply     -- Active button labelled "Become an integrator"; a press
+//                      opens the application window.
 //
 // MARKETING CONSENT OPTIMISM.
 //   toggleMarketing flips the local ref immediately, fires PATCH
@@ -128,12 +131,14 @@ import EmailSection from '@/components/shared/EmailSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
+import IntegratorApplicationModal from '@/components/shared/IntegratorApplicationModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { updateMe } from '@/api/users'
 import { submitAgentApplication } from '@/api/agent-apps'
 import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
+import { showKycPrompt } from '@/composables/useKycPrompt'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { tOrRaw } from '@/utils/i18n'
 import { setLocale } from '@/i18n'
@@ -390,20 +395,33 @@ async function toggleMarketing(): Promise<void> {
 
 const {
   isInvestor,
-  kycApproved,
   state: agentState,
   cooldownDaysLeft,
   fetch: fetchAgentApps,
 } = useAgentApplicationStatus()
 
 const agentSubmitting = ref<boolean>(false)
+const agentModalOpen = ref<boolean>(false)
+const agentSent = ref<boolean>(false)
+
+// The button is visible to everyone. Without a passed identity verification it
+// is greyed and a press opens the verification prompt; after it, a press opens
+// the application window (or, once the application is sent, the message about
+// writing to support).
+function onAgentButton(): void {
+  if (agentState.value === 'kyc_required') {
+    showKycPrompt('integrator')
+    return
+  }
+  agentModalOpen.value = true
+}
 
 async function applyForAgent(): Promise<void> {
   if (agentSubmitting.value) return
   agentSubmitting.value = true
   try {
     await submitAgentApplication()
-    showToast(t('inv.settings.agent.submitSuccess'), 'success')
+    agentSent.value = true
     await fetchAgentApps()
   } catch {
     // Backend currently surfaces 400 (cooldown / role mismatch) and
@@ -600,8 +618,8 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Become an integrator: after the verification is passed -->
-    <section v-if="isInvestor && kycApproved" class="sett__section">
+    <!-- Become an integrator: visible to every buyer; greyed until the verification is passed -->
+    <section v-if="isInvestor" class="sett__section">
       <div class="sett__section-title">
         {{ t('inv.settings.agent.title') }}
       </div>
@@ -628,11 +646,11 @@ onMounted(() => {
       </button>
 
       <!-- Pending review -->
-      <div v-else-if="agentState === 'pending'" class="sett__row">
-        <span class="sett__row-label sett__row-label--muted">
+      <div v-else-if="agentState === 'pending'" class="sett__row sett__row--block">
+        <CButton variant="outline" @click="onAgentButton">
           <UserPlus :size="16" />
-          {{ t('inv.settings.agent.pending') }}
-        </span>
+          {{ t('inv.settings.agent.underReview') }}
+        </CButton>
       </div>
 
       <!-- Cooldown active -->
@@ -645,7 +663,12 @@ onMounted(() => {
 
       <!-- Can apply / reapply -->
       <div v-else class="sett__row sett__row--block">
-        <CButton variant="primary" :loading="agentSubmitting" @click="applyForAgent">
+        <CButton
+          :variant="agentState === 'kyc_required' ? 'outline' : 'primary'"
+          :class="{ 'sett__agent-btn--locked': agentState === 'kyc_required' }"
+          :aria-disabled="agentState === 'kyc_required' || undefined"
+          @click="onAgentButton"
+        >
           <UserPlus :size="16" />
           {{
             agentState === 'can_reapply'
@@ -654,6 +677,14 @@ onMounted(() => {
           }}
         </CButton>
       </div>
+
+      <IntegratorApplicationModal
+        :open="agentModalOpen"
+        :sent="agentSent || agentState === 'pending'"
+        :submitting="agentSubmitting"
+        @close="agentModalOpen = false"
+        @submit="applyForAgent"
+      />
     </section>
 
     <!-- Actions -->
@@ -812,6 +843,10 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 var(--space-4);
+}
+
+.sett__agent-btn--locked {
+  opacity: 0.55;
 }
 
 .sett__center {

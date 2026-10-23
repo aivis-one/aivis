@@ -4,7 +4,7 @@
 //
 // Single source of truth for the country picker used at profile setup
 // (OnboardingProfileView) and self-service profile editing
-// (InvestorSettingsView / AgentSettingsView, TASK-38 item 3). Previously
+// (InvestorSettingsView, TASK-38 item 3). Previously
 // this list lived only as a page-local const inside OnboardingProfileView
 // with no export -- extracted here so the settings editors reuse the same
 // options instead of hand-copying a second (and inevitably drifting) list.

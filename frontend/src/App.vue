@@ -57,6 +57,7 @@ import { Ghost, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import { useAvatar } from '@/composables/useAvatar'
+import { useRoleRefresh } from '@/composables/useRoleRefresh'
 import LoadingView from '@/views/auth/LoadingView.vue'
 import KycRequiredPrompt from '@/components/shared/KycRequiredPrompt.vue'
 import IntroCards from '@/components/shared/IntroCards.vue'
@@ -65,6 +66,9 @@ const { t } = useI18n()
 const authStore = useAuthStore()
 const { initAuth, retryAuth, isReady, isStandalone, authError } = useAuth()
 const { isAvatarActive, loading: avatarLoading, endAvatarSession } = useAvatar()
+
+// An approved applicant moves to the integrator cabinet without signing in again.
+useRoleRefresh()
 
 /** Display name for avatar banner. */
 const avatarTargetName = computed(() => {

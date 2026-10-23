@@ -2,8 +2,8 @@
 // AIVIS.ONE Frontend -- Agent Store (Task 2 Block A, Phase F6.1; Task 3 Block A)
 // =============================================================================
 //
-// Pinia store backing AgentHubView (referral links + funnel stats),
-// AgentDashboardView (rank / month commission / registrations widgets)
+// Pinia store backing AgentPartnersView (the referral link + funnel stats) and
+// AgentHomeCard (rank / month commission / registrations widgets)
 // and the Task 3 views (ReferralsView / CommissionsView /
 // LeaderboardView reuse this same store + api/agent.ts layer -- do not
 // duplicate it there).
@@ -22,7 +22,7 @@
 //                        CommissionsView consumer (Block C)
 //
 // WHAT IS DELIBERATELY NOT HERE:
-//   balance -- AgentDashboardView reads passive_balance from the
+//   balance -- the integrator's screens read passive_balance from the
 //   existing stores/dashboard.ts (GET /dashboard/summary). One
 //   endpoint, one store -- no duplication.
 //
