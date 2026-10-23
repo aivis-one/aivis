@@ -81,14 +81,11 @@ const showBell = computed(() => authStore.isAuthenticated)
 function goToNotifications(): void {
   const shell = route.meta.shell as string | undefined
   if (!shell) return
-  void safeNavigate(
-    router.push({ name: `${shell}-notifications` }),
-    '[CHeader] to notifications',
-  )
+  void safeNavigate(router.push({ name: `${shell}-notifications` }), '[CHeader] to notifications')
 }
 
 // ---------------------------------------------------------------------------
-// The buyer account (investor shell only)
+// The buyer account (investor and integrator shells)
 // ---------------------------------------------------------------------------
 //
 // The top bar shows the buyer account -- the top-up balance, spent only on
@@ -96,16 +93,17 @@ function goToNotifications(): void {
 // screen. The figure is the one BalanceView reads (`activeBalance.confirmed`).
 const dashboardStore = useDashboardStore()
 
-const showBalance = computed(
-  () => authStore.isAuthenticated && route.meta.shell === 'investor',
-)
+const showBalance = computed(() => authStore.isAuthenticated && route.meta.shell === 'investor')
 
 const balanceDisplay = computed(() =>
   formatPrice(dashboardStore.summary?.active_balance?.confirmed ?? 0, 'USD'),
 )
 
 function goToBalance(): void {
-  void safeNavigate(router.push({ name: 'investor-balance' }), '[CHeader] to balance')
+  void safeNavigate(
+    router.push({ name: route.meta.shell === 'agent' ? 'agent-balance' : 'investor-balance' }),
+    '[CHeader] to balance',
+  )
 }
 
 function loadBalanceIfNeeded(): void {

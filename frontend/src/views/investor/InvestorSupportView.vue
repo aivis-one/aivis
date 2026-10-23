@@ -25,12 +25,12 @@
 //   carry no role assumption, and the visible copy ("Write to support
 //   here...", sender labels, error text) reads fine for any role. The
 //   ONE thing that was NOT shell-safe: goBack()'s deep-link fallback
-//   hardcoded `{ name: 'investor-more' }` and the back-link label said
+//   hardcoded the buyer's old More screen and the back-link label said
 //   "Back to more" -- both true only for investor/agent (which have a
 //   More tab) and wrong for company (no More tab; this screen is
 //   reached from a Settings row instead). Fixed below by reading
-//   route.meta.shell (getShell) to pick investor-more / agent-more /
-//   company-settings, and by switching the label to the generic
+//   route.meta.shell (getShell) to pick the Settings route of the shell /
+//   (company-settings for a company), and by switching the label to the generic
 //   t('common.back') (same key NotificationsInboxView's CBackLink
 //   uses) instead of a "to more" phrase that doesn't hold for company.
 //
@@ -217,8 +217,8 @@ function retryFeed(): void {
 }
 
 // Deep-link fallback target, one per shell that hosts this screen.
-// investor/agent land back on their More tab (where the Support tile
-// lives); company has no More tab -- its entry point is a row inside
+// investor/agent land back on their Settings tab (where the Support row
+// lives); company has no such row -- its entry point is a row inside
 // Settings, so that's where a deep-linked company user goes back to.
 // The final return serves TWO cases at once: the investor shell (the
 // normal, reachable path) and a shell of undefined -- the latter only
@@ -227,7 +227,7 @@ function retryFeed(): void {
 // one branch rather than pretending the second one is unreachable.
 const backFallbackRouteName = computed<string>(() => {
   const shell = getShell(route)
-  if (shell === 'agent') return 'agent-more'
+  if (shell === 'agent') return 'agent-settings'
   if (shell === 'company') return 'company-settings'
   return 'investor-settings'
 })

@@ -6,14 +6,14 @@ import CHeader from '@/components/layout/CHeader.vue'
 import CTabBar from '@/components/layout/CTabBar.vue'
 import CSideNav from '@/components/layout/CSideNav.vue'
 import CToast from '@/components/ui/CToast.vue'
-import { AGENT_TABS } from '@/router/tabs'
+import { AGENT_MENU_EXTRA, AGENT_TABS } from '@/router/tabs'
 </script>
 
 <template>
   <div class="shell shell--tabbed">
     <CHeader />
     <div class="shell__body">
-      <CSideNav :items="AGENT_TABS" />
+      <CSideNav :items="AGENT_TABS" :extra="AGENT_MENU_EXTRA" />
       <main class="shell__content">
         <div class="shell__measure">
           <RouterView />

@@ -17,6 +17,9 @@
 //      review", "rejected -- the reason". It leaves the screen once the
 //      verification is approved. A tap opens the verification screen.
 //
+//   2b. For an integrator only: the integrator card (AgentHomeCard) -- the
+//      commission of the month, the rank, the registrations, "Copy link".
+//
 //   3. A gift waiting for acceptance, when staff granted one: one card to
 //      the portfolio, where it is accepted.
 //
@@ -68,6 +71,7 @@ import {
 } from 'lucide-vue-next'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import EventCard from '@/components/shared/EventCard.vue'
+import AgentHomeCard from '@/components/shared/AgentHomeCard.vue'
 import { listPosts } from '@/api/posts'
 import { listUpcomingEvents } from '@/api/events'
 import { getKycStatus } from '@/api/kyc'
@@ -82,6 +86,9 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
+
+// An integrator sees the buyer's Home whole, plus their own card.
+const isAgent = computed<boolean>(() => authStore.role === 'agent')
 
 // ---------------------------------------------------------------------------
 // Identity-verification card
@@ -330,6 +337,9 @@ onBeforeUnmount(() => {
       </span>
       <ChevronRight :size="16" />
     </button>
+
+    <!-- The integrator's card: commission of the month, rank, registrations, the link -->
+    <AgentHomeCard v-if="isAgent" />
 
     <!-- A gift waiting for acceptance -->
     <button v-if="pendingGifts > 0" type="button" class="dash__gift" @click="goPortfolio">

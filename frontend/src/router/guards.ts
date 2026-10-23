@@ -100,6 +100,47 @@ export function getRoleDashboard(role: string | null): string {
 }
 
 // ---------------------------------------------------------------------------
+// An integrator stays in the integrator shell
+// ---------------------------------------------------------------------------
+
+// The screens an integrator shares with a buyer exist under both shells. A
+// link, a notification or a screen that names the buyer's route sends an
+// integrator to the same screen in their own shell, with its own tab bar and
+// menu -- never to the buyer's shell.
+const SHARED_SCREENS: ReadonlySet<string> = new Set([
+  'dashboard',
+  'portfolio',
+  'company-position',
+  'companies',
+  'company-overview',
+  'company-products',
+  'product-detail',
+  'purchase',
+  'installment',
+  'installment-plans',
+  'installment-plan-detail',
+  'balance',
+  'deposit',
+  'transactions',
+  'events',
+  'news',
+  'event',
+  'post',
+  'docs',
+  'settings',
+  'support',
+  'faq',
+  'notifications',
+])
+
+/** The integrator-shell route for a buyer-shell route name, or null. */
+export function agentCounterpart(name: unknown): string | null {
+  if (typeof name !== 'string' || !name.startsWith('investor-')) return null
+  const suffix = name.slice('investor-'.length)
+  return SHARED_SCREENS.has(suffix) ? `agent-${suffix}` : null
+}
+
+// ---------------------------------------------------------------------------
 // Global beforeEach guard
 // ---------------------------------------------------------------------------
 
@@ -153,6 +194,14 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
       if (to.path !== target) {
         return target
       }
+    }
+  }
+
+  // --- An integrator never lands in the buyer's shell ---
+  if (authStore.role === 'agent') {
+    const counterpart = agentCounterpart(to.name)
+    if (counterpart) {
+      return { name: counterpart, params: to.params, query: to.query, hash: to.hash }
     }
   }
 

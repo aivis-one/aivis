@@ -147,13 +147,6 @@
     "market": "Store",
     "balance": "Kontostand",
     "more": "Mehr",
-    "agent": {
-      "home": "Start",
-      "hub": "Hub",
-      "commissions": "Provisionen",
-      "balance": "Kontostand",
-      "more": "Mehr"
-    },
     "comp": {
       "home": "Start",
       "products": "Produkte",
@@ -174,7 +167,8 @@
     "docs": "Documents",
     "kyc": "Identity verification",
     "support": "Support",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "partners": "Partner"
   },
   "staff": {
     "panel": "Staff Panel",
@@ -950,6 +944,80 @@
     "shell": {
       "registerButton": "Registrieren",
       "cabinetButton": "Zum Cabinet"
+    }
+  },
+  "agent": {
+    "link": {
+      "copy": "Link kopieren",
+      "copied": "Link kopiert",
+      "projectCopied": "Projektlink kopiert",
+      "copyError": "Der Link konnte nicht kopiert werden",
+      "share": "Teilen",
+      "shareTitle": "Mein AIVIS-Link",
+      "copyProject": "Projektlink kopieren",
+      "accept": "Akzeptieren",
+      "accepted": "Vertrag akzeptiert. Ihr Link ist bereit.",
+      "acceptError": "Die Annahme konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "agreementTitle": "Integrator-Vertrag",
+      "agreementText": "Ihre Bewerbung wurde genehmigt. Akzeptieren Sie den Integrator-Vertrag mit einem Klick, und die Plattform stellt Ihren Link aus.",
+      "agreementRead": "Vertrag lesen"
+    },
+    "home": {
+      "title": "Integrator",
+      "monthCommission": "Provision im Monat",
+      "rank": "Rangliste",
+      "registrations": "Registrierungen"
+    },
+    "partners": {
+      "title": "Partner",
+      "subtitle": "Ihr Link, Ihr Netzwerk, Ihre Provision und Ihr Guthaben",
+      "linkTitle": "Ihr Link",
+      "clicks": "Klicks",
+      "registrations": "Registrierungen",
+      "purchases": "Käufe",
+      "linkError": "Ihr Link konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
+      "network": "Mein Netzwerk",
+      "networkSub": "{n} Registrierungen",
+      "commissions": "Provisionen",
+      "commissionsSub": "{amount} in diesem Monat",
+      "rating": "Rangliste",
+      "ratingSub": "Ihr Platz: {rank}",
+      "rankNone": "noch keiner",
+      "balance": "Guthaben",
+      "balanceSub": "{amount} zur Auszahlung verfügbar"
+    },
+    "balance": {
+      "title": "Guthaben",
+      "subtitle": "Ihr Konto, Ihre Provision und Ihre Auszahlungen",
+      "backLink": "Zurück zu Partner",
+      "account": {
+        "title": "Konto",
+        "frozen": "Wartet auf Bestätigung",
+        "deposit": "Aufladen",
+        "operations": "Alle Vorgänge"
+      },
+      "card": {
+        "title": "Provision zur Auszahlung"
+      },
+      "withdrawals": {
+        "rule": "Die Mindestauszahlung beträgt {min}. Die Auszahlung erfolgt nach 14 Tagen.",
+        "form": {
+          "networkLabel": "Netzwerk",
+          "networkPlaceholder": "Netzwerk wählen",
+          "walletLabel": "Wallet-Adresse",
+          "walletPlaceholder": "Wallet-Adresse einfügen",
+          "errorWallet": "Geben Sie die Wallet-Adresse ohne Leerzeichen ein."
+        }
+      }
+    },
+    "commissions": {
+      "backLink": "Zurück zu Partner",
+      "from": "Von {name}",
+      "forProduct": "für {product}",
+      "type": {
+        "other": "Sonstige Gutschrift"
+      },
+      "level": "Stufe {n}"
     }
   }
 }

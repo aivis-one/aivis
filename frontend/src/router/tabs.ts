@@ -49,17 +49,34 @@ export const INVESTOR_MENU_EXTRA: TabItem[] = [
   { id: 'faq', path: '/investor/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
 ]
 
+// The integrator's five tabs, in the same order rule as the buyer's: Home,
+// Storefront, Portfolio, Partners, Settings. There is no "More" tab.
 export const AGENT_TABS: TabItem[] = [
-  { id: 'home', path: '/agent/dashboard', labelKey: 'tab.agent.home', icon: 'Home' },
-  { id: 'hub', path: '/agent/hub', labelKey: 'tab.agent.hub', icon: 'Link' },
+  { id: 'home', path: '/agent/dashboard', labelKey: 'tab.home', icon: 'Home' },
+  { id: 'market', path: '/agent/companies', labelKey: 'tab.market', icon: 'Store' },
+  { id: 'portfolio', path: '/agent/portfolio', labelKey: 'tab.portfolio', icon: 'Briefcase' },
+  { id: 'partners', path: '/agent/partners', labelKey: 'tab.partners', icon: 'Users' },
+  { id: 'settings', path: '/agent/settings', labelKey: 'tab.settings', icon: 'Settings' },
+]
+
+// The web side menu of the integrator: the five tabs, then one line each for
+// the sections that lie inside a tab on a phone -- the news feed (inside
+// Home), the instalment plans (inside Portfolio), the balance (inside
+// Partners), and the documents, identity verification, support and FAQ
+// (inside Settings).
+export const AGENT_MENU_EXTRA: TabItem[] = [
+  { id: 'news', path: '/agent/news', labelKey: 'tab.news', icon: 'Newspaper' },
   {
-    id: 'commissions',
-    path: '/agent/commissions',
-    labelKey: 'tab.agent.commissions',
-    icon: 'Coins',
+    id: 'installments',
+    path: '/agent/installments',
+    labelKey: 'tab.installments',
+    icon: 'CalendarClock',
   },
-  { id: 'balance', path: '/agent/balance', labelKey: 'tab.agent.balance', icon: 'Wallet' },
-  { id: 'more', path: '/agent/more', labelKey: 'tab.agent.more', icon: 'Menu' },
+  { id: 'balance', path: '/agent/partners/balance', labelKey: 'tab.balance', icon: 'Wallet' },
+  { id: 'docs', path: '/agent/docs', labelKey: 'tab.docs', icon: 'FileText' },
+  { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },
+  { id: 'support', path: '/agent/support', labelKey: 'tab.support', icon: 'MessageCircle' },
+  { id: 'faq', path: '/agent/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
 ]
 
 export const COMPANY_TABS: TabItem[] = [

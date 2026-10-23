@@ -422,48 +422,83 @@ export const router = createRouter({
           path: '',
           redirect: '/agent/dashboard',
         },
-        // --- Agent-specific ---
+        // --- Integrator-specific: the Partners tab and what lies inside it ---
         {
-          path: 'dashboard',
-          name: 'agent-dashboard',
-          component: () => import('@/views/agent/AgentDashboardView.vue'),
+          path: 'partners',
+          name: 'agent-partners',
+          component: () => import('@/views/agent/AgentPartnersView.vue'),
         },
         {
-          path: 'hub',
-          name: 'agent-hub',
-          component: () => import('@/views/agent/AgentHubView.vue'),
-        },
-        {
-          path: 'referrals',
+          path: 'partners/network',
           name: 'agent-referrals',
           component: () => import('@/views/agent/ReferralsView.vue'),
         },
         {
-          path: 'commissions',
+          path: 'partners/commissions',
           name: 'agent-commissions',
           component: () => import('@/views/agent/CommissionsView.vue'),
         },
         {
-          path: 'leaderboard',
+          path: 'partners/rating',
           name: 'agent-leaderboard',
           component: () => import('@/views/agent/LeaderboardView.vue'),
         },
         {
-          path: 'balance',
+          path: 'partners/balance',
           name: 'agent-balance',
           component: () => import('@/views/agent/AgentBalanceView.vue'),
         },
         {
-          path: 'settings',
-          name: 'agent-settings',
-          component: () => import('@/views/agent/AgentSettingsView.vue'),
+          // The top-up screen of the integrator's account; the same screen
+          // as the buyer's, in the integrator's shell.
+          path: 'partners/balance/deposit',
+          name: 'agent-deposit',
+          component: () => import('@/views/investor/InvestorDepositView.vue'),
+          meta: { skipOnboarding: true },
         },
         {
-          path: 'more',
-          name: 'agent-more',
-          component: () => import('@/views/agent/AgentMoreView.vue'),
+          path: 'partners/balance/transactions',
+          name: 'agent-transactions',
+          component: () => import('@/views/investor/TransactionsView.vue'),
         },
-        // --- Investor screens (shared components, agent layout) ---
+        // Paths of the screens that lay outside the five tabs before.
+        { path: 'hub', redirect: '/agent/partners' },
+        { path: 'referrals', redirect: '/agent/partners/network' },
+        { path: 'commissions', redirect: '/agent/partners/commissions' },
+        { path: 'leaderboard', redirect: '/agent/partners/rating' },
+        { path: 'balance', redirect: '/agent/partners/balance' },
+        { path: 'more', redirect: '/agent/settings' },
+        // --- Screens shared with the buyer (one view each, integrator shell) ---
+        {
+          path: 'dashboard',
+          name: 'agent-dashboard',
+          component: () => import('@/views/investor/InvestorDashboardView.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'agent-settings',
+          component: () => import('@/views/investor/InvestorSettingsView.vue'),
+        },
+        {
+          path: 'news',
+          name: 'agent-news',
+          component: () => import('@/views/investor/InvestorNewsView.vue'),
+        },
+        {
+          path: 'events/:id',
+          name: 'agent-event',
+          component: () => import('@/views/investor/EventDetailView.vue'),
+        },
+        {
+          path: 'posts/:id',
+          name: 'agent-post',
+          component: () => import('@/views/investor/PostDetailView.vue'),
+        },
+        {
+          path: 'docs',
+          name: 'agent-docs',
+          component: () => import('@/views/investor/InvestorDocsView.vue'),
+        },
         {
           path: 'portfolio',
           name: 'agent-portfolio',
@@ -474,8 +509,6 @@ export const router = createRouter({
           name: 'agent-company-position',
           component: () => import('@/views/investor/CompanyPositionView.vue'),
         },
-        // iter 2.5 batch 9: companies tree under agent shell.
-        // Parallel to /investor/companies/* -- same views, agent layout.
         {
           path: 'companies',
           name: 'agent-companies',
@@ -507,51 +540,33 @@ export const router = createRouter({
           component: () => import('@/views/investor/InstallmentView.vue'),
         },
         {
-          // TASK-39 item 1: mirror of investor-installment-plans --
-          // same InstallmentPlansView, agent layout. An agent is a
-          // buyer too (_BUYER_ROLES on the backend) and holds their
-          // own installment plans.
+          // An integrator is a buyer too and holds their own instalment plans.
           path: 'installments',
           name: 'agent-installment-plans',
           component: () => import('@/views/investor/InstallmentPlansView.vue'),
         },
         {
-          // TASK-39 item 1: mirror of investor-installment-plan-detail.
           path: 'installments/:id',
           name: 'agent-installment-plan-detail',
           component: () => import('@/views/investor/InstallmentPlanDetailView.vue'),
         },
         {
-          // iter 2.7b C: events mirror -- same InvestorEventsView,
-          // agent layout. Parallel to /investor/events. meta.shell
-          // ('agent') is inherited from the AgentShell record so the
-          // view needs no per-route shell tag.
           path: 'events',
           name: 'agent-events',
           component: () => import('@/views/investor/InvestorEventsView.vue'),
         },
         {
-          // TASK-39 item 4: mirror of investor-support -- same
-          // InvestorSupportView, agent layout. Reached from the
-          // Support tile in AgentMoreView. The backend already served
-          // this role with no gap (support/router.py has no role
-          // check); this route is what makes it reachable.
           path: 'support',
           name: 'agent-support',
           component: () => import('@/views/investor/InvestorSupportView.vue'),
         },
         {
-          // TASK-39 item 3: mirror of investor-faq -- same
-          // InvestorFaqView, agent layout, which opens agent.html for
-          // this route; reached from the FAQ tile in
-          // AgentMoreView.
+          // Opens agent.html for this route.
           path: 'faq',
           name: 'agent-faq',
           component: () => import('@/views/investor/InvestorFaqView.vue'),
         },
         {
-          // Phase 6: the bell mirror -- same NotificationsInboxView,
-          // agent layout. Parallel to /investor/notifications.
           path: 'notifications',
           name: 'agent-notifications',
           component: () => import('@/views/investor/NotificationsInboxView.vue'),
@@ -967,6 +982,17 @@ export const router = createRouter({
             // Metric-only endpoint: a lost beacon is acceptable,
             // a broken redirect is not.
           })
+        }
+        // A link taken at the storefront names a project: `?p=<project id>`.
+        const project = to.query.p
+        if (
+          typeof project === 'string' &&
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+            project,
+          )
+        ) {
+          next({ path: `/public/companies/${project}` })
+          return
         }
         next({ name: 'public-companies' })
       },

@@ -56,6 +56,9 @@ import { useCompanyListStore } from '@/stores/companyList'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
+import { useAgentLink } from '@/composables/useAgentLink'
+import { useAgentStore } from '@/stores/agent'
+import { Link2 } from 'lucide-vue-next'
 import type { PublicCompanyListResponse } from '@/api/types'
 
 type CompanyListItem = PublicCompanyListResponse['items'][number]
@@ -65,6 +68,12 @@ const route = useRoute()
 const router = useRouter()
 
 const store = useCompanyListStore()
+
+// An integrator takes the link to a project here, at the project itself: their
+// one code plus the project's address.
+const agentShell = computed<boolean>(() => isAgentShell(route))
+const agentStore = useAgentStore()
+const { link: agentLink, copy: copyLink } = useAgentLink()
 
 // storeToRefs keeps refs reactive when destructured for the composable.
 const { hasMore, loadMoreErrored } = storeToRefs(store)
@@ -97,6 +106,7 @@ onMounted(() => {
   // company on the platform. The store's epoch guard prevents
   // duplicate writes if the user navigates away mid-fetch.
   void store.fetchFirstPage()
+  if (agentShell.value && agentStore.myLink === null) void agentStore.fetchLinksFirstPage()
 })
 
 function openCompany(company: CompanyListItem): void {
@@ -159,12 +169,18 @@ async function retryLoadMore(): Promise<void> {
     <!-- List + sentinel + load-more error banner. -->
     <template v-else>
       <div class="cl__grid">
-        <CompanyCard
-          v-for="company in store.items"
-          :key="company.id"
-          :company="company"
-          @click="openCompany"
-        />
+        <div v-for="company in store.items" :key="company.id" class="cl__item">
+          <CompanyCard :company="company" @click="openCompany" />
+          <button
+            v-if="agentShell && agentLink"
+            type="button"
+            class="cl__copy"
+            @click="copyLink(company.id)"
+          >
+            <Link2 :size="14" />
+            {{ t('agent.link.copyProject') }}
+          </button>
+        </div>
       </div>
 
       <!-- Sentinel sits AFTER the list. The brake (loadMoreErrored)
@@ -234,6 +250,28 @@ async function retryLoadMore(): Promise<void> {
   .cl__grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
+}
+
+.cl__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cl__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .cl__sentinel {

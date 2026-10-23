@@ -33,7 +33,7 @@
 //            page-header (h1 + subtitle), no header component here.
 //   FP-20 -- /agent/referrals is a SUB-ROUTE (not in AGENT_TABS), so a
 //            CBackLink is mandatory. goBack is history-aware and falls
-//            through to the Hub on a cold deep-link.
+//            through to Partners on a cold deep-link.
 //   FP-18 -- the back fallback navigates via safeNavigate (router.back
 //            is neither push nor replace, so it stays bare).
 //   FP-25 -- self-hiding: an empty collection hides its section; both
@@ -81,17 +81,17 @@ const isEmpty = computed(
 // ---------------------------------------------------------------------------
 
 function goBack(): void {
-  // History-aware: return to wherever the user came from (the More tab
+  // History-aware: return to wherever the user came from (Partners
   // in the wired flow). On a cold deep-link there is no back entry --
-  // fall through to the Hub. router.back() is neither push nor replace,
+  // fall through to Partners. router.back() is neither push nor replace,
   // so it does not need safeNavigate; the fallback push does (FP-18).
   if (window.history.state?.back) {
     router.back()
     return
   }
   void safeNavigate(
-    router.push({ name: 'agent-hub' }),
-    '[ReferralsView] back fallback to agent-hub',
+    router.push({ name: 'agent-partners' }),
+    '[ReferralsView] back fallback to agent-partners',
   )
 }
 

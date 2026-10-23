@@ -45,7 +45,9 @@ import { safeNavigate } from '@/composables/safeNavigate'
 
 // `items` are the shell's tabs; `extra` are the lines that, on a phone, lie
 // inside one of those tabs and on the web stand as lines of their own.
-withDefaults(defineProps<{ items: TabItem[]; extra?: TabItem[] }>(), { extra: () => [] })
+const props = withDefaults(defineProps<{ items: TabItem[]; extra?: TabItem[] }>(), {
+  extra: () => [],
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -73,8 +75,14 @@ const iconMap: Record<string, Component> = {
   HelpCircle,
 }
 
+// A line is active under its own path. A tab whose section holds a line of the
+// extra list (Partners holds the balance) gives way to that line while the
+// route is inside it, so one place is marked, not two.
 function isActive(tab: TabItem): boolean {
-  return route.path.startsWith(tab.path)
+  if (!route.path.startsWith(tab.path)) return false
+  return !props.extra.some(
+    (e) => e !== tab && e.path.length > tab.path.length && route.path.startsWith(e.path),
+  )
 }
 
 function navigate(tab: TabItem): void {

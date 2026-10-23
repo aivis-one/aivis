@@ -82,10 +82,12 @@ import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { getDocumentByType, listDocuments, signDocument } from '@/api/documents'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import type { DocumentResponse } from '@/api/types'
 
 const { t } = useI18n()
 const { showToast } = useToast()
+const authStore = useAuthStore()
 
 // Strict token for both doc.type and doc.language. Backend currently
 // emits plain identifiers (privacy_policy, terms_of_service, en, ru,
@@ -100,7 +102,7 @@ const SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i
 // Every legal document a buyer reads in the cabinet, in display order.
 // The AML policy is the staff's; the licence agreement and the company
 // agreement are not a buyer's.
-const READ_TYPES: readonly string[] = [
+const BUYER_READ_TYPES: readonly string[] = [
   'cabinet_terms',
   'privacy_policy',
   'buyer_agreement',
@@ -108,6 +110,13 @@ const READ_TYPES: readonly string[] = [
   'kyc_notice',
   'index_rules',
 ]
+
+// An integrator reads the buyer's documents and, after them, their own
+// integrator-agent agreement. One screen, the list extended by role.
+const AGENT_READ_TYPES: readonly string[] = [...BUYER_READ_TYPES, 'agent_integrator_agreement']
+
+const READ_TYPES: readonly string[] =
+  authStore.role === 'agent' ? AGENT_READ_TYPES : BUYER_READ_TYPES
 
 const documents = ref<DocumentResponse[]>([])
 // Ids of the documents the role must sign (from listDocuments()).

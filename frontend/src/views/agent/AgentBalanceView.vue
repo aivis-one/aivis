@@ -3,29 +3,25 @@
 // AIVIS.ONE Frontend -- AgentBalanceView (Task 3 Block D, Phase F6.2)
 // =============================================================================
 //
-// Replaces the F6.2 stub. The agent's passive (earnings) balance tab:
-//   1. Passive balance card (confirmed + frozen) from the shared
-//      stores/dashboard.ts -- commissions land on the passive ledger,
-//      so passive_balance IS the agent's earnings. One endpoint, one
-//      store (same source AgentDashboardView uses).
-//   2. Withdrawal CTA + bottom-sheet form (amount, client validation,
-//      POST /withdrawals). FP-04 double-submit guard via
-//      withdrawSubmitting. avatar mode is blocked server-side (403) --
-//      the backend message is shown in the form, not crashed on.
-//   3. Withdrawal history (paginated, infinite scroll, status badges).
-//
-// PAYOUT DETAILS LIVE IN SETTINGS (decision B).
-//   This view does NOT edit payout details -- it only reads them as a
-//   boolean gate. With none set, the CTA becomes "Set up payout
-//   details" -> AgentSettingsView (safeNavigate), so the user is led
-//   there instead of hitting a raw 400 "configure payout details
-//   first". Backup: if details are cleared mid-session, a failed
-//   submit re-fetches the gate so the CTA flips back.
+// The integrator's balance, reached from Partners (and from the balance in the
+// top bar):
+//   1. The account card -- what the integrator tops up and spends on parts of
+//      AIVIS -- with "Top up" and "All operations".
+//   2. The commission card -- confirmed + frozen commission from the shared
+//      stores/dashboard.ts (commissions land on the passive ledger) -- with
+//      the withdrawal button.
+//   3. The withdrawal sheet: the NETWORK and the WALLET are asked here, at the
+//      withdrawal, with the amount. They are saved as the payout details
+//      (PUT /users/me/payout-details, a free-form object on the backend) just
+//      before the request (POST /withdrawals); there is no raw JSON editor
+//      anywhere. The limits (minimum 10 USD) and the 14-day rule are written
+//      in words in the sheet.
+//   4. Withdrawal history (paginated, infinite scroll, status badges).
 //
 // FP notes:
-//   FP-19 -- shell owns the header; inline abal__header h1. No back-link:
-//            /agent/balance is a top-level tab (AGENT_TABS).
-//   FP-18 -- the Settings link navigates via safeNavigate.
+//   FP-19 -- shell owns the header; inline abal__header h1. A back-link to
+//            Partners: the balance lies inside that tab.
+//   FP-18 -- navigation goes through safeNavigate.
 //   FP-15 -- withdrawal status rendered via tOrRaw.
 //
 // Withdrawal bounds mirror the Sprint 6.3 backend config; hardcoded
@@ -36,11 +32,19 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowUpFromLine, CreditCard, Wallet } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowUpFromLine, CreditCard, ListChecks, Wallet } from 'lucide-vue-next'
 
-import { CBottomSheet, CButton, CEmptyState, CLoader, CInput } from '@/components/ui'
+import {
+  CBackLink,
+  CBottomSheet,
+  CButton,
+  CEmptyState,
+  CLoader,
+  CInput,
+  CSelect,
+} from '@/components/ui'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
-import { getPayoutDetails } from '@/api/users'
+import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
@@ -126,7 +130,7 @@ function retryLoadMoreWithdrawals(): void {
 useInfiniteScroll(sentinelRef, hasMoreWithdrawals, loadMoreWithdrawals, withdrawalsLoadMoreErrored)
 
 // ---------------------------------------------------------------------------
-// Payout details -- boolean gate only (editor lives in AgentSettingsView)
+// Payout details -- read to prefill the withdrawal sheet (network + wallet)
 // ---------------------------------------------------------------------------
 
 const payoutDetails = ref<Record<string, unknown> | null>(null)
@@ -151,9 +155,25 @@ async function fetchPayoutDetails(): Promise<void> {
   }
 }
 
-const hasPayoutDetails = computed(() => {
-  const d = payoutDetails.value
-  return !!d && Object.keys(d).length > 0
+// The networks a payout can go to (the platform's USDT networks). The names are
+// the networks' own and are not translated.
+const PAYOUT_NETWORKS = [
+  { value: 'USDT-TRC20', label: 'USDT (TRC20)' },
+  { value: 'USDT-ERC20', label: 'USDT (ERC20)' },
+  { value: 'USDT-BSC20', label: 'USDT (BSC20)' },
+]
+
+// A wallet address is one token without spaces; the chain's own format is the
+// payout service's to judge.
+const WALLET_RE = /^\S{10,128}$/
+
+const savedNetwork = computed<string>(() => {
+  const v = payoutDetails.value?.network
+  return typeof v === 'string' ? v : ''
+})
+const savedWallet = computed<string>(() => {
+  const v = payoutDetails.value?.wallet
+  return typeof v === 'string' ? v : ''
 })
 
 // ---------------------------------------------------------------------------
@@ -163,6 +183,9 @@ const hasPayoutDetails = computed(() => {
 const passiveConfirmed = computed(() => dashboardStore.passiveBalance.confirmed)
 const passiveFrozen = computed(() => dashboardStore.passiveBalance.frozen)
 const hasFrozen = computed(() => passiveFrozen.value > 0)
+
+const accountConfirmed = computed(() => dashboardStore.activeBalance.confirmed)
+const accountFrozen = computed(() => dashboardStore.activeBalance.frozen)
 
 // ---------------------------------------------------------------------------
 // Render policy -- spinner until balance + withdrawals + payout settle
@@ -218,6 +241,8 @@ const withdrawSheetOpen = ref(false)
 const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
+const withdrawNetwork = ref('')
+const withdrawWallet = ref('')
 
 const parsedAmountCents = computed<number | null>(() =>
   parseAmountToCents(withdrawAmountInput.value),
@@ -238,30 +263,42 @@ const withdrawValidationKey = computed<string | null>(() => {
   return null
 })
 
+const walletValid = computed(() => WALLET_RE.test(withdrawWallet.value.trim()))
+
+const walletErrorKey = computed<string | null>(() => {
+  const w = withdrawWallet.value.trim()
+  if (w === '' || walletValid.value) return null
+  return 'agent.balance.withdrawals.form.errorWallet'
+})
+
 const canSubmitWithdraw = computed(() => {
   if (withdrawSubmitting.value) return false
-  if (!hasPayoutDetails.value) return false
+  if (withdrawNetwork.value === '' || !walletValid.value) return false
   if (parsedAmountCents.value === null) return false
   return withdrawValidationKey.value === null
 })
 
-// Withdraw button is live only with payout details set AND a balance
-// at or above the minimum. Without payout details the CTA is replaced
-// by the "set up payout details" link (Balance -> Settings stitch).
-const canWithdraw = computed(
-  () => hasPayoutDetails.value && passiveConfirmed.value >= MIN_WITHDRAWAL_CENTS,
-)
+// The button is live at or above the minimum. The network and the wallet are
+// asked in the sheet, so nothing else gates it.
+const canWithdraw = computed(() => passiveConfirmed.value >= MIN_WITHDRAWAL_CENTS)
 
-function goSettingsForPayout(): void {
-  void safeNavigate(
-    router.push({ name: 'agent-settings' }),
-    '[AgentBalanceView] to settings for payout details',
-  )
+function goDeposit(): void {
+  void safeNavigate(router.push({ name: 'agent-deposit' }), '[AgentBalanceView] to deposit')
+}
+
+function goOperations(): void {
+  void safeNavigate(router.push({ name: 'agent-transactions' }), '[AgentBalanceView] to operations')
+}
+
+function goBack(): void {
+  void safeNavigate(router.push({ name: 'agent-partners' }), '[AgentBalanceView] back to partners')
 }
 
 function openWithdrawSheet(): void {
   if (!canWithdraw.value) return
-  // Fields are cleared by the close watcher below; just open.
+  // The sheet opens on the saved network and wallet, when there are any.
+  withdrawNetwork.value = savedNetwork.value
+  withdrawWallet.value = savedWallet.value
   withdrawSheetOpen.value = true
 }
 
@@ -276,6 +313,12 @@ async function submitWithdraw(): Promise<void> {
   withdrawSubmitting.value = true
   withdrawError.value = ''
   try {
+    const network = withdrawNetwork.value
+    const wallet = withdrawWallet.value.trim()
+    if (network !== savedNetwork.value || wallet !== savedWallet.value) {
+      await updatePayoutDetails({ network, wallet })
+      payoutDetails.value = { network, wallet }
+    }
     await createWithdrawal(cents)
     showToast(t('agent.balance.withdrawals.form.successToast'), 'success')
     closeWithdrawSheet()
@@ -283,9 +326,8 @@ async function submitWithdraw(): Promise<void> {
   } catch (err) {
     withdrawError.value =
       err instanceof Error && err.message ? err.message : t('agent.balance.withdrawals.form.error')
-    // Backup for the Balance -> Settings stitch: if payout details were
-    // cleared mid-session (the backend 400), re-read the gate so the
-    // CTA flips back to "set up payout details" once the sheet closes.
+    // Re-read the saved details, so the next opening of the sheet shows what
+    // the server holds.
     void fetchPayoutDetails()
   } finally {
     withdrawSubmitting.value = false
@@ -296,6 +338,8 @@ watch(withdrawSheetOpen, (open) => {
   if (!open) {
     withdrawAmountInput.value = ''
     withdrawError.value = ''
+    withdrawNetwork.value = ''
+    withdrawWallet.value = ''
   }
 })
 
@@ -317,8 +361,9 @@ onMounted(() => {
 
 <template>
   <div class="abal">
-    <!-- Header (FP-19: shell owns the header; tab -> no back-link) -->
+    <!-- Header (FP-19: shell owns the header; the balance lies inside Partners) -->
     <div class="abal__header">
+      <CBackLink :label="t('agent.balance.backLink')" @click="goBack" />
       <h1 class="abal__title">
         {{ t('agent.balance.title') }}
       </h1>
@@ -342,7 +387,31 @@ onMounted(() => {
 
     <!-- Loaded -->
     <template v-else>
-      <!-- Balance card -->
+      <!-- The account: topped up, spent on parts of AIVIS -->
+      <section class="abal__card abal__balance">
+        <div class="abal__balance-head">
+          <Wallet :size="16" />
+          <span>{{ t('agent.balance.account.title') }}</span>
+        </div>
+        <div class="abal__balance-value">
+          {{ formatPrice(accountConfirmed) }}
+        </div>
+        <div v-if="accountFrozen > 0" class="abal__balance-frozen">
+          {{ t('agent.balance.account.frozen') }}: {{ formatPrice(accountFrozen) }}
+        </div>
+        <div class="abal__cta-row">
+          <CButton variant="primary" @click="goDeposit">
+            <ArrowDownToLine :size="16" />
+            {{ t('agent.balance.account.deposit') }}
+          </CButton>
+          <CButton variant="outline" @click="goOperations">
+            <ListChecks :size="16" />
+            {{ t('agent.balance.account.operations') }}
+          </CButton>
+        </div>
+      </section>
+
+      <!-- The commission: withdrawn on request -->
       <section class="abal__card abal__balance">
         <div class="abal__balance-head">
           <Wallet :size="16" />
@@ -354,29 +423,18 @@ onMounted(() => {
         <div v-if="hasFrozen" class="abal__balance-frozen">
           {{ t('agent.balance.card.frozen') }}: {{ formatPrice(passiveFrozen) }}
         </div>
-
         <div class="abal__cta-row">
-          <!-- No payout details: lead the user to Settings (decision B) -->
-          <template v-if="!hasPayoutDetails">
-            <CButton variant="primary" @click="goSettingsForPayout">
-              <CreditCard :size="16" />
-              {{ t('agent.balance.withdrawals.setupPayout') }}
-            </CButton>
-            <span class="abal__cta-hint">
-              {{ t('agent.balance.withdrawals.needPayout') }}
-            </span>
-          </template>
-          <!-- Payout details present: normal withdraw CTA -->
-          <template v-else>
-            <CButton variant="primary" :disabled="!canWithdraw" @click="openWithdrawSheet">
-              <ArrowUpFromLine :size="16" />
-              {{ t('agent.balance.withdrawals.newButton') }}
-            </CButton>
-            <span v-if="!canWithdraw" class="abal__cta-hint">
-              {{ t('agent.balance.withdrawals.lowBalance') }}
-            </span>
-          </template>
+          <CButton variant="primary" :disabled="!canWithdraw" @click="openWithdrawSheet">
+            <ArrowUpFromLine :size="16" />
+            {{ t('agent.balance.withdrawals.newButton') }}
+          </CButton>
+          <span v-if="!canWithdraw" class="abal__cta-hint">
+            {{ t('agent.balance.withdrawals.lowBalance') }}
+          </span>
         </div>
+        <p class="abal__rule">
+          {{ t('agent.balance.withdrawals.rule', { min: formatPrice(MIN_WITHDRAWAL_CENTS) }) }}
+        </p>
       </section>
 
       <!-- Withdrawal history -->
@@ -440,6 +498,32 @@ onMounted(() => {
       @close="closeWithdrawSheet"
     >
       <form class="abal__form" @submit.prevent="submitWithdraw">
+        <CSelect
+          v-model="withdrawNetwork"
+          :label="t('agent.balance.withdrawals.form.networkLabel')"
+          :options="PAYOUT_NETWORKS"
+          :placeholder="t('agent.balance.withdrawals.form.networkPlaceholder')"
+          :disabled="withdrawSubmitting"
+        />
+
+        <label class="abal__field">
+          <span class="abal__field-label">
+            {{ t('agent.balance.withdrawals.form.walletLabel') }}
+          </span>
+          <CInput
+            v-model="withdrawWallet"
+            class="abal__control"
+            size="compact"
+            autocomplete="off"
+            spellcheck="false"
+            :placeholder="t('agent.balance.withdrawals.form.walletPlaceholder')"
+            :disabled="withdrawSubmitting"
+          />
+        </label>
+        <p v-if="walletErrorKey" class="abal__form-error abal__form-error--soft">
+          {{ t(walletErrorKey) }}
+        </p>
+
         <label class="abal__field">
           <span class="abal__field-label">
             {{ t('agent.balance.withdrawals.form.amountLabel') }}
@@ -581,6 +665,12 @@ onMounted(() => {
   margin-top: var(--space-3);
   flex-wrap: wrap;
 }
+.abal__rule {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
 .abal__cta-hint {
   font-size: var(--fs-xs);
   font-style: italic;

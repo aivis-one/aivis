@@ -27,23 +27,34 @@
 //            component here.
 //   FP-25 -- self-hiding empty state, no scaffolding.
 //   FP-15 -- type / status / period_type rendered via tOrRaw.
-//   No back-link: /agent/commissions is a top-level tab (AGENT_TABS).
+//   A back-link to Partners: the commissions lie inside that tab.
+//
+// EACH ROW SAYS WHAT IT IS: from whom (the partner's name), how much, for what
+// (the product bought), at which level; a type the screen does not know is
+// named plainly as "Other accrual", never by its raw token.
 //
 // PAGINATION.
-//   Explicit "Load more" over the store trio (same choice as
-//   AgentHubView -- an agent's history is paged, not infinite-scrolled).
+//   Explicit "Load more" over the store trio (an agent's history is paged, not
+//   infinite-scrolled).
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useAgentStore } from '@/stores/agent'
 import { tOrRaw } from '@/utils/i18n'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatPrice } from '@/utils/format'
 
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
+const router = useRouter()
+
+function goBack(): void {
+  void safeNavigate(router.push({ name: 'agent-partners' }), '[CommissionsView] back to partners')
+}
 
 // ---------------------------------------------------------------------------
 // Derived
@@ -60,8 +71,13 @@ const commissionsEmpty = computed(
 // Display helpers (FP-15: server enums via tOrRaw)
 // ---------------------------------------------------------------------------
 
+const KNOWN_TYPES: readonly string[] = ['commission', 'volume_bonus']
+
+// A type the screen does not know is named plainly, never by its raw token.
 function typeLabel(type: string): string {
-  return tOrRaw(t, `agent.commissions.type.${type}`, type)
+  return KNOWN_TYPES.includes(type)
+    ? t(`agent.commissions.type.${type}`)
+    : t('agent.commissions.type.other')
 }
 
 function statusLabel(status: string): string {
@@ -111,6 +127,7 @@ onMounted(() => {
   <div class="comm">
     <!-- Screen title (FP-19: shell owns the header, view owns the h1) -->
     <div class="comm__header">
+      <CBackLink :label="t('agent.commissions.backLink')" @click="goBack" />
       <h1 class="comm__title">
         {{ t('agent.commissions.title') }}
       </h1>
@@ -162,17 +179,19 @@ onMounted(() => {
               <!-- commission: who / what / level -->
               <template v-if="entry.type === 'commission'">
                 <span class="comm__detail-main">
-                  {{ entry.investor_name || '—' }}
+                  {{ t('agent.commissions.from', { name: entry.investor_name || '—' }) }}
                 </span>
                 <span class="comm__detail-sub">
-                  <span v-if="entry.product_name">{{ entry.product_name }}</span>
+                  <span v-if="entry.product_name">
+                    {{ t('agent.commissions.forProduct', { product: entry.product_name }) }}
+                  </span>
                   <span v-if="entry.level != null" class="comm__level">
                     {{ levelLabel(entry.level) }}
                   </span>
                 </span>
               </template>
               <!-- volume_bonus: period / rank -->
-              <template v-else>
+              <template v-else-if="entry.type === 'volume_bonus'">
                 <span class="comm__detail-main">
                   {{ periodLabel(entry.period_type) }}
                 </span>

@@ -75,16 +75,16 @@ const periodCaption = computed(() =>
 // ---------------------------------------------------------------------------
 
 function goBack(): void {
-  // History-aware (More tab in the wired flow); cold deep-link falls
-  // through to the Hub. router.back() is neither push nor replace, so
+  // History-aware (Partners in the wired flow); cold deep-link falls
+  // through to Partners. router.back() is neither push nor replace, so
   // it does not need safeNavigate; the fallback push does (FP-18).
   if (window.history.state?.back) {
     router.back()
     return
   }
   void safeNavigate(
-    router.push({ name: 'agent-hub' }),
-    '[LeaderboardView] back fallback to agent-hub',
+    router.push({ name: 'agent-partners' }),
+    '[LeaderboardView] back fallback to agent-partners',
   )
 }
 

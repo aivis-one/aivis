@@ -147,13 +147,6 @@
     "market": "Store",
     "balance": "الرصيد",
     "more": "المزيد",
-    "agent": {
-      "home": "الرئيسية",
-      "hub": "المركز",
-      "commissions": "العمولات",
-      "balance": "الرصيد",
-      "more": "المزيد"
-    },
     "comp": {
       "home": "الرئيسية",
       "products": "المنتجات",
@@ -174,7 +167,8 @@
     "docs": "Documents",
     "kyc": "Identity verification",
     "support": "Support",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "partners": "الشركاء"
   },
   "staff": {
     "panel": "لوحة الموظفين",
@@ -950,6 +944,80 @@
     "shell": {
       "registerButton": "التسجيل",
       "cabinetButton": "إلى الحساب"
+    }
+  },
+  "agent": {
+    "link": {
+      "copy": "نسخ الرابط",
+      "copied": "تم نسخ الرابط",
+      "projectCopied": "تم نسخ رابط المشروع",
+      "copyError": "تعذّر نسخ الرابط",
+      "share": "مشاركة",
+      "shareTitle": "رابطي في AIVIS",
+      "copyProject": "نسخ رابط المشروع",
+      "accept": "أوافق",
+      "accepted": "تم قبول العقد. رابطك جاهز.",
+      "acceptError": "تعذّر تسجيل قبول العقد. حاول مرة أخرى.",
+      "agreementTitle": "عقد الوكيل",
+      "agreementText": "تمت الموافقة على طلبك. اقبل عقد الوكيل بنقرة واحدة وستُصدر المنصة رابطك.",
+      "agreementRead": "اقرأ العقد"
+    },
+    "home": {
+      "title": "الوكيل",
+      "monthCommission": "عمولة هذا الشهر",
+      "rank": "الترتيب",
+      "registrations": "التسجيلات"
+    },
+    "partners": {
+      "title": "الشركاء",
+      "subtitle": "رابطك وشبكتك وعمولتك ورصيدك",
+      "linkTitle": "رابطك",
+      "clicks": "النقرات",
+      "registrations": "التسجيلات",
+      "purchases": "المشتريات",
+      "linkError": "تعذّر تحميل رابطك. حاول لاحقًا.",
+      "network": "شبكتي",
+      "networkSub": "عدد التسجيلات: {n}",
+      "commissions": "العمولات",
+      "commissionsSub": "{amount} هذا الشهر",
+      "rating": "الترتيب",
+      "ratingSub": "مركزك: {rank}",
+      "rankNone": "لا يوجد بعد",
+      "balance": "الرصيد",
+      "balanceSub": "المتاح للسحب: {amount}"
+    },
+    "balance": {
+      "title": "الرصيد",
+      "subtitle": "حسابك وعمولتك وعمليات السحب",
+      "backLink": "العودة إلى الشركاء",
+      "account": {
+        "title": "الحساب",
+        "frozen": "بانتظار التأكيد",
+        "deposit": "شحن الرصيد",
+        "operations": "كل العمليات"
+      },
+      "card": {
+        "title": "العمولة المتاحة للسحب"
+      },
+      "withdrawals": {
+        "rule": "الحد الأدنى للسحب {min}. يتم الدفع بعد 14 يومًا.",
+        "form": {
+          "networkLabel": "الشبكة",
+          "networkPlaceholder": "اختر الشبكة",
+          "walletLabel": "عنوان المحفظة",
+          "walletPlaceholder": "الصق عنوان المحفظة",
+          "errorWallet": "أدخل عنوان المحفظة دون مسافات."
+        }
+      }
+    },
+    "commissions": {
+      "backLink": "العودة إلى الشركاء",
+      "from": "من {name}",
+      "forProduct": "عن {product}",
+      "type": {
+        "other": "استحقاق آخر"
+      },
+      "level": "المستوى {n}"
     }
   }
 }

@@ -175,13 +175,6 @@
     "market": "Store",
     "balance": "Balance",
     "more": "More",
-    "agent": {
-      "home": "Home",
-      "hub": "Hub",
-      "commissions": "Commissions",
-      "balance": "Balance",
-      "more": "More"
-    },
     "comp": {
       "home": "Home",
       "products": "Products",
@@ -202,7 +195,8 @@
     "docs": "Documents",
     "kyc": "Identity verification",
     "support": "Support",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "partners": "Partners"
   },
   "staff": {
     "panel": "Staff Panel",
@@ -2079,64 +2073,6 @@
     }
   },
   "agent": {
-    "dashboard": {
-      "title": "Integrator Dashboard",
-      "subtitle": "Your performance at a glance",
-      "widgets": {
-        "monthCommission": "Commission this month",
-        "rank": "Leaderboard rank",
-        "rankNone": "—",
-        "balance": "Passive balance",
-        "balanceFrozen": "frozen",
-        "registrations": "Registrations"
-      },
-      "errors": {
-        "commission": "Couldn't load commissions",
-        "rank": "Couldn't load leaderboard",
-        "balance": "Couldn't load balance",
-        "registrations": "Couldn't load referral stats"
-      },
-      "actions": {
-        "title": "Quick actions",
-        "createLink": "Create link",
-        "myCommissions": "My commissions"
-      }
-    },
-    "hub": {
-      "title": "Integrator Hub",
-      "subtitle": "Your referral links and earnings",
-      "stats": {
-        "title": "Overview",
-        "links": "Links",
-        "clicks": "Clicks",
-        "registrations": "Registrations",
-        "purchases": "Purchases",
-        "commission": "Commission",
-        "errorTitle": "Couldn't load stats"
-      },
-      "createLink": "Create link",
-      "created": "Link created",
-      "createError": "Couldn't create link",
-      "links": {
-        "title": "My links",
-        "errorTitle": "Couldn't load links",
-        "loadMore": "Load more",
-        "empty": {
-          "title": "No links yet",
-          "desc": "Create your first referral link and share it to start earning commissions."
-        }
-      },
-      "link": {
-        "inactive": "Inactive",
-        "copy": "Copy",
-        "copied": "Link copied",
-        "copyError": "Couldn't copy the link",
-        "clicks": "Clicks",
-        "registrations": "Registrations",
-        "purchases": "Purchases",
-        "createdAt": "Created"
-      }
-    },
     "referrals": {
       "title": "My network",
       "subtitle": "Buyers and sub-integrators in your downline",
@@ -2165,14 +2101,15 @@
       "errorTitle": "Couldn't load commissions",
       "loadMore": "Load more",
       "loadMoreError": "Couldn't load more. Tap Load more to retry.",
-      "level": "L{n}",
+      "level": "Level {n}",
       "empty": {
         "title": "No commissions yet",
         "desc": "Commissions and volume bonuses from your network will appear here as it earns."
       },
       "type": {
         "commission": "Commission",
-        "volume_bonus": "Volume bonus"
+        "volume_bonus": "Volume bonus",
+        "other": "Other accrual"
       },
       "status": {
         "frozen": "Frozen",
@@ -2185,7 +2122,10 @@
       },
       "bonus": {
         "rankLabel": "Rank"
-      }
+      },
+      "backLink": "Back to Partners",
+      "from": "From {name}",
+      "forProduct": "for {product}"
     },
     "leaderboard": {
       "title": "Leaderboard",
@@ -2200,20 +2140,18 @@
       }
     },
     "balance": {
-      "title": "Passive balance",
-      "subtitle": "Your commission earnings and withdrawals",
+      "title": "Balance",
+      "subtitle": "Your account, your commission and your withdrawals",
       "errorTitle": "Couldn't load your balance",
       "errorRetry": "Retry",
       "card": {
-        "title": "Available balance",
+        "title": "Commission available to withdraw",
         "frozen": "Frozen"
       },
       "withdrawals": {
         "title": "Withdrawals",
         "empty": "No withdrawals yet",
         "newButton": "Request withdrawal",
-        "setupPayout": "Set up payout details",
-        "needPayout": "Add payout details before you can withdraw",
         "lowBalance": "Balance is below the minimum withdrawal",
         "loadMoreError": "Couldn't load more withdrawals",
         "status": {
@@ -2235,190 +2173,61 @@
           "submit": "Request",
           "cancel": "Cancel",
           "successToast": "Withdrawal requested",
-          "error": "Couldn't request the withdrawal"
-        }
-      }
-    },
-    "more": {
-      "title": "More",
-      "subtitle": "Your network, ranking and settings",
-      "network": {
-        "title": "My network",
-        "desc": "Buyers and sub-integrators in your downline"
+          "error": "Couldn't request the withdrawal",
+          "networkLabel": "Network",
+          "networkPlaceholder": "Choose a network",
+          "walletLabel": "Wallet address",
+          "walletPlaceholder": "Paste your wallet address",
+          "errorWallet": "Enter the wallet address without spaces."
+        },
+        "rule": "The minimum withdrawal is {min}. A payout is made after 14 days."
       },
-      "leaderboard": {
-        "title": "Leaderboard",
-        "desc": "See how you rank against other integrators"
-      },
-      "settings": {
-        "title": "Settings",
-        "desc": "Profile, payout details and sign out"
-      },
-      "notifications": {
-        "title": "Notifications",
-        "desc": "Updates on your account and commissions"
-      },
-      "installments": {
-        "title": "Installment plans",
-        "desc": "Track payments, due dates, and overdue tranches"
-      },
-      "support": {
-        "title": "Support",
-        "desc": "Message us if you have a question"
-      },
-      "faq": {
-        "title": "FAQ",
-        "desc": "Answers to common questions"
-      }
-    },
-    "settings": {
-      "title": "Settings",
-      "subtitle": "Your profile and payout details",
-      "backLink": "Back",
-      "unnamed": "Integrator",
-      "role": {
-        "agent": "Integrator"
-      },
-      "profile": {
-        "title": "Profile",
-        "firstName": "First name",
-        "lastName": "Last name",
-        "phone": "Phone",
-        "country": "Country",
-        "language": "Language",
-        "notSet": "Not set",
-        "editTitle": "Edit profile",
-        "editSuccess": "Profile updated",
-        "editError": "Could not update your profile",
-        "requiredError": "Required"
-      },
-      "payout": {
-        "title": "Payout details",
-        "desc": "Where your withdrawals are sent.",
-        "empty": "No payout details yet",
-        "loadError": "Couldn't load payout details",
-        "retry": "Retry",
-        "editButton": "Edit details",
-        "addButton": "Add payout details",
-        "form": {
-          "title": "Payout details",
-          "label": "Details (JSON)",
-          "placeholder": "{ \"method\": \"bank\", \"iban\": \"...\" }",
-          "hint": "Enter your payout details as a JSON object.",
-          "errorJson": "Not valid JSON",
-          "errorObject": "Must be a JSON object",
-          "errorEmpty": "Add at least one payout field",
-          "submit": "Save",
-          "cancel": "Cancel",
-          "successToast": "Payout details saved",
-          "error": "Couldn't save payout details"
-        }
-      },
-      "actions": {
+      "backLink": "Back to Partners",
+      "account": {
         "title": "Account",
-        "logout": "Sign out",
-        "twoFactor": {
-          "ctaEnable": "Enable two-factor authentication",
-          "ctaManage": "Two-factor authentication",
-          "statusEnabled": "Enabled",
-          "setupTitle": "Set up two-factor authentication",
-          "setupIntro": "Enter your password to generate a QR code for your authenticator app.",
-          "passwordLabel": "Current password",
-          "passwordPlaceholder": "Enter your current password",
-          "continueBtn": "Continue",
-          "cancelBtn": "Cancel",
-          "qrTitle": "Scan the QR code",
-          "qrSubtitle": "Scan this with your authenticator app, or enter the code manually, then enter the 6-digit code it shows.",
-          "secretLabel": "Manual entry code",
-          "codeLabel": "Verification code",
-          "codePlaceholder": "123456",
-          "confirmBtn": "Confirm",
-          "codesTitle": "Save your backup codes",
-          "codesWarning": "Save these codes somewhere safe. Each one can be used once to sign in if you lose access to your authenticator app. They will not be shown again.",
-          "copyAllBtn": "Copy all",
-          "savedBtn": "I've saved these codes",
-          "codesCopied": "Backup codes copied",
-          "copyFailed": "Couldn't copy to clipboard",
-          "enabledToast": "Two-factor authentication enabled",
-          "disableTitle": "Turn off two-factor authentication?",
-          "disableSubtitle": "Enter your password and a live code from your authenticator app (or an unused backup code).",
-          "disableCodeLabel": "Code",
-          "disableCodePlaceholder": "6-digit code or backup code",
-          "disableBtn": "Turn off",
-          "disabledToast": "Two-factor authentication disabled",
-          "errorIncorrectPassword": "Incorrect password",
-          "errorCode": "Invalid or expired code",
-          "errorDisableCode": "Invalid code",
-          "errorGeneric": "Something went wrong. Please try again."
-        },
-        "sessions": {
-          "cta": "Active sessions",
-          "title": "Active sessions",
-          "loadError": "Couldn't load your sessions",
-          "retry": "Retry",
-          "current": "This device",
-          "createdAt": "Signed in {date}",
-          "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
-          "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
-          "revokeSuccess": "Session revoked",
-          "errorGeneric": "Something went wrong. Please try again.",
-          "authMethod": {
-            "email": "Email",
-            "telegram": "Telegram"
-          }
-        },
-        "notifications": {
-          "cta": "Notification preferences",
-          "title": "Notification preferences",
-          "loadError": "Couldn't load your notification preferences",
-          "retry": "Retry",
-          "categoriesTitle": "What you're notified about",
-          "categories": {
-            "deposits": "Deposits",
-            "payments": "Payment issues",
-            "commissions": "Commissions",
-            "agent_applications": "Integrator applications",
-            "withdrawals": "Withdrawals",
-            "purchases": "Purchases",
-            "installments": "Installment payments",
-            "kyc": "Identity verification",
-            "support_messages": "Support replies",
-            "staff_messages": "Client messages"
-          },
-          "scheduleEnableLabel": "Enable quiet hours",
-          "scheduleDescription": "Pause notifications during a daily window you choose.",
-          "fromLabel": "From",
-          "toLabel": "To",
-          "daysLabel": "Repeat on",
-          "days": {
-            "mon": "Mon",
-            "tue": "Tue",
-            "wed": "Wed",
-            "thu": "Thu",
-            "fri": "Fri",
-            "sat": "Sat",
-            "sun": "Sun"
-          },
-          "timezoneNote": "Times shown in {timezone}",
-          "cancelBtn": "Cancel",
-          "saveBtn": "Save",
-          "saveSuccess": "Notification preferences saved",
-          "errorGeneric": "Something went wrong. Please try again."
-        },
-        "deactivate": {
-          "cta": "Deactivate account",
-          "title": "Deactivate your account?",
-          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
-          "passwordLabel": "Current password",
-          "passwordPlaceholder": "Enter your current password",
-          "cancelBtn": "Cancel",
-          "confirmBtn": "Deactivate",
-          "errorIncorrectPassword": "Incorrect password",
-          "errorGeneric": "Something went wrong. Please try again."
-        }
+        "frozen": "Awaiting confirmation",
+        "deposit": "Top up",
+        "operations": "All operations"
       }
+    },
+    "link": {
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "projectCopied": "Project link copied",
+      "copyError": "Could not copy the link",
+      "share": "Share",
+      "shareTitle": "My AIVIS link",
+      "copyProject": "Copy project link",
+      "accept": "Accept",
+      "accepted": "Agreement accepted. Your link is ready.",
+      "acceptError": "Could not record the acceptance. Please try again.",
+      "agreementTitle": "Integrator agreement",
+      "agreementText": "Your application is approved. Accept the integrator agreement with one click, and the platform issues your link.",
+      "agreementRead": "Read the agreement"
+    },
+    "home": {
+      "title": "Integrator",
+      "monthCommission": "Commission this month",
+      "rank": "Rating",
+      "registrations": "Registrations"
+    },
+    "partners": {
+      "title": "Partners",
+      "subtitle": "Your link, your network, your commission and your balance",
+      "linkTitle": "Your link",
+      "clicks": "Clicks",
+      "registrations": "Registrations",
+      "purchases": "Purchases",
+      "linkError": "Could not load your link. Please try again later.",
+      "network": "My network",
+      "networkSub": "{n} registrations",
+      "commissions": "Commissions",
+      "commissionsSub": "{amount} this month",
+      "rating": "Rating",
+      "ratingSub": "Your place: {rank}",
+      "rankNone": "not ranked yet",
+      "balance": "Balance",
+      "balanceSub": "{amount} available to withdraw"
     }
   },
   "public": {

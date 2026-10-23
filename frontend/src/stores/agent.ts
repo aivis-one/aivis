@@ -141,6 +141,9 @@ export const useAgentStore = defineStore('agent', () => {
 
   const hasMoreLinks = computed(() => links.value.length < linksTotal.value)
 
+  /** The integrator's one link (the platform issues it once), or null. */
+  const myLink = computed<ReferralLinkResponse | null>(() => links.value[0] ?? null)
+
   /**
    * Current agent's rank in the monthly leaderboard, or null when
    * outside the snapshot top or before the first snapshot exists.
@@ -230,6 +233,9 @@ export const useAgentStore = defineStore('agent', () => {
    */
   async function createLink(): Promise<ReferralLinkResponse> {
     const link = await createReferralLink()
+    // The platform issues the integrator's link once: asking again returns
+    // the same link, which is then already in the list.
+    if (links.value.some((l) => l.id === link.id)) return link
     links.value = [link, ...links.value]
     linksTotal.value += 1
     if (stats.value) {
@@ -415,6 +421,7 @@ export const useAgentStore = defineStore('agent', () => {
     linksLoading,
     linksError,
     hasMoreLinks,
+    myLink,
     fetchLinksFirstPage,
     loadMoreLinks,
     createLink,
