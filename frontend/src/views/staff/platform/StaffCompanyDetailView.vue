@@ -56,6 +56,7 @@ const companyId = computed<string>(() => {
 // Order matches the spec sequence in R1 §4.3 + R2 §6.
 const { canDo } = useStaffPermissions()
 const canManage = canDo('project_manage')
+const canContent = canDo('content_manage')
 
 interface DetailSection {
   id: string
@@ -63,6 +64,8 @@ interface DetailSection {
   labelKey: string
   /** True when the section is drawn only for a member who may manage projects. */
   needsManage?: boolean
+  /** True when the section is drawn only for a member who may manage content. */
+  needsContent?: boolean
 }
 
 // The project's sections, in order: profile, price (the history of
@@ -87,7 +90,12 @@ const allSections = computed<readonly DetailSection[]>(() => {
       labelKey: 'staff.platform.company.tabs.audit',
       needsManage: true,
     },
-    { id: 'posts', path: `${base}/posts`, labelKey: 'staff.platform.company.tabs.posts' },
+    {
+      id: 'posts',
+      path: `${base}/posts`,
+      labelKey: 'staff.platform.company.tabs.posts',
+      needsContent: true,
+    },
     {
       id: 'documents',
       path: `${base}/documents`,
@@ -103,7 +111,10 @@ const allSections = computed<readonly DetailSection[]>(() => {
 
 // A section the member has no right to is not drawn.
 const sections = computed(() =>
-  allSections.value.filter((section) => !section.needsManage || canManage.value),
+  allSections.value.filter(
+    (section) =>
+      (!section.needsManage || canManage.value) && (!section.needsContent || canContent.value),
+  ),
 )
 
 const activeId = computed<string>(() => {

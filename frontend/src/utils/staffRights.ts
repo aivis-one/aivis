@@ -188,6 +188,14 @@ type _PermissionKeysExhaustive =
 const _permissionKeysExhaustive: _PermissionKeysExhaustive = true
 void _permissionKeysExhaustive
 
+/**
+ * The keys the permission card draws: every key but translation_edit, which
+ * the backend keeps and which governs nothing, so it is not offered.
+ */
+export const PERMISSION_CARD_KEYS: readonly StaffPermissionKey[] = PERMISSION_KEYS.filter(
+  (key) => key !== 'translation_edit',
+)
+
 /** A named set of ticks the administrator marks with one press. */
 export interface PermissionPreset {
   id: 'support' | 'verification' | 'finance' | 'content'
@@ -263,6 +271,5 @@ export function holdsEveryPermission(
   permissions: Readonly<Record<string, unknown>> | null | undefined,
 ): boolean {
   if (!permissions) return false
-  const values = Object.values(permissions)
-  return values.length > 0 && values.every((value) => value === true)
+  return PERMISSION_KEYS.every((key) => permissions[key] === true)
 }

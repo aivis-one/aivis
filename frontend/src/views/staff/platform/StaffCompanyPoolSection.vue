@@ -22,7 +22,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CBadge, CButton, CInput, CLoader, CModal } from '@/components/ui'
+import { CBadge, CButton, CLoader, CModal } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { createStaffCompanyPool, fetchStaffCompanyPool } from '@/api/staff-companies'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -88,7 +88,7 @@ async function handleCreate(): Promise<void> {
   saving.value = true
   try {
     pool.value = await createStaffCompanyPool(companyId.value, {
-      equity_percent: percentDraft.value.trim(),
+      equity_percent: '25',
     })
     showCreate.value = false
     showToast(t('staff.platform.pool.created'), 'success')
@@ -161,17 +161,6 @@ onMounted(load)
       <p class="scpool__modal-text">
         {{ t('staff.platform.pool.createHint') }}
       </p>
-      <CInput
-        v-model="percentDraft"
-        inputmode="decimal"
-        autocomplete="off"
-        :label="t('staff.platform.pool.percentLabel')"
-        :error="
-          percentDraft.trim() !== '' && !percentValid
-            ? t('staff.platform.pool.percentError')
-            : undefined
-        "
-      />
       <div class="scpool__modal-actions">
         <CButton variant="outline" size="sm" @click="showCreate = false">
           {{ t('common.cancel') }}
@@ -180,7 +169,7 @@ onMounted(load)
           variant="primary"
           size="sm"
           :loading="saving"
-          :disabled="!percentValid"
+          :disabled="saving"
           @click="handleCreate"
         >
           {{ t('staff.platform.pool.create') }}

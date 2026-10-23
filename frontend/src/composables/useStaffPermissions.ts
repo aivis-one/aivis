@@ -70,6 +70,7 @@ import { computed, type ComputedRef } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 import type { UpdatePermissionsRequest } from '@/api/types'
+import { holdsEveryPermission } from '@/utils/staffRights'
 
 /**
  * Permission keys readable through canDo().
@@ -143,10 +144,7 @@ export function useStaffPermissions() {
    * admin-only call; this only decides what the screen shows.
    */
   const isAdmin: ComputedRef<boolean> = computed(() => {
-    const permissions = authStore.user?.staff_profile?.permissions
-    if (!permissions) return false
-    const values = Object.values(permissions)
-    return values.length > 0 && values.every((value) => value === true)
+    return holdsEveryPermission(authStore.user?.staff_profile?.permissions)
   })
 
   return {

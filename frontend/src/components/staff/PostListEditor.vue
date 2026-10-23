@@ -15,8 +15,7 @@
 // FP-23 permission gate: the parent passes `canEdit` (computed from
 // useStaffPermissions().canDo('content_manage')). When false the
 // create/edit/delete CTAs are hidden (template guard) AND the handlers
-// bail with a console.warn (defensive). Read stays available so a
-// staffer without content_manage can still see the list.
+// bail with a console.warn (defensive). The list itself needs content_manage on the server, so the section is not drawn without it.
 //
 // fixedOwner contract:
 //   undefined -> StaffNewsView mode. List unfiltered by owner; the

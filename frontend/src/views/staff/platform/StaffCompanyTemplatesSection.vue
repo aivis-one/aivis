@@ -27,6 +27,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { tOrRaw } from '@/utils/i18n'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
 import { fetchStaffCompanyTemplates, fetchStaffCompanyTemplate } from '@/api/staff-companies'
 import type { TemplateResponse, TemplateDetailResponse } from '@/api/types'
@@ -204,7 +205,10 @@ onMounted(loadTemplates)
         >
           <div class="tpl-item__info">
             <div class="tpl-item__top">
-              <CBadge :variant="statusVariant(tpl.status)" :text="tpl.status" />
+              <CBadge
+                :variant="statusVariant(tpl.status)"
+                :text="tOrRaw(t, `staff.platform.templates.status.${tpl.status}`, tpl.status)"
+              />
               <CBadge
                 v-if="tpl.is_platform_default"
                 variant="primary"
@@ -240,7 +244,10 @@ onMounted(loadTemplates)
           {{ detail.title }}
         </h3>
         <div class="sct__detail-meta">
-          <CBadge :variant="statusVariant(detail.status)" :text="detail.status" />
+          <CBadge
+            :variant="statusVariant(detail.status)"
+            :text="tOrRaw(t, `staff.platform.templates.status.${detail.status}`, detail.status)"
+          />
           <span>{{ t(`staff.platform.templates.kind.${detail.kind}`) }}</span>
           <span>{{ detail.language.toUpperCase() }}</span>
           <span>v{{ detail.version }}</span>

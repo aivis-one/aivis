@@ -19,8 +19,6 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/api/staff-companies', () => ({
   updateStaffCompany: vi.fn(),
-  updateStaffCompanySupply: vi.fn(),
-  fetchStaffCompanyPool: vi.fn(),
 }))
 
 import * as staffCompanies from '@/api/staff-companies'
@@ -98,6 +96,16 @@ describe('the project profile section', () => {
     const text = wrapper.text()
     for (const percent of ['25%', '10%', '14%', '51%']) expect(text).toContain(percent)
     expect(text).not.toContain('company_pct')
+    wrapper.unmount()
+  })
+
+  it("offers no control to change the number of a project's parts, whatever the rights", async () => {
+    signInAs([...PERMISSION_KEYS])
+    const { wrapper } = mountSection()
+    await flushPromises()
+    expect(wrapper.text()).toContain('staff.platform.profile.totalSupply')
+    expect(wrapper.text()).not.toContain('staff.platform.profile.supplyEditCta')
+    expect(wrapper.findAll('button').find((b) => b.text().includes('supplyEdit'))).toBeUndefined()
     wrapper.unmount()
   })
 

@@ -69,7 +69,7 @@ import {
 } from '@/components/ui'
 import { tOrRaw } from '@/utils/i18n'
 import {
-  PERMISSION_KEYS,
+  PERMISSION_CARD_KEYS,
   PERMISSION_PRESETS,
   holdsEveryPermission,
   matchingPreset,
@@ -660,9 +660,12 @@ async function handlePromote(): Promise<void> {
 // round-trip and the double negation that came with it.
 async function setPermission(key: PermissionKey, value: boolean): Promise<void> {
   if (!detailUser.value?.staff_profile) return
+  const next = { ...detailUser.value.staff_profile.permissions, [key]: value }
+  const everyShown = PERMISSION_CARD_KEYS.every((k) => next[k] === true)
   try {
     const updated = await updatePermissions(detailUser.value.staff_profile.id, {
       [key]: value,
+      translation_edit: everyShown,
     })
     detailUser.value.staff_profile = updated
     showToast(t('staff.userDetail.permissionsUpdated'), 'success')
@@ -1011,11 +1014,7 @@ onMounted(loadUsers)
             </div>
             <template v-else>
               <ul class="kyc-documents__list">
-                <li
-                  v-for="doc in kycDocuments"
-                  :key="doc.id"
-                  class="kyc-documents__row"
-                >
+                <li v-for="doc in kycDocuments" :key="doc.id" class="kyc-documents__row">
                   <span class="kyc-documents__kind">
                     {{ t(DOCUMENT_KIND_LABELS[doc.kind] ?? doc.kind) }}
                   </span>
@@ -1111,7 +1110,7 @@ onMounted(loadUsers)
               {{ t(preset.labelKey) }}
             </button>
           </div>
-          <div v-for="key in PERMISSION_KEYS" :key="key" class="detail__perm">
+          <div v-for="key in PERMISSION_CARD_KEYS" :key="key" class="detail__perm">
             <CCheckbox
               :model-value="!!detailUser.staff_profile.permissions[key]"
               @update:model-value="(v: boolean) => setPermission(key, v)"

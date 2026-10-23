@@ -29,6 +29,7 @@ import { Search, X } from 'lucide-vue-next'
 import { CInput, CLoader, CAvatar } from '@/components/ui'
 import { fetchUsers } from '@/api/admin'
 import type { UserListItem } from '@/api/types'
+import { tOrRaw } from '@/utils/i18n'
 
 const MIN_QUERY_LENGTH = 2
 const SEARCH_DEBOUNCE_MS = 300
@@ -125,7 +126,8 @@ watch(
       <div class="user-picker__chip-info">
         <div class="user-picker__chip-name">{{ fullName(selectedUser) }}</div>
         <div class="user-picker__chip-detail">
-          {{ selectedUser.email ?? '—' }} &bull; {{ selectedUser.role }}
+          {{ selectedUser.email ?? '—' }} &bull;
+          {{ tOrRaw(t, `staff.roles.${selectedUser.role}`, selectedUser.role) }}
         </div>
       </div>
       <button
@@ -162,7 +164,7 @@ watch(
           <div class="user-picker__result-info">
             <div class="user-picker__result-name">{{ fullName(item) }}</div>
             <div class="user-picker__result-detail">
-              {{ item.email ?? '—' }} &bull; {{ item.role }}
+              {{ item.email ?? '—' }} &bull; {{ tOrRaw(t, `staff.roles.${item.role}`, item.role) }}
             </div>
           </div>
         </button>

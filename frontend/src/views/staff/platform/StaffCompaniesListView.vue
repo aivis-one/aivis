@@ -30,6 +30,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { tOrRaw } from '@/utils/i18n'
 import { Building2 } from 'lucide-vue-next'
 import { CBadge, CLoader, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
@@ -157,7 +158,7 @@ const assignSelectedUser = ref<UserListItem | null>(null)
 const assignName = ref('')
 const assignDescription = ref('')
 const assignPriceDollars = ref('')
-const assignTotalSupply = ref('')
+const assignTotalSupply = ref('1000000000')
 const assignSharesPerOption = ref('1')
 const assignCompanyPct = ref('')
 const assignAgentLevels = ref('')
@@ -168,7 +169,7 @@ function resetAssignForm(): void {
   assignName.value = ''
   assignDescription.value = ''
   assignPriceDollars.value = ''
-  assignTotalSupply.value = ''
+  assignTotalSupply.value = '1000000000'
   assignSharesPerOption.value = '1'
   assignCompanyPct.value = ''
   assignAgentLevels.value = ''
@@ -322,7 +323,7 @@ const createPassword = ref('')
 const createName = ref('')
 const createDescription = ref('')
 const createPriceDollars = ref('')
-const createTotalSupply = ref('')
+const createTotalSupply = ref('1000000000')
 const createSharesPerOption = ref('1')
 const createCompanyPct = ref('')
 const createAgentLevels = ref('')
@@ -344,7 +345,7 @@ function resetCreateForm(): void {
   createName.value = ''
   createDescription.value = ''
   createPriceDollars.value = ''
-  createTotalSupply.value = ''
+  createTotalSupply.value = '1000000000'
   createSharesPerOption.value = '1'
   createCompanyPct.value = ''
   createAgentLevels.value = ''
@@ -584,7 +585,10 @@ async function handleCreate(): Promise<void> {
               {{ t('staff.platform.companies.supply', { n: c.total_supply }) }}
             </div>
           </div>
-          <CBadge :variant="statusVariant(c.status)" :text="c.status" />
+          <CBadge
+            :variant="statusVariant(c.status)"
+            :text="tOrRaw(t, `staff.platform.companies.filter.${c.status}`, c.status)"
+          />
         </button>
       </div>
 

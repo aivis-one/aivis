@@ -17,14 +17,12 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useAuthStore } from '@/stores/auth'
+import { PERMISSION_KEYS } from '@/utils/staffRights'
 import { useStaffPermissions } from './useStaffPermissions'
 
-const ALL_TRUE = {
-  user_block: true,
-  kyc_approve: true,
-  content_manage: true,
-  project_manage: true,
-}
+const ALL_TRUE: Record<string, boolean> = Object.fromEntries(
+  PERMISSION_KEYS.map((key) => [key, true]),
+)
 
 function withPermissions(permissions: Record<string, boolean> | null | undefined): boolean {
   const authStore = useAuthStore()
@@ -62,6 +60,11 @@ describe('useStaffPermissions().isAdmin', () => {
 
   it('is false when a single permission is false', () => {
     expect(withPermissions({ ...ALL_TRUE, kyc_approve: false })).toBe(false)
+  })
+
+  it('is false when a stored profile lacks a key, as the server counts all ten', () => {
+    const { translation_edit: _omitted, ...nine } = ALL_TRUE
+    expect(withPermissions(nine)).toBe(false)
   })
 
   it('is true when every permission is true', () => {
