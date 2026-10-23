@@ -145,7 +145,7 @@ Additions, all parts of the same shell (`markup/app-shell.html`).
 | toolbar | `div.ds-shell__toolbar`: `.ds-shell__filters` at the start, one `.ds-shell__primary` at the end (full width on a phone) |
 | action strip | `div.ds-shell__action`, the last element of main: the screen's one primary action, sticky above the tab bar on a phone (the bar height and the safe-area inset from `--space-safe-bottom`), in the flow from 880 |
 | sub-navigation | `nav.ds-subnav > ul.ds-subnav__list > li > a.ds-subnav__link[aria-current="page"]`: links between the child screens of a hub in the Tabs look (K12), scrolling sideways on a phone, sticky under the header; it is navigation, so the links are not `role="tab"` |
-| nav-less | `ds-shell--navless`: header and main only, no nav element (the public storefront) |
+| nav-less | `ds-shell--navless`: header and main only, no nav element (the public storefront). The lead slot of its header holds the AIVIS mark: `div.ds-header__lead > a.ds-header__logo[aria-label] > img.ds-header__mark`, the colour mark of `../brand/aivis-mark.svg` at `--size-sm` (the size the menu's mark has), a link to the home page in a box at least `--touch-min` square, the focus outline outside it, no word beside it; the aria-label names AIVIS and the home page (decided by the owner, 2026-10-23). |
 
 The layers are the `--z-*` tokens (`../tokens/tokens.md`): the header `--z-header`, the bars `--z-sticky`, the banner `--z-banner`.
 

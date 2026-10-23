@@ -972,7 +972,7 @@
   "name": "App shell and navigation",
   "status": "built",
   "markup": "markup/app-shell.html",
-  "class_root": ".ds-shell, .ds-header, .ds-nav, .ds-navitem, .ds-shell__banner, .ds-header__lead, .ds-header__figure, .ds-nav__brand, .ds-shell__lead, .ds-shell__toolbar, .ds-shell__action, .ds-shell--navless, .ds-subnav",
+  "class_root": ".ds-shell, .ds-header, .ds-nav, .ds-navitem, .ds-shell__banner, .ds-header__lead, .ds-header__figure, .ds-nav__brand, .ds-shell__lead, .ds-shell__toolbar, .ds-shell__action, .ds-shell--navless, .ds-header__logo, .ds-subnav",
   "variants": {
    "tier": [
     "bar (tab bar)",
@@ -993,7 +993,7 @@
    ],
    "frame": [
     "with a nav (default)",
-    "nav-less (.ds-shell--navless: header and main, the public storefront)"
+    "nav-less (.ds-shell--navless: header and main, the public storefront; the lead slot of its header holds the AIVIS mark as a link to the home page)"
    ]
   },
   "sizes": [
@@ -1074,9 +1074,9 @@
    "--z-header",
    "--z-sticky"
   ],
-  "accessibility": "Three landmarks: header, main, and one nav with an aria-label; the nav items are links and the current one has aria-current=\"page\" (in the tab bar --primary text with the kit's --accent dot below, in the rails a --primary-subtle tint with a 2 line --primary bar at the start: not colour alone), they are not role=\"tab\". In the icon rail the label stays in the tree as the accessible name (visually hidden). The header holds one h1; its icon buttons carry aria-label. Safe-area insets pad the bar. The nav padding keeps the focus outline inside the nav. Current item text --primary on --bg-surface in the tab bar (8.48 day, 6.72 night) and on --primary-subtle in the rails (7.61, 5.46); others --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The banner has role=\"status\" and one line of text with its action; the header and the rail list stand below it. The back control is a link or a button with aria-label. A figure chip is a link or button whose text is its label and amount, at least --touch-min high. The menu mark is a link with aria-label. The sub-navigation is a nav with an aria-label of links, the current one aria-current=\"page\" with the Tabs look (colour and an underline), not role=tab. The layers are the --z-* tokens.",
+  "accessibility": "Three landmarks: header, main, and one nav with an aria-label; the nav items are links and the current one has aria-current=\"page\" (in the tab bar --primary text with the kit's --accent dot below, in the rails a --primary-subtle tint with a 2 line --primary bar at the start: not colour alone), they are not role=\"tab\". In the icon rail the label stays in the tree as the accessible name (visually hidden). The header holds one h1; its icon buttons carry aria-label. Safe-area insets pad the bar. The nav padding keeps the focus outline inside the nav. Current item text --primary on --bg-surface in the tab bar (8.48 day, 6.72 night) and on --primary-subtle in the rails (7.61, 5.46); others --text-secondary on --bg-surface. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The banner has role=\"status\" and one line of text with its action; the header and the rail list stand below it. The back control is a link or a button with aria-label. A figure chip is a link or button whose text is its label and amount, at least --touch-min high. The menu mark is a link with aria-label. In the nav-less header the lead slot holds the same colour mark as a link to the home page (a.ds-header__logo with img.ds-header__mark, empty alt) whose aria-label names AIVIS and the home page; no word stands beside it, and the box is at least --touch-min square with the focus outline outside it. The sub-navigation is a nav with an aria-label of links, the current one aria-current=\"page\" with the Tabs look (colour and an underline), not role=tab. The layers are the --z-* tokens.",
   "purpose": "The frame of every cabinet screen: where the user is and where else they can go.",
-  "usage": "One shell per role, five nav items at most; the tier follows the viewport (bar below 880, rail from 880, wide from 1120); data-tier on .ds-shell forces one only in a specimen (a shell drawn inside a page narrower than the tier it shows); a product screen never sets it. A screen is the content of .ds-shell__main; a screen title is the header's h1. Use the Tabs (K12) to change a view in place, never for navigation between screens. A screen in main may open with the lead line, then the toolbar; its one primary action may be the sticky action strip, the last element of main. A hub under a tab uses the sub-navigation; a view changed in place is the Tabs (K12). The public storefront uses the nav-less shell.",
+  "usage": "One shell per role, five nav items at most; the tier follows the viewport (bar below 880, rail from 880, wide from 1120); data-tier on .ds-shell forces one only in a specimen (a shell drawn inside a page narrower than the tier it shows); a product screen never sets it. A screen is the content of .ds-shell__main; a screen title is the header's h1. Use the Tabs (K12) to change a view in place, never for navigation between screens. A screen in main may open with the lead line, then the toolbar; its one primary action may be the sticky action strip, the last element of main. A hub under a tab uses the sub-navigation; a view changed in place is the Tabs (K12). The public storefront uses the nav-less shell: its header leads with the AIVIS mark in the lead slot, the same mark the menu shows from 880 (decided by the owner, 2026-10-23).",
   "notes": ""
  },
  {

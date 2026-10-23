@@ -1590,6 +1590,7 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-header__figure:active { background: var(--primary-subtle); border-color: var(--primary); }
 .ds-header__figure:focus-visible,
 .ds-nav__logo:focus-visible,
+.ds-header__logo:focus-visible,
 .ds-subnav__link:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
@@ -1599,6 +1600,9 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-nav__brand { display: none; }
 .ds-nav__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--size-3xl); border-radius: var(--radius-control); }
 .ds-nav__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
+/* the same mark in the lead slot of the nav-less header (the public storefront, which has no menu): a link to the home page, the mark alone, at the size the menu's mark has */
+.ds-header__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--touch-min); min-inline-size: var(--touch-min); border-radius: var(--radius-control); }
+.ds-header__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
 .ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-nav__brand { display: block; }
 .ds-shell[data-tier="wide"] .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
 @media (min-width: 880px) {

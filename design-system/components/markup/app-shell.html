@@ -33,7 +33,7 @@
      lead line: p.ds-shell__lead, the first element of main. toolbar: div.ds-shell__toolbar with div.ds-shell__filters at the start and one div.ds-shell__primary at the end.
      action strip: div.ds-shell__action, the last element of main: sticky above the tab bar on a phone, in the flow from 880.
      sub-navigation of a hub: nav.ds-subnav > ul.ds-subnav__list > li > a.ds-subnav__link[aria-current=page], sticky under the header.
-     nav-less variant: ds-shell--navless, header and main only (the public storefront), with no nav element. -->
+     nav-less variant: ds-shell--navless, header and main only (the public storefront), with no nav element; the lead slot of its header holds the AIVIS mark, a.ds-header__logo (aria-label naming AIVIS and home) with img.ds-header__mark, a link to the home page. -->
 <div class="ds-shell">
   <div class="ds-shell__banner" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-shell__banner-text">You are acting as Anna Weber</span><button type="button" class="ds-button ds-button--secondary ds-shell__banner-action" data-size="sm">Exit</button></div>
   <header class="ds-header">
@@ -61,6 +61,6 @@
 </div>
 <!-- The nav-less shell (the public storefront): -->
 <div class="ds-shell ds-shell--navless">
-  <header class="ds-header"><h1 class="ds-header__title">Store</h1><div class="ds-header__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/login">Sign in</a></div></header>
+  <header class="ds-header"><div class="ds-header__lead"><a class="ds-header__logo" href="/" aria-label="AIVIS, home"><img class="ds-header__mark" src="../../brand/aivis-mark.svg" alt=""></a></div><h1 class="ds-header__title">Store</h1><div class="ds-header__actions"><a class="ds-button ds-button--secondary" data-size="sm" href="/login">Sign in</a></div></header>
   <main class="ds-shell__main"><!-- the storefront --></main>
 </div>
