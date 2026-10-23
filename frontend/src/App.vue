@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- Root component (iter 2.6 batch 2)
 // =============================================================================
 //
-// Root auth gate + avatar overlay banner.
+// Root auth gate.
 //
 // Flow (iter 2.6 batch 2 rework):
 //   !isReady                                  → LoadingView
@@ -38,26 +38,27 @@
 //   - Anonymous visit to /public/* -> globalGuard's public branch
 //     lets it through to PublicShell + RouterView.
 //
-// Avatar mode (UNCHANGED):
-//   When staff is operating as another user, a fixed banner is shown
-//   at the top of the screen with a "Return to Staff" button.
+// Avatar mode:
+//   When staff is operating as another user, the frame shows the banner row
+//   (K25, the warning look) above the header with a "Return to Staff" button:
+//   components/layout/AvatarBanner.vue, drawn by AppShell and by AuthShell.
 //
-// Telegram failure (UNCHANGED):
+// Telegram failure:
 //   If Telegram WebApp init fails and we are not in standalone mode,
-//   we show the auth-error screen with a Retry button instead of
-//   RouterView. Standalone mode (regular browser) does NOT see this
-//   screen even on transient init issues -- standalone has no
-//   Telegram dependency.
+//   we show the auth-error screen (the auth shell, K33, with a danger Alert,
+//   K09, and a primary Retry, K01) instead of RouterView. Standalone mode
+//   (regular browser) does NOT see this screen even on transient init issues --
+//   standalone has no Telegram dependency.
 // =============================================================================
 
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ghost, Shield } from '@/components/ui/icons'
+import { AlertTriangle } from '@/components/ui/icons'
 
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
-import { useAvatar } from '@/composables/useAvatar'
 import { useRoleRefresh } from '@/composables/useRoleRefresh'
+import AuthShell from '@/components/layout/AuthShell.vue'
 import LoadingView from '@/views/auth/LoadingView.vue'
 import KycRequiredPrompt from '@/components/shared/KycRequiredPrompt.vue'
 import IntroCards from '@/components/shared/IntroCards.vue'
@@ -65,20 +66,9 @@ import IntroCards from '@/components/shared/IntroCards.vue'
 const { t } = useI18n()
 const authStore = useAuthStore()
 const { initAuth, retryAuth, isReady, isStandalone, authError } = useAuth()
-const { isAvatarActive, loading: avatarLoading, endAvatarSession } = useAvatar()
 
 // An approved applicant moves to the integrator cabinet without signing in again.
 useRoleRefresh()
-
-/** Display name for avatar banner. */
-const avatarTargetName = computed(() => {
-  const p = authStore.user?.profile
-  if (p && typeof p === 'object') {
-    const fn = (p as Record<string, unknown>).first_name
-    if (fn) return String(fn)
-  }
-  return authStore.user?.email ?? '…'
-})
 
 onMounted(() => {
   initAuth()
@@ -86,41 +76,30 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- Avatar overlay banner — fixed at top, above everything -->
-  <div v-if="isAvatarActive && authStore.isAuthenticated" class="avatar-banner">
-    <div class="avatar-banner__left">
-      <Ghost :size="16" />
-      <span class="avatar-banner__text"> Avatar: {{ avatarTargetName }} </span>
-    </div>
-    <button class="avatar-banner__btn" :disabled="avatarLoading" @click="endAvatarSession">
-      <Shield :size="16" />
-      {{ t('staff.avatar.return') }}
-    </button>
-  </div>
-
   <!-- Phase 1: auth initialization in progress -->
   <LoadingView v-if="!isReady" />
 
   <!-- Phase 2: Telegram auth failure (standalone mode skips this branch) -->
-  <div
-    v-else-if="authError && !isStandalone && !authStore.isAuthenticated"
-    class="auth-error-screen"
-  >
-    <p class="auth-error-text">
-      {{ authError }}
-    </p>
-    <button class="ds-button ds-button--primary" @click="retryAuth">
-      {{ t('common.retry') }}
-    </button>
-  </div>
+  <AuthShell v-else-if="authError && !isStandalone && !authStore.isAuthenticated">
+    <div class="ds-auth__icon" aria-hidden="true"><AlertTriangle /></div>
+    <h1 class="ds-auth__title">{{ t('common.error') }}</h1>
+    <div class="ds-alert ds-alert--danger" role="alert">
+      <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ authError }}</p>
+      </div>
+    </div>
+    <div class="ds-auth__form">
+      <button type="button" class="ds-button ds-button--primary" @click="retryAuth">
+        {{ t('common.retry') }}
+      </button>
+    </div>
+  </AuthShell>
 
   <!-- Phase 3 (iter 2.6 batch 2): router-driven content for both
        authenticated and anonymous visitors. globalGuard / route meta
-       decide what renders. The avatar-active class still pads the top
-       so the fixed banner doesn't overlap content. -->
-  <div v-else :class="{ 'app--avatar-active': isAvatarActive && authStore.isAuthenticated }">
-    <RouterView />
-  </div>
+       decide what renders. -->
+  <RouterView v-else />
 
   <!-- The message a closed action answers with before verification -->
   <KycRequiredPrompt />
@@ -128,100 +107,3 @@ onMounted(() => {
   <!-- What the service is, shown once before the first entry -->
   <IntroCards />
 </template>
-
-<style scoped>
-/* Avatar overlay banner */
-.avatar-banner {
-  position: fixed;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* The banner is FIXED and `.app--avatar-active` offsets content by exactly
-     its height. These were two independent literals and they did NOT agree:
-     measured in the browser, HEAD's banner stood 46px against a 40px offset,
-     so the bar overlapped content by 6px. They now share ONE token, and the
-     vertical padding is --space-1 so the tallest child (the 26px button) plus
-     padding stays inside that reserve -- measured 40px against 40px. */
-  padding: var(--space-1) var(--space-4);
-  min-block-size: var(--space-6-lg);
-  background: var(--accent);
-  color: var(--on-accent);
-  /* Was 13px -- the retired step. Moved to --fs-sm, the size this kind of
-     text uses elsewhere, per the same rule the 115-site collapse applied. */
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  box-shadow: var(--shadow-2);
-}
-
-.avatar-banner__left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-
-.avatar-banner__text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.avatar-banner__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  /* --space-1 vertical, not --space-2: the button must fit inside the banner's
-     --space-6-lg (40px) reserve. 4+4 padding + a 12px line clears it; 8+8 does
-     not, and the overflow would show up as the fixed bar overlapping content. */
-  padding: var(--space-1) var(--space-3);
-  /* An inverse chip ON the accent banner. Was `white`, which is identical in
-     light but puts light-amber text on white in dark. --on-accent tracks the
-     banner, so the pair inverts together. */
-  background: var(--on-accent);
-  color: var(--accent);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.avatar-banner__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.avatar-banner__btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-/* Push content down when avatar banner is visible */
-.app--avatar-active {
-  /* Same token as the banner's min-height above -- see the note there. */
-  padding-block-start: var(--space-6-lg);
-}
-
-/* Auth error screen */
-.auth-error-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-  gap: var(--space-4);
-  padding: var(--space-5);
-}
-.auth-error-text {
-  font-size: var(--fs-sm);
-  color: var(--danger);
-  text-align: center;
-}
-</style>

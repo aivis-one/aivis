@@ -5,14 +5,17 @@
 // icon, one title, a subtitle, the form (`ds-auth__form`) and a foot
 // (`ds-auth__foot`). On a phone the panel starts from the top, at desktop widths
 // it is centred. The `start` slot replaces the logo where a screen puts
-// something beside it (a back button).
+// something beside it (a back button). While staff act as another user the banner
+// row of the frame (K25) stands above the header here too.
 
+import AvatarBanner from '@/components/layout/AvatarBanner.vue'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 </script>
 
 <template>
   <div class="ds-auth">
+    <AvatarBanner />
     <header class="ds-auth__header">
       <div class="auth-shell__start">
         <slot name="start">
