@@ -61,6 +61,10 @@ declare module 'vue-router' {
      *  tab bar, for one) reads it back off the route record rather than
      *  repeating the key. */
     permission?: StaffPermissionKey
+    /** The screen is the administrator's only (every permission on). */
+    admin?: boolean
+    /** Which hub of the staff cabinet this record opens (the section chips). */
+    hub?: 'users' | 'finance' | 'platform'
     /** Skip onboarding redirect (for onboarding routes themselves). */
     skipOnboarding?: boolean
     /** Which shell wraps this route. Set on shell wrapper records
@@ -264,10 +268,14 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
   // event from "you may not go here" and survives a stale session this
   // guard cannot see.
   const needed = to.meta.permission
+  const { canDo, isAdmin } = useStaffPermissions()
   if (needed) {
-    const { canDo } = useStaffPermissions()
     if (!canDo(needed).value) {
       return getRoleDashboard(authStore.role)
     }
+  }
+  // The administrator's screens (the money check) are refused the same way.
+  if (to.meta.admin && !isAdmin.value) {
+    return getRoleDashboard(authStore.role)
   }
 }

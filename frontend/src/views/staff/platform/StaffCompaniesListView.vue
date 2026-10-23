@@ -107,7 +107,7 @@ function setStatusFilter(s: '' | 'active' | 'hidden' | 'archived'): void {
 
 function openCompany(id: string): void {
   void safeNavigate(
-    router.push(`/staff/platform/companies/${id}`),
+    router.push(`/staff/platform/projects/${id}`),
     `[StaffCompaniesListView] to company ${id}`,
   )
 }

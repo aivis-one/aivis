@@ -54,7 +54,11 @@ import {
   parseRetryAfterHeader,
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
+import { sendAttachmentMultipart } from '@/api/company-attachments'
+import type { AttachmentUploadMetadata } from '@/api/company-attachments'
+import type { CreatePoolRequest } from '@/api/generated'
 import type {
+  AttachmentPatchBody,
   AssignCompanyRequest,
   CompanyDetailResponse,
   CompanyListResponse,
@@ -253,6 +257,19 @@ export function fetchStaffCompanyPool(companyId: string): Promise<PoolResponse |
 }
 
 /**
+ * POST /api/v1/staff/companies/{id}/pool -- create the project's pool of
+ * parts for sale (needs project_manage AND financial_operations).
+ * `equity_percent` is the percentage of all the project's parts put on sale;
+ * the pool's size is computed by the server. 409 when an active pool exists.
+ */
+export function createStaffCompanyPool(
+  companyId: string,
+  body: CreatePoolRequest,
+): Promise<PoolResponse> {
+  return api.post<PoolResponse>(`/api/v1/staff/companies/${companyId}/pool`, body)
+}
+
+/**
  * GET /api/v1/staff/companies/{id}/templates -- staff template list
  * (iter 2.7 C2). Returns per-company rows merged with platform-default
  * `active` fallbacks for any (kind, language) the company has not
@@ -369,6 +386,61 @@ export function deleteStaffCompanyAttachment(
   attachmentId: string,
 ): Promise<void> {
   return api.delete(`/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`)
+}
+
+/**
+ * POST /api/v1/staff/companies/{id}/attachments -- upload one document of the
+ * project (needs project_manage). Multipart: `metadata` (JSON text) and
+ * `file`. The type is judged by the server from the file name; the 100 MB cap
+ * is the web server's. Returns the new row (201).
+ */
+export function createStaffAttachment(
+  companyId: string,
+  metadata: AttachmentUploadMetadata,
+  file: File,
+): Promise<StaffAttachmentResponse> {
+  const form = new FormData()
+  form.append('metadata', JSON.stringify(metadata))
+  form.append('file', file)
+  return sendAttachmentMultipart<StaffAttachmentResponse>(
+    `${API_BASE_URL}/api/v1/staff/companies/${companyId}/attachments`,
+    'POST',
+    form,
+  )
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/attachments/{attachmentId}/replace --
+ * swap the file of a document, keeping its title, category and flags.
+ */
+export function replaceStaffAttachmentFile(
+  companyId: string,
+  attachmentId: string,
+  file: File,
+): Promise<StaffAttachmentResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  return sendAttachmentMultipart<StaffAttachmentResponse>(
+    `${API_BASE_URL}/api/v1/staff/companies/${companyId}/attachments/${attachmentId}/replace`,
+    'PATCH',
+    form,
+  )
+}
+
+/**
+ * PATCH /api/v1/staff/companies/{id}/attachments/{attachmentId} -- change a
+ * document's title, description, category, language or publication flags.
+ * Send only the fields that changed.
+ */
+export function updateStaffAttachment(
+  companyId: string,
+  attachmentId: string,
+  body: AttachmentPatchBody,
+): Promise<StaffAttachmentResponse> {
+  return api.patch<StaffAttachmentResponse>(
+    `/api/v1/staff/companies/${companyId}/attachments/${attachmentId}`,
+    body,
+  )
 }
 
 // ---------------------------------------------------------------------------

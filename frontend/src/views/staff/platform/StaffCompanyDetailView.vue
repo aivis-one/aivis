@@ -3,12 +3,12 @@
 // AIVIS.ONE Frontend -- StaffCompanyDetailView (iter 2.7 Block B1 scaffolding)
 // =============================================================================
 //
-// Detail shell for a single company under the Staff Platform tab.
-// Renders an inline page-header (back-link + company name h1, per
-// FP-19 + FP-20) and a horizontal scrollable tab strip for the six
-// per-company sections (R1 §4.3 + R2 §6):
+// Detail shell for a single project under the Staff Platform tab.
+// Renders an inline page-header (back-link + project name h1, per
+// FP-19 + FP-20) and a horizontal scrollable tab strip for the
+// per-project sections (R1 §4.3 + R2 §6):
 //
-//   profile / price / roadmap / posts / documents / templates
+//   profile / price / pool / products / roadmap / audit / posts / documents / templates
 //
 // Each tab maps to a nested child route; selected section renders
 // in the inner <router-view>. Mobile-first horizontal-scroll over
@@ -34,6 +34,7 @@ import { useI18n } from 'vue-i18n'
 
 import { CBackLink } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { fetchStaffCompany } from '@/api/staff-companies'
 import type { CompanyDetailResponse } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
@@ -53,49 +54,60 @@ const companyId = computed<string>(() => {
 // Tab definitions. Each path is the absolute child route under the
 // detail view. `name` is the labelKey under staff.platform.company.tabs.
 // Order matches the spec sequence in R1 §4.3 + R2 §6.
-const sections = computed(() => {
+const { canDo } = useStaffPermissions()
+const canManage = canDo('project_manage')
+
+interface DetailSection {
+  id: string
+  path: string
+  labelKey: string
+  /** True when the section is drawn only for a member who may manage projects. */
+  needsManage?: boolean
+}
+
+// The project's sections, in order: profile, price (the history of
+// revaluations), parts (the pool of parts for sale), products, roadmap, the
+// audit of the project's writes (project_manage), posts, documents, templates.
+const allSections = computed<readonly DetailSection[]>(() => {
   const id = companyId.value
+  const base = `/staff/platform/projects/${id}`
   return [
+    { id: 'profile', path: `${base}/profile`, labelKey: 'staff.platform.company.tabs.profile' },
+    { id: 'price', path: `${base}/price`, labelKey: 'staff.platform.company.tabs.price' },
+    { id: 'pool', path: `${base}/pool`, labelKey: 'staff.platform.company.tabs.pool' },
     {
-      id: 'profile',
-      path: `/staff/platform/companies/${id}/profile`,
-      labelKey: 'staff.platform.company.tabs.profile',
+      id: 'products',
+      path: `${base}/products`,
+      labelKey: 'staff.platform.company.tabs.products',
     },
-    {
-      id: 'price',
-      path: `/staff/platform/companies/${id}/price`,
-      labelKey: 'staff.platform.company.tabs.price',
-    },
-    {
-      id: 'roadmap',
-      path: `/staff/platform/companies/${id}/roadmap`,
-      labelKey: 'staff.platform.company.tabs.roadmap',
-    },
+    { id: 'roadmap', path: `${base}/roadmap`, labelKey: 'staff.platform.company.tabs.roadmap' },
     {
       id: 'audit',
-      path: `/staff/platform/companies/${id}/audit`,
+      path: `${base}/audit`,
       labelKey: 'staff.platform.company.tabs.audit',
+      needsManage: true,
     },
-    {
-      id: 'posts',
-      path: `/staff/platform/companies/${id}/posts`,
-      labelKey: 'staff.platform.company.tabs.posts',
-    },
+    { id: 'posts', path: `${base}/posts`, labelKey: 'staff.platform.company.tabs.posts' },
     {
       id: 'documents',
-      path: `/staff/platform/companies/${id}/documents`,
+      path: `${base}/documents`,
       labelKey: 'staff.platform.company.tabs.documents',
     },
     {
       id: 'templates',
-      path: `/staff/platform/companies/${id}/templates`,
+      path: `${base}/templates`,
       labelKey: 'staff.platform.company.tabs.templates',
     },
-  ] as const
+  ]
 })
 
+// A section the member has no right to is not drawn.
+const sections = computed(() =>
+  allSections.value.filter((section) => !section.needsManage || canManage.value),
+)
+
 const activeId = computed<string>(() => {
-  const match = sections.value.find((s) => route.path.startsWith(s.path))
+  const match = allSections.value.find((s) => route.path.startsWith(s.path))
   return match?.id ?? 'profile'
 })
 
@@ -189,8 +201,8 @@ onMounted(loadCompany)
       </h1>
     </div>
 
-    <!-- Horizontal scrollable tab strip across the 7 sections. -->
-    <nav class="scd__tabs" aria-label="Company sections">
+    <!-- Horizontal scrollable tab strip across the project's sections. -->
+    <nav class="scd__tabs" :aria-label="t('staff.platform.company.sectionsLabel')">
       <button
         v-for="s in sections"
         :key="s.id"

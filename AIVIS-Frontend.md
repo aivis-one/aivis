@@ -641,14 +641,22 @@ Telegram WebApp обнаруживается по наличию `window.Telegra
 /company/balance           → CompanyBalanceView
 /company/settings          → CompanySettingsView
 
--- Staff --
-/staff/dashboard           → StaffDashboardView
-/staff/users               → StaffUsersView
-/staff/kyc                 → StaffKYCView
-/staff/payments            → StaffPaymentsView
-/staff/more                → StaffMoreView
-/staff/agent-apps          → StaffAgentAppsView
-/staff/avatar              → StaffAvatarView
+-- Staff (five tabs: Home, Users, Finance, Platform, Settings) --
+/staff/dashboard           → StaffDashboardView (a counter for every queue)
+/staff/users               → StaffHubView > StaffUsersView (the list; identity checks are its KYC filter)
+/staff/users/agent-apps    → StaffAgentAppsView (paged queue with the applicant)
+/staff/users/avatar        → StaffAvatarView
+/staff/users/support       → StaffSupportView
+/staff/finance/payments    → StaffPaymentsView (top-ups in their hour, then all payments)
+/staff/finance/withdrawals → StaffWithdrawalsView
+/staff/finance/gifts       → StaffGiftsView
+/staff/finance/reconciliation → StaffReconciliationView (administrator)
+/staff/platform/news       → StaffNewsView
+/staff/platform/events     → StaffEventsView
+/staff/platform/projects   → StaffCompaniesListView, /:id → project sections
+/staff/platform/settings   → StaffVerificationSettingsSection
+/staff/settings            → StaffSettingsView
+/staff/docs                → InvestorDocsView (the staff member's documents)
 
 /404                       → NotFoundView
 /:pathMatch(.*)*           → redirect /404

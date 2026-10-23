@@ -3,6 +3,10 @@
 // confirm/reject actions. Closes the discovery gap: confirm/reject
 // endpoints already existed (Sprint 6.3) but staff had no list to find
 // a pending withdrawal_id against. Structural template: StaffPaymentsView.vue.
+//
+// WHERE THE MONEY GOES is shown as the network and the wallet, two labelled
+// lines (utils/payoutDetails.ts), in the list row and in the confirmation --
+// never as the raw payout object.
 // GET /api/v1/staff/withdrawals (?status=, ?user_id=, ?page=, ?per_page=)
 // POST /api/v1/staff/withdrawals/{id}/confirm
 // POST /api/v1/staff/withdrawals/{id}/reject
@@ -12,6 +16,9 @@ import { useI18n } from 'vue-i18n'
 import { Banknote } from 'lucide-vue-next'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
+import { tOrRaw } from '@/utils/i18n'
+import { payoutLines } from '@/utils/payoutDetails'
+import { ApiResponseError } from '@/api/client'
 import { fetchWithdrawalsStaff, confirmWithdrawal, rejectWithdrawal } from '@/api/admin'
 import type { WithdrawalResponse } from '@/api/types'
 
@@ -67,7 +74,19 @@ const statusVariant = (s: string) => {
 }
 
 function formatCents(cents: number): string {
-  return `${(cents / 100).toFixed(2)} USDT`
+  return `${(cents / 100).toFixed(2)} ${t('staff.withdrawals.currency')}`
+}
+
+function statusLabel(status: string): string {
+  return tOrRaw(t, `staff.withdrawals.statuses.${status}`, status)
+}
+
+function payoutLabel(key: string): string {
+  return tOrRaw(t, `staff.withdrawals.payout.${key}`, key)
+}
+
+function serverReason(err: unknown, fallbackKey: string): string {
+  return err instanceof ApiResponseError && err.detail ? err.detail : t(fallbackKey)
 }
 
 async function loadWithdrawals(): Promise<void> {
@@ -101,8 +120,8 @@ async function handleConfirm(): Promise<void> {
     showToast(t('staff.withdrawals.confirmed'), 'success')
     showConfirmModal.value = false
     await loadWithdrawals()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     confirmLoading.value = false
   }
@@ -126,8 +145,8 @@ async function handleReject(): Promise<void> {
     showToast(t('staff.withdrawals.rejected'), 'success')
     showRejectModal.value = false
     await loadWithdrawals()
-  } catch {
-    showToast(t('common.error'), 'error')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     rejectLoading.value = false
   }
@@ -154,7 +173,7 @@ onMounted(loadWithdrawals)
     <!-- Status filters -->
     <div class="staff-wd__filters">
       <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
-        All
+        {{ t('common.all') }}
       </button>
       <button
         v-for="s in STATUSES"
@@ -163,7 +182,7 @@ onMounted(loadWithdrawals)
         :class="{ active: statusFilter === s }"
         @click="setStatusFilter(s)"
       >
-        {{ s }}
+        {{ statusLabel(s) }}
       </button>
     </div>
 
@@ -174,6 +193,7 @@ onMounted(loadWithdrawals)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-wd__center">
+      <p class="wd-item__error">{{ t('common.error') }}</p>
       <CButton variant="secondary" size="sm" @click="loadWithdrawals">
         {{ t('common.retry') }}
       </CButton>
@@ -197,7 +217,13 @@ onMounted(loadWithdrawals)
             <div class="wd-item__detail">
               {{ new Date(item.created_at).toLocaleDateString() }}
             </div>
-            <div class="wd-item__user">User: {{ item.user_id.slice(0, 8) }}…</div>
+            <div class="wd-item__user">{{ t('staff.withdrawals.user') }}: {{ item.user_id.slice(0, 8) }}…</div>
+            <div class="wd-item__payout">
+              <template v-for="line in payoutLines(item.payout_details_snapshot)" :key="line.key">
+                <span class="wd-item__payout-key">{{ payoutLabel(line.key) }}</span>
+                <span class="wd-item__payout-value">{{ line.value }}</span>
+              </template>
+            </div>
             <div v-if="item.status === 'processing'" class="wd-item__note">
               {{ t('staff.withdrawals.processingNote') }}
             </div>
@@ -206,7 +232,7 @@ onMounted(loadWithdrawals)
             </div>
           </div>
           <div class="wd-item__right">
-            <CBadge :variant="statusVariant(item.status)" :text="item.status" />
+            <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
             <div v-if="item.status === 'pending'" class="wd-item__actions">
               <button class="wd-item__confirm" @click.stop="openConfirm(item)">
                 {{ t('staff.withdrawals.confirm') }}
@@ -244,7 +270,12 @@ onMounted(loadWithdrawals)
       </p>
       <template v-if="confirmTarget">
         <p class="modal__label">{{ t('staff.withdrawals.payoutDetails') }}</p>
-        <pre class="modal__payout">{{ JSON.stringify(confirmTarget.payout_details_snapshot, null, 2) }}</pre>
+        <dl class="modal__payout">
+          <template v-for="line in payoutLines(confirmTarget.payout_details_snapshot)" :key="line.key">
+            <dt>{{ payoutLabel(line.key) }}</dt>
+            <dd>{{ line.value }}</dd>
+          </template>
+        </dl>
       </template>
       <div class="modal__actions">
         <CButton variant="outline" size="sm" @click="showConfirmModal = false">
@@ -461,14 +492,15 @@ onMounted(loadWithdrawals)
 }
 .modal__payout {
   font-size: var(--fs-xs);
-  font-family: var(--font-mono);
   color: var(--text-primary);
   background: var(--bg-page);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   margin: 0 0 var(--space-4);
-  white-space: pre-wrap;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
   word-break: break-word;
   max-height: 200px;
   overflow-y: auto;
@@ -477,5 +509,34 @@ onMounted(loadWithdrawals)
   display: flex;
   gap: var(--space-2);
   margin-top: var(--space-4);
+}
+
+.modal__payout dt {
+  color: var(--text-secondary);
+}
+.modal__payout dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.wd-item__payout {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 var(--space-3);
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs);
+}
+.wd-item__payout-key {
+  color: var(--text-tertiary);
+}
+.wd-item__payout-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.wd-item__error {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  margin: 0;
 }
 </style>

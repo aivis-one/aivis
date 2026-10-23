@@ -185,9 +185,9 @@
     "staff": {
       "home": "Home",
       "users": "Users",
-      "payments": "Payments",
       "platform": "Platform",
-      "more": "More"
+      "finance": "Finance",
+      "settings": "Settings"
     },
     "settings": "Settings",
     "news": "News and events",
@@ -199,32 +199,49 @@
     "partners": "Partners"
   },
   "staff": {
-    "panel": "Staff Panel",
-    "badge": "Staff Admin",
+    "panel": "Staff cabinet",
     "users": {
       "stat": "Users",
       "title": "Users",
       "change": "+{count} this month"
     },
-    "kycQueue": "KYC Queue",
-    "pending": "Pending",
-    "new": "New",
     "payments": {
-      "stat": "Payments",
       "title": "Payments",
-      "hint": "Verify the transaction hash on the blockchain before confirming. All payments are crypto (USDT).",
+      "hint": "A top-up is confirmed by itself one hour after the blockchain has confirmed it. Until then it waits in the queue below: check the transaction on the blockchain and reverse it before the hour ends if it is wrong. All payments are crypto (USDT).",
       "amount": "Amount",
       "status": "Status",
       "noPayments": "No payments found",
       "reversed": "Payment reversed",
       "reverse": "Reverse",
-      "reverseConfirm": "Are you sure you want to reverse this payment?",
-      "reason": "Reason (optional)"
+      "reverseConfirm": "Reverse this payment? The money it brought is taken back from the accounts it reached, and the payment cannot be restored.",
+      "reason": "Reason (optional)",
+      "user": "User",
+      "listTitle": "All payments",
+      "statuses": {
+        "created": "Created",
+        "frozen": "In its hour",
+        "confirmed": "Confirmed",
+        "reversed": "Reversed",
+        "failed": "Failed"
+      },
+      "types": {
+        "crypto": "Crypto (USDT)",
+        "bank": "Bank"
+      },
+      "queue": {
+        "title": "Top-ups in their hour",
+        "empty": "No top-up is waiting in its hour.",
+        "error": "Could not load the queue.",
+        "more": "Only the first {n} are shown.",
+        "noEnd": "No end of the hour set",
+        "confirming": "Confirming now",
+        "minutesLeft": "{n} min left"
+      }
     },
     "withdrawals": {
       "stat": "Withdrawals",
       "title": "Withdrawals",
-      "hint": "Verify payout details before confirming. Confirmed withdrawals move to processing and are paid out by the payout provider.",
+      "hint": "Check where the money goes (the network and the wallet) before confirming. Confirmed withdrawals move to processing and are paid out by the payout provider.",
       "noWithdrawals": "No withdrawals found",
       "confirm": "Confirm",
       "confirmConfirm": "Are you sure you want to confirm this withdrawal?",
@@ -235,48 +252,139 @@
       "reason": "Reason",
       "reasonRequired": "A reason is required to reject a withdrawal",
       "processingNote": "Processing — awaiting payout provider",
-      "payoutDetails": "Payout details"
+      "payoutDetails": "Where the money goes",
+      "currency": "USDT",
+      "user": "User",
+      "payout": {
+        "network": "Network",
+        "wallet": "Wallet"
+      },
+      "statuses": {
+        "pending": "Waiting",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "completed": "Paid out",
+        "rejected": "Rejected",
+        "failed": "Failed"
+      }
     },
-    "awaitingConfirm": "Awaiting Confirmation",
-    "agentApps": "Integrator Applications",
-    "quickActions": "Quick Actions",
-    "processKyc": "Process KYC",
-    "checkPayments": "Check Payments",
-    "checkWithdrawals": "Check Withdrawals",
     "searchPlaceholder": "Search by name, email...",
-    "kyc": {
-      "title": "KYC Queue",
-      "hint": "Review user documents and data before approval.",
-      "avgTime": "Average processing time: 15 min.",
-      "moreApps": "... {count} more applications",
-      "approved": "KYC approved",
-      "rejected": "KYC rejected",
-      "approve": "Approve",
-      "reject": "Reject",
-      "rejectReason": "Rejection reason (optional)",
-      "noQueue": "No pending KYC applications",
-      "submitted": "Submitted"
-    },
-    "more": {
-      "title": "More"
-    },
+    "more": {},
     "settings": {
-      "tools": "Tools",
-      "system": "System",
-      "platform": "Platform",
       "language": "Language",
-      "langVal": "English",
-      "logout": "Sign out"
+      "logout": "Sign out",
+      "noName": "Staff",
+      "roleStaff": "Staff",
+      "roleAdmin": "Administrator",
+      "languageSaved": "Language saved",
+      "languageError": "Could not save the language",
+      "account": "Account",
+      "documents": "Documents",
+      "about": "About",
+      "version": "Version",
+      "actions": {
+        "twoFactor": {
+          "ctaEnable": "Enable two-factor authentication",
+          "ctaManage": "Two-factor authentication",
+          "statusEnabled": "Enabled",
+          "setupTitle": "Set up two-factor authentication",
+          "setupIntro": "Enter your password to generate a QR code for your authenticator app.",
+          "passwordLabel": "Current password",
+          "passwordPlaceholder": "Enter your current password",
+          "continueBtn": "Continue",
+          "cancelBtn": "Cancel",
+          "qrTitle": "Scan the QR code",
+          "qrSubtitle": "Scan this with your authenticator app, or enter the code manually, then enter the 6-digit code it shows.",
+          "secretLabel": "Manual entry code",
+          "codeLabel": "Verification code",
+          "codePlaceholder": "123456",
+          "confirmBtn": "Confirm",
+          "codesTitle": "Save your backup codes",
+          "codesWarning": "Save these codes somewhere safe. Each one can be used once to sign in if you lose access to your authenticator app. They will not be shown again.",
+          "copyAllBtn": "Copy all",
+          "savedBtn": "I've saved these codes",
+          "codesCopied": "Backup codes copied",
+          "copyFailed": "Couldn't copy to clipboard",
+          "enabledToast": "Two-factor authentication enabled",
+          "disableTitle": "Turn off two-factor authentication?",
+          "disableSubtitle": "Enter your password and a live code from your authenticator app (or an unused backup code).",
+          "disableCodeLabel": "Code",
+          "disableCodePlaceholder": "6-digit code or backup code",
+          "disableBtn": "Turn off",
+          "disabledToast": "Two-factor authentication disabled",
+          "errorIncorrectPassword": "Incorrect password",
+          "errorCode": "Invalid or expired code",
+          "errorDisableCode": "Invalid code",
+          "errorGeneric": "Something went wrong. Please try again."
+        },
+        "sessions": {
+          "cta": "Active sessions",
+          "title": "Active sessions",
+          "loadError": "Couldn't load your sessions",
+          "retry": "Retry",
+          "current": "This device",
+          "createdAt": "Signed in {date}",
+          "revokeBtn": "Revoke",
+          "revokeConfirmTitle": "Sign out this device?",
+          "cancelBtn": "Cancel",
+          "confirmBtn": "Sign out",
+          "revokeSuccess": "Session revoked",
+          "errorGeneric": "Something went wrong. Please try again.",
+          "authMethod": {
+            "email": "Email",
+            "telegram": "Telegram"
+          }
+        },
+        "notifications": {
+          "cta": "Notification preferences",
+          "title": "Notification preferences",
+          "loadError": "Couldn't load your notification preferences",
+          "retry": "Retry",
+          "categoriesTitle": "What you're notified about",
+          "categories": {
+            "deposits": "Deposits",
+            "payments": "Payment issues",
+            "commissions": "Commissions",
+            "agent_applications": "Integrator applications",
+            "withdrawals": "Withdrawals",
+            "purchases": "Purchases",
+            "installments": "Installment payments",
+            "kyc": "Identity verification",
+            "support_messages": "Support replies",
+            "staff_messages": "Client messages"
+          },
+          "scheduleEnableLabel": "Enable quiet hours",
+          "scheduleDescription": "Pause notifications during a daily window you choose.",
+          "fromLabel": "From",
+          "toLabel": "To",
+          "daysLabel": "Repeat on",
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat",
+            "sun": "Sun"
+          },
+          "timezoneNote": "Times shown in {timezone}",
+          "cancelBtn": "Cancel",
+          "saveBtn": "Save",
+          "saveSuccess": "Notification preferences saved",
+          "errorGeneric": "Something went wrong. Please try again."
+        }
+      }
     },
     "agentApps2": {
       "title": "Integrator Applications",
-      "hint": "A buyer can apply for Integrator status. Cooldown: 30 days after rejection. Review purchase history.",
+      "hint": "A buyer applies for the integrator role from their cabinet. Decide on the person you see here: the name, the e-mail and the identity-check status. After the approval the person accepts the integrator agreement with one press and receives their one link. After a rejection the person can apply again in 30 days.",
       "approved": "Application approved",
       "rejected": "Application rejected",
       "approve": "Approve",
       "reject": "Reject",
       "rejectReason": "Rejection reason (required)",
-      "noQueue": "No pending applications"
+      "noQueue": "No pending applications",
+      "kycStatus": "Identity check"
     },
     "support": {
       "title": "Support requests",
@@ -314,14 +422,14 @@
       "selectUser": "Select user",
       "portfolio": "portfolio",
       "referrals": "referrals",
-      "restrictions": "Restricted operations in Avatar Mode",
+      "restrictions": "Restricted operations in the avatar mode",
       "noPurchase": "Cannot make purchases on behalf of the user",
       "noWithdraw": "Cannot withdraw funds",
       "noPassword": "Cannot change password or email",
       "noDelete": "Cannot delete account",
       "noKyc": "Cannot modify KYC data",
       "session": "Active Session",
-      "return": "Return to Staff",
+      "return": "Return to the staff cabinet",
       "start": "Start Session",
       "end": "End Session",
       "enterUserId": "Target user",
@@ -350,11 +458,11 @@
       "unblock": "Unblock User",
       "unblockConfirm": "Are you sure you want to unblock this user? They will be able to sign in again.",
       "unblockedNote": "User has been unblocked",
-      "promoteToStaff": "Promote to Staff",
-      "promoteConfirm": "Promote this user to staff role?",
-      "promoted": "User promoted to staff",
-      "permissions": "Permissions",
-      "permissionsUpdated": "Permissions updated",
+      "promoteToStaff": "Appoint as staff",
+      "promoteConfirm": "Appoint this user as a staff member?",
+      "promoted": "User appointed as staff",
+      "permissions": "Rights",
+      "permissionsUpdated": "Rights updated",
       "kyc": {
         "filterAll": "All KYC",
         "filter": {
@@ -377,7 +485,7 @@
         "documents": {
           "title": "Application documents",
           "empty": "No documents were submitted with this application.",
-          "noPermission": "The kyc_approve permission is required to view documents.",
+          "noPermission": "The right to decide identity checks is required to view documents.",
           "view": "Open",
           "kindFront": "Front side",
           "kindBack": "Reverse side",
@@ -397,14 +505,25 @@
       "changeEmailConfirm": "The new address is set as verified. Sign-in and all letters move to it; nothing is sent to the old address.",
       "newEmail": "New email",
       "changeEmailReason": "Reason (required)",
-      "emailChanged": "Email address changed"
+      "emailChanged": "Email address changed",
+      "deactivate": "Take off duty",
+      "deactivateConfirm": "The member loses access to the staff cabinet and is signed out everywhere at once. The profile and its history stay.",
+      "deactivated": "Member taken off duty",
+      "offDuty": "Off duty",
+      "onboardingSteps": {
+        "registered": "Registered",
+        "email_verified": "E-mail confirmed",
+        "profile_complete": "Profile filled in",
+        "role_selected": "Documents to accept",
+        "onboarding_complete": "Onboarding complete"
+      }
     },
     "platform": {
       "tabs": {
         "news": "News",
         "events": "Events",
-        "companies": "Companies",
-        "settings": "Settings"
+        "settings": "Settings",
+        "projects": "Projects"
       },
       "news": {
         "title": "Platform news"
@@ -413,55 +532,55 @@
         "title": "Platform events"
       },
       "companies": {
-        "title": "Companies",
+        "title": "Projects",
         "filterAll": "All",
         "filter": {
           "active": "Active",
           "hidden": "Hidden",
           "archived": "Archived"
         },
-        "searchPlaceholder": "Search companies by name...",
-        "empty": "No companies found",
-        "supply": "{n} supply",
+        "searchPlaceholder": "Search projects by name...",
+        "empty": "No projects found",
+        "supply": "{n} parts",
         "assign": {
-          "cta": "Assign company",
-          "title": "Assign existing user to company",
-          "hint": "Promotes an existing user account to company, with full commercial terms. Their password is never seen or set here.",
+          "cta": "Assign",
+          "title": "Assign an existing user to a project",
+          "hint": "Makes an existing user account a project account, with its full commercial terms. Their password is never seen or set here.",
           "fieldUser": "User",
-          "fieldName": "Company name",
+          "fieldName": "Project name",
           "fieldDescription": "Description",
-          "fieldPrice": "Price per unit ($)",
-          "fieldTotalSupply": "Total supply",
-          "fieldSharesPerOption": "Shares per option",
-          "fieldCompanyPct": "Company share (%)",
+          "fieldPrice": "Price of a part ($)",
+          "fieldTotalSupply": "Parts in total",
+          "fieldSharesPerOption": "Multiplier (leave 1)",
+          "fieldCompanyPct": "Project's share of a sale (%)",
           "fieldAgentLevels": "Integrator commission levels (%, comma-separated)",
           "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
-          "distributionSumError": "Company share plus Integrator levels cannot exceed 100%",
-          "alreadyCompanyError": "This user is already a company",
-          "success": "Company assigned"
+          "distributionSumError": "The project's share plus the integrator levels cannot exceed 100%",
+          "alreadyCompanyError": "This user is already a project",
+          "success": "Project assigned"
         },
         "create": {
-          "cta": "Create company",
-          "title": "Create new company",
-          "hint": "Creates a brand-new company account and profile, then enters avatar mode as it immediately so you can fill in its project data.",
+          "cta": "Create project and user",
+          "title": "Create a new project and user",
+          "hint": "Creates a brand-new project account and its profile, then enters the avatar mode as that account at once, so you can fill in the project's data.",
           "fieldEmail": "Email",
           "fieldPassword": "Password",
           "generatePassword": "Generate",
-          "fieldName": "Company name",
+          "fieldName": "Project name",
           "fieldDescription": "Description",
-          "fieldPrice": "Price per unit ($)",
-          "fieldTotalSupply": "Total supply",
-          "fieldSharesPerOption": "Shares per option",
-          "fieldCompanyPct": "Company share (%)",
+          "fieldPrice": "Price of a part ($)",
+          "fieldTotalSupply": "Parts in total",
+          "fieldSharesPerOption": "Multiplier (leave 1)",
+          "fieldCompanyPct": "Project's share of a sale (%)",
           "fieldAgentLevels": "Integrator commission levels (%, comma-separated)",
           "agentLevelsError": "Enter numbers between 0 and 100, separated by commas",
-          "distributionSumError": "Company share plus Integrator levels cannot exceed 100%",
-          "success": "Company created — entering avatar mode..."
+          "distributionSumError": "The project's share plus the integrator levels cannot exceed 100%",
+          "success": "Project created — entering avatar mode..."
         }
       },
       "company": {
-        "backLink": "Back to companies",
-        "headerPrefix": "Company",
+        "backLink": "Back to projects",
+        "headerPrefix": "Project",
         "tabs": {
           "profile": "Profile",
           "price": "Price",
@@ -469,8 +588,11 @@
           "audit": "Audit",
           "posts": "Posts",
           "documents": "Documents",
-          "templates": "Templates"
-        }
+          "templates": "Templates",
+          "pool": "Parts for sale",
+          "products": "Products"
+        },
+        "sectionsLabel": "Project sections"
       },
       "audit": {
         "title": "Write history",
@@ -487,9 +609,9 @@
         "empty": "No posts yet",
         "ownerType": "Owner",
         "ownerPlatform": "Platform",
-        "ownerCompany": "Company",
-        "ownerId": "Company ID",
-        "ownerIdPlaceholder": "company_profiles.id (UUID)",
+        "ownerCompany": "Project",
+        "ownerId": "Project ID",
+        "ownerIdPlaceholder": "Project ID (UUID)",
         "fieldTitle": "Title",
         "fieldBody": "Body",
         "fieldCover": "Cover image URL",
@@ -536,18 +658,16 @@
       },
       "profile": {
         "status": "Status",
-        "price": "Price per unit",
-        "totalSupply": "Total supply",
-        "sharesPerOption": "Shares per option",
+        "price": "Price of a part",
+        "totalSupply": "Parts in total",
         "description": "Description",
         "links": "Links",
         "logoUrl": "Logo",
         "promoVideoUrl": "Promo video",
         "presentationUrl": "Presentation",
-        "distributionConfig": "Distribution config",
         "statusEditCta": "Change status",
-        "statusEditTitle": "Change company status",
-        "statusEditHint": "Only the project itself may withdraw (active → hidden). Publishing (hidden → active) and archiving are staff-only actions.",
+        "statusEditTitle": "Change the project's status",
+        "statusEditHint": "Only the project itself may take itself off the store (active to hidden). Showing a hidden project again and archiving are staff-only actions.",
         "statusNoTransitions": "Archived is a terminal state; status cannot be changed from here.",
         "statusUpdated": "Status updated",
         "statusValues": {
@@ -555,30 +675,47 @@
           "hidden": "Hidden",
           "archived": "Archived"
         },
-        "supplyEditCta": "Change supply",
-        "supplyEditTitle": "Change total supply",
-        "supplyEditHint": "Total supply is the company's full share count. If the company has an active option pool, its percentage of the company will be recalculated from this change.",
-        "supplyPoolLoading": "Checking for an active option pool…",
-        "supplyPoolLoadError": "Could not check whether this company has an active option pool. Saving is blocked until this succeeds — a supply change might otherwise skip its consequence confirmation.",
-        "supplyPoolActiveHint": "This company has an active option pool — the next step will show how its percentage changes.",
-        "supplyConfirmTitle": "Confirm supply change",
-        "supplyConfirmBody": "The active option pool keeps the same number of options, so its share of the company will move from {oldPct} to {newPct}.",
-        "supplyConfirmCeilingError": "This would push the pool above 100% of the company. Resize the pool first, or choose a larger total supply.",
+        "supplyEditCta": "Change the number of parts",
+        "supplyEditTitle": "Change the number of parts",
+        "supplyEditHint": "The number of parts is all the parts of the project. If the project has a pool of parts for sale, the pool's percentage of all parts is recalculated from this change.",
+        "supplyPoolLoading": "Checking for a pool of parts for sale…",
+        "supplyPoolLoadError": "Could not check whether this project has a pool of parts for sale. Saving is blocked until this succeeds — a change might otherwise skip its confirmation.",
+        "supplyPoolActiveHint": "This project has a pool of parts for sale — the next step shows how its percentage changes.",
+        "supplyConfirmTitle": "Confirm the change",
+        "supplyConfirmBody": "The pool keeps the same number of parts, so its share of all the project's parts will move from {oldPct} to {newPct}.",
+        "supplyConfirmCeilingError": "This would push the pool above 100% of the project's parts. Choose a larger number of parts.",
         "supplyConfirmSubmit": "Confirm change",
-        "supplyUpdated": "Total supply updated"
+        "supplyUpdated": "Number of parts updated",
+        "name": "Name",
+        "profileEditCta": "Edit",
+        "profileEditTitle": "Edit the project's profile",
+        "profileEditHint": "The name, the description and the links. The division of the parts is fixed and is not edited here.",
+        "profileUpdated": "Profile updated",
+        "coverUrl": "Cover",
+        "distribution": {
+          "title": "Distribution of parts",
+          "rows": {
+            "sale": "Offered for sale",
+            "index": "Index of projects",
+            "bonus": "Bonus fund",
+            "reserve": "Reserve and parts of the company"
+          },
+          "hint": "The division is fixed. This version has no control that changes it."
+        }
       },
       "price": {
-        "current": "Current price",
+        "current": "Current price of a part",
         "editCta": "Change price",
         "editTitle": "Change price",
-        "editHint": "The new price cascades to all products and is recorded in the history below.",
-        "fieldPrice": "Price per unit (USD)",
+        "editHint": "The new price of a part applies to all the project's products and is recorded in the history of revaluations below.",
+        "fieldPrice": "Price of a part (USD)",
         "fieldPricePlaceholder": "0.00",
-        "historyTitle": "Price history",
-        "historyEmpty": "No price changes yet",
-        "colPrice": "Price",
-        "colChangedAt": "Changed at",
-        "updated": "Price updated"
+        "historyTitle": "History of revaluations",
+        "historyEmpty": "No revaluations yet",
+        "colPrice": "Price of a part",
+        "colChangedAt": "From",
+        "updated": "Price updated and recorded",
+        "historyCaption": "The price of a part is the valuation of the project divided by 1,000,000,000. Each row is a revaluation of the project: the price of a part from that day."
       },
       "templates": {
         "allKinds": "All kinds",
@@ -604,14 +741,32 @@
       },
       "documents": {
         "empty": "No documents yet",
-        "uploadHint": "Documents are uploaded through the MinIO console and synced via reconcile. This view manages order, visibility, and removal.",
         "published": "Published",
         "unpublished": "Draft",
         "public": "Public",
         "deleted": "Document deleted",
         "reorderStale": "The document list changed since you loaded it. Reloaded with the latest order — please try again.",
         "deleteTitle": "Delete document",
-        "deleteConfirm": "This document will be hidden from all flows. The file stays in storage and can be restored by an admin."
+        "deleteConfirm": "This document will be hidden from all flows. The file stays in storage and can be restored by an admin.",
+        "addCta": "Upload a document",
+        "form": {
+          "createTitle": "Upload a document",
+          "editTitle": "Edit the document",
+          "fieldTitle": "Title",
+          "fieldDescription": "Description",
+          "fieldCategory": "Category",
+          "categoryHint": "Lowercase path, e.g. legal/incorporation. Up to 5 levels separated by /.",
+          "categoryError": "Category must be lowercase letters, numbers, - or _, with / between up to 5 levels.",
+          "fieldLanguage": "Language",
+          "fieldPublished": "Visible to buyers",
+          "fieldPublic": "Public (downloadable without sign-in)",
+          "fieldFile": "File",
+          "fieldReplaceFile": "Replace the file",
+          "chooseFile": "Choose a file",
+          "created": "Document uploaded",
+          "updated": "Document updated",
+          "fileReplaced": "File replaced"
+        }
       },
       "roadmap": {
         "empty": "No roadmap items yet",
@@ -667,6 +822,189 @@
         "error": "Could not change the mode",
         "notice": "The provider integration has not shipped yet. Until it does, applications in both modes are decided by a staff member; the setting is stored and recorded on every application.",
         "current": "Currently: {mode}"
+      },
+      "pool": {
+        "hint": "The pool is the part of the project's parts that is offered for sale. A product can be created only after the pool exists.",
+        "none": "This project has no pool of parts for sale yet. Create it before the first product.",
+        "status": "Status",
+        "active": "Active",
+        "share": "Share of all the project's parts",
+        "total": "Parts in the pool",
+        "sold": "Sold",
+        "left": "Left",
+        "fixedNote": "Parts for sale are not added: this screen has no control that makes the pool larger.",
+        "create": "Create the pool",
+        "createTitle": "Create the pool of parts for sale",
+        "createHint": "Enter the percentage of all the project's parts that is offered for sale. In the standard division it is 25.",
+        "percentLabel": "Percentage of all parts",
+        "percentError": "Enter a number above 0 and up to 100, with up to four decimals.",
+        "created": "The pool is created"
+      },
+      "products": {
+        "hint": "The products of the project that are on sale. A product taken off sale does not appear in this list, so this screen has no control that takes one off sale.",
+        "empty": "No products on sale",
+        "create": "Create a product",
+        "createTitle": "Create a product",
+        "editTitle": "Edit the product",
+        "fieldName": "Name",
+        "fieldDescription": "Description",
+        "fieldCover": "Cover",
+        "fieldPackageSize": "Parts in one package",
+        "packageSizeError": "Enter a whole number of parts, 1 or more.",
+        "packageSizeNote": "The number of parts in a package cannot be changed after the product is created.",
+        "created": "Product created",
+        "updated": "Product updated",
+        "meta": "{size} parts in a package · {price} a part · {left} packages left"
+      },
+      "urlPlaceholder": "Web address"
+    },
+    "hub": {
+      "nav": "Sections",
+      "users": {
+        "list": "Users",
+        "agentApps": "Integrator applications",
+        "avatar": "Avatar",
+        "support": "Support"
+      },
+      "finance": {
+        "payments": "Payments",
+        "withdrawals": "Withdrawals",
+        "gifts": "Gifts",
+        "reconciliation": "Money check"
+      }
+    },
+    "home": {
+      "queues": {
+        "kyc": "Identity checks to decide",
+        "topups": "Top-ups in their hour",
+        "withdrawals": "Withdrawals waiting",
+        "agentApps": "Integrator applications",
+        "support": "Support requests nobody has taken"
+      },
+      "loadFailed": "Could not load",
+      "someFailed": "Some counters could not be loaded. A dash is not a zero."
+    },
+    "roles": {
+      "investor": "Buyer",
+      "agent": "Integrator",
+      "company": "Project",
+      "staff": "Staff",
+      "platform": "Platform"
+    },
+    "rights": {
+      "presetHint": "A press on a set marks exactly its rights and clears the others; the ticks below mark single rights. A member who holds every right is the administrator: only the administrator appoints staff, changes rights and e-mails, and takes a member off duty.",
+      "presets": {
+        "support": "Support",
+        "verification": "Verification",
+        "finance": "Finance",
+        "content": "Content and projects"
+      },
+      "keys": {
+        "avatar_mode": "Avatar",
+        "user_block": "Block users",
+        "kyc_approve": "Decide identity checks",
+        "agent_application_review": "Integrator applications",
+        "payment_review": "Check payments",
+        "financial_operations": "Financial operations",
+        "content_manage": "Content",
+        "company_manage": "Projects: view",
+        "project_manage": "Projects: edit",
+        "translation_edit": "Edit texts"
+      }
+    },
+    "reconciliation": {
+      "hint": "Runs every check of the platform's money: the accounts, the purchases and the instalment plans. A failed check is also written to the audit log. Failures come first.",
+      "empty": "The server returned no checks.",
+      "allPassed": "All checks passed",
+      "someFailed": "Some checks failed",
+      "counts": "{passed} of {total} passed, {failed} failed",
+      "runAgain": "Run again",
+      "pass": "Passed",
+      "fail": "Failed",
+      "severity": {
+        "critical": "Critical",
+        "high": "High"
+      },
+      "checks": {
+        "S-01": "Internal transfers net to zero",
+        "S-02": "Every purchase has exactly one buyer-account entry",
+        "S-03": "The paid amounts of purchases equal the debits of buyer accounts",
+        "S-04": "Project accounts carry no buyer-account entries",
+        "S-05": "No buyer account is below zero without an explanation",
+        "S-06": "No commission account is below zero",
+        "S-08": "No confirmed entry belongs to a reversed payment",
+        "S-09": "Every reversal entry has its reversed original",
+        "S-10": "Instalment tranches add up to the plan's price",
+        "S-11": "The platform's commission account is not below zero",
+        "S-12": "Every gift was paid for with zero",
+        "S-13": "No project has a negative number of parts sold",
+        "IS-01": "Instalment tranches add up to the plan's price (as S-10)",
+        "IS-02": "Completed plans: unlocked parts and bonus equal the parts of the plan",
+        "IS-03": "No scheduled tranche belongs to a defaulted or cancelled plan",
+        "IS-04": "No paid tranche is without its purchase",
+        "IS-05": "The paid tranches of a plan match its tranche purchases",
+        "IS-06": "No fully paid plan is still active",
+        "IS-07": "No completed plan was funded by a reversed tranche"
+      },
+      "details": {
+        "active_sum": "Buyer accounts, sum",
+        "passive_sum": "Commission accounts, sum",
+        "total": "Total",
+        "excluded_deposits_active": "Top-ups left out",
+        "excluded_withdrawals_passive": "Withdrawals left out",
+        "purchase_count": "Purchases",
+        "ledger_count": "Buyer-account entries",
+        "paid_cents_total": "Paid by purchases (cents)",
+        "active_debit_total": "Debits of buyer accounts (cents)",
+        "company_active_ledger_count": "Entries on project accounts",
+        "users_with_negative_active": "Buyer accounts below zero",
+        "negative_excused_by_reversal": "Explained by a reversal",
+        "users_with_negative_passive": "Commission accounts below zero",
+        "active_orphans": "Orphan buyer-account entries",
+        "passive_orphans": "Orphan commission entries",
+        "active_reversals": "Buyer-account reversal entries",
+        "active_originals_reversed": "Reversed buyer-account originals",
+        "passive_reversals": "Commission reversal entries",
+        "passive_originals_reversed": "Reversed commission originals",
+        "mismatched_plans": "Plans that do not add up",
+        "platform_passive_confirmed": "Platform commission account (cents)",
+        "gift_purchases_with_nonzero_paid": "Gifts with a payment",
+        "companies_with_negative_units": "Projects with negative parts",
+        "completed_plans_checked": "Completed plans checked",
+        "mismatched": "Mismatched",
+        "orphan_scheduled_tranches": "Orphan scheduled tranches",
+        "paid_tranches_without_purchase": "Paid tranches without a purchase",
+        "plans_checked": "Plans checked",
+        "active_plans_fully_paid": "Fully paid plans still active",
+        "completed_plans_with_reversed_funding": "Completed plans with reversed funding",
+        "error": "Error"
+      }
+    },
+    "gifts": {
+      "hint": "A gift of the company is parts of a project given to a person from the list of the deed of gift, after that person has passed the paid identity check. The gift waits for the person to press \"accept the gift\" in their cabinet; nothing is credited before that.",
+      "limit": "The limit of the gift (10 percent of the project's parts, from its reserve) is not checked by the system. Check it yourself before you grant.",
+      "recipient": "Recipient",
+      "product": "Project and product",
+      "productPlaceholder": "Choose a product",
+      "priceNote": "The price of a part is {price}.",
+      "units": "Parts",
+      "unitsPlaceholder": "A whole number of parts",
+      "unitsError": "Enter a whole number of parts, 1 or more.",
+      "grant": "Grant the gift",
+      "confirmTitle": "Grant the gift?",
+      "confirmBody": "The gift is given in the name of the company. The recipient sees the gift certificate and accepts the gift in their cabinet.",
+      "granted": "The gift is granted and waits for acceptance",
+      "grantError": "The gift could not be granted",
+      "cancel": "Cancel the gift",
+      "cancelled": "The gift is cancelled",
+      "cancelError": "The gift could not be cancelled",
+      "sessionTitle": "Gifts granted in this session",
+      "sessionNote": "The list is kept on this page only and is empty after a reload.",
+      "partsCount": "{n} parts",
+      "statuses": {
+        "pending_acceptance": "Waiting for acceptance",
+        "active": "Accepted",
+        "cancelled": "Cancelled"
       }
     }
   },
@@ -2335,10 +2673,10 @@
       "errorRetry": "Try again",
       "sectionRoadmap": "Roadmap",
       "stats": {
-        "poolTotalOptions": "Total options",
-        "optionsSold": "Options sold",
-        "optionsSoldPercent": "Sold %",
-        "priceGrowth90d": "Price 90d"
+        "poolTotalOptions": "Parts for sale",
+        "optionsSold": "Parts sold",
+        "optionsSoldPercent": "Sold, %",
+        "priceGrowth90d": "Price of a part, 90d"
       },
       "sectionDocuments": "Documents",
       "documents": {

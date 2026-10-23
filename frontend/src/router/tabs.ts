@@ -5,12 +5,7 @@
 // Each role has its own tab set. Used by CTabBar in shell components.
 // Icons are Lucide component names imported in the shell.
 //
-// iter 2.7 Block A1 (R1 §2):
-//   STAFF_TABS restructured -- `kyc` tab removed, `platform` tab added.
-//   KYC functionality merged into Users (chips + detail-modal section).
-//   New order: dashboard / users / payments / platform / more.
-//   Direct URL /staff/kyc -> 404 (catch-all), no redirect (no legacy
-//   deep-links to preserve, dev-only state).
+// The staff tabs: home / users / finance / platform / settings (STAFF_TABS below).
 // =============================================================================
 
 export interface TabItem {
@@ -118,14 +113,17 @@ export const COMPANY_TABS: TabItem[] = [
   { id: 'settings', path: '/company/settings', labelKey: 'tab.comp.settings', icon: 'Settings' },
 ]
 
-// iter 2.7 Block A1: KYC tab removed (merged into Users), Platform tab added.
-// Platform tab leads to /staff/platform which redirects to /staff/platform/news.
-// Icon `LayoutGrid` chosen for Platform -- represents multi-section content
-// surface (News / Events / Companies). Same Lucide set used elsewhere.
+// The staff member's five tabs: Home (a counter for every queue), Users (the
+// people, identity checks, integrator applications, avatar, support), Finance
+// (payments with the top-up queue, withdrawals, gifts, the money check),
+// Platform (news, events, projects, the platform's settings) and Settings (the
+// member's own profile, security, notifications). The Users, Finance and
+// Platform tabs open a hub of sections; a tab whose sections the member has no
+// right to use is not drawn (utils/staffRights.ts).
 export const STAFF_TABS: TabItem[] = [
   { id: 'home', path: '/staff/dashboard', labelKey: 'tab.staff.home', icon: 'Home' },
   { id: 'users', path: '/staff/users', labelKey: 'tab.staff.users', icon: 'Users' },
-  { id: 'payments', path: '/staff/payments', labelKey: 'tab.staff.payments', icon: 'CreditCard' },
+  { id: 'finance', path: '/staff/finance', labelKey: 'tab.staff.finance', icon: 'Wallet' },
   { id: 'platform', path: '/staff/platform', labelKey: 'tab.staff.platform', icon: 'LayoutGrid' },
-  { id: 'more', path: '/staff/more', labelKey: 'tab.staff.more', icon: 'Menu' },
+  { id: 'settings', path: '/staff/settings', labelKey: 'tab.staff.settings', icon: 'Settings' },
 ]

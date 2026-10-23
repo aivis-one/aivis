@@ -622,9 +622,8 @@ export type { CompanyPositionDetailResponse } from './generated'
 // UI does not paginate -- per-user application counts are tiny --
 // so the absence of page/per_page is irrelevant at the consumer.
 //
-// The staff queue endpoint returns a plain `list[AgentApplicationResponse]`
-// with no wrapper at all, which is why this list type was not
-// needed before F4.4.
+// The staff queue is a separate, paged shape with the applicant on every
+// item (AgentApplicationQueueResponse in api/admin.ts).
 // ---------------------------------------------------------------------------
 
 export type { AgentApplicationListResponse } from './generated'

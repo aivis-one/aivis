@@ -3,11 +3,13 @@
 // AIVIS.ONE Frontend -- StaffCompanyDocumentsSection (iter 2.7 Block C / C2)
 // =============================================================================
 //
-// Company document (attachment) management: list grouped by category,
-// per-category reorder via up/down buttons, and soft-delete. NO file
-// upload in MVP -- uploads go through the MinIO Web UI + reconcile
-// (R2 §6.2). The storage_key is surfaced as a copyable hint for staff
-// who need to find the object in MinIO.
+// Project document (attachment) management: list grouped by category,
+// UPLOAD of a new document, EDIT of a document's title, category, language and
+// visibility, REPLACE of its file, per-category reorder via up/down buttons,
+// and soft-delete. The upload / edit / replace form is AttachmentFormModal;
+// the file goes to the server in one multipart request, never through the
+// storage console. The storage_key is shown as a copyable hint for staff who
+// need to find the object in storage.
 //
 // REORDER MODEL (up/down, not drag-drop). The backend reorder endpoint
 // takes the COMPLETE ordered id list for one (company, category) and
@@ -22,7 +24,7 @@
 // tell the user the list is stale, and reload -- rather than surfacing
 // a raw 400. Optimistic UI is rolled back by the reload.
 //
-// FP-23. Reorder + delete mutate, so both are gated on
+// FP-23. Upload, edit, replace, reorder and delete mutate, so all are gated on
 // canDo('project_manage') -- narrowed from company_manage (TASK-30 §7)
 // -- (template guard on the buttons + defensive check in the handlers).
 // A staffer without project_manage can still read the list (the parent
@@ -37,8 +39,9 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, ChevronDown, Trash2, FileText } from 'lucide-vue-next'
+import { ChevronUp, ChevronDown, Trash2, FileText, Pencil, Upload } from 'lucide-vue-next'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
+import AttachmentFormModal from '@/components/staff/AttachmentFormModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { ApiResponseError } from '@/api/client'
@@ -73,6 +76,22 @@ const reordering = ref(false)
 // Delete confirm.
 const deleteTarget = ref<StaffAttachmentResponse | null>(null)
 const deleting = ref(false)
+
+// Upload / edit form. `formTarget` null = a new document.
+const showForm = ref(false)
+const formTarget = ref<StaffAttachmentResponse | null>(null)
+
+function openUpload(): void {
+  if (!canManage.value) return
+  formTarget.value = null
+  showForm.value = true
+}
+
+function openEdit(att: StaffAttachmentResponse): void {
+  if (!canManage.value) return
+  formTarget.value = att
+  showForm.value = true
+}
 
 // Group attachments by category, preserving the backend's per-category
 // order (it returns rows sorted by category ASC, order ASC). Map keeps
@@ -202,85 +221,106 @@ onMounted(loadAttachments)
       </CButton>
     </div>
 
-    <!-- Empty -->
-    <CEmptyState v-else-if="!items.length" :title="t('staff.platform.documents.empty')">
-      <template #icon>
-        <FileText :size="40" />
-      </template>
-    </CEmptyState>
-
-    <!-- Grouped list -->
     <template v-else>
-      <p class="scd__hint">
-        {{ t('staff.platform.documents.uploadHint') }}
-      </p>
+      <div v-if="canManage" class="scd__toolbar">
+        <CButton variant="primary" size="sm" @click="openUpload">
+          <Upload :size="16" />
+          {{ t('staff.platform.documents.addCta') }}
+        </CButton>
+      </div>
 
-      <div v-for="group in grouped" :key="group.category" class="scd__group">
-        <h3 class="scd__group-title">
-          {{ group.category }}
-        </h3>
+      <!-- Empty -->
+      <CEmptyState v-if="!items.length" :title="t('staff.platform.documents.empty')">
+        <template #icon>
+          <FileText :size="40" />
+        </template>
+      </CEmptyState>
 
-        <div class="doc-list">
-          <div v-for="(att, idx) in group.rows" :key="att.id" class="doc-item">
-            <!-- Reorder buttons (FP-23: only with company_manage) -->
-            <div v-if="canManage" class="doc-item__reorder">
+      <template v-else>
+        <div v-for="group in grouped" :key="group.category" class="scd__group">
+          <h3 class="scd__group-title">
+            {{ group.category }}
+          </h3>
+
+          <div class="doc-list">
+            <div v-for="(att, idx) in group.rows" :key="att.id" class="doc-item">
+              <!-- Reorder buttons (FP-23: only with company_manage) -->
+              <div v-if="canManage" class="doc-item__reorder">
+                <button
+                  :aria-label="t('common.moveUp')"
+                  class="doc-item__move"
+                  :disabled="idx === 0 || reordering"
+                  @click="move(group.category, group.rows, idx, -1)"
+                >
+                  <ChevronUp :size="16" />
+                </button>
+                <button
+                  :aria-label="t('common.moveDown')"
+                  class="doc-item__move"
+                  :disabled="idx === group.rows.length - 1 || reordering"
+                  @click="move(group.category, group.rows, idx, 1)"
+                >
+                  <ChevronDown :size="16" />
+                </button>
+              </div>
+
+              <div class="doc-item__info">
+                <div class="doc-item__top">
+                  <CBadge
+                    :variant="att.is_published ? 'success' : 'neutral'"
+                    :text="
+                      att.is_published
+                        ? t('staff.platform.documents.published')
+                        : t('staff.platform.documents.unpublished')
+                    "
+                  />
+                  <CBadge
+                    v-if="att.is_public"
+                    variant="accent"
+                    :text="t('staff.platform.documents.public')"
+                  />
+                  <span class="doc-item__lang">{{ att.language.toUpperCase() }}</span>
+                </div>
+                <div class="doc-item__title">
+                  {{ att.title }}
+                </div>
+                <div class="doc-item__meta">
+                  {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }}
+                </div>
+                <code class="doc-item__storage">{{ att.storage_key }}</code>
+              </div>
+
+              <!-- Edit and delete (FP-23) -->
               <button
-                :aria-label="t('common.moveUp')"
-                class="doc-item__move"
-                :disabled="idx === 0 || reordering"
-                @click="move(group.category, group.rows, idx, -1)"
+                v-if="canManage"
+                :aria-label="t('common.edit')"
+                class="doc-item__delete"
+                @click="openEdit(att)"
               >
-                <ChevronUp :size="16" />
+                <Pencil :size="16" />
               </button>
               <button
-                :aria-label="t('common.moveDown')"
-                class="doc-item__move"
-                :disabled="idx === group.rows.length - 1 || reordering"
-                @click="move(group.category, group.rows, idx, 1)"
+                v-if="canManage"
+                :aria-label="t('common.delete')"
+                class="doc-item__delete"
+                @click="openDelete(att)"
               >
-                <ChevronDown :size="16" />
+                <Trash2 :size="16" />
               </button>
             </div>
-
-            <div class="doc-item__info">
-              <div class="doc-item__top">
-                <CBadge
-                  :variant="att.is_published ? 'success' : 'neutral'"
-                  :text="
-                    att.is_published
-                      ? t('staff.platform.documents.published')
-                      : t('staff.platform.documents.unpublished')
-                  "
-                />
-                <CBadge
-                  v-if="att.is_public"
-                  variant="accent"
-                  :text="t('staff.platform.documents.public')"
-                />
-                <span class="doc-item__lang">{{ att.language.toUpperCase() }}</span>
-              </div>
-              <div class="doc-item__title">
-                {{ att.title }}
-              </div>
-              <div class="doc-item__meta">
-                {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }}
-              </div>
-              <code class="doc-item__storage">{{ att.storage_key }}</code>
-            </div>
-
-            <!-- Delete (FP-23) -->
-            <button
-              v-if="canManage"
-              :aria-label="t('common.delete')"
-              class="doc-item__delete"
-              @click="openDelete(att)"
-            >
-              <Trash2 :size="16" />
-            </button>
           </div>
         </div>
-      </div>
+      </template>
     </template>
+
+    <!-- Upload / edit / replace -->
+    <AttachmentFormModal
+      :open="showForm"
+      :company-id="companyId"
+      :editing="formTarget"
+      @close="showForm = false"
+      @saved="loadAttachments"
+    />
 
     <!-- Delete confirm -->
     <CModal :open="!!deleteTarget" @close="deleteTarget = null">
@@ -317,6 +357,12 @@ onMounted(loadAttachments)
   justify-content: center;
   min-height: var(--center-sm);
   gap: var(--space-4);
+}
+
+.scd__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
 }
 
 .scd__hint {
@@ -466,6 +512,12 @@ onMounted(loadAttachments)
    932px and `staff-dash__role-count` to 901. Names, figures and table cells
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
+.scd__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}
+
 .scd__hint {
   max-width: var(--maxw-prose);
 }

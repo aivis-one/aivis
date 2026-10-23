@@ -43,6 +43,7 @@ import type {
   AgentApplicationResponse,
   RejectAgentApplicationRequest,
 } from '@/api/types'
+import type { ConsistencyResponse, PurchaseResponse } from '@/api/generated'
 
 // ---------------------------------------------------------------------------
 // Dashboard (Sprint 3.3)
@@ -275,9 +276,36 @@ export function fetchActiveAvatar(): Promise<AvatarSessionResponse | null> {
 // Agent applications (Sprint 7.1)
 // ---------------------------------------------------------------------------
 
-/** GET /api/v1/staff/agent-applications — pending agent applications queue. */
-export function fetchAgentApplications(): Promise<AgentApplicationResponse[]> {
-  return api.get<AgentApplicationResponse[]>('/api/v1/staff/agent-applications')
+/**
+ * One pending application in the staff queue, with the applicant: the name,
+ * the e-mail (null for an account that came in through Telegram without one)
+ * and the identity-check status, read by the server from the applicant's row.
+ */
+export interface AgentApplicationQueueItem extends AgentApplicationResponse {
+  applicant_name: string
+  applicant_email: string | null
+  applicant_kyc_status: string
+}
+
+/** One page of the pending integrator applications, oldest first. */
+export interface AgentApplicationQueueResponse {
+  items: AgentApplicationQueueItem[]
+  total: number
+  page: number
+  per_page: number
+}
+
+/**
+ * GET /api/v1/staff/agent-applications -- the pending applications, paged,
+ * each with the applicant's name, e-mail and identity-check status. Needs
+ * agent_application_review.
+ */
+export function fetchAgentApplications(params?: {
+  page?: number
+  per_page?: number
+}): Promise<AgentApplicationQueueResponse> {
+  const qs = buildQueryString({ page: params?.page, per_page: params?.per_page })
+  return api.get<AgentApplicationQueueResponse>(`/api/v1/staff/agent-applications${qs}`)
 }
 
 /** POST /api/v1/staff/agent-applications/{id}/approve — approve application. */
@@ -291,4 +319,58 @@ export function rejectAgentApplication(
   body: RejectAgentApplicationRequest,
 ): Promise<void> {
   return api.post<void>(`/api/v1/staff/agent-applications/${applicationId}/reject`, body)
+}
+
+// ---------------------------------------------------------------------------
+// Staff members (administrator)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/v1/staff/users/{staffProfileId}/deactivate -- take a staff member
+ * off duty (administrator only). The profile stays with its history; the member
+ * loses access and every session at once. Takes the STAFF PROFILE id, not the
+ * user id.
+ */
+export function deactivateStaff(staffProfileId: string): Promise<StaffProfileResponse> {
+  return api.post<StaffProfileResponse>(`/api/v1/staff/users/${staffProfileId}/deactivate`)
+}
+
+// ---------------------------------------------------------------------------
+// The money check (reconciliation)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/v1/staff/consistency -- runs every consistency check over the
+ * platform's money and returns the results (needs financial_operations; the
+ * screen is the administrator's). A failing check is also written to the
+ * server's audit log.
+ */
+export function fetchConsistency(): Promise<ConsistencyResponse> {
+  return api.get<ConsistencyResponse>('/api/v1/staff/consistency')
+}
+
+// ---------------------------------------------------------------------------
+// Gifts of the company
+// ---------------------------------------------------------------------------
+
+/** The body of a gift grant: a verified investor, a product of the project, a number of parts. */
+export interface StaffGrantGiftRequest {
+  user_id: string
+  product_id: string
+  units: number
+}
+
+/**
+ * POST /api/v1/staff/purchases/gifts -- grant gift parts (needs
+ * financial_operations). The gift waits for the recipient's acceptance; nothing
+ * is credited and no pool unit is used before it. The recipient must be an
+ * active investor who passed the paid identity check.
+ */
+export function grantGift(body: StaffGrantGiftRequest): Promise<PurchaseResponse> {
+  return api.post<PurchaseResponse>('/api/v1/staff/purchases/gifts', body)
+}
+
+/** POST /api/v1/staff/purchases/gifts/{id}/cancel -- cancel a gift not yet accepted. */
+export function cancelGift(purchaseId: string): Promise<PurchaseResponse> {
+  return api.post<PurchaseResponse>(`/api/v1/staff/purchases/gifts/${purchaseId}/cancel`)
 }

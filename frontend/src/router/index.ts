@@ -90,21 +90,15 @@
 //     StaffKYCView.vue file is deleted in the same commit. Direct
 //     URL /staff/kyc -> catch-all -> /404; no redirect because no
 //     production deep-links to preserve (dev-only state).
-//   - ADDED /staff/platform subtree under StaffShell, the Block B
-//     scaffolding for the Staff Platform tab (R1 §4):
-//       /staff/platform                           -> redirect to /staff/platform/news
-//       /staff/platform/news                      -> staff-platform-news
-//       /staff/platform/events                    -> staff-platform-events
-//       /staff/platform/companies                 -> staff-platform-companies
-//       /staff/platform/companies/:id             -> staff-platform-company-detail
-//         Nested children rendered via the detail view's own
-//         <router-view>, one per company section (R1 §4.3 + R2 §6):
-//         profile / price / roadmap / posts / documents / templates.
-//     The StaffShell parent record already carries meta.roles =
-//     ['staff'], so every nested child inherits the role check
-//     through vue-router's meta merge -- no per-route meta needed.
-//     All 11 view components are lazy-loaded stubs in this commit
-//     (FP-24); real content lands in Blocks B / C / D.
+//   - ADDED /staff/platform subtree under StaffShell (the Staff Platform
+//     tab, R1 §4); its sections are now news / events / projects / settings,
+//     and the project detail view nests profile / price / pool / products /
+//     roadmap / audit / posts / documents / templates.
+//
+// Cabinets 1.5, staff role: five tabs (home / users / finance / platform /
+//   settings). Users, Finance and Platform are hubs (StaffHubView) whose
+//   sections carry the permission each needs from utils/staffRights.ts; the
+//   old single-purpose addresses redirect to the section that replaced them.
 // =============================================================================
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -114,6 +108,8 @@ import { useAuthStore } from '@/stores/auth'
 import { captureReferralFromPath } from '@/composables/useAuth'
 import { globalGuard, getRoleDashboard } from './guards'
 import { documentLinkTarget } from './documentLink'
+import { hubStart, sectionMeta } from './staffHubs'
+import { FINANCE_SECTIONS, PLATFORM_SECTIONS, USERS_SECTIONS } from '@/utils/staffRights'
 
 // ---------------------------------------------------------------------------
 // Router instance
@@ -728,8 +724,14 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     // Staff shell — staff only
     //
-    // iter 2.7 Block A2: /staff/kyc route removed (merged into Users);
-    // /staff/platform subtree added (R1 §4 Staff Platform tab).
+    // Five tabs: Home, Users, Finance, Platform, Settings. Users, Finance and
+    // Platform are hubs (StaffHubView: a chip row over the section's screen);
+    // each section's record carries the right it needs from the same table
+    // the tab bar and the chips read (utils/staffRights.ts), and the global
+    // guard turns a member without it away before the screen mounts. The
+    // old single-purpose addresses (/staff/payments, /staff/withdrawals,
+    // /staff/agent-apps, /staff/avatar, /staff/support, /staff/more,
+    // /staff/platform/companies) redirect to the section that replaced them.
     // -----------------------------------------------------------------
     {
       path: '/staff',
@@ -745,58 +747,128 @@ export const router = createRouter({
           name: 'staff-dashboard',
           component: () => import('@/views/staff/StaffDashboardView.vue'),
         },
+        // -----------------------------------------------------------
+        // Users: the people, identity checks (a filter of the list),
+        // integrator applications, the avatar, support. Opens on the list.
+        // -----------------------------------------------------------
         {
           path: 'users',
-          name: 'staff-users',
-          component: () => import('@/views/staff/StaffUsersView.vue'),
-        },
-        {
-          path: 'payments',
-          name: 'staff-payments',
-          component: () => import('@/views/staff/StaffPaymentsView.vue'),
-        },
-        {
-          // Reached from the Tools section of StaffMoreView (not a bottom
-          // tab -- STAFF_TABS already has 5 fixed slots, same placement
-          // reasoning as agent-apps/support/avatar below).
-          path: 'withdrawals',
-          name: 'staff-withdrawals',
-          component: () => import('@/views/staff/StaffWithdrawalsView.vue'),
-        },
-        // -----------------------------------------------------------
-        // Platform tab (iter 2.7 Block B onwards)
-        //
-        // Nested tree: PlatformView is a thin wrapper carrying a
-        // chip-row for News / Events / Companies and a <router-view>.
-        // The detail view under companies/:id is itself a nested
-        // surface with its own <router-view> -- one route per
-        // section (profile / price / roadmap / posts / documents /
-        // templates). Deep-linkable, browser back works.
-        //
-        // All children inherit meta.roles=['staff'] from the
-        // StaffShell record above (Vue Router meta merge).
-        // -----------------------------------------------------------
-        {
-          path: 'platform',
-          component: () => import('@/views/staff/platform/PlatformView.vue'),
+          component: () => import('@/views/staff/StaffHubView.vue'),
+          meta: { hub: 'users' as const },
           children: [
             {
               path: '',
-              redirect: '/staff/platform/news',
+              name: 'staff-users',
+              component: () => import('@/views/staff/StaffUsersView.vue'),
+            },
+            {
+              path: 'agent-apps',
+              name: 'staff-agent-apps',
+              meta: sectionMeta(USERS_SECTIONS, 'agent-apps'),
+              component: () => import('@/views/staff/StaffAgentAppsView.vue'),
+            },
+            {
+              path: 'avatar',
+              name: 'staff-avatar',
+              meta: sectionMeta(USERS_SECTIONS, 'avatar'),
+              component: () => import('@/views/staff/StaffAvatarView.vue'),
+            },
+            {
+              // Ф-3: one route, list + conversation panel toggled by local
+              // state inside the view -- no child route for a single
+              // thread (see StaffSupportView's own header for why).
+              path: 'support',
+              name: 'staff-support',
+              component: () => import('@/views/staff/StaffSupportView.vue'),
+            },
+          ],
+        },
+        // -----------------------------------------------------------
+        // Finance: payments (with the queue of top-ups still in their
+        // hour), withdrawals, gifts, the money check. Opens on the first
+        // section the member may use.
+        // -----------------------------------------------------------
+        {
+          path: 'finance',
+          component: () => import('@/views/staff/StaffHubView.vue'),
+          meta: { hub: 'finance' as const },
+          children: [
+            {
+              // Opens on the first section the member may use. Decided in
+              // beforeEnter, which runs AFTER the global guard has waited for
+              // the signed-in user: a `redirect` is resolved before any guard
+              // and, on a page reload, would see a member whose rights are not
+              // loaded yet.
+              path: '',
+              component: () => import('@/views/auth/LoadingView.vue'),
+              beforeEnter: () => hubStart(FINANCE_SECTIONS),
+            },
+            {
+              path: 'payments',
+              name: 'staff-payments',
+              meta: sectionMeta(FINANCE_SECTIONS, 'payments'),
+              component: () => import('@/views/staff/StaffPaymentsView.vue'),
+            },
+            {
+              path: 'withdrawals',
+              name: 'staff-withdrawals',
+              meta: sectionMeta(FINANCE_SECTIONS, 'withdrawals'),
+              component: () => import('@/views/staff/StaffWithdrawalsView.vue'),
+            },
+            {
+              path: 'gifts',
+              name: 'staff-gifts',
+              meta: sectionMeta(FINANCE_SECTIONS, 'gifts'),
+              component: () => import('@/views/staff/StaffGiftsView.vue'),
+            },
+            {
+              path: 'reconciliation',
+              name: 'staff-reconciliation',
+              meta: sectionMeta(FINANCE_SECTIONS, 'reconciliation'),
+              component: () => import('@/views/staff/StaffReconciliationView.vue'),
+            },
+          ],
+        },
+        // -----------------------------------------------------------
+        // Platform tab: news, events, projects, the platform's settings.
+        //
+        // Nested tree: the hub carries the chip row; the detail view under
+        // projects/:id is itself a nested surface with its own <router-view>
+        // -- one route per section (profile / price / roadmap / posts /
+        // documents / templates / products). Deep-linkable, browser back
+        // works.
+        //
+        // All children inherit meta.roles=['staff'] from the StaffShell
+        // record above (Vue Router meta merge). "Platform" opens on the
+        // first section the member may use (hubStart), not on a fixed one.
+        // -----------------------------------------------------------
+        {
+          path: 'platform',
+          component: () => import('@/views/staff/StaffHubView.vue'),
+          meta: { hub: 'platform' as const },
+          children: [
+            {
+              // Opens on the first section the member may use (see Finance).
+              path: '',
+              component: () => import('@/views/auth/LoadingView.vue'),
+              beforeEnter: () => hubStart(PLATFORM_SECTIONS),
             },
             {
               path: 'news',
               name: 'staff-platform-news',
+              meta: sectionMeta(PLATFORM_SECTIONS, 'news'),
               component: () => import('@/views/staff/platform/StaffNewsView.vue'),
             },
             {
               path: 'events',
               name: 'staff-platform-events',
+              meta: sectionMeta(PLATFORM_SECTIONS, 'events'),
               component: () => import('@/views/staff/platform/StaffEventsView.vue'),
             },
             {
-              path: 'companies',
+              path: 'projects',
               name: 'staff-platform-companies',
+              meta: sectionMeta(PLATFORM_SECTIONS, 'projects'),
               component: () => import('@/views/staff/platform/StaffCompaniesListView.vue'),
             },
             {
@@ -805,21 +877,22 @@ export const router = createRouter({
               // far -- the verification mode.
               //
               // P-88: the permission lives here and nowhere else. The
-              // platform tab bar reads it back off this record, so the
-              // chip and the lock cannot drift apart.
+              // hub's chip row reads it from the same table, so the chip
+              // and the lock cannot drift apart.
               path: 'settings',
               name: 'staff-platform-settings',
-              meta: { permission: 'kyc_approve' as const },
+              meta: sectionMeta(PLATFORM_SECTIONS, 'settings'),
               component: () =>
                 import('@/views/staff/platform/StaffVerificationSettingsSection.vue'),
             },
             {
-              path: 'companies/:id',
+              path: 'projects/:id',
+              meta: sectionMeta(PLATFORM_SECTIONS, 'projects'),
               component: () => import('@/views/staff/platform/StaffCompanyDetailView.vue'),
               children: [
                 {
                   path: '',
-                  redirect: (to) => `/staff/platform/companies/${to.params.id}/profile`,
+                  redirect: (to) => `/staff/platform/projects/${to.params.id}/profile`,
                 },
                 {
                   path: 'profile',
@@ -830,6 +903,13 @@ export const router = createRouter({
                   path: 'price',
                   name: 'staff-platform-company-price',
                   component: () => import('@/views/staff/platform/StaffCompanyPriceSection.vue'),
+                },
+                {
+                  // The pool of parts for sale: read, and create it when the
+                  // project has none.
+                  path: 'pool',
+                  name: 'staff-platform-company-pool',
+                  component: () => import('@/views/staff/platform/StaffCompanyPoolSection.vue'),
                 },
                 {
                   path: 'roadmap',
@@ -862,41 +942,48 @@ export const router = createRouter({
                   component: () =>
                     import('@/views/staff/platform/StaffCompanyTemplatesSection.vue'),
                 },
+                {
+                  path: 'products',
+                  name: 'staff-platform-company-products',
+                  component: () => import('@/views/staff/platform/StaffCompanyProductsSection.vue'),
+                },
               ],
             },
           ],
         },
+        // Settings: the member's own profile, security, notifications.
         {
-          path: 'more',
-          name: 'staff-more',
-          component: () => import('@/views/staff/StaffMoreView.vue'),
+          path: 'settings',
+          name: 'staff-settings',
+          component: () => import('@/views/staff/StaffSettingsView.vue'),
         },
         {
-          path: 'agent-apps',
-          name: 'staff-agent-apps',
-          component: () => import('@/views/staff/StaffAgentAppsView.vue'),
-        },
-        {
-          // Ф-3: one route, list + conversation panel toggled by local
-          // state inside the view -- no child route for a single
-          // thread (see StaffSupportView's own header for why).
-          path: 'support',
-          name: 'staff-support',
-          component: () => import('@/views/staff/StaffSupportView.vue'),
-        },
-        {
-          path: 'avatar',
-          name: 'staff-avatar',
-          component: () => import('@/views/staff/StaffAvatarView.vue'),
+          // The staff member's own legal documents to read (Settings,
+          // Documents): the AML policy and the cabinet's papers.
+          path: 'docs',
+          name: 'staff-docs',
+          component: () => import('@/views/investor/InvestorDocsView.vue'),
         },
         {
           // Phase 6: the bell -- reached from CHeader's notifications
-          // icon and from the Notifications entry in StaffMoreView's
-          // Tools section. Reuses the same investor-owned view as
-          // every other shell.
+          // icon and from the Notifications line of the Settings tab.
+          // Reuses the same investor-owned view as every other shell.
           path: 'notifications',
           name: 'staff-notifications',
           component: () => import('@/views/investor/NotificationsInboxView.vue'),
+        },
+        // The addresses the old layout used, kept so a bookmark or an
+        // old link lands on the section that replaced them.
+        { path: 'payments', redirect: '/staff/finance/payments' },
+        { path: 'withdrawals', redirect: '/staff/finance/withdrawals' },
+        { path: 'agent-apps', redirect: '/staff/users/agent-apps' },
+        { path: 'avatar', redirect: '/staff/users/avatar' },
+        { path: 'support', redirect: '/staff/users/support' },
+        { path: 'more', redirect: '/staff/settings' },
+        { path: 'platform/companies', redirect: '/staff/platform/projects' },
+        {
+          path: 'platform/companies/:rest(.*)',
+          redirect: (to) => `/staff/platform/projects/${String(to.params.rest ?? '')}`,
         },
       ],
     },

@@ -3,7 +3,10 @@
 // AIVIS.ONE Frontend -- StaffCompanyPriceSection (iter 2.7 Block C / C2)
 // =============================================================================
 //
-// Current unit price + immutable price-history table + edit modal.
+// The price of a part + the immutable history of the project's revaluations +
+// edit modal. The price of a part is the project's valuation divided by
+// 1,000,000,000, so each row of the history is a revaluation of the project;
+// the screen says so under its title.
 //
 // Sources:
 //   GET   /staff/companies/{id}/price-history (iter 2.6c B3) -- paginated,
@@ -201,6 +204,9 @@ onMounted(reload)
     <h3 class="scpr__history-title">
       {{ t('staff.platform.price.historyTitle') }}
     </h3>
+    <p class="scpr__history-caption">
+      {{ t('staff.platform.price.historyCaption') }}
+    </p>
 
     <div v-if="loading" class="scpr__center">
       <CLoader :size="28" />
@@ -299,6 +305,13 @@ onMounted(reload)
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.scpr__history-caption {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  max-width: var(--maxw-prose);
 }
 
 .scpr__history-title {

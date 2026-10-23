@@ -120,12 +120,18 @@ const AGENT_READ_TYPES: readonly string[] = [...BUYER_READ_TYPES, 'agent_integra
 // not listed here.
 const COMPANY_READ_TYPES: readonly string[] = ['cabinet_terms', 'privacy_policy']
 
+// A staff member reads the AML and screening policy (their document) and the
+// cabinet's two general papers; nothing of it is required of them to sign.
+const STAFF_READ_TYPES: readonly string[] = ['aml_policy', 'cabinet_terms', 'privacy_policy']
+
 const READ_TYPES: readonly string[] =
   authStore.role === 'agent'
     ? AGENT_READ_TYPES
     : authStore.role === 'company'
       ? COMPANY_READ_TYPES
-      : BUYER_READ_TYPES
+      : authStore.role === 'staff'
+        ? STAFF_READ_TYPES
+        : BUYER_READ_TYPES
 
 const documents = ref<DocumentResponse[]>([])
 // Ids of the documents the role must sign (from listDocuments()).

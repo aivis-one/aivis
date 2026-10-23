@@ -1,34 +1,66 @@
 <script setup lang="ts">
-// Staff agent applications — pending queue with approve/reject.
-// GET /api/v1/staff/agent-applications → AgentApplicationResponse[]
+// Staff integrator applications — the pending queue, paged, with approve/reject.
+// GET /api/v1/staff/agent-applications (?page=, ?per_page=) → each row carries
+//   the applicant's name, e-mail and identity-check status, so staff decide on
+//   a person and not on an id.
 // POST /api/v1/staff/agent-applications/{id}/approve → 204
 // POST /api/v1/staff/agent-applications/{id}/reject → 204
+//
+// After the approval the person accepts the integrator agreement with one press
+// and receives their one link; nothing of that is on this screen.
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText, Check, X } from 'lucide-vue-next'
-import { CAvatar, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import { CAvatar, CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
+import { tOrRaw } from '@/utils/i18n'
 import {
   fetchAgentApplications,
   approveAgentApplication,
   rejectAgentApplication,
 } from '@/api/admin'
-import type { AgentApplicationResponse } from '@/api/types'
+import type { AgentApplicationQueueItem } from '@/api/admin'
 
 const { t } = useI18n()
 const { showToast } = useToast()
 
-const items = ref<AgentApplicationResponse[]>([])
+const items = ref<AgentApplicationQueueItem[]>([])
+const total = ref(0)
+const page = ref(1)
+const perPage = 20
 const loading = ref(true)
 const error = ref(false)
+
+const totalPages = computed(() => Math.ceil(total.value / perPage))
+
+function goToPrevPage(): void {
+  page.value--
+  void loadQueue()
+}
+
+function goToNextPage(): void {
+  page.value++
+  void loadQueue()
+}
+
+const kycVariant = (status: string) => {
+  if (status === 'approved') return 'success'
+  if (status === 'submitted') return 'warning'
+  if (status === 'rejected' || status === 'revoked') return 'danger'
+  return 'neutral'
+}
+
+function kycLabel(status: string): string {
+  return tOrRaw(t, `staff.userDetail.kyc.filter.${status}`, status)
+}
 
 // Double-submit guard.
 const processingIds = ref<Set<string>>(new Set())
 
 // Reject modal.
 const showRejectModal = ref(false)
-const rejectTarget = ref<AgentApplicationResponse | null>(null)
+const rejectTarget = ref<AgentApplicationQueueItem | null>(null)
 const rejectReason = ref('')
 const rejectLoading = ref(false)
 
@@ -36,7 +68,9 @@ async function loadQueue(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    items.value = await fetchAgentApplications()
+    const resp = await fetchAgentApplications({ page: page.value, per_page: perPage })
+    items.value = resp.items
+    total.value = resp.total
   } catch {
     error.value = true
   } finally {
@@ -44,13 +78,13 @@ async function loadQueue(): Promise<void> {
   }
 }
 
-async function handleApprove(item: AgentApplicationResponse): Promise<void> {
+async function handleApprove(item: AgentApplicationQueueItem): Promise<void> {
   if (processingIds.value.has(item.id)) return
   processingIds.value.add(item.id)
   try {
     await approveAgentApplication(item.id)
     showToast(t('staff.agentApps2.approved'), 'success')
-    items.value = items.value.filter((i) => i.id !== item.id)
+    await settleAfterDecision()
   } catch {
     showToast(t('common.error'), 'error')
   } finally {
@@ -58,7 +92,7 @@ async function handleApprove(item: AgentApplicationResponse): Promise<void> {
   }
 }
 
-function openReject(item: AgentApplicationResponse): void {
+function openReject(item: AgentApplicationQueueItem): void {
   rejectTarget.value = item
   rejectReason.value = ''
   showRejectModal.value = true
@@ -73,14 +107,21 @@ async function handleReject(): Promise<void> {
   try {
     await rejectAgentApplication(id, { reason: rejectReason.value })
     showToast(t('staff.agentApps2.rejected'), 'success')
-    items.value = items.value.filter((i) => i.id !== id)
     showRejectModal.value = false
+    await settleAfterDecision()
   } catch {
     showToast(t('common.error'), 'error')
   } finally {
     processingIds.value.delete(id)
     rejectLoading.value = false
   }
+}
+
+// A decided application leaves the queue, so the page is read again; when the
+// decided one was the last of its page, the page before it is shown.
+async function settleAfterDecision(): Promise<void> {
+  if (items.value.length === 1 && page.value > 1) page.value--
+  await loadQueue()
 }
 
 onMounted(loadQueue)
@@ -116,12 +157,19 @@ onMounted(loadQueue)
     <!-- Queue -->
     <div v-else class="apps-list">
       <div v-for="item in items" :key="item.id" class="app-item">
-        <CAvatar :name="item.user_id.slice(0, 8)" :size="40" />
+        <CAvatar :name="item.applicant_name" :size="40" />
         <div class="app-item__info">
-          <div class="app-item__name">{{ item.user_id.slice(0, 8) }}…</div>
+          <div class="app-item__name">{{ item.applicant_name }}</div>
           <div class="app-item__detail">
-            {{ item.status }} &bull;
+            {{ item.applicant_email ?? '—' }} &bull;
             {{ new Date(item.created_at).toLocaleDateString() }}
+          </div>
+          <div class="app-item__kyc">
+            <span class="app-item__kyc-label">{{ t('staff.agentApps2.kycStatus') }}</span>
+            <CBadge
+              :variant="kycVariant(item.applicant_kyc_status)"
+              :text="kycLabel(item.applicant_kyc_status)"
+            />
           </div>
         </div>
         <div class="app-item__actions">
@@ -143,6 +191,17 @@ onMounted(loadQueue)
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="apps-pagination">
+      <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
+        &larr;
+      </CButton>
+      <span class="apps-pagination__page">{{ page }} / {{ totalPages }}</span>
+      <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
+        &rarr;
+      </CButton>
     </div>
 
     <!-- Reject modal -->
@@ -218,12 +277,33 @@ onMounted(loadQueue)
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
-  font-family: var(--font-mono);
 }
 .app-item__detail {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+.app-item__kyc {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.app-item__kyc-label {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.apps-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.apps-pagination__page {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 /* A5: the gap is 12px, not 4, and the reason is arithmetic rather than taste.
    These buttons are painted 32px and carry a 44px hit overlay; at a 4px gap

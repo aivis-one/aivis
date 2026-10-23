@@ -3,17 +3,18 @@
 // AIVIS.ONE Frontend -- StaffCompanyProfileSection (iter 2.7 Block C)
 // =============================================================================
 //
-// Company profile inspection, plus (TASK-30 ruling 12) a status
-// control. Reads the company from the shared STAFF_COMPANY_KEY context
-// (PERF-40-01) -- the parent detail view already loaded it for the
-// header, so this section does not fire its own detail GET. Renders
-// name, description, status, cover, price, supply, and the raw
-// distribution_config.
+// Project profile: a staff member reads it and changes its NAME,
+// DESCRIPTION and LINKS (logo, cover, promo video, presentation), plus
+// (TASK-30 ruling 12) a status control. Reads the project from the shared
+// STAFF_COMPANY_KEY context (PERF-40-01) -- the parent detail view already
+// loaded it for the header, so this section does not fire its own detail GET.
+// Renders name, description, status, cover, the price of a part, the parts in
+// total, and the division of the parts.
 //
-// Editing most fields is out of MVP scope (R1 §4.3) -- this surface
-// stays inspection-only for them. distribution_config is shown as
-// pretty-printed JSON rather than a structured editor for the same
-// reason.
+// THE DIVISION OF THE PARTS IS FIXED -- 25 percent for sale, 10 to the index,
+// 14 to the bonus fund, 51 to the reserve -- and is shown as a read-only table
+// that nothing on this screen writes. The server would accept a new division in
+// the update; the screen does not offer one.
 //
 // SUPPLY CONTROL (TASK-39 item 6 dilution ruling, owner, 2026-08-29).
 //   total_supply now has a real mutating control too: PATCH
@@ -67,7 +68,16 @@
 import { inject, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CBadge, CButton, CEmptyState, CModal, CSelect, CInput } from '@/components/ui'
+import {
+  CLoader,
+  CBadge,
+  CButton,
+  CEmptyState,
+  CModal,
+  CSelect,
+  CInput,
+  CTextarea,
+} from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import {
@@ -76,7 +86,7 @@ import {
   fetchStaffCompanyPool,
 } from '@/api/staff-companies'
 import { ApiResponseError } from '@/api/client'
-import type { PoolResponse } from '@/api/types'
+import type { PoolResponse, UpdateCompanyRequest } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
@@ -92,9 +102,7 @@ const canEditStatus = canDo('project_manage')
 // StaffCompanyPriceSection's price edit (FP-23).
 const canManageSupply = canDo('project_manage')
 const canFinancialSupply = canDo('financial_operations')
-const canEditSupply = computed<boolean>(
-  () => canManageSupply.value && canFinancialSupply.value,
-)
+const canEditSupply = computed<boolean>(() => canManageSupply.value && canFinancialSupply.value)
 
 // PERF-40-01: read the company the parent detail view already loaded
 // instead of firing a second GET /staff/companies/{id}. The injection
@@ -195,6 +203,88 @@ async function handleStatusSave(): Promise<void> {
     showToast(message, 'error')
   } finally {
     savingStatus.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Profile control: name, description, links (project_manage)
+// ---------------------------------------------------------------------------
+
+const canEditProfile = canDo('project_manage')
+
+// The fixed division of the parts, in percent; shown, never edited.
+const DISTRIBUTION_ROWS: readonly { key: string; percent: number }[] = [
+  { key: 'sale', percent: 25 },
+  { key: 'index', percent: 10 },
+  { key: 'bonus', percent: 14 },
+  { key: 'reserve', percent: 51 },
+]
+
+const showProfileEdit = ref(false)
+const savingProfile = ref(false)
+const draftName = ref('')
+const draftDescription = ref('')
+const draftLogo = ref('')
+const draftCover = ref('')
+const draftPromo = ref('')
+const draftPresentation = ref('')
+
+function openProfileEdit(): void {
+  if (!canEditProfile.value || !company.value) return
+  const c = company.value
+  draftName.value = c.name
+  draftDescription.value = c.description ?? ''
+  draftLogo.value = c.logo_url ?? ''
+  draftCover.value = c.cover_url ?? ''
+  draftPromo.value = c.promo_video_url ?? ''
+  draftPresentation.value = c.presentation_url ?? ''
+  showProfileEdit.value = true
+}
+
+const canSaveProfile = computed<boolean>(() => draftName.value.trim().length > 0)
+
+// Only the fields that changed travel (an omitted field is kept, null clears).
+function profileChanges(): UpdateCompanyRequest {
+  const c = company.value
+  const body: UpdateCompanyRequest = {}
+  if (!c) return body
+  const name = draftName.value.trim()
+  if (name !== c.name) body.name = name
+  const text = (value: string): string | null => value.trim() || null
+  if (text(draftDescription.value) !== (c.description ?? null)) {
+    body.description = text(draftDescription.value)
+  }
+  if (text(draftLogo.value) !== (c.logo_url ?? null)) body.logo_url = text(draftLogo.value)
+  if (text(draftCover.value) !== (c.cover_url ?? null)) body.cover_url = text(draftCover.value)
+  if (text(draftPromo.value) !== (c.promo_video_url ?? null)) {
+    body.promo_video_url = text(draftPromo.value)
+  }
+  if (text(draftPresentation.value) !== (c.presentation_url ?? null)) {
+    body.presentation_url = text(draftPresentation.value)
+  }
+  return body
+}
+
+async function handleProfileSave(): Promise<void> {
+  if (!canEditProfile.value || !canSaveProfile.value) return
+  const id = companyId.value
+  const body = profileChanges()
+  if (!id) return
+  if (Object.keys(body).length === 0) {
+    showProfileEdit.value = false
+    return
+  }
+  savingProfile.value = true
+  try {
+    await updateStaffCompany(id, body)
+    showProfileEdit.value = false
+    showToast(t('staff.platform.profile.profileUpdated'), 'success')
+    await ctx?.reload()
+  } catch (err) {
+    const message = err instanceof ApiResponseError && err.detail ? err.detail : t('common.error')
+    showToast(message, 'error')
+  } finally {
+    savingProfile.value = false
   }
 }
 
@@ -351,14 +441,6 @@ async function submitSupply(newTotalSupply: number): Promise<boolean> {
   }
 }
 
-// Pretty-print distribution_config for read-only inspection. It is a
-// free-form JSONB on the backend, so we show it verbatim rather than
-// assuming a fixed shape.
-const distributionJson = computed<string>(() => {
-  if (!company.value) return ''
-  return JSON.stringify(company.value.distribution_config, null, 2)
-})
-
 // No local fetch -- the parent detail view owns the company load and
 // provides it via STAFF_COMPANY_KEY. The retry button calls ctx.reload.
 </script>
@@ -384,11 +466,23 @@ const distributionJson = computed<string>(() => {
         <img :src="company.cover_url" :alt="company.name" class="scp__cover-img" />
       </div>
 
-      <!-- Status + price + supply rows -->
+      <!-- Name (with the profile edit), status, price of a part, parts -->
+      <div class="scp__row">
+        <span class="scp__label">{{ t('staff.platform.profile.name') }}</span>
+        <div class="scp__status-cell">
+          <span class="scp__value">{{ company.name }}</span>
+          <CButton v-if="canEditProfile" variant="outline" size="sm" @click="openProfileEdit">
+            {{ t('staff.platform.profile.profileEditCta') }}
+          </CButton>
+        </div>
+      </div>
       <div class="scp__row">
         <span class="scp__label">{{ t('staff.platform.profile.status') }}</span>
         <div class="scp__status-cell">
-          <CBadge :variant="statusVariant(company.status)" :text="company.status" />
+          <CBadge
+            :variant="statusVariant(company.status)"
+            :text="statusValueLabel(company.status)"
+          />
           <CButton v-if="canShowStatusEdit" variant="outline" size="sm" @click="openStatusEdit">
             {{ t('staff.platform.profile.statusEditCta') }}
           </CButton>
@@ -406,10 +500,6 @@ const distributionJson = computed<string>(() => {
             {{ t('staff.platform.profile.supplyEditCta') }}
           </CButton>
         </div>
-      </div>
-      <div class="scp__row">
-        <span class="scp__label">{{ t('staff.platform.profile.sharesPerOption') }}</span>
-        <span class="scp__value">{{ company.shares_per_option }}</span>
       </div>
 
       <!-- Description (FP-25 self-hide when absent) -->
@@ -449,17 +539,74 @@ const distributionJson = computed<string>(() => {
         </ul>
       </div>
 
-      <!-- distribution_config (raw JSON inspection) -->
+      <!-- The division of the parts: fixed, read only -->
       <div class="scp__section">
         <h3 class="scp__section-title">
-          {{ t('staff.platform.profile.distributionConfig') }}
+          {{ t('staff.platform.profile.distribution.title') }}
         </h3>
-        <pre class="scp__json">{{ distributionJson }}</pre>
+        <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="scp__row">
+          <span class="scp__label">{{
+            t(`staff.platform.profile.distribution.rows.${row.key}`)
+          }}</span>
+          <span class="scp__value">{{ row.percent }}%</span>
+        </div>
+        <p class="scp__modal-hint">
+          {{ t('staff.platform.profile.distribution.hint') }}
+        </p>
       </div>
     </template>
 
     <!-- Defensive empty (company null but no error/loading -- shouldn't happen) -->
     <CEmptyState v-else :title="t('common.noResults')" />
+
+    <!-- Profile edit modal: name, description, links (project_manage-gated) -->
+    <CModal :open="showProfileEdit" @close="showProfileEdit = false">
+      <h3 class="scp__modal-title">
+        {{ t('staff.platform.profile.profileEditTitle') }}
+      </h3>
+      <CInput v-model="draftName" :label="t('staff.platform.profile.name')" maxlength="500" />
+      <CTextarea
+        v-model="draftDescription"
+        :label="t('staff.platform.profile.description')"
+        :rows="4"
+        maxlength="5000"
+      />
+      <CInput
+        v-model="draftLogo"
+        :label="t('staff.platform.profile.logoUrl')"
+        :placeholder="t('staff.platform.urlPlaceholder')"
+      />
+      <CInput
+        v-model="draftCover"
+        :label="t('staff.platform.profile.coverUrl')"
+        :placeholder="t('staff.platform.urlPlaceholder')"
+      />
+      <CInput
+        v-model="draftPromo"
+        :label="t('staff.platform.profile.promoVideoUrl')"
+        :placeholder="t('staff.platform.urlPlaceholder')"
+      />
+      <CInput
+        v-model="draftPresentation"
+        :label="t('staff.platform.profile.presentationUrl')"
+        :placeholder="t('staff.platform.urlPlaceholder')"
+      />
+      <p class="scp__modal-hint">{{ t('staff.platform.profile.profileEditHint') }}</p>
+      <div class="scp__modal-actions">
+        <CButton variant="outline" size="sm" @click="showProfileEdit = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          :loading="savingProfile"
+          :disabled="!canSaveProfile"
+          @click="handleProfileSave"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
 
     <!-- Status edit modal (project_manage-gated) -->
     <CModal :open="showStatusEdit" @close="showStatusEdit = false">
@@ -543,8 +690,7 @@ const distributionJson = computed<string>(() => {
         {{
           t('staff.platform.profile.supplyConfirmBody', {
             oldPct: formatPercent(Number(activePool.equity_percent)),
-            newPct:
-              previewEquityPercent !== null ? formatPercent(previewEquityPercent) : '—',
+            newPct: previewEquityPercent !== null ? formatPercent(previewEquityPercent) : '—',
           })
         }}
       </p>
@@ -668,18 +814,6 @@ const distributionJson = computed<string>(() => {
   color: var(--primary);
   text-decoration: underline;
   word-break: break-all;
-}
-
-.scp__json {
-  font-size: var(--fs-xs);
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
-  overflow-x: auto;
-  margin: 0;
-  white-space: pre;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,

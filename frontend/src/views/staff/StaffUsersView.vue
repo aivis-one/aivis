@@ -3,31 +3,25 @@
 // AIVIS.ONE Frontend -- StaffUsersView (iter 2.7 A3 + A5)
 // =============================================================================
 //
-// Staff user management -- list, role / kyc_status filter, detail modal.
-//   GET    /api/v1/staff/users (?role=, ?kyc_status=, ?page=, ?per_page=)
+// Staff user management -- list, search, role / kyc_status filter, detail modal.
+//   GET    /api/v1/staff/users (?search=, ?role=, ?kyc_status=, ?page=, ?per_page=)
 //   GET    /api/v1/staff/users/{id}
 //   PATCH  /api/v1/staff/users/{id}/block
 //   PATCH  /api/v1/staff/users/{id}/unblock
 //   PATCH  /api/v1/staff/users/{id}/email (admin only, H28 P-105)
 //   POST   /api/v1/staff/users (promote to staff, admin only)
 //   PATCH  /api/v1/staff/users/{id}/permissions (admin only)
+//   POST   /api/v1/staff/users/{staff_profile_id}/deactivate (admin only)
 //   POST   /api/v1/staff/kyc/{application_id}/approve  (iter 2.7 A5)
 //   POST   /api/v1/staff/kyc/{application_id}/reject   (iter 2.7 A5)
 //
-// Sprint 4.4 PermissionKey contract:
-//   PermissionKey is derived from the backend's UpdatePermissionsRequest
-//   and the runtime list ALL_PERMISSION_KEYS is checked both ways at
-//   compile time:
+// The permission keys the card shows are checked both ways at compile time
+// in utils/staffRights.ts (PERMISSION_KEYS): a key the backend schema lacks or
+// a new one this screen forgot fails the type check.
 //
-//     1. `as const satisfies readonly PermissionKey[]`
-//        rejects keys in the array that are NOT valid PermissionKey
-//        values (typos and removed-on-backend keys).
-//
-//     2. The `_PermissionKeysExhaustive` assertion below rejects valid
-//        PermissionKey values that are MISSING from the array (a new
-//        permission added to the backend that this UI forgot). The
-//        use-site assignment is what actually fails the build -- a
-//        bare type alias is just a tooltip warning.
+// What a member sees follows their rights: the Block and Unblock buttons need
+// user_block; promoting, the rights card and taking a member off duty are the
+// administrator's (every permission on); the KYC section needs kyc_approve.
 //
 // iter 2.7 A3 + A5 (R1 §3 KYC merge).
 //   The old StaffKYCView page was removed in iter 2.7 A2. Its
@@ -59,7 +53,7 @@
 //   statuses (approved / rejected) leave only the history visible.
 // =============================================================================
 
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Clock } from 'lucide-vue-next'
@@ -73,6 +67,15 @@ import {
   CInput,
   CCheckbox,
 } from '@/components/ui'
+import { tOrRaw } from '@/utils/i18n'
+import {
+  PERMISSION_KEYS,
+  PERMISSION_PRESETS,
+  holdsEveryPermission,
+  matchingPreset,
+  presetPatch,
+} from '@/utils/staffRights'
+import type { PermissionPreset } from '@/utils/staffRights'
 import { ApiResponseError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -84,6 +87,7 @@ import {
   changeUserEmail,
   unblockUser,
   createStaff,
+  deactivateStaff,
   updatePermissions,
   approveKYC,
   approveKYCUser,
@@ -105,43 +109,10 @@ import type {
 
 // PermissionKey derived from the backend schema -- single source of
 // truth. Required<> strips the `?` so `keyof` returns every permission
-// regardless of optional-on-the-wire shape.
+// regardless of optional-on-the-wire shape. The list of keys the card shows
+// (and its compile-time exhaustiveness check) lives in utils/staffRights.ts,
+// next to the presets and the section table that read the same keys.
 type PermissionKey = keyof Required<UpdatePermissionsRequest>
-
-// Full list of permission keys -- ensures UI shows all toggles even if
-// backend omits false values. `as const satisfies readonly PermissionKey[]`
-// catches typos and removed-on-backend keys at compile time.
-//
-// content_manage was added to DEFAULT_STAFF_PERMISSIONS in backend
-// Sprint 9.1 and finally to UpdatePermissionsRequest in iter 2.7 A6
-// (schema-side mini-iter that closed the 9-vs-8 drift). project_manage
-// was added under TASK-30 §7, narrowing the company/pool/product/
-// attachments write surface off company_manage to admin-only. The
-// exhaustiveness assertion below now expects ten keys.
-const ALL_PERMISSION_KEYS = [
-  'avatar_mode',
-  'kyc_approve',
-  'payment_review',
-  'user_block',
-  'financial_operations',
-  'agent_application_review',
-  'translation_edit',
-  'company_manage',
-  'content_manage',
-  'project_manage',
-] as const satisfies readonly PermissionKey[]
-
-// Compile-time exhaustiveness: if the backend adds a new permission to
-// UpdatePermissionsRequest and this array forgets it, the assignment
-// below fails to typecheck -- the type on the right resolves to the
-// error-object literal, which is not assignable to `true`.
-type _PermissionKeysExhaustive =
-  Exclude<PermissionKey, (typeof ALL_PERMISSION_KEYS)[number]> extends never
-    ? true
-    : { readonly error: 'ALL_PERMISSION_KEYS missing keys from UpdatePermissionsRequest' }
-
-const _permissionKeysExhaustive: _PermissionKeysExhaustive = true
-void _permissionKeysExhaustive
 
 // KYC status filter chip values. Backend ?kyc_status= accepts these
 // exact strings (KYCStatus StrEnum, 422 on anything else).
@@ -185,6 +156,24 @@ const authStore = useAuthStore()
 // in the detail modal's KYC section. Reads the effective permission
 // merged with defaults on the current staff member.
 const canDoKycApprove = canDo('kyc_approve')
+// Blocking and unblocking need user_block; the buttons are not drawn without it.
+const canBlock = canDo('user_block')
+
+// Names the screen shows for what the server sends as tokens: a role is
+// spoken as a person would (buyer, integrator, project, staff), a status as
+// the filter chips say it.
+function roleLabel(role: string): string {
+  return tOrRaw(t, `staff.roles.${role}`, role)
+}
+function kycLabel(status: string): string {
+  return tOrRaw(t, `staff.userDetail.kyc.filter.${status}`, status)
+}
+function stepLabel(step: string): string {
+  return tOrRaw(t, `staff.userDetail.onboardingSteps.${step}`, step)
+}
+function permissionLabel(key: string): string {
+  return tOrRaw(t, `staff.rights.keys.${key}`, key)
+}
 
 // -- List state --
 const items = ref<UserListItem[]>([])
@@ -207,6 +196,13 @@ function goToNextPage(): void {
 }
 const perPage = 20
 const roleFilter = ref('')
+// The search box: what is typed (`searchInput`) and what the list is read
+// with (`search`). The list follows the typing after a short pause, and at
+// once on Enter; a search of less than two letters reads the whole list.
+const searchInput = ref('')
+const search = ref('')
+const SEARCH_PAUSE_MS = 350
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 // The staff dashboard's KYC card and alert banner deep-link here, because
 // iter 2.7 A2 removed /staff/kyc and moved the queue into this screen. The
 // chip is selected from `?kyc_status=`, VALIDATED against the enum above --
@@ -427,23 +423,32 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
+// Each read carries a number; an answer that comes back after a newer read
+// was started is dropped, so the list always shows the LAST filter chosen even
+// when the chips are pressed faster than the server answers.
+let loadEpoch = 0
+
 async function loadUsers(): Promise<void> {
+  const mine = ++loadEpoch
   loading.value = true
   error.value = false
   try {
     const resp = await fetchUsers({
       role: roleFilter.value || undefined,
       kyc_status: kycStatusFilter.value || undefined,
+      search: search.value || undefined,
       page: page.value,
       per_page: perPage,
     })
+    if (mine !== loadEpoch) return
     items.value = resp.items
     total.value = resp.total
   } catch (err) {
+    if (mine !== loadEpoch) return
     error.value = true
     showToast(serverReason(err, 'common.error'), 'error')
   } finally {
-    loading.value = false
+    if (mine === loadEpoch) loading.value = false
   }
 }
 
@@ -554,6 +559,28 @@ function setKycStatusFilter(status: '' | KYCStatus): void {
   page.value = 1
 }
 
+function applySearch(): void {
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+    searchTimer = null
+  }
+  const typed = searchInput.value.trim()
+  // The server matches a substring; one letter matches nearly everyone.
+  const next = typed.length >= 2 ? typed : ''
+  if (next === search.value) return
+  search.value = next
+  page.value = 1
+}
+
+watch(searchInput, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(applySearch, SEARCH_PAUSE_MS)
+})
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
+
 // -- Actions --
 
 async function handleBlock(): Promise<void> {
@@ -644,6 +671,50 @@ async function setPermission(key: PermissionKey, value: boolean): Promise<void> 
   }
 }
 
+// One press of a preset marks its set: the member holds exactly those rights
+// afterwards (utils/staffRights.ts says why it replaces rather than adds).
+async function applyPreset(preset: PermissionPreset): Promise<void> {
+  if (!detailUser.value?.staff_profile || !isAdmin.value) return
+  try {
+    const updated = await updatePermissions(detailUser.value.staff_profile.id, presetPatch(preset))
+    detailUser.value.staff_profile = updated
+    showToast(t('staff.userDetail.permissionsUpdated'), 'success')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
+  }
+}
+
+const activePreset = computed(() => matchingPreset(detailUser.value?.staff_profile?.permissions))
+const isEveryRight = computed(() =>
+  holdsEveryPermission(detailUser.value?.staff_profile?.permissions),
+)
+
+// Taking a member off duty (administrator only). Not offered on one's own
+// card, and only while the member is on duty.
+const showDeactivateModal = ref(false)
+const canDeactivate = computed(
+  () =>
+    isAdmin.value &&
+    detailUser.value?.staff_profile?.is_active === true &&
+    detailUser.value.id !== authStore.user?.id,
+)
+
+async function handleDeactivate(): Promise<void> {
+  const profile = detailUser.value?.staff_profile
+  if (!detailUser.value || !profile) return
+  actionLoading.value = true
+  try {
+    detailUser.value.staff_profile = await deactivateStaff(profile.id)
+    showToast(t('staff.userDetail.deactivated'), 'success')
+    showDeactivateModal.value = false
+    await loadUsers()
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 // iter 2.7 A5 -- KYC Approve / Reject from the detail modal.
 //
 // Both handlers carry a defensive permission check (FP-23 belt-and-
@@ -710,7 +781,22 @@ async function handleKycDecision(): Promise<void> {
   }
 }
 
-watch([roleFilter, kycStatusFilter], () => loadUsers())
+watch([roleFilter, kycStatusFilter, search], () => loadUsers())
+
+// A press on the Home's identity-check counter while this list is already open
+// changes only the address; the chip follows it, and the list is read again by
+// the watch above.
+watch(
+  () => route.query.kyc_status,
+  (value) => {
+    const next = String(value ?? '')
+    const status = (ALL_KYC_STATUSES as readonly string[]).includes(next) ? (next as KYCStatus) : ''
+    if (status !== kycStatusFilter.value) {
+      kycStatusFilter.value = status
+      page.value = 1
+    }
+  },
+)
 
 onMounted(loadUsers)
 </script>
@@ -721,6 +807,15 @@ onMounted(loadUsers)
          iter 2.7 A5: KYC chip row added below the existing role row;
          the two filters compose at the backend boundary. -->
     <div class="staff-users__filters">
+      <CInput
+        v-model="searchInput"
+        type="search"
+        autocomplete="off"
+        :placeholder="t('staff.searchPlaceholder')"
+        :aria-label="t('staff.searchPlaceholder')"
+        maxlength="255"
+        @keydown.enter.prevent="applySearch"
+      />
       <div class="staff-users__filter-row">
         <button class="filter-chip" :class="{ active: !roleFilter }" @click="setRoleFilter('')">
           {{ t('common.all') }}
@@ -732,7 +827,7 @@ onMounted(loadUsers)
           :class="{ active: roleFilter === r }"
           @click="setRoleFilter(r)"
         >
-          {{ r }}
+          {{ roleLabel(r) }}
         </button>
       </div>
       <div class="staff-users__filter-row">
@@ -785,10 +880,12 @@ onMounted(loadUsers)
             <div class="user-item__name">
               {{ fullName(item) }}
             </div>
-            <div class="user-item__detail">{{ item.role }} &bull; {{ item.email ?? '—' }}</div>
+            <div class="user-item__detail">
+              {{ roleLabel(item.role) }} &bull; {{ item.email ?? '—' }}
+            </div>
           </div>
           <div class="user-item__right">
-            <CBadge :variant="kycVariant(item.kyc_status)" :text="item.kyc_status" />
+            <CBadge :variant="kycVariant(item.kyc_status)" :text="kycLabel(item.kyc_status)" />
             <div v-if="!item.is_active" class="user-item__blocked">
               <CBadge variant="danger" :text="t('staff.userDetail.blocked')" />
             </div>
@@ -819,7 +916,7 @@ onMounted(loadUsers)
         </h3>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.role') }}</span>
-          <CBadge :variant="roleVariant(detailUser.role)" :text="detailUser.role" />
+          <CBadge :variant="roleVariant(detailUser.role)" :text="roleLabel(detailUser.role)" />
         </div>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.status') }}</span>
@@ -832,11 +929,14 @@ onMounted(loadUsers)
         </div>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.kycStatus') }}</span>
-          <CBadge :variant="kycVariant(detailUser.kyc_status)" :text="detailUser.kyc_status" />
+          <CBadge
+            :variant="kycVariant(detailUser.kyc_status)"
+            :text="kycLabel(detailUser.kyc_status)"
+          />
         </div>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.onboardingStep') }}</span>
-          <span class="detail__value">{{ detailUser.onboarding_step }}</span>
+          <span class="detail__value">{{ stepLabel(detailUser.onboarding_step) }}</span>
         </div>
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.registered') }}</span>
@@ -867,7 +967,11 @@ onMounted(loadUsers)
             <span class="detail__label">{{ t('staff.userDetail.kyc.latestStatus') }}</span>
             <CBadge
               :variant="kycVariant(detailUser.latest_application_status ?? 'not_started')"
-              :text="detailUser.latest_application_status ?? '—'"
+              :text="
+                detailUser.latest_application_status
+                  ? kycLabel(detailUser.latest_application_status)
+                  : '—'
+              "
             />
           </div>
 
@@ -885,7 +989,7 @@ onMounted(loadUsers)
                 :key="app.id"
                 class="kyc-history__row"
               >
-                <CBadge :variant="kycVariant(app.status)" :text="app.status" />
+                <CBadge :variant="kycVariant(app.status)" :text="kycLabel(app.status)" />
                 <span class="kyc-history__date">{{ formatDate(app.created_at) }}</span>
               </li>
             </ul>
@@ -971,17 +1075,48 @@ onMounted(loadUsers)
           </div>
         </div>
 
-        <!-- Staff permissions (if staff) -->
-        <div v-if="detailUser.staff_profile" class="detail__section">
+        <!-- Staff rights (if staff). The administrator marks them: four
+             preset buttons mark a whole set with one press, the ticks below
+             mark single rights. A member who is not the administrator has no
+             right to read or change another's rights, so the block is not
+             drawn for them. -->
+        <div v-if="detailUser.staff_profile && isAdmin" class="detail__section">
           <h4 class="detail__subtitle">
             {{ t('staff.userDetail.permissions') }}
+            <CBadge
+              v-if="isEveryRight"
+              variant="primary"
+              :text="t('staff.settings.roleAdmin')"
+              class="detail__admin-badge"
+            />
+            <CBadge
+              v-if="!detailUser.staff_profile.is_active"
+              variant="danger"
+              :text="t('staff.userDetail.offDuty')"
+              class="detail__admin-badge"
+            />
           </h4>
-          <div v-for="key in ALL_PERMISSION_KEYS" :key="key" class="detail__perm">
+          <p class="detail__perm-hint">
+            {{ t('staff.rights.presetHint') }}
+          </p>
+          <div class="perm-presets">
+            <button
+              v-for="preset in PERMISSION_PRESETS"
+              :key="preset.id"
+              type="button"
+              class="filter-chip"
+              :class="{ active: activePreset?.id === preset.id }"
+              @click="applyPreset(preset)"
+            >
+              {{ t(preset.labelKey) }}
+            </button>
+          </div>
+          <div v-for="key in PERMISSION_KEYS" :key="key" class="detail__perm">
             <CCheckbox
               :model-value="!!detailUser.staff_profile.permissions[key]"
               @update:model-value="(v: boolean) => setPermission(key, v)"
             >
-              {{ key }}
+              {{ permissionLabel(key) }}
             </CCheckbox>
           </div>
         </div>
@@ -989,7 +1124,7 @@ onMounted(loadUsers)
         <!-- Actions -->
         <div class="detail__actions">
           <CButton
-            v-if="detailUser.is_active && detailUser.role !== 'staff'"
+            v-if="canBlock && detailUser.is_active && detailUser.role !== 'staff'"
             variant="danger"
             size="sm"
             @click="showBlockModal = true"
@@ -1002,7 +1137,7 @@ onMounted(loadUsers)
                (create_staff does not check is_active on the backend),
                and unblock must still be reachable for that account. -->
           <CButton
-            v-if="!detailUser.is_active"
+            v-if="canBlock && !detailUser.is_active"
             variant="primary"
             size="sm"
             @click="showUnblockModal = true"
@@ -1018,12 +1153,20 @@ onMounted(loadUsers)
             {{ t('staff.userDetail.changeEmail') }}
           </CButton>
           <CButton
-            v-if="detailUser.role !== 'staff'"
+            v-if="isAdmin && detailUser.role !== 'staff'"
             variant="secondary"
             size="sm"
             @click="showPromoteModal = true"
           >
             {{ t('staff.userDetail.promoteToStaff') }}
+          </CButton>
+          <CButton
+            v-if="canDeactivate"
+            variant="danger"
+            size="sm"
+            @click="showDeactivateModal = true"
+          >
+            {{ t('staff.userDetail.deactivate') }}
           </CButton>
         </div>
       </template>
@@ -1101,6 +1244,24 @@ onMounted(loadUsers)
           {{ t('common.cancel') }}
         </CButton>
         <CButton variant="primary" size="sm" :loading="actionLoading" @click="handleUnblock">
+          {{ t('common.confirm') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Take a staff member off duty (administrator only) -->
+    <CModal :open="showDeactivateModal" @close="showDeactivateModal = false">
+      <h3 class="detail__title">
+        {{ t('staff.userDetail.deactivate') }}
+      </h3>
+      <p class="detail__confirm-text">
+        {{ t('staff.userDetail.deactivateConfirm') }}
+      </p>
+      <div class="detail__actions" style="margin-top: 16px">
+        <CButton variant="outline" size="sm" @click="showDeactivateModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="danger" size="sm" :loading="actionLoading" @click="handleDeactivate">
           {{ t('common.confirm') }}
         </CButton>
       </div>
@@ -1325,6 +1486,21 @@ onMounted(loadUsers)
 }
 .detail__perm {
   padding: var(--space-1) 0;
+}
+.detail__perm-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2);
+  max-width: var(--maxw-prose);
+}
+.detail__admin-badge {
+  margin-inline-start: var(--space-2);
+}
+.perm-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 .detail__actions {
   display: flex;

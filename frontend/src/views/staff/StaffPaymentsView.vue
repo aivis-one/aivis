@@ -1,14 +1,32 @@
 <script setup lang="ts">
-// Staff payments — paginated payment list with status filter + chargeback reversal.
-// GET /api/v1/staff/payments (?status=, ?user_id=, ?page=, ?per_page=)
-// POST /api/v1/staff/payments/{id}/reverse
+// =============================================================================
+// AIVIS.ONE Frontend -- StaffPaymentsView (Finance > Payments)
+// =============================================================================
+//
+// Two blocks, one screen:
+//
+//   1. THE QUEUE OF TOP-UPS IN THEIR HOUR. A top-up is confirmed by itself
+//      after the blockchain has confirmed it and an hour has passed. Until
+//      then it is "frozen", and this block lists exactly those, each with the
+//      time left, so a staff member can look at the transaction and reverse
+//      it before the hour ends. A reversal takes the money the top-up brought
+//      back out of the accounts it reached.
+//   2. THE PAYMENT LIST, paged, with a status filter. A confirmed payment can
+//      still be reversed (a chargeback); every status, type and label is
+//      spoken in the interface language, never as a raw token.
+//
+// GET  /api/v1/staff/payments (?status=, ?user_id=, ?page=, ?per_page=)
+// POST /api/v1/staff/payments/{id}/reverse   (frozen or confirmed)
+// =============================================================================
 
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CreditCard } from 'lucide-vue-next'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
+import { ApiResponseError } from '@/api/client'
 import { fetchPayments, reversePayment } from '@/api/admin'
+import { tOrRaw } from '@/utils/i18n'
 import type { StaffPaymentResponse } from '@/api/types'
 
 const { t } = useI18n()
@@ -37,6 +55,18 @@ const statusFilter = ref('')
 const loading = ref(true)
 const error = ref(false)
 
+// -- The queue of top-ups in their hour --
+const queue = ref<StaffPaymentResponse[]>([])
+const queueLoading = ref(true)
+const queueError = ref(false)
+// One read looks at up to a hundred; a longer queue says so.
+const QUEUE_WINDOW = 100
+const queueTotal = ref(0)
+
+// The clock the "time left" is counted against, moved every half minute.
+const now = ref(Date.now())
+let clock: ReturnType<typeof setInterval> | null = null
+
 // Reverse modal.
 const showReverseModal = ref(false)
 const reverseTarget = ref<StaffPaymentResponse | null>(null)
@@ -44,6 +74,8 @@ const reverseReason = ref('')
 const reverseLoading = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
+
+const STATUSES = ['frozen', 'confirmed', 'reversed', 'failed'] as const
 
 const statusVariant = (s: string) => {
   if (s === 'confirmed') return 'success'
@@ -53,8 +85,34 @@ const statusVariant = (s: string) => {
   return 'neutral'
 }
 
+function statusLabel(status: string): string {
+  return tOrRaw(t, `staff.payments.statuses.${status}`, status)
+}
+
+function typeLabel(type: string): string {
+  return tOrRaw(t, `staff.payments.types.${type}`, type)
+}
+
 function formatCents(cents: number, currency: string): string {
   return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`
+}
+
+/** Whole minutes until the hour ends; null when the payment carries no end. */
+function minutesLeft(item: StaffPaymentResponse): number | null {
+  if (!item.frozen_until) return null
+  const ms = new Date(item.frozen_until).getTime() - now.value
+  return Math.max(0, Math.ceil(ms / 60000))
+}
+
+function timeLeftLabel(item: StaffPaymentResponse): string {
+  const minutes = minutesLeft(item)
+  if (minutes === null) return t('staff.payments.queue.noEnd')
+  if (minutes === 0) return t('staff.payments.queue.confirming')
+  return t('staff.payments.queue.minutesLeft', { n: minutes })
+}
+
+function serverReason(err: unknown, fallbackKey: string): string {
+  return err instanceof ApiResponseError && err.detail ? err.detail : t(fallbackKey)
 }
 
 async function loadPayments(): Promise<void> {
@@ -75,6 +133,25 @@ async function loadPayments(): Promise<void> {
   }
 }
 
+async function loadQueue(): Promise<void> {
+  queueLoading.value = true
+  queueError.value = false
+  try {
+    const resp = await fetchPayments({ status: 'frozen', page: 1, per_page: QUEUE_WINDOW })
+    // The soonest to confirm first: that is the one to look at next.
+    queue.value = [...resp.items].sort(
+      (a, b) =>
+        new Date(a.frozen_until ?? a.created_at).getTime() -
+        new Date(b.frozen_until ?? b.created_at).getTime(),
+    )
+    queueTotal.value = resp.total
+  } catch {
+    queueError.value = true
+  } finally {
+    queueLoading.value = false
+  }
+}
+
 function openReverse(item: StaffPaymentResponse): void {
   reverseTarget.value = item
   reverseReason.value = ''
@@ -90,9 +167,9 @@ async function handleReverse(): Promise<void> {
     })
     showToast(t('staff.payments.reversed'), 'success')
     showReverseModal.value = false
-    await loadPayments()
-  } catch {
-    showToast(t('common.error'), 'error')
+    await Promise.all([loadQueue(), loadPayments()])
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
   } finally {
     reverseLoading.value = false
   }
@@ -103,9 +180,24 @@ function setStatusFilter(s: string): void {
   page.value = 1
 }
 
+// A payment can be reversed while it is in its hour or after it was confirmed.
+function canReverse(item: StaffPaymentResponse): boolean {
+  return item.status === 'frozen' || item.status === 'confirmed'
+}
+
 watch([statusFilter], () => loadPayments())
 
-onMounted(loadPayments)
+onMounted(() => {
+  void loadQueue()
+  void loadPayments()
+  clock = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
+})
+
+onBeforeUnmount(() => {
+  if (clock) clearInterval(clock)
+})
 </script>
 
 <template>
@@ -116,19 +208,69 @@ onMounted(loadPayments)
       {{ t('staff.payments.hint') }}
     </div>
 
+    <!-- The queue of top-ups in their hour -->
+    <section class="pay-queue" :aria-label="t('staff.payments.queue.title')">
+      <h3 class="pay-queue__title">
+        {{ t('staff.payments.queue.title') }}
+        <CBadge v-if="!queueLoading && !queueError" variant="warning" :text="String(queueTotal)" />
+      </h3>
+      <div v-if="queueLoading" class="staff-pay__center staff-pay__center--short">
+        <CLoader :size="24" />
+      </div>
+      <div v-else-if="queueError" class="staff-pay__center staff-pay__center--short">
+        <p class="pay-queue__error">{{ t('staff.payments.queue.error') }}</p>
+        <CButton variant="secondary" size="sm" @click="loadQueue">
+          {{ t('common.retry') }}
+        </CButton>
+      </div>
+      <p v-else-if="!queue.length" class="pay-queue__empty">
+        {{ t('staff.payments.queue.empty') }}
+      </p>
+      <div v-else class="pay-list">
+        <div v-for="item in queue" :key="item.id" class="pay-item">
+          <div class="pay-item__info">
+            <div class="pay-item__amount">
+              {{ formatCents(item.amount_cents, item.currency) }}
+            </div>
+            <div class="pay-item__detail">
+              {{ typeLabel(item.payment_type) }} &bull; {{ item.provider }} &bull;
+              {{ new Date(item.created_at).toLocaleString() }}
+            </div>
+            <div class="pay-item__user">
+              {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
+            </div>
+          </div>
+          <div class="pay-item__right">
+            <CBadge variant="warning" :text="timeLeftLabel(item)" />
+            <button class="pay-item__reverse" @click.stop="openReverse(item)">
+              {{ t('staff.payments.reverse') }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <p v-if="queueTotal > QUEUE_WINDOW" class="pay-queue__more">
+        {{ t('staff.payments.queue.more', { n: QUEUE_WINDOW }) }}
+      </p>
+    </section>
+
+    <!-- All payments -->
+    <h3 class="pay-queue__title">
+      {{ t('staff.payments.listTitle') }}
+    </h3>
+
     <!-- Status filters -->
     <div class="staff-pay__filters">
       <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
-        All
+        {{ t('common.all') }}
       </button>
       <button
-        v-for="s in ['frozen', 'confirmed', 'reversed', 'failed']"
+        v-for="s in STATUSES"
         :key="s"
         class="filter-chip"
         :class="{ active: statusFilter === s }"
         @click="setStatusFilter(s)"
       >
-        {{ s }}
+        {{ statusLabel(s) }}
       </button>
     </div>
 
@@ -139,6 +281,7 @@ onMounted(loadPayments)
 
     <!-- Error -->
     <div v-else-if="error" class="staff-pay__center">
+      <p class="pay-queue__error">{{ t('common.error') }}</p>
       <CButton variant="secondary" size="sm" @click="loadPayments">
         {{ t('common.retry') }}
       </CButton>
@@ -160,15 +303,17 @@ onMounted(loadPayments)
               {{ formatCents(item.amount_cents, item.currency) }}
             </div>
             <div class="pay-item__detail">
-              {{ item.payment_type }} &bull; {{ item.provider }} &bull;
+              {{ typeLabel(item.payment_type) }} &bull; {{ item.provider }} &bull;
               {{ new Date(item.created_at).toLocaleDateString() }}
             </div>
-            <div class="pay-item__user">User: {{ item.user_id.slice(0, 8) }}…</div>
+            <div class="pay-item__user">
+              {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
+            </div>
           </div>
           <div class="pay-item__right">
-            <CBadge :variant="statusVariant(item.status)" :text="item.status" />
+            <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
             <button
-              v-if="item.status === 'confirmed'"
+              v-if="canReverse(item)"
               class="pay-item__reverse"
               @click.stop="openReverse(item)"
             >
@@ -386,5 +531,32 @@ onMounted(loadPayments)
 }
 .staff-pay__hint {
   max-width: var(--maxw-prose);
+}
+
+.pay-queue {
+  margin-bottom: var(--space-5);
+}
+.pay-queue__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-3);
+}
+.pay-queue__empty,
+.pay-queue__more {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.pay-queue__error {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  margin: 0;
+}
+.staff-pay__center--short {
+  min-height: var(--center-sm);
 }
 </style>

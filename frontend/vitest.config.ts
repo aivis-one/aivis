@@ -23,6 +23,10 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    // The build's version (vite.config.ts writes the real one); the tests read a fixed one.
+    __APP_VERSION__: JSON.stringify('0.0.0-test'),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

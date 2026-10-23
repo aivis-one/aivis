@@ -157,18 +157,18 @@ export function reorderOwnAttachments(body: ReorderAttachmentsRequest): Promise<
 // for. Slow mobile uploading a large PDF needs the extra slack.
 const ATTACHMENT_UPLOAD_TIMEOUT_MS = 60_000
 
-/** Shared response-parsing / error-mapping tail for both multipart calls
- * below. Mirrors uploadOwnRoadmapCover's error handling exactly -- see
+/** Shared response-parsing / error-mapping tail for the multipart calls of
+ * this module and of the staff surface (api/staff-companies.ts). Mirrors uploadOwnRoadmapCover's error handling exactly -- see
  * that function's docstring in api/company-roadmap.ts for the full
  * rationale (ApiTimeoutError on abort, ApiNetworkError on transport
  * failure, ApiResponseError with `detail`/`message` extraction and
  * Retry-After on 4xx/5xx).
  */
-async function _sendAttachmentMultipart(
+export async function sendAttachmentMultipart<T = AttachmentResponse>(
   url: string,
   method: 'POST' | 'PATCH',
   form: FormData,
-): Promise<AttachmentResponse> {
+): Promise<T> {
   const headers: Record<string, string> = {}
   const token = getAuthToken()
   if (token) {
@@ -220,7 +220,7 @@ async function _sendAttachmentMultipart(
       throw new ApiResponseError(response.status, detail, retryAfter)
     }
 
-    return data as AttachmentResponse
+    return data as T
   } finally {
     clearTimeout(timeoutId)
   }
@@ -261,7 +261,7 @@ export async function createOwnAttachment(
   form.append('metadata', JSON.stringify(metadata))
   form.append('file', file)
 
-  return _sendAttachmentMultipart(url, 'POST', form)
+  return sendAttachmentMultipart(url, 'POST', form)
 }
 
 /**
@@ -280,5 +280,5 @@ export async function replaceOwnAttachmentFile(
   const form = new FormData()
   form.append('file', file)
 
-  return _sendAttachmentMultipart(url, 'PATCH', form)
+  return sendAttachmentMultipart(url, 'PATCH', form)
 }

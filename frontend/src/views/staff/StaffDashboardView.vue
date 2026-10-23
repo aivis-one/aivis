@@ -1,35 +1,39 @@
 <script setup lang="ts">
-// Staff dashboard — platform statistics + quick actions.
-// GET /api/v1/staff/dashboard/stats → DashboardStatsResponse.
+// =============================================================================
+// AIVIS.ONE Frontend -- StaffDashboardView (the staff Home)
+// =============================================================================
+//
+// One counter for every queue the member works from -- identity checks,
+// top-ups in their hour, withdrawals, integrator applications, support
+// requests nobody has taken -- and the number of users. A press on a counter
+// opens its queue.
+//
+// ONLY THE QUEUES THE MEMBER MAY WORK are drawn: a member without the right to
+// review payments sees no top-up or withdrawal counter (stores/staffQueues.ts
+// does not read them either).
+//
+// A FAILED READ SHOWS AS A FAILURE. A card whose read failed says so in its
+// own words and keeps a dash where the number would be; it never shows a zero
+// that would read as "nothing is waiting". One retry button re-reads all.
+// =============================================================================
 
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import {
-  Users,
-  ShieldAlert,
-  CreditCard,
-  UserCheck,
-  ShieldCheck,
-  Ghost,
-  Banknote,
-} from 'lucide-vue-next'
+import { Users, ShieldAlert, CreditCard, UserCheck, Banknote, MessageCircle } from 'lucide-vue-next'
+import type { Component } from 'vue'
 import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
-import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { useStaffRights } from '@/composables/useStaffRights'
 import { useAuthStore } from '@/stores/auth'
-import { fetchDashboardStats, fetchAgentApplications } from '@/api/admin'
-import type { DashboardStatsResponse } from '@/api/types'
+import { QUEUES, useStaffQueuesStore } from '@/stores/staffQueues'
+import type { QueueKey, QueueSpec } from '@/stores/staffQueues'
 
 const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
-const { showToast } = useToast()
-
-const stats = ref<DashboardStatsResponse | null>(null)
-const pendingApps = ref(0)
-const loading = ref(true)
-const error = ref(false)
+const queues = useStaffQueuesStore()
+const { current } = useStaffRights()
 
 const userName = computed(() => {
   const p = authStore.user?.profile
@@ -38,66 +42,52 @@ const userName = computed(() => {
     const ln = (p as Record<string, unknown>).last_name
     if (fn || ln) return `${fn ?? ''} ${ln ?? ''}`.trim()
   }
-  return authStore.user?.email ?? 'Staff'
+  return authStore.user?.email ?? t('staff.settings.noName')
 })
 
-async function loadStats(): Promise<void> {
-  loading.value = true
-  error.value = false
-  try {
-    const [statsData, apps] = await Promise.all([
-      fetchDashboardStats(),
-      fetchAgentApplications().catch(() => []),
-    ])
-    stats.value = statsData
-    pendingApps.value = apps.length
-  } catch {
-    error.value = true
-    showToast(t('common.error'), 'error')
-  } finally {
-    loading.value = false
-  }
+const ICONS: Record<QueueKey, { icon: Component; variant: 'warning' | 'success' | 'accent' }> = {
+  kyc: { icon: ShieldAlert, variant: 'warning' },
+  topups: { icon: CreditCard, variant: 'success' },
+  withdrawals: { icon: Banknote, variant: 'success' },
+  agentApps: { icon: UserCheck, variant: 'accent' },
+  support: { icon: MessageCircle, variant: 'accent' },
 }
 
-// Navigation handlers. Eight inline @click="router.push(...)" in the
-// template collapsed to five named functions (one per destination):
-// The KYC destination is reached from two places, `/staff/payments` from
-// two. Each handler owns its own safeNavigate call so future per-target
-// guards attach in one place, matching the InvestorDashboardView
-// `goPortfolio/goBalance/...` paradigm.
+/** The queues the member may work, in the Home's order. */
+const visibleQueues = computed<QueueSpec[]>(() => {
+  const rights = current()
+  return QUEUES.filter((q) => !q.permission || rights.can(q.permission))
+})
+
+const loading = computed<boolean>(
+  () =>
+    queues.users.status === 'loading' ||
+    visibleQueues.value.some((q) => queues.queues[q.key].status === 'loading'),
+)
+
+function valueOf(key: QueueKey): string {
+  const q = queues.queues[key]
+  if (q.status === 'error') return '—'
+  return q.more ? `${q.count}+` : String(q.count)
+}
+
+function subOf(key: QueueKey): string | undefined {
+  return queues.queues[key].status === 'error' ? t('staff.home.loadFailed') : undefined
+}
+
+function go(path: string): void {
+  void safeNavigate(router.push(path), `[StaffDashboardView] to ${path}`)
+}
+
 function goUsers(): void {
-  void safeNavigate(router.push('/staff/users'), '[StaffDashboardView] to users')
+  go('/staff/users')
 }
 
-function goKyc(): void {
-  // `/staff/kyc` was REMOVED in iter 2.7 Block A2 and the router says so in
-  // three places -- a push to it fell through to the catch-all and rendered
-  // the 404 page. The queue is now a chip-filtered view of Users, and
-  // `pending_kyc_count` above counts KYCApplication.status == SUBMITTED
-  // (admin_service.py:373-377), so the deep link names that exact status.
-  void safeNavigate(
-    router.push('/staff/users?kyc_status=submitted'),
-    '[StaffDashboardView] to KYC queue',
-  )
+function reload(): void {
+  void queues.loadAll((key) => current().can(key))
 }
 
-function goPayments(): void {
-  void safeNavigate(router.push('/staff/payments'), '[StaffDashboardView] to payments')
-}
-
-function goWithdrawals(): void {
-  void safeNavigate(router.push('/staff/withdrawals'), '[StaffDashboardView] to withdrawals')
-}
-
-function goAgentApps(): void {
-  void safeNavigate(router.push('/staff/agent-apps'), '[StaffDashboardView] to agent apps')
-}
-
-function goAvatar(): void {
-  void safeNavigate(router.push('/staff/avatar'), '[StaffDashboardView] to avatar')
-}
-
-onMounted(loadStats)
+onMounted(reload)
 </script>
 
 <template>
@@ -108,7 +98,10 @@ onMounted(loadStats)
       <h2 class="staff-dash__name">
         {{ userName }}
       </h2>
-      <CBadge variant="primary" :text="t('staff.badge')" />
+      <CBadge
+        variant="primary"
+        :text="current().admin ? t('staff.settings.roleAdmin') : t('staff.settings.roleStaff')"
+      />
     </div>
 
     <!-- Loading -->
@@ -116,23 +109,23 @@ onMounted(loadStats)
       <CLoader :size="32" />
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="staff-dash__center">
-      <p class="staff-dash__error">
-        {{ t('common.error') }}
-      </p>
-      <CButton variant="secondary" size="sm" @click="loadStats">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <template v-else>
+      <!-- A failed read is said, once, with the way to read again -->
+      <div v-if="queues.anyFailed" class="staff-dash__failed" role="alert">
+        <p class="staff-dash__error">
+          {{ t('staff.home.someFailed') }}
+        </p>
+        <CButton variant="secondary" size="sm" @click="reload">
+          {{ t('common.retry') }}
+        </CButton>
+      </div>
 
-    <!-- Stats -->
-    <template v-else-if="stats">
-      <!-- Stat cards grid -->
+      <!-- One counter for every queue the member may work -->
       <div class="stats-grid">
         <CStatCard
-          :value="String(stats.total_users)"
+          :value="queues.users.status === 'error' ? '—' : String(queues.users.count)"
           :label="t('staff.users.stat')"
+          :sub="queues.users.status === 'error' ? t('staff.home.loadFailed') : undefined"
           @click="goUsers"
         >
           <template #icon>
@@ -143,80 +136,20 @@ onMounted(loadStats)
         </CStatCard>
 
         <CStatCard
-          :value="String(stats.pending_kyc_count)"
-          :label="t('staff.kycQueue')"
-          :sub="t('staff.pending')"
-          @click="goKyc"
+          v-for="q in visibleQueues"
+          :key="q.key"
+          :value="valueOf(q.key)"
+          :label="t(q.labelKey)"
+          :sub="subOf(q.key)"
+          @click="go(q.path)"
         >
           <template #icon>
-            <CIconBox variant="warning">
-              <ShieldAlert :size="24" />
-            </CIconBox>
-          </template>
-        </CStatCard>
-
-        <CStatCard
-          :value="String(stats.frozen_payments_count)"
-          :label="t('staff.payments.stat')"
-          :sub="t('staff.awaitingConfirm')"
-          @click="goPayments"
-        >
-          <template #icon>
-            <CIconBox variant="success">
-              <CreditCard :size="24" />
-            </CIconBox>
-          </template>
-        </CStatCard>
-
-        <CStatCard
-          :value="String(pendingApps)"
-          :label="t('staff.agentApps')"
-          :sub="t('staff.new')"
-          @click="goAgentApps"
-        >
-          <template #icon>
-            <CIconBox variant="accent">
-              <UserCheck :size="24" />
+            <CIconBox :variant="ICONS[q.key].variant">
+              <component :is="ICONS[q.key].icon" :size="24" />
             </CIconBox>
           </template>
         </CStatCard>
       </div>
-
-      <!-- KYC alert banner -->
-      <button
-        v-if="stats.pending_kyc_count > 0"
-        type="button"
-        class="staff-dash__alert"
-        @click="goKyc"
-      >
-        <ShieldAlert :size="16" />
-        <span>{{ stats.pending_kyc_count }} {{ t('staff.pending').toLowerCase() }} KYC</span>
-      </button>
-
-      <!-- Role breakdown -->
-      <div v-if="Object.keys(stats.users_by_role).length" class="staff-dash__roles">
-        <div v-for="(count, role) in stats.users_by_role" :key="role" class="staff-dash__role-chip">
-          <span class="staff-dash__role-name">{{ role }}</span>
-          <span class="staff-dash__role-count">{{ count }}</span>
-        </div>
-      </div>
-
-      <!-- Quick actions -->
-      <div class="staff-dash__section-title">
-        {{ t('staff.quickActions') }}
-      </div>
-      <CButton variant="primary" size="sm" class="staff-dash__action" @click="goKyc">
-        <ShieldCheck :size="16" /> {{ t('staff.processKyc') }}
-      </CButton>
-      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goPayments">
-        <CreditCard :size="16" /> {{ t('staff.checkPayments') }}
-      </CButton>
-      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goWithdrawals">
-        <Banknote :size="16" /> {{ t('staff.checkWithdrawals') }}
-      </CButton>
-      <CButton variant="secondary" size="sm" class="staff-dash__action" @click="goAvatar">
-        <Ghost :size="16" /> Avatar Mode
-      </CButton>
     </template>
   </div>
 </template>
@@ -253,68 +186,15 @@ onMounted(loadStats)
   cursor: pointer;
 }
 
-.staff-dash__alert {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  width: 100%;
+.staff-dash__failed {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-3);
   padding: var(--space-3);
   background: var(--warning-subtle);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-4);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--warning);
-  cursor: pointer;
-}
-
-.staff-dash__roles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4-lg);
-}
-
-.staff-dash__role-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.staff-dash__role-name {
-  text-transform: capitalize;
-  font-weight: 600;
-}
-
-.staff-dash__role-count {
-  /* Reading measure: this ran to 901px at 1280. See the prose block below. */
-  max-width: var(--maxw-prose);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.staff-dash__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: var(--space-3);
-}
-
-.staff-dash__action {
-  margin-bottom: var(--space-2);
 }
 
 .staff-dash__center {
@@ -327,6 +207,7 @@ onMounted(loadStats)
 }
 
 .staff-dash__error {
+  margin: 0;
   font-size: var(--fs-sm);
   color: var(--danger);
 }
