@@ -759,6 +759,11 @@
   "light": "#FFFFFF",
   "dark": "#04243E"
  },
+ "--on-primary-muted": {
+  "layer": "semantic",
+  "light": "#DAE5ED",
+  "dark": "#0C3857"
+ },
  "--on-success": {
   "layer": "semantic",
   "light": "#FFFFFF",
@@ -903,6 +908,11 @@
   "layer": "semantic",
   "light": "rgba(7,10,14,.5)",
   "dark": "rgba(7,10,14,.5)"
+ },
+ "--scrim-strong": {
+  "layer": "semantic",
+  "light": "rgba(7,10,14,.7)",
+  "dark": "rgba(7,10,14,.7)"
  },
  "--shadow-1": {
   "layer": "scale",
@@ -1139,6 +1149,11 @@
   "light": "#FFFFFF",
   "dark": "#04243E"
  },
+ "--text-on-scrim": {
+  "layer": "semantic",
+  "light": "#FFFFFF",
+  "dark": "#FFFFFF"
+ },
  "--text-primary": {
   "layer": "semantic",
   "light": "#11161B",
@@ -1268,5 +1283,45 @@
   "layer": "semantic",
   "light": "#652C0A",
   "dark": "#F5AE6D"
+ },
+ "--z-banner": {
+  "layer": "scale",
+  "light": "80",
+  "dark": "80"
+ },
+ "--z-content": {
+  "layer": "scale",
+  "light": "1",
+  "dark": "1"
+ },
+ "--z-dialog": {
+  "layer": "scale",
+  "light": "60",
+  "dark": "60"
+ },
+ "--z-header": {
+  "layer": "scale",
+  "light": "20",
+  "dark": "20"
+ },
+ "--z-menu": {
+  "layer": "scale",
+  "light": "40",
+  "dark": "40"
+ },
+ "--z-sticky": {
+  "layer": "scale",
+  "light": "10",
+  "dark": "10"
+ },
+ "--z-toast": {
+  "layer": "scale",
+  "light": "100",
+  "dark": "100"
+ },
+ "--z-tooltip": {
+  "layer": "scale",
+  "light": "30",
+  "dark": "30"
  }
 }

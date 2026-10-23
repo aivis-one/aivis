@@ -25,6 +25,7 @@
   --primary-subtle: rgba(55,166,230,.14);
   --primary-subtle-text: var(--azure-200);
   --on-primary: #04243E;
+  --on-primary-muted: color-mix(in srgb, var(--on-primary) 85%, var(--primary));
   --success: var(--emerald-300);
   --success-subtle: rgba(52,209,126,.14);
   --success-subtle-text: var(--emerald-200);
@@ -94,6 +95,8 @@
     --primary-subtle: rgba(55,166,230,.14);
     --primary-subtle-text: var(--azure-200);
     --on-primary: #04243E;
+    --on-primary-muted: color-mix(in srgb, var(--on-primary) 85%, var(--primary));
+  --on-primary-muted: color-mix(in srgb, var(--on-primary) 85%, var(--primary));
     --success: var(--emerald-300);
     --success-subtle: rgba(52,209,126,.14);
     --success-subtle-text: var(--emerald-200);

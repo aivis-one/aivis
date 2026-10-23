@@ -5,7 +5,7 @@
 
 # Tokens
 
-254 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
+265 tokens, one source for the site (`landing/`) and the cabinets (`frontend/src/`). The values are in `tokens.css` (day) and `tokens-dark.css` (night); `tokens-resolved.json` holds every token resolved to a literal per theme and is the value authority; `type-recipe.json` holds the families, the scale and the font faces; `contrast.json` holds the measured pairs.
 
 ## Layers
 
@@ -17,7 +17,7 @@
 
 ## Themes
 
-`tokens.css` states the day theme on `:root`. `tokens-dark.css` re-binds the same names under `[data-theme="dark"]` (a chosen theme) and under the system setting when no theme is chosen (`:root:not([data-theme])`), and only the tokens whose night value differs: a token that is the same in both themes (`--paper`, `--scrim`, `--toggle-knob`, the telegram trio) is stated once in `tokens.css`, and a new token goes into both night blocks only when its night value differs. A page sets `data-theme="light"` or `"dark"` on the root, or sets none and follows the system.
+`tokens.css` states the day theme on `:root`. `tokens-dark.css` re-binds the same names under `[data-theme="dark"]` (a chosen theme) and under the system setting when no theme is chosen (`:root:not([data-theme])`), and only the tokens whose night value differs: a token that is the same in both themes (`--paper`, `--scrim`, `--scrim-strong`, `--text-on-scrim`, `--toggle-knob`, the telegram trio, the layer numbers) is stated once in `tokens.css`, and a new token goes into both night blocks only when its night value differs. A page sets `data-theme="light"` or `"dark"` on the root, or sets none and follows the system.
 
 ## Colour roles
 
@@ -44,6 +44,7 @@
 | `--primary-subtle` | a tinted ground for primary |
 | `--primary-subtle-text` | text on primary-subtle |
 | `--on-primary` | text on primary: `#FFFFFF` by day, `#04243E` on every primary button by night |
+| `--on-primary-muted` | quiet text on a primary surface (the brand card): `--on-primary` mixed 85 percent toward `--primary`, so it follows the theme; 6.63 on `--primary` by day and 4.51 by night (9.02 and 5.91 on `--primary-hover`); figures on a primary surface take `--on-primary` itself, with a sign, never `--success` or `--danger` (1.35 and 1.08 by day on the primary gradient) |
 | `--success` | success status |
 | `--success-subtle` | tinted ground |
 | `--success-subtle-text` | text on it |
@@ -71,6 +72,8 @@
 | `--toggle-knob` | switch knob |
 | `--paper` | a ground that stays white in both themes: the QR pad and the frame of a sandboxed document, which paints no ground and expects white; text on it is never a theme text colour |
 | `--scrim` | the veil behind a sheet or a modal: `--neutral-950` at 50 percent, the same in both themes |
+| `--scrim-strong` | the veil under text laid on a photo: `--neutral-950` at 70 percent, the same in both themes; the existing scrim does not reach 4.5:1 over a bright photo (3.72 for white text over a white photo), this one gives 7.66 over a white photo, 13.74 over a mid-grey one and 20.17 over a black one |
+| `--text-on-scrim` | text laid on a photo under a veil: `#FFFFFF` in both themes, because a photo does not change with the theme (`--text-inverse` and `--on-primary` turn dark at night); stands under `--scrim-strong` and never under `--scrim` alone |
 | `--icon-primary` | icon default |
 | `--icon-secondary` | icon supporting |
 | `--icon-disabled` | icon disabled |
@@ -111,9 +114,12 @@ In the night theme every text colour is 4.81 or better on every ground (the lowe
 | Spacing | `--space-1`, `--space-2`, `--space-3`, `--space-4`, `--space-5`, `--space-6`, `--space-7`, `--space-8`, `--space-9`, `--space-4-lg`, `--space-5-lg`, `--space-6-lg`, `--space-component-sm`, `--space-component-md`, `--space-component-lg`, `--space-section-sm`, `--space-section-md`, `--space-section-lg`, `--space-gutter-web`, `--space-gutter-mobile`, `--space-safe-top`, `--space-safe-right`, `--space-safe-bottom`, `--space-safe-left` |
 | Radius | `--radius-xs`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `--radius-pill`, `--radius-control`, `--radius-card`, `--radius-modal` |
 | Motion | `--dur-instant`, `--dur-fast`, `--dur-base`, `--dur-slow`, `--dur-slower`, `--ease-standard`, `--ease-entrance`, `--ease-exit`, `--ease-spring`, `--motion-micro`, `--motion-quick`, `--motion-moderate`, `--motion-deliberate`, `--motion-ambient` |
+| Layers | `--z-content` 1, `--z-sticky` 10, `--z-header` 20, `--z-tooltip` 30, `--z-menu` 40, `--z-dialog` 60, `--z-banner` 80, `--z-toast` 100: the one stacking order of the system and of every cabinet screen; a `z-index` in a component is one of these, never a bare number |
 | Widths and breakpoints | `--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`, `--maxw`, `--maxw-wide`, `--maxw-prose`, `--maxw-form`, `--maxw-form-wide`, `--header-height` |
 | Sizes, touch and icons | `--touch-min`, `--touch-comfortable`, `--tap-min`, `--control-height-sm`, `--control-height-md`, `--control-height-lg`, `--size-2xs`, `--size-xs`, `--size-sm`, `--size-md`, `--size-lg`, `--size-xl`, `--size-2xl`, `--size-3xl`, `--size-4xl`, `--tile-min`, `--tile-max`, `--center-sm`, `--center-md`, `--center-lg`, `--icon-size-sm`, `--icon-size-md`, `--icon-size-lg`, `--icon-size-xl` |
 | Decoration | `--deco-ink`, `--deco-opacity`, `--deco-line-width`, `--deco-mark-line-width`, `--deco-divider-width`, `--tick-length`, `--tick-thickness`, `--tick-cut`, `--tick-azure-start`, `--tick-azure-end`, `--tick-emerald-start`, `--tick-emerald-end`, `--tick-amber-start`, `--tick-amber-end` |
+
+An icon drawn at 20 or 40 pixels takes `--size-2xs` or `--size-xl`; the named icon steps `--icon-size-sm|md|lg|xl` are 16, 24, 32 and 48.
 
 ## Widths
 

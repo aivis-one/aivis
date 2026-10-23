@@ -1476,6 +1476,138 @@
    "ratio": 19.83,
    "threshold": 3.0,
    "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over white photo under scrim",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim over white photo",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#838486",
+   "ratio": 3.74,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "text-on-scrim over white photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over white photo",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#515456",
+   "ratio": 7.63,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over mid-grey photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over mid-grey photo",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#2B2D30",
+   "ratio": 13.81,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over black photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over black photo",
+   "theme": "light",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#05070A",
+   "ratio": 20.17,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-primary-muted on primary",
+   "foreground": "--on-primary-muted",
+   "background": "--primary",
+   "theme": "light",
+   "foreground_value": "#DAE5ED",
+   "background_value": "#0B4F86",
+   "ratio": 6.63,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-primary-muted on primary-hover",
+   "foreground": "--on-primary-muted",
+   "background": "--primary-hover",
+   "theme": "light",
+   "foreground_value": "#DAE5ED",
+   "background_value": "#083B64",
+   "ratio": 9.02,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over white photo under scrim",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim over white photo",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#838486",
+   "ratio": 3.74,
+   "threshold": 4.5,
+   "verdict": "fail"
+  },
+  {
+   "pair": "text-on-scrim over white photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over white photo",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#515456",
+   "ratio": 7.63,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over mid-grey photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over mid-grey photo",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#2B2D30",
+   "ratio": 13.81,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "text-on-scrim over black photo under scrim-strong",
+   "foreground": "--text-on-scrim",
+   "background": "--scrim-strong over black photo",
+   "theme": "dark",
+   "foreground_value": "#FFFFFF",
+   "background_value": "#05070A",
+   "ratio": 20.17,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-primary-muted on primary",
+   "foreground": "--on-primary-muted",
+   "background": "--primary",
+   "theme": "dark",
+   "foreground_value": "#0C3857",
+   "background_value": "#37A6E6",
+   "ratio": 4.51,
+   "threshold": 4.5,
+   "verdict": "pass"
+  },
+  {
+   "pair": "on-primary-muted on primary-hover",
+   "foreground": "--on-primary-muted",
+   "background": "--primary-hover",
+   "theme": "dark",
+   "foreground_value": "#0C3857",
+   "background_value": "#6DBDED",
+   "ratio": 5.91,
+   "threshold": 4.5,
+   "verdict": "pass"
   }
  ]
 }
