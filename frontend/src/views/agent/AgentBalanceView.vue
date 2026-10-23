@@ -33,7 +33,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownToLine, ArrowUpFromLine, CreditCard, ListChecks, Wallet } from '@/components/ui/icons'
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CreditCard,
+  ListChecks,
+  Wallet,
+} from '@/components/ui/icons'
 
 import {
   CBackLink,
@@ -461,7 +467,7 @@ onMounted(() => {
                 <span class="abal__item-amount">
                   {{ formatPrice(w.amount_cents) }}
                 </span>
-                <span class="abal__badge" :class="`abal__badge--${statusVariant(w.status)}`">
+                <span class="ds-badge" :class="`ds-badge--${statusVariant(w.status)}`">
                   {{ statusLabel(w.status) }}
                 </span>
               </div>
@@ -765,37 +771,6 @@ onMounted(() => {
   font-style: italic;
   text-align: end;
   max-inline-size: 60%;
-}
-
-.abal__badge {
-  display: inline-block;
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-.abal__badge--success {
-  background: var(--bg-page);
-  color: var(--success);
-  border: thin solid var(--success);
-}
-.abal__badge--warning {
-  background: var(--bg-page);
-  color: var(--warning);
-  border: thin solid var(--warning);
-}
-.abal__badge--danger {
-  background: var(--bg-page);
-  color: var(--danger);
-  border: thin solid var(--danger);
-}
-.abal__badge--neutral {
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  border: thin solid var(--border-default);
 }
 
 .abal__sentinel {

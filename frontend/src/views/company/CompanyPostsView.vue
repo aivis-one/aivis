@@ -53,7 +53,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X } from '@/components/ui/icons'
+import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X, Check } from '@/components/ui/icons'
 import {
   CLoader,
   CButton,
@@ -393,17 +393,25 @@ function goBack(): void {
 
     <!-- Filters: is_published chips -->
     <div class="cpost__filters">
-      <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
-        {{ t('comp.posts.filterAll') }}
+      <button
+        class="ds-chip"
+        :aria-pressed="!statusFilter"
+        @click="setStatusFilter('')"
+        type="button"
+      >
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ t('comp.posts.filterAll') }}</span>
       </button>
       <button
         v-for="s in ['published', 'draft'] as const"
         :key="s"
-        class="filter-chip"
-        :class="{ active: statusFilter === s }"
+        class="ds-chip"
+        :aria-pressed="statusFilter === s"
         @click="setStatusFilter(s)"
+        type="button"
       >
-        {{ t(`comp.posts.${s}`) }}
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ t(`comp.posts.${s}`) }}</span>
       </button>
     </div>
 
@@ -663,35 +671,6 @@ function goBack(): void {
   overflow-x: auto;
   padding: 0 var(--space-4) var(--space-1);
 }
-.filter-chip {
-  position: relative;
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  text-transform: capitalize;
-  font-family: inherit;
-}
-.filter-chip::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.filter-chip.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
-}
 
 .cpost__search {
   padding: var(--space-3) var(--space-4) 0;
@@ -863,7 +842,7 @@ function goBack(): void {
 }
 .cpost__preview-cover {
   inline-size: 100%;
-  max-block-size: 200px;
+  max-block-size: var(--center-md);
   object-fit: cover;
   border-radius: var(--radius-md);
 }

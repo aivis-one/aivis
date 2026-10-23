@@ -382,19 +382,20 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
       <!-- The period of the chart, and the export -->
       <div class="canl__tools">
-        <div class="canl__periods" role="group" :aria-label="t('comp.analytics.period.label')">
-          <button
-            v-for="p in PERIODS"
-            :key="p"
-            type="button"
-            class="canl__period"
-            :class="{ 'canl__period--active': period === p }"
-            :aria-pressed="period === p"
-            @click="period = p"
-          >
+        <fieldset class="ds-segmented" data-size="sm">
+          <legend class="ds-sr-only">{{ t('comp.analytics.period.label') }}</legend>
+          <label v-for="p in PERIODS" :key="p" class="ds-segmented__option">
+            <input
+              class="ds-segmented__input"
+              type="radio"
+              name="analytics-period"
+              :value="p"
+              :checked="period === p"
+              @change="period = p"
+            />
             {{ t('comp.analytics.period.months', { n: p }) }}
-          </button>
-        </div>
+          </label>
+        </fieldset>
         <CButton variant="outline" size="sm" @click="exportCsv">
           <Download :size="16" />
           {{ t('comp.analytics.export') }}
@@ -724,25 +725,5 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-.canl__periods {
-  display: inline-flex;
-  gap: var(--space-1);
-}
-.canl__period {
-  min-block-size: var(--size-md);
-  padding: 0 var(--space-3);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-}
-.canl__period--active {
-  border-color: var(--primary);
-  color: var(--primary);
 }
 </style>

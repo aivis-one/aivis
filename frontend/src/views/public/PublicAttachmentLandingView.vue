@@ -353,7 +353,7 @@ async function onDownload(): Promise<void> {
 }
 
 .atl__cta :deep(.c-button) {
-  min-inline-size: 200px;
+  min-inline-size: var(--center-md);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,

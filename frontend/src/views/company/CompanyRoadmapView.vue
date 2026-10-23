@@ -655,17 +655,20 @@ function goBack(): void {
             {{ t('comp.roadmap.kindLockedHint') }}
           </p>
         </template>
-        <div v-else class="croad__kind-tabs">
-          <button
-            v-for="k in KIND_VALUES"
-            :key="k"
-            class="croad__kind-tab"
-            :class="{ 'croad__kind-tab--active': draftKind === k }"
-            @click="selectKind(k)"
-          >
+        <fieldset v-else class="ds-segmented">
+          <legend class="ds-sr-only">{{ t('comp.roadmap.kindLabel') }}</legend>
+          <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
+            <input
+              class="ds-segmented__input"
+              type="radio"
+              name="croad-kind"
+              :value="k"
+              :checked="draftKind === k"
+              @change="selectKind(k)"
+            />
             {{ kindLabel(k) }}
-          </button>
-        </div>
+          </label>
+        </fieldset>
       </div>
 
       <CInput
@@ -1050,27 +1053,6 @@ function goBack(): void {
   color: var(--text-secondary);
   margin: var(--space-2) 0 0;
   line-height: 1.4;
-}
-.croad__kind-tabs {
-  display: flex;
-  gap: var(--space-2);
-}
-.croad__kind-tab {
-  flex: 1;
-  padding: var(--space-3) var(--space-2);
-  border: calc(var(--border-input-width) * 2) solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--dur-base);
-}
-.croad__kind-tab--active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--bg-subtle);
 }
 
 .croad__field {

@@ -59,7 +59,15 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon, ImageUp, X } from '@/components/ui/icons'
+import {
+  ChevronUp,
+  ChevronDown,
+  Pencil,
+  Trash2,
+  Map as MapIcon,
+  ImageUp,
+  X,
+} from '@/components/ui/icons'
 import {
   CLoader,
   CButton,
@@ -807,17 +815,20 @@ onMounted(() => {
             {{ t('staff.platform.roadmap.kindLockedHint') }}
           </p>
         </template>
-        <div v-else class="scr__kind-tabs">
-          <button
-            v-for="k in KIND_VALUES"
-            :key="k"
-            class="scr__kind-tab"
-            :class="{ 'scr__kind-tab--active': draftKind === k }"
-            @click="selectKind(k)"
-          >
+        <fieldset v-else class="ds-segmented">
+          <legend class="ds-sr-only">{{ t('staff.platform.roadmap.kindLabel') }}</legend>
+          <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
+            <input
+              class="ds-segmented__input"
+              type="radio"
+              name="scr-kind"
+              :value="k"
+              :checked="draftKind === k"
+              @change="selectKind(k)"
+            />
             {{ kindLabel(k) }}
-          </button>
-        </div>
+          </label>
+        </fieldset>
       </div>
 
       <!-- Title (all kinds) -->
@@ -1188,27 +1199,6 @@ onMounted(() => {
   color: var(--text-secondary);
   margin: var(--space-2) 0 0;
   line-height: 1.4;
-}
-.scr__kind-tabs {
-  display: flex;
-  gap: var(--space-2);
-}
-.scr__kind-tab {
-  flex: 1;
-  padding: var(--space-3) var(--space-2);
-  border: calc(var(--border-input-width) * 2) solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--dur-base);
-}
-.scr__kind-tab--active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--bg-subtle);
 }
 
 /* Native date field (no CDatePicker in the kit) */

@@ -726,7 +726,7 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: center;
-  min-block-size: 120px;
+  min-block-size: var(--center-sm);
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }

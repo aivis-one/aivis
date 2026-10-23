@@ -304,8 +304,8 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card__cover-badge {
   position: absolute;
-  inset-block-start: 8px;
-  inset-inline-start: 8px;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
   inline-size: var(--size-2xl);
   block-size: var(--size-2xl);
   background: var(--bg-page);

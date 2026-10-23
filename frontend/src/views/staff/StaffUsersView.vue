@@ -56,7 +56,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Clock } from '@/components/ui/icons'
+import { Clock, Check } from '@/components/ui/icons'
 import {
   CAvatar,
   CBadge,
@@ -820,35 +820,47 @@ onMounted(loadUsers)
         @keydown.enter.prevent="applySearch"
       />
       <div class="staff-users__filter-row">
-        <button class="filter-chip" :class="{ active: !roleFilter }" @click="setRoleFilter('')">
-          {{ t('common.all') }}
+        <button
+          class="ds-chip"
+          :aria-pressed="!roleFilter"
+          @click="setRoleFilter('')"
+          type="button"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('common.all') }}</span>
         </button>
         <button
           v-for="r in ['investor', 'agent', 'company', 'staff']"
           :key="r"
-          class="filter-chip"
-          :class="{ active: roleFilter === r }"
+          class="ds-chip"
+          :aria-pressed="roleFilter === r"
           @click="setRoleFilter(r)"
+          type="button"
         >
-          {{ roleLabel(r) }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ roleLabel(r) }}</span>
         </button>
       </div>
       <div class="staff-users__filter-row">
         <button
-          class="filter-chip filter-chip--kyc"
-          :class="{ active: !kycStatusFilter }"
+          class="ds-chip --kyc"
+          :aria-pressed="!kycStatusFilter"
           @click="setKycStatusFilter('')"
+          type="button"
         >
-          {{ t('staff.userDetail.kyc.filterAll') }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('staff.userDetail.kyc.filterAll') }}</span>
         </button>
         <button
           v-for="s in ALL_KYC_STATUSES"
           :key="s"
-          class="filter-chip filter-chip--kyc"
-          :class="{ active: kycStatusFilter === s }"
+          class="ds-chip --kyc"
+          :aria-pressed="kycStatusFilter === s"
           @click="setKycStatusFilter(s)"
+          type="button"
         >
-          {{ t(`staff.userDetail.kyc.filter.${s}`) }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t(`staff.userDetail.kyc.filter.${s}`) }}</span>
         </button>
       </div>
     </div>
@@ -910,7 +922,11 @@ onMounted(loadUsers)
 
     <!-- Detail modal -->
     <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="staff-users__center" style="min-block-size: var(--center-md)">
+      <div
+        v-if="detailLoading"
+        class="staff-users__center"
+        style="min-block-size: var(--center-md)"
+      >
         <CLoader :size="24" />
       </div>
       <template v-else-if="detailUser">
@@ -1103,11 +1119,12 @@ onMounted(loadUsers)
               v-for="preset in PERMISSION_PRESETS"
               :key="preset.id"
               type="button"
-              class="filter-chip"
-              :class="{ active: activePreset?.id === preset.id }"
+              class="ds-chip"
+              :aria-pressed="activePreset?.id === preset.id"
               @click="applyPreset(preset)"
             >
-              {{ t(preset.labelKey) }}
+              <Check class="ds-chip__check" size="sm" />
+              <span>{{ t(preset.labelKey) }}</span>
             </button>
           </div>
           <div v-for="key in PERMISSION_CARD_KEYS" :key="key" class="detail__perm">
@@ -1336,52 +1353,6 @@ onMounted(loadUsers)
   gap: var(--space-2);
   overflow-x: auto;
   padding-block-end: var(--space-1);
-}
-.filter-chip {
-  position: relative;
-  /* A5: pointer target floor. */
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  text-transform: capitalize;
-  font-family: inherit;
-}
-
-/* A5: the PAINTED box stays this size on purpose -- growing it would move the
-   text beside it. The HIT AREA is expanded past it with a centred overlay, the
-   pattern CInput.vue established and this codebase already uses ten times.
-   max() so an already-large box never shrinks. Added 2026-08-25 after the first
-   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
-   is not in getBoundingClientRect(), so no box-based count here could ever see
-   an overlay, and every A5 figure this project published measured the wrong
-   quantity. */
-.filter-chip::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.filter-chip.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
-}
-
-/* Subtle visual distinction for KYC chips so the user can tell which
-   row is which at a glance without reading. The kyc chips share the
-   same active state with role chips for behaviour parity. */
-.filter-chip--kyc {
-  text-transform: none;
 }
 
 .user-list {

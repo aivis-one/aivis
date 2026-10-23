@@ -109,7 +109,7 @@ onMounted(() => {
     <p class="auth-error-text">
       {{ authError }}
     </p>
-    <button class="auth-error-retry" @click="retryAuth">
+    <button class="ds-button ds-button--primary" @click="retryAuth">
       {{ t('common.retry') }}
     </button>
   </div>
@@ -223,20 +223,5 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--danger);
   text-align: center;
-}
-.auth-error-retry {
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
-     found eight of these and they were fixed; the sweep found this one
-     outside that pass's scope. `background: var(--accent)` resolves
-     perfectly, so no token audit can ever see it -- only reading the
-     selector name against the token name does. */
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  border: none;
-  cursor: pointer;
 }
 </style>

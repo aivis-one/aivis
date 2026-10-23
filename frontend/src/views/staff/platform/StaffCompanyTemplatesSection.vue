@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Check } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- StaffCompanyTemplatesSection (iter 2.7 Block C / C2)
 // =============================================================================
@@ -135,45 +136,59 @@ onMounted(loadTemplates)
     <!-- Filter chip rows -->
     <div class="sct__filters">
       <div class="sct__filter-row">
-        <button class="filter-chip" :class="{ active: !kindFilter }" @click="setKind('')">
-          {{ t('staff.platform.templates.allKinds') }}
+        <button class="ds-chip" :aria-pressed="!kindFilter" @click="setKind('')" type="button">
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('staff.platform.templates.allKinds') }}</span>
         </button>
         <button
           v-for="k in KIND_OPTIONS"
           :key="k"
-          class="filter-chip"
-          :class="{ active: kindFilter === k }"
+          class="ds-chip"
+          :aria-pressed="kindFilter === k"
           @click="setKind(k)"
+          type="button"
         >
-          {{ t(`staff.platform.templates.kind.${k}`) }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t(`staff.platform.templates.kind.${k}`) }}</span>
         </button>
       </div>
       <div class="sct__filter-row">
-        <button class="filter-chip" :class="{ active: !languageFilter }" @click="setLanguage('')">
-          {{ t('staff.platform.templates.allLanguages') }}
+        <button
+          class="ds-chip"
+          :aria-pressed="!languageFilter"
+          @click="setLanguage('')"
+          type="button"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('staff.platform.templates.allLanguages') }}</span>
         </button>
         <button
           v-for="l in LANGUAGE_OPTIONS"
           :key="l"
-          class="filter-chip"
-          :class="{ active: languageFilter === l }"
+          class="ds-chip"
+          :aria-pressed="languageFilter === l"
           @click="setLanguage(l)"
+          type="button"
         >
-          {{ l.toUpperCase() }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ l.toUpperCase() }}</span>
         </button>
       </div>
       <div class="sct__filter-row">
-        <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatus('')">
-          {{ t('staff.platform.templates.allStatuses') }}
+        <button class="ds-chip" :aria-pressed="!statusFilter" @click="setStatus('')" type="button">
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('staff.platform.templates.allStatuses') }}</span>
         </button>
         <button
           v-for="s in STATUS_OPTIONS"
           :key="s"
-          class="filter-chip"
-          :class="{ active: statusFilter === s }"
+          class="ds-chip"
+          :aria-pressed="statusFilter === s"
           @click="setStatus(s)"
+          type="button"
         >
-          {{ t(`staff.platform.templates.status.${s}`) }}
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t(`staff.platform.templates.status.${s}`) }}</span>
         </button>
       </div>
     </div>
@@ -301,43 +316,6 @@ onMounted(loadTemplates)
   gap: var(--space-2);
   overflow-x: auto;
   padding-block-end: var(--space-1);
-}
-.filter-chip {
-  position: relative;
-  /* A5: pointer target floor. */
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* A5: the PAINTED box stays this size on purpose -- growing it would move the
-   text beside it. The HIT AREA is expanded past it with a centred overlay, the
-   pattern CInput.vue established and this codebase already uses ten times.
-   max() so an already-large box never shrinks. Added 2026-08-25 after the first
-   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
-   is not in getBoundingClientRect(), so no box-based count here could ever see
-   an overlay, and every A5 figure this project published measured the wrong
-   quantity. */
-.filter-chip::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.filter-chip.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
 }
 
 .sct__center {

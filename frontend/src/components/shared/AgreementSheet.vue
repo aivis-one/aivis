@@ -247,7 +247,7 @@ function onSave(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  min-block-size: 320px;
+  min-block-size: var(--center-lg);
 }
 
 .ags__center {

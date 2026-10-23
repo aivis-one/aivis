@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Check } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- InvestorEventsView (iter 2.7b C, R1 §6.3)
 // =============================================================================
@@ -157,19 +158,21 @@ onMounted(() => {
     <div class="iev__filters">
       <button
         type="button"
-        class="filter-chip"
-        :class="{ active: filter === 'upcoming' }"
+        class="ds-chip"
+        :aria-pressed="filter === 'upcoming'"
         @click="setFilter('upcoming')"
       >
-        {{ t('inv.events.filter.upcoming') }}
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ t('inv.events.filter.upcoming') }}</span>
       </button>
       <button
         type="button"
-        class="filter-chip"
-        :class="{ active: filter === 'past' }"
+        class="ds-chip"
+        :aria-pressed="filter === 'past'"
         @click="setFilter('past')"
       >
-        {{ t('inv.events.filter.past') }}
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ t('inv.events.filter.past') }}</span>
       </button>
     </div>
 
@@ -261,51 +264,5 @@ onMounted(() => {
 .iev__retry-text {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-}
-
-/* Filter chip -- same pattern as EventEditor / TemplatesSection. */
-.filter-chip {
-  position: relative;
-  /* A5: pointer target floor. */
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-pill);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-standard);
-}
-
-/* A5: the PAINTED box stays this size on purpose -- growing it would move the
-   text beside it. The HIT AREA is expanded past it with a centred overlay, the
-   pattern CInput.vue established and this codebase already uses ten times.
-   max() so an already-large box never shrinks. Added 2026-08-25 after the first
-   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
-   is not in getBoundingClientRect(), so no box-based count here could ever see
-   an overlay, and every A5 figure this project published measured the wrong
-   quantity. */
-.filter-chip::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.filter-chip.active {
-  border-color: var(--accent);
-  /* A6: --accent (#B1581B) as TEXT on --bg-subtle (#EDF1F5) measures 4.32.
-     It passes on --bg-page (4.61) and fails on the card it is actually drawn
-     on. --accent-hover is the darker amber that already exists and measures
-     5.77 there, so the chip keeps its amber identity and no new value enters
-     the ramp. The border stays --accent -- a border carries no text.
-     This is the only one of six .filter-chip.active rules that colours text
-     with --accent; the other five use --primary with --on-primary. */
-  color: var(--accent);
-  background: var(--bg-subtle);
 }
 </style>

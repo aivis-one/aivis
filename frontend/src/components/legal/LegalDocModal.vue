@@ -7,7 +7,7 @@
 
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CModal } from '@/components/ui'
+import { CLoader, CModal } from '@/components/ui'
 
 const props = defineProps<{
   open: boolean
@@ -72,7 +72,7 @@ watch(
     </h3>
     <div class="doc-modal__body">
       <div v-if="loading" class="doc-modal__center">
-        <span class="doc-modal__spinner" />
+        <CLoader />
       </div>
       <p v-else-if="error" class="doc-modal__error">
         {{ error }}
@@ -82,7 +82,11 @@ watch(
       <div v-else class="doc-modal__content" v-html="content" />
     </div>
     <div class="doc-modal__actions">
-      <button type="button" class="doc-modal__close" @click="emit('close')">
+      <button
+        type="button"
+        class="doc-modal__close ds-button ds-button--primary"
+        @click="emit('close')"
+      >
         {{ t('common.close') }}
       </button>
     </div>
@@ -99,7 +103,7 @@ watch(
   overflow-wrap: anywhere;
 }
 .doc-modal__body {
-  min-block-size: 120px;
+  min-block-size: var(--center-sm);
   max-block-size: 60vh;
   overflow-y: auto;
   border: thin solid var(--border-default);
@@ -114,21 +118,7 @@ watch(
   justify-content: center;
   min-block-size: var(--center-sm);
 }
-.doc-modal__spinner {
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  border: calc(var(--border-input-width) * 2) solid currentColor;
-  opacity: 0.35;
-  border-block-start-color: currentColor;
-  border-radius: 50%;
-  animation: doc-modal-spin 0.6s linear infinite;
-  display: inline-block;
-}
-@keyframes doc-modal-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+
 .doc-modal__error {
   font-size: var(--fs-xs);
   color: var(--danger);
@@ -169,20 +159,5 @@ watch(
 .doc-modal__actions {
   display: flex;
   justify-content: flex-end;
-}
-.doc-modal__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: 120px;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  border: none;
-  cursor: pointer;
 }
 </style>

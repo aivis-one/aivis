@@ -584,21 +584,23 @@ onMounted(() => {
         <span class="sett__row-label">
           {{ t('inv.settings.prefs.theme') }}
         </span>
-        <div class="sett__chips">
-          <button
-            v-for="mode in THEME_MODES"
-            :key="mode"
-            type="button"
-            class="sett__chip"
-            :class="{ 'sett__chip--active': themeCurrent === mode }"
-            @click="setTheme(mode)"
-          >
-            <Monitor v-if="mode === 'auto'" :size="16" />
-            <Sun v-else-if="mode === 'light'" :size="16" />
-            <Moon v-else :size="16" />
+        <fieldset class="ds-segmented">
+          <legend class="ds-sr-only">{{ t('inv.settings.prefs.theme') }}</legend>
+          <label v-for="mode in THEME_MODES" :key="mode" class="ds-segmented__option">
+            <input
+              class="ds-segmented__input"
+              type="radio"
+              name="theme-mode"
+              :value="mode"
+              :checked="themeCurrent === mode"
+              @change="setTheme(mode)"
+            />
+            <Monitor v-if="mode === 'auto'" size="sm" />
+            <Sun v-else-if="mode === 'light'" size="sm" />
+            <Moon v-else size="sm" />
             {{ t(`inv.settings.prefs.themeValue.${mode}`) }}
-          </button>
-        </div>
+          </label>
+        </fieldset>
       </div>
 
       <!-- Marketing consent -->
@@ -995,42 +997,6 @@ button.sett__row:last-child {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
   text-align: end;
-}
-
-/* Theme chips */
-.sett__chips {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.sett__chip {
-  /* A5: pointer target floor. */
-  min-block-size: var(--tap-min);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    background var(--dur-fast) var(--ease-standard);
-}
-.sett__chip:hover {
-  border-color: var(--primary-hover);
-  color: var(--text-primary);
-}
-.sett__chip--active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--on-primary);
 }
 
 /* Toggle switch. The track is tokenised and the knob was a raw #fff, so the

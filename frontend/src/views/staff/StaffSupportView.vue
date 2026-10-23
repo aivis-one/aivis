@@ -650,7 +650,7 @@ onMounted(() => {
   background: var(--primary);
   border-radius: var(--radius-pill);
   padding: 0 var(--space-2);
-  min-inline-size: 20px;
+  min-inline-size: var(--size-2xs);
   text-align: center;
 }
 .ssup__row-error {

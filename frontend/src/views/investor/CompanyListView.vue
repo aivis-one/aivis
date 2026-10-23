@@ -263,7 +263,7 @@ async function retryLoadMore(): Promise<void> {
   align-items: center;
   gap: var(--space-1);
   align-self: flex-start;
-  min-block-size: 32px;
+  min-block-size: var(--size-md);
   padding: 0 var(--space-2);
   background: none;
   border: none;

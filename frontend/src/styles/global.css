@@ -164,3 +164,11 @@ body {
 .ds-auth__form > .c-field.c-field {
   margin-block-end: 0;
 }
+
+/* The system's nav tile (K34) is drawn on a link; the cabinet opens its tiles from
+   a button, which gets the tile's text alignment and the page's font. */
+button.ds-navtile {
+  inline-size: 100%;
+  text-align: start;
+  font: inherit;
+}

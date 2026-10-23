@@ -307,7 +307,7 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-3);
   inline-size: 100%;
-  min-block-size: 44px;
+  min-block-size: var(--size-2xl);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-surface);
   border: thin solid var(--border-default);

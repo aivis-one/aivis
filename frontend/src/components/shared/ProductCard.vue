@@ -115,7 +115,7 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__img {
-  block-size: 120px;
+  block-size: var(--center-sm);
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
@@ -148,8 +148,8 @@ const available = computed(() => props.product.available_packages)
 
 .product-card__company {
   position: absolute;
-  inset-block-start: 8px;
-  inset-inline-start: 8px;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
   z-index: 2;
   font-size: var(--fs-xs);
   font-weight: 600;

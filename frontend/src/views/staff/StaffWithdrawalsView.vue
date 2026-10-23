@@ -13,7 +13,7 @@
 
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Banknote } from '@/components/ui/icons'
+import { Banknote, Check } from '@/components/ui/icons'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
@@ -172,17 +172,25 @@ onMounted(loadWithdrawals)
 
     <!-- Status filters -->
     <div class="staff-wd__filters">
-      <button class="filter-chip" :class="{ active: !statusFilter }" @click="setStatusFilter('')">
-        {{ t('common.all') }}
+      <button
+        class="ds-chip"
+        :aria-pressed="!statusFilter"
+        @click="setStatusFilter('')"
+        type="button"
+      >
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ t('common.all') }}</span>
       </button>
       <button
         v-for="s in STATUSES"
         :key="s"
-        class="filter-chip"
-        :class="{ active: statusFilter === s }"
+        class="ds-chip"
+        :aria-pressed="statusFilter === s"
         @click="setStatusFilter(s)"
+        type="button"
       >
-        {{ statusLabel(s) }}
+        <Check class="ds-chip__check" size="sm" />
+        <span>{{ statusLabel(s) }}</span>
       </button>
     </div>
 
@@ -217,7 +225,9 @@ onMounted(loadWithdrawals)
             <div class="wd-item__detail">
               {{ new Date(item.created_at).toLocaleDateString() }}
             </div>
-            <div class="wd-item__user">{{ t('staff.withdrawals.user') }}: {{ item.user_id.slice(0, 8) }}…</div>
+            <div class="wd-item__user">
+              {{ t('staff.withdrawals.user') }}: {{ item.user_id.slice(0, 8) }}…
+            </div>
             <div class="wd-item__payout">
               <template v-for="line in payoutLines(item.payout_details_snapshot)" :key="line.key">
                 <span class="wd-item__payout-key">{{ payoutLabel(line.key) }}</span>
@@ -271,7 +281,10 @@ onMounted(loadWithdrawals)
       <template v-if="confirmTarget">
         <p class="modal__label">{{ t('staff.withdrawals.payoutDetails') }}</p>
         <dl class="modal__payout">
-          <template v-for="line in payoutLines(confirmTarget.payout_details_snapshot)" :key="line.key">
+          <template
+            v-for="line in payoutLines(confirmTarget.payout_details_snapshot)"
+            :key="line.key"
+          >
             <dt>{{ payoutLabel(line.key) }}</dt>
             <dd>{{ line.value }}</dd>
           </template>
@@ -339,39 +352,6 @@ onMounted(loadWithdrawals)
   overflow-x: auto;
   margin-block-end: var(--space-4);
   padding-block-end: var(--space-1);
-}
-.filter-chip {
-  position: relative;
-  /* A5: pointer target floor. */
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  text-transform: capitalize;
-}
-
-/* A5: painted box stays the same size; hit area is expanded past it with a
-   centred pseudo-element overlay -- same pattern as StaffPaymentsView.vue's
-   .filter-chip::after (and CInput.vue before it). */
-.filter-chip::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.filter-chip.active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
 }
 
 .staff-wd__center {
@@ -502,7 +482,7 @@ onMounted(loadWithdrawals)
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-3);
   word-break: break-word;
-  max-block-size: 200px;
+  max-block-size: var(--center-md);
   overflow-y: auto;
 }
 .modal__actions {

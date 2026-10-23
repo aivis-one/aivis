@@ -221,50 +221,45 @@ onMounted(() => {
       </p>
     </div>
 
-    <div class="more__grid">
+    <div class="ds-navtiles">
       <button
         v-for="tile in TILES"
         :key="tile.id"
         type="button"
-        class="more__tile"
+        class="ds-navtile"
         @click="openTile(tile)"
       >
-        <div class="more__tile-icon">
-          <component :is="tile.icon" :size="24" />
-        </div>
-        <div class="more__tile-body">
-          <div class="more__tile-title">
+        <span class="ds-navtile__icon">
+          <component :is="tile.icon" />
+        </span>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">
             {{ t(tile.labelKey) }}
-          </div>
-          <div class="more__tile-desc">
+          </span>
+          <span class="ds-navtile__desc">
             {{ t(tile.descKey) }}
-          </div>
-        </div>
-        <ChevronRight :size="16" class="more__tile-chev" />
+          </span>
+        </span>
+        <ChevronRight size="sm" class="ds-navtile__go" />
       </button>
 
       <!-- TASK-39 item 5: discoverability signpost for the existing
            "become a representative" path -- see the header comment
            and openAgentTile() above. Not part of the static TILES
            array because its label reacts to application state. -->
-      <button
-        v-if="showAgentTile"
-        type="button"
-        class="more__tile"
-        @click="openAgentTile"
-      >
-        <div class="more__tile-icon">
-          <UserPlus :size="24" />
-        </div>
-        <div class="more__tile-body">
-          <div class="more__tile-title">
+      <button v-if="showAgentTile" type="button" class="ds-navtile" @click="openAgentTile">
+        <span class="ds-navtile__icon">
+          <UserPlus />
+        </span>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">
             {{ t('inv.more.agent.title') }}
-          </div>
-          <div class="more__tile-desc">
+          </span>
+          <span class="ds-navtile__desc">
             {{ t(agentDescKey, { days: cooldownDaysLeft }) }}
-          </div>
-        </div>
-        <ChevronRight :size="16" class="more__tile-chev" />
+          </span>
+        </span>
+        <ChevronRight size="sm" class="ds-navtile__go" />
       </button>
     </div>
   </div>
@@ -294,77 +289,6 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
-}
-
-/* Grid auto-grows as tiles are added. minmax(220px, 1fr) keeps each
-   tile readable on phones while allowing 2-up layouts on wider
-   viewports without a media query ladder. */
-.more__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-3);
-}
-
-/* Tile -- button reset + flexbox row (icon / body / chevron). */
-.more__tile {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  text-align: start;
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard);
-  min-block-size: 72px;
-}
-.more__tile:hover {
-  border-color: var(--primary-hover);
-  background: var(--bg-subtle);
-  box-shadow: var(--shadow-1);
-}
-.more__tile:active {
-  transform: translateY(1px);
-}
-
-.more__tile-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-2xl);
-  block-size: var(--size-2xl);
-  border-radius: var(--radius-sm);
-  background: var(--primary-subtle);
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.more__tile-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.more__tile-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.more__tile-desc {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.more__tile-chev {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,

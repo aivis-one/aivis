@@ -4,7 +4,7 @@
 //
 // Writes AIVIS-Design-System.md at the repository root FROM THE SOURCE, so the
 // document cannot drift from the code it describes. Run it after any change to
-// components/ui/ or styles/variables.css:
+// components/ui/ or the files of styles/ (ds/tokens*.css, variables.css):
 //
 //     npm --prefix frontend run docs:ds
 //
@@ -209,8 +209,10 @@ const components = uiFiles.map((f) => {
 // --------------------------------------------------------------------------
 // tokens
 
-const varsPath = join(SRC, 'styles', 'variables.css')
-const varsText = readFileSync(varsPath, 'utf8')
+// The tokens are the design system's (copied into styles/ds/) plus the product's own.
+const varsText = ['ds/tokens.css', 'ds/tokens-dark.css', 'variables.css']
+  .map((f) => readFileSync(join(SRC, 'styles', f), 'utf8'))
+  .join('\n')
 
 // group by the comment header that precedes each block
 const tokenGroups = []
@@ -276,7 +278,7 @@ p('# AIVIS.ONE — Design System Reference')
 p()
 p('> **GENERATED FILE — do not edit by hand.** Produced by')
 p('> `frontend/scripts/gen-design-system.mjs` from `frontend/src/components/ui/` and')
-p('> `frontend/src/styles/variables.css`. Regenerate with:')
+p('> `frontend/src/styles/ds/tokens.css`, `tokens-dark.css` and `variables.css`. Regenerate with:')
 p('>')
 p('> ```')
 p('> npm --prefix frontend run docs:ds')

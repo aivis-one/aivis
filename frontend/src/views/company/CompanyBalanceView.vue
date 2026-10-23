@@ -409,7 +409,7 @@ onMounted(() => {
         </div>
         <div class="cbal__item-line">
           <span class="cbal__item-amount">{{ formatPrice(activeRequest.amount_cents) }}</span>
-          <span class="cbal__badge" :class="`cbal__badge--${statusVariant(activeRequest.status)}`">
+          <span class="ds-badge" :class="`ds-badge--${statusVariant(activeRequest.status)}`">
             {{ statusLabel(activeRequest.status) }}
           </span>
         </div>
@@ -438,7 +438,7 @@ onMounted(() => {
                 <span class="cbal__item-amount">
                   {{ formatPrice(w.amount_cents) }}
                 </span>
-                <span class="cbal__badge" :class="`cbal__badge--${statusVariant(w.status)}`">
+                <span class="ds-badge" :class="`ds-badge--${statusVariant(w.status)}`">
                   {{ statusLabel(w.status) }}
                 </span>
               </div>
@@ -750,37 +750,6 @@ onMounted(() => {
   font-style: italic;
   text-align: end;
   max-inline-size: 60%;
-}
-
-.cbal__badge {
-  display: inline-block;
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex-shrink: 0;
-}
-.cbal__badge--success {
-  background: var(--bg-page);
-  color: var(--success);
-  border: thin solid var(--success);
-}
-.cbal__badge--warning {
-  background: var(--bg-page);
-  color: var(--warning);
-  border: thin solid var(--warning);
-}
-.cbal__badge--danger {
-  background: var(--bg-page);
-  color: var(--danger);
-  border: thin solid var(--danger);
-}
-.cbal__badge--neutral {
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  border: thin solid var(--border-default);
 }
 
 .cbal__sentinel {

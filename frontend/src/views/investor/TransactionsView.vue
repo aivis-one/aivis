@@ -48,6 +48,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
+import { onTablistKeydown } from '@/composables/tablistKeys'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -253,14 +254,15 @@ onMounted(() => {
     </div>
 
     <!-- Category tabs -->
-    <div class="tv__tabs" role="tablist">
+    <div class="ds-tabs" role="tablist" @keydown="onTablistKeydown">
       <button
         v-for="tab in TABS"
         :key="tab.key"
-        class="tv__tab"
-        :class="{ 'tv__tab--active': isTabActive(tab) }"
+        type="button"
+        class="ds-tab"
         role="tab"
         :aria-selected="isTabActive(tab)"
+        :tabindex="isTabActive(tab) ? 0 : -1"
         @click="selectTab(tab)"
       >
         {{ t(tab.labelKey) }}
@@ -373,64 +375,6 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
-}
-
-/* Tabs row */
-.tv__tabs {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4) var(--space-3);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tv__tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.tv__tab {
-  position: relative;
-  flex-shrink: 0;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    background var(--dur-fast) var(--ease-standard);
-}
-
-/* A5: the PAINTED box stays this size on purpose -- growing it would move the
-   text beside it. The HIT AREA is expanded past it with a centred overlay, the
-   pattern CInput.vue established and this codebase already uses ten times.
-   max() so an already-large box never shrinks. Added 2026-08-25 after the first
-   HIT TEST (elementFromPoint) rather than a bounding-box census: a pseudo-element
-   is not in getBoundingClientRect(), so no box-based count here could ever see
-   an overlay, and every A5 figure this project published measured the wrong
-   quantity. */
-.tv__tab::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.tv__tab:hover {
-  border-color: var(--primary);
-  color: var(--text-primary);
-}
-.tv__tab--active {
-  background: var(--primary-subtle);
-  border-color: var(--primary);
-  color: var(--primary);
 }
 
 /* Center block for loading / empty / error */
