@@ -172,10 +172,3 @@ button.ds-navtile {
   text-align: start;
   font: inherit;
 }
-
-/* The system's stat tile (K46) holds its one link in the label, drawn on an anchor;
-   the cabinet opens its tiles from a button, which takes the label's type. */
-button.ds-stat__link {
-  font: inherit;
-  text-align: start;
-}

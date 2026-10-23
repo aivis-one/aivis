@@ -26,14 +26,24 @@ defineProps<{
 }>()
 
 const attrs = useAttrs()
+defineOptions({ inheritAttrs: false })
+const rootAttrs = computed(() => {
+  const { onClick: _onClick, ...rest } = attrs
+  return rest
+})
+function press(e: MouseEvent): void {
+  const handler = attrs.onClick as ((e: MouseEvent) => void) | Array<(e: MouseEvent) => void> | undefined
+  if (Array.isArray(handler)) handler.forEach((h) => h(e))
+  else handler?.(e)
+}
 const interactive = computed(() => attrs.onClick !== undefined)
 </script>
 
 <template>
-  <div class="ds-stat" :class="{ 'ds-stat--interactive': interactive }">
+  <div class="ds-stat" :class="{ 'ds-stat--interactive': interactive }" v-bind="rootAttrs">
     <slot name="icon" />
     <p class="ds-stat__label">
-      <button v-if="interactive" type="button" class="ds-stat__link">{{ label }}</button>
+      <button v-if="interactive" type="button" class="ds-stat__link" @click="press">{{ label }}</button>
       <template v-else>{{ label }}</template>
     </p>
     <p class="ds-stat__value">{{ value }}</p>
