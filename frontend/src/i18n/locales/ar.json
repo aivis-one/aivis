@@ -460,7 +460,12 @@
         "card": "بطاقة"
       },
       "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
-      "allOperations": "All operations"
+      "allOperations": "All operations",
+      "holder": {
+        "title": "المستحقات والمدفوعات لحامل الأجزاء",
+        "rule": "تدفع AIVIS المستحقات بنفسها مرة كل ربع سنة إلى حسابك المصرفي أو بطاقتك؛ وإذا دفعت بعملة USDT فتُدفع بعملة USDT إلى عنوانك المؤكد. لا يوجد رصيد للحامل ولا طلب سحب.",
+        "small": "المبلغ الأقل من 10 دولارات أمريكية يُرحَّل إلى الربع التالي."
+      }
     },
     "deposit": {
       "title": "الإيداع",
@@ -519,7 +524,21 @@
       "networkNotSupported": "This network is not available right now. Choose another one.",
       "offline": "No connection. Check your internet and try again.",
       "bankLine": "To pay by bank, write to support.",
-      "bankCta": "Write to support"
+      "bankCta": "Write to support",
+      "networks": {
+        "trc20": {
+          "name": "USDT · TRC20 (ترون)",
+          "warning": "أرسل إلى هذا العنوان عملة USDT فقط وعلى شبكة TRC20 (ترون) فقط. لا يمكن استرداد الأموال المرسلة على أي شبكة أخرى."
+        },
+        "erc20": {
+          "name": "USDT · ERC20 (إيثريوم)",
+          "warning": "أرسل إلى هذا العنوان عملة USDT فقط وعلى شبكة ERC20 (إيثريوم) فقط. لا يمكن استرداد الأموال المرسلة على أي شبكة أخرى."
+        },
+        "bsc20": {
+          "name": "USDT · BSC20 (BNB Smart Chain)",
+          "warning": "أرسل إلى هذا العنوان عملة USDT فقط وعلى شبكة BSC20 (BNB Smart Chain) فقط. لا يمكن استرداد الأموال المرسلة على أي شبكة أخرى."
+        }
+      }
     },
     "transactions": {
       "title": "المعاملات",
@@ -603,7 +622,15 @@
         "errorRetry": "إعادة المحاولة",
         "seeAll": "عرض الكل"
       },
-      "gift": "A gift is waiting for you to accept it"
+      "gift": "A gift is waiting for you to accept it",
+      "kyc": {
+        "not_started": "الهوية غير موثّقة — وثّقها (10 دولارات)",
+        "submitted": "جارٍ التحقق من الهوية",
+        "rejected": "تم رفض التحقق من الهوية"
+      },
+      "news": {
+        "title": "الأخبار والفعاليات"
+      }
     },
     "portfolio": {
       "gifts": {
@@ -750,7 +777,30 @@
         "support": "Support",
         "faq": "FAQ",
         "logoutAll": "Sign out of all devices",
-        "logoutAllError": "Could not sign out of all devices. Try again."
+        "logoutAllError": "Could not sign out of all devices. Try again.",
+        "kyc": {
+          "title": "التحقق من الهوية",
+          "approved": "تم الاجتياز",
+          "submitted": "قيد المراجعة",
+          "rejected": "مرفوض",
+          "notStarted": "لم يتم الاجتياز"
+        }
+      },
+      "email": {
+        "title": "البريد الإلكتروني",
+        "needed": "يبدأ التحقق من الهوية ببريد إلكتروني مؤكد. أضف بريدك.",
+        "label": "بريدك الإلكتروني",
+        "sendCode": "إرسال الرمز",
+        "codeHint": "أرسلنا رمزًا من 6 أرقام إلى {email}. أدخله لتأكيد العنوان.",
+        "codeLabel": "الرمز من الرسالة",
+        "sendAgain": "إرسال مرة أخرى",
+        "confirm": "تأكيد",
+        "sent": "تم إرسال الرمز",
+        "confirmed": "تم تأكيد البريد الإلكتروني",
+        "taken": "هذا العنوان تابع لحساب آخر.",
+        "alreadySet": "لدى هذا الحساب بريد إلكتروني بالفعل.",
+        "wrongCode": "الرمز غير صحيح أو انتهت صلاحيته. أرسله مرة أخرى.",
+        "failed": "تعذّر إتمام العملية. حاول مرة أخرى."
       }
     },
     "more": {
@@ -788,6 +838,38 @@
     },
     "agreement": {
       "save": "Download"
+    },
+    "events": {
+      "notFound": "الفعالية غير موجودة"
+    },
+    "productsByCompany": {
+      "errorDesc": "تعذّر تحميل المنتجات، حاول مرة أخرى."
+    },
+    "news": {
+      "title": "الأخبار والفعاليات",
+      "kind": {
+        "post": "خبر",
+        "event": "فعالية"
+      },
+      "showMore": "عرض المزيد",
+      "errorTitle": "تعذّر تحميل الخلاصة",
+      "empty": "لا توجد أخبار أو فعاليات بعد"
+    },
+    "post": {
+      "errorTitle": "تعذّر تحميل المنشور",
+      "errorDesc": "ربما تمت إزالته. حاول مرة أخرى بعد قليل."
+    },
+    "terms": {
+      "title": "قبل الدفع",
+      "digestFailed": "تعذّر تحميل النسخة المختصرة. افتح الصفحة الكاملة.",
+      "readFull": "اقرأ ورقة الإفصاح الكاملة",
+      "disclosureTitle": "ورقة الإفصاح قبل الشراء",
+      "agreementTitle": "اتفاقية المشتري",
+      "acceptPrefix": "أوافق على",
+      "agreementLink": "الاتفاقية"
+    },
+    "header": {
+      "balance": "حساب المشتري"
     }
   },
   "kyc": {
@@ -825,7 +907,26 @@
     "unlocks": "Verification unlocks buying, instalment plans and the integrator application. Everything else is open without it.",
     "rejectedReason": "Reason: {reason}",
     "emailFirst": "Confirm your e-mail first: verification starts from a confirmed e-mail address.",
-    "toSettings": "Go to settings"
+    "toSettings": "Go to settings",
+    "details": {
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "phone": "الهاتف",
+      "country": "الدولة",
+      "errorIncomplete": "أدخل اسمك الأول واسم عائلتك والدولة."
+    },
+    "notice": {
+      "lead": "بإرسال الطلب تؤكد أنك قرأت",
+      "link": "إشعار التحقق من الهوية (KYC)"
+    },
+    "prompt": {
+      "purchase": "للشراء، اجتز التحقق من الهوية: 10 دولارات",
+      "installment": "للدفع بالأقساط، اجتز التحقق من الهوية: 10 دولارات",
+      "generic": "اجتز التحقق من الهوية: 10 دولارات",
+      "text": "تُحتسب الرسوم عن كل محاولة ولا تُسترد.",
+      "later": "ليس الآن",
+      "go": "التحقق من الهوية"
+    }
   },
   "intro": {
     "what": {
@@ -843,5 +944,11 @@
     "next": "التالي",
     "skip": "تخطٍّ",
     "start": "ابدأ"
+  },
+  "public": {
+    "shell": {
+      "registerButton": "التسجيل",
+      "cabinetButton": "إلى الحساب"
+    }
   }
 }

@@ -1567,6 +1567,9 @@
       "agreementTitle": "Buyer agreement",
       "acceptPrefix": "I accept the",
       "agreementLink": "agreement"
+    },
+    "header": {
+      "balance": "Buyer account"
     }
   },
   "nav": {

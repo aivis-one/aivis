@@ -460,7 +460,12 @@
         "card": "Karte"
       },
       "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
-      "allOperations": "All operations"
+      "allOperations": "All operations",
+      "holder": {
+        "title": "Gutschriften und Auszahlungen für Teilinhaber",
+        "rule": "AIVIS zahlt die Gutschriften selbst einmal im Quartal auf Ihr Bankkonto oder Ihre Karte aus; haben Sie in USDT gezahlt, erfolgt die Auszahlung in USDT an Ihre bestätigte Adresse. Es gibt kein Inhaberguthaben und keinen Auszahlungsantrag.",
+        "small": "Ein Betrag unter 10 USD wird auf das nächste Quartal übertragen."
+      }
     },
     "deposit": {
       "title": "Einzahlung",
@@ -519,7 +524,21 @@
       "networkNotSupported": "This network is not available right now. Choose another one.",
       "offline": "No connection. Check your internet and try again.",
       "bankLine": "To pay by bank, write to support.",
-      "bankCta": "Write to support"
+      "bankCta": "Write to support",
+      "networks": {
+        "trc20": {
+          "name": "USDT · TRC20 (Tron)",
+          "warning": "Senden Sie an diese Adresse nur USDT und nur im TRC20-Netzwerk (Tron). Über ein anderes Netzwerk gesendete Gelder können nicht zurückgeholt werden."
+        },
+        "erc20": {
+          "name": "USDT · ERC20 (Ethereum)",
+          "warning": "Senden Sie an diese Adresse nur USDT und nur im ERC20-Netzwerk (Ethereum). Über ein anderes Netzwerk gesendete Gelder können nicht zurückgeholt werden."
+        },
+        "bsc20": {
+          "name": "USDT · BSC20 (BNB Smart Chain)",
+          "warning": "Senden Sie an diese Adresse nur USDT und nur im BSC20-Netzwerk (BNB Smart Chain). Über ein anderes Netzwerk gesendete Gelder können nicht zurückgeholt werden."
+        }
+      }
     },
     "transactions": {
       "title": "Transaktionen",
@@ -603,7 +622,15 @@
         "errorRetry": "Wiederholen",
         "seeAll": "Alle anzeigen"
       },
-      "gift": "A gift is waiting for you to accept it"
+      "gift": "A gift is waiting for you to accept it",
+      "kyc": {
+        "not_started": "Identität nicht bestätigt – jetzt bestätigen (10 $)",
+        "submitted": "Identitätsprüfung läuft",
+        "rejected": "Identitätsprüfung abgelehnt"
+      },
+      "news": {
+        "title": "Neuigkeiten und Veranstaltungen"
+      }
     },
     "portfolio": {
       "gifts": {
@@ -750,7 +777,30 @@
         "support": "Support",
         "faq": "FAQ",
         "logoutAll": "Sign out of all devices",
-        "logoutAllError": "Could not sign out of all devices. Try again."
+        "logoutAllError": "Could not sign out of all devices. Try again.",
+        "kyc": {
+          "title": "Identitätsprüfung",
+          "approved": "Bestanden",
+          "submitted": "In Prüfung",
+          "rejected": "Abgelehnt",
+          "notStarted": "Nicht bestanden"
+        }
+      },
+      "email": {
+        "title": "E-Mail",
+        "needed": "Die Identitätsprüfung beginnt mit einer bestätigten E-Mail-Adresse. Fügen Sie Ihre hinzu.",
+        "label": "Ihre E-Mail-Adresse",
+        "sendCode": "Code senden",
+        "codeHint": "Wir haben einen 6-stelligen Code an {email} gesendet. Geben Sie ihn ein, um die Adresse zu bestätigen.",
+        "codeLabel": "Code aus der E-Mail",
+        "sendAgain": "Erneut senden",
+        "confirm": "Bestätigen",
+        "sent": "Der Code wurde gesendet",
+        "confirmed": "E-Mail bestätigt",
+        "taken": "Diese Adresse gehört zu einem anderen Konto.",
+        "alreadySet": "Dieses Konto hat bereits eine E-Mail-Adresse.",
+        "wrongCode": "Der Code ist falsch oder abgelaufen. Senden Sie ihn erneut.",
+        "failed": "Das ließ sich nicht abschließen. Versuchen Sie es erneut."
       }
     },
     "more": {
@@ -788,6 +838,38 @@
     },
     "agreement": {
       "save": "Download"
+    },
+    "events": {
+      "notFound": "Veranstaltung nicht gefunden"
+    },
+    "productsByCompany": {
+      "errorDesc": "Die Produkte konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    },
+    "news": {
+      "title": "Neuigkeiten und Veranstaltungen",
+      "kind": {
+        "post": "Neuigkeit",
+        "event": "Veranstaltung"
+      },
+      "showMore": "Mehr anzeigen",
+      "errorTitle": "Der Feed konnte nicht geladen werden",
+      "empty": "Noch keine Neuigkeiten oder Veranstaltungen"
+    },
+    "post": {
+      "errorTitle": "Der Beitrag konnte nicht geladen werden",
+      "errorDesc": "Möglicherweise wurde er entfernt. Versuchen Sie es gleich noch einmal."
+    },
+    "terms": {
+      "title": "Bevor Sie zahlen",
+      "digestFailed": "Die Kurzfassung konnte nicht geladen werden. Öffnen Sie das vollständige Merkblatt.",
+      "readFull": "Das vollständige Informationsblatt lesen",
+      "disclosureTitle": "Informationsblatt vor dem Kauf",
+      "agreementTitle": "Käufervereinbarung",
+      "acceptPrefix": "Ich akzeptiere die",
+      "agreementLink": "Vereinbarung"
+    },
+    "header": {
+      "balance": "Käuferkonto"
     }
   },
   "kyc": {
@@ -825,7 +907,26 @@
     "unlocks": "Verification unlocks buying, instalment plans and the integrator application. Everything else is open without it.",
     "rejectedReason": "Reason: {reason}",
     "emailFirst": "Confirm your e-mail first: verification starts from a confirmed e-mail address.",
-    "toSettings": "Go to settings"
+    "toSettings": "Go to settings",
+    "details": {
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "phone": "Telefon",
+      "country": "Land",
+      "errorIncomplete": "Geben Sie Ihren Vornamen, Nachnamen und Ihr Land an."
+    },
+    "notice": {
+      "lead": "Mit dem Absenden des Antrags bestätigen Sie, dass Sie den",
+      "link": "KYC-Hinweis"
+    },
+    "prompt": {
+      "purchase": "Für den Kauf bestehen Sie die Identitätsprüfung: 10 $",
+      "installment": "Für die Ratenzahlung bestehen Sie die Identitätsprüfung: 10 $",
+      "generic": "Bestehen Sie die Identitätsprüfung: 10 $",
+      "text": "Die Gebühr wird für jeden Versuch erhoben und nicht erstattet.",
+      "later": "Jetzt nicht",
+      "go": "Identität prüfen lassen"
+    }
   },
   "intro": {
     "what": {
@@ -843,5 +944,11 @@
     "next": "Weiter",
     "skip": "Überspringen",
     "start": "Los geht's"
+  },
+  "public": {
+    "shell": {
+      "registerButton": "Registrieren",
+      "cabinetButton": "Zum Cabinet"
+    }
   }
 }

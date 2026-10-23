@@ -20,12 +20,14 @@ import { useI18n } from 'vue-i18n'
 
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, ChevronLeft } from 'lucide-vue-next'
+import { Bell, ChevronLeft, Wallet } from 'lucide-vue-next'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useAuthStore } from '@/stores/auth'
+import { useDashboardStore } from '@/stores/dashboard'
 import { useNotificationsStore } from '@/stores/notifications'
+import { formatPrice } from '@/utils/format'
 
 withDefaults(
   defineProps<{
@@ -85,6 +87,33 @@ function goToNotifications(): void {
   )
 }
 
+// ---------------------------------------------------------------------------
+// The buyer account (investor shell only)
+// ---------------------------------------------------------------------------
+//
+// The top bar shows the buyer account -- the top-up balance, spent only on
+// AIVIS parts and returned only through support. A press opens the Balance
+// screen. The figure is the one BalanceView reads (`activeBalance.confirmed`).
+const dashboardStore = useDashboardStore()
+
+const showBalance = computed(
+  () => authStore.isAuthenticated && route.meta.shell === 'investor',
+)
+
+const balanceDisplay = computed(() =>
+  formatPrice(dashboardStore.summary?.active_balance?.confirmed ?? 0, 'USD'),
+)
+
+function goToBalance(): void {
+  void safeNavigate(router.push({ name: 'investor-balance' }), '[CHeader] to balance')
+}
+
+function loadBalanceIfNeeded(): void {
+  if (showBalance.value && !dashboardStore.summary && !dashboardStore.loading) {
+    void dashboardStore.refresh()
+  }
+}
+
 const unreadDisplay = computed(() => {
   const n = notifications.unreadCount
   if (n <= 0) return null
@@ -99,10 +128,12 @@ const unreadDisplay = computed(() => {
 // transition that keeps this component instance alive.
 onMounted(() => {
   if (showBell.value) notifications.startPolling()
+  loadBalanceIfNeeded()
 })
 onUnmounted(() => {
   notifications.stopPolling()
 })
+watch(showBalance, loadBalanceIfNeeded)
 watch(showBell, (isAuth) => {
   if (isAuth) {
     notifications.startPolling()
@@ -122,6 +153,16 @@ watch(showBell, (isAuth) => {
       <span v-if="title" class="c-header__title">{{ title }}</span>
     </div>
     <div class="c-header__right">
+      <button
+        v-if="showBalance"
+        type="button"
+        class="c-header__balance"
+        :aria-label="t('inv.header.balance')"
+        @click="goToBalance"
+      >
+        <Wallet :size="18" aria-hidden="true" />
+        <span class="c-header__balance-amount">{{ balanceDisplay }}</span>
+      </button>
       <button
         v-if="showBell"
         type="button"
@@ -190,6 +231,29 @@ watch(showBell, (isAuth) => {
   /* Right slot must never shrink -- if someone adds action buttons
      they should stay full size; the title absorbs the space loss. */
   flex-shrink: 0;
+}
+
+.c-header__balance {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--size-2xl);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.15s;
+}
+.c-header__balance:hover {
+  color: var(--primary);
+}
+.c-header__balance-amount {
+  white-space: nowrap;
 }
 
 .c-header__bell {

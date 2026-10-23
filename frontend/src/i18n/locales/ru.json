@@ -1567,6 +1567,9 @@
       "agreementTitle": "Договор покупателя",
       "acceptPrefix": "Принимаю",
       "agreementLink": "договор"
+    },
+    "header": {
+      "balance": "Счёт покупателя"
     }
   },
   "nav": {
