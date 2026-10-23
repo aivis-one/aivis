@@ -32,7 +32,7 @@ Every line below is a decision of the owner with its date, a measurement, or a v
 | input border | `--border-input`: `#7F97AE` by day, `#506579` by night; inputs only; card borders stay as they are (`--border-subtle`, as in `../elements/README.md`) | decided by the owner, 2026-10-17; measured (`../tokens/contrast.json`) |
 | input border width | `--border-input-width`, 1 px | decided by the owner, 2026-10-17 |
 | focus ring | `--focus-ring`: azure-500 `#217AB6` by day, azure-300 `#37A6E6` by night; never the accent; the focus indicator is a `--focus-width` (2 px) solid outline in `--focus-ring` with a `--focus-offset` (2 px) offset, and no `--shadow-focus` halo | decided by the owner, 2026-10-17; measured (`../tokens/contrast.json`) |
-| icons | one set, 96 icons, drawn on a 24 by 24 grid, stroke 1.5, round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | decided by the owner, 2026-10-16, 2026-10-18 |
+| icons | one set, 97 icons, drawn on a 24 by 24 grid, stroke 1.5, round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | decided by the owner, 2026-10-16, 2026-10-18 |
 | rocket, spark and qr | used from 24 pixels up | decided by the owner, 2026-10-17, 2026-10-18 |
 | the hexagon | the hexagon is the logo and the decorative elements; it is never a rule for the icons | decided by the owner, 2026-10-16 |
 | brand marks | the colour logo is unchanged; the mark drawn in lines has no inner facet lines | decided by the owner, 2026-10-17 |
