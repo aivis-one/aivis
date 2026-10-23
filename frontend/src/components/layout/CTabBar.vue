@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Bottom tab bar.
-// Renders TabItem[] with Lucide icons, highlights active route.
+// Bottom tab bar: the bar tier of the design system's navigation (K25). Renders
+// TabItem[] with the system's icons; the current item is aria-current="page".
 //
 // iter 2.7 Block A1 (R1 §2):
 //   STAFF_TABS no longer carries the `kyc` tab (KYC merged into Users).
@@ -66,85 +66,55 @@ function navigate(tab: TabItem): void {
 </script>
 
 <template>
-  <nav class="c-tabbar">
+  <nav class="c-tabbar" :aria-label="t('common.primaryNav')">
     <button
       v-for="tab in items"
       :key="tab.id"
-      class="c-tabbar__item"
-      :class="{ 'c-tabbar__item--active': isActive(tab) }"
+      type="button"
+      class="c-tabbar__item ds-navitem"
+      :aria-current="isActive(tab) ? 'page' : undefined"
       @click="navigate(tab)"
     >
-      <span class="c-tabbar__icon">
-        <component :is="iconMap[tab.icon]" :size="20" />
-      </span>
-      <span class="c-tabbar__label">{{ t(tab.labelKey) }}</span>
+      <component :is="iconMap[tab.icon]" />
+      <span class="ds-navitem__label">{{ t(tab.labelKey) }}</span>
     </button>
   </nav>
 </template>
 
 <style scoped>
+/* K25, the bar tier: sticky under the content, the surface ground, a hairline
+   above, the safe-area insets. The items are the system's .ds-navitem. The
+   system draws the bar inside its one-grid shell; the cabinet keeps its two
+   navigation components, so the bar's box is written here from the same tokens.
+   --tab-bar-height (variables.css) is the bar's height, and the floating
+   call-to-action strips pin themselves above it. */
 .c-tabbar {
+  --_pad: calc(var(--focus-width) + var(--focus-offset));
   position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-around;
-  background: var(--bg-page);
-  border-top: 1px solid var(--border-default);
-  /* iter 2.5 cta-fix: height is the source-of-truth via
-     --tab-bar-height; sub-route floating CTAs reference the same
-     token to stay pinned above the bar. The token measures the
-     interactive strip; bottom safe-area inset is added on top so
-     touch targets keep their full size on notched devices. */
-  height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
-  padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+  inset-block-end: 0;
   z-index: 100;
+  box-sizing: border-box;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--_pad);
+  padding-block-end: calc(var(--_pad) + var(--space-safe-bottom));
+  padding-inline: calc(var(--_pad) + var(--space-safe-left)) calc(var(--_pad) + var(--space-safe-right));
+  background: var(--bg-surface);
+  border-block-start: thin solid var(--border-subtle);
 }
 .c-tabbar__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  min-width: var(--size-4xl);
-  min-height: var(--size-2xl);
-  color: var(--text-tertiary);
-  font-size: var(--fs-3xs);
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s;
+  flex: 1 1 0;
+  min-inline-size: 0;
   border: none;
   background: none;
   font-family: inherit;
-  position: relative;
 }
 .c-tabbar__item:hover {
-  color: var(--primary-hover);
+  background: var(--bg-subtle);
 }
-.c-tabbar__item--active {
-  color: var(--primary);
-}
-.c-tabbar__item--active::after {
-  content: '';
-  position: absolute;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.c-tabbar__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.c-tabbar__label {
-  line-height: 1;
-}
-[dir='rtl'] .c-tabbar {
-  direction: rtl;
+@media (max-width: 480px) {
+  .c-tabbar__item {
+    min-block-size: var(--size-3xl);
+  }
 }
 </style>

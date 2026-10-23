@@ -70,6 +70,8 @@ function onChange(e: Event): void {
 </template>
 
 <style scoped>
+/* The system has no checkbox (Radio and Toggle only); this one keeps its form
+   and takes the system's input border, focus and tokens. */
 .c-checkbox {
   display: flex;
   align-items: flex-start;
@@ -82,49 +84,55 @@ function onChange(e: Event): void {
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
-/* Transparent, NOT hidden. A5: sized to the tap floor and centred on the drawn
-   box, so the box stays 20px while the target the pointer meets is 44px. */
+/* Transparent, NOT hidden: sized to the touch floor and centred on the drawn
+   box, so the box stays small while the target the pointer meets is --touch-min. */
 .c-checkbox__input {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
+  translate: -50% -50%;
+  inline-size: max(100%, var(--touch-min));
+  block-size: max(100%, var(--touch-min));
   margin: 0;
   opacity: 0;
   cursor: pointer;
 }
 
 .c-checkbox__box {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
-  min-width: var(--size-2xs);
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-sm);
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
+  min-inline-size: var(--size-2xs);
+  border: var(--border-input-width) solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
   color: var(--on-primary);
+}
+.c-checkbox:hover .c-checkbox__box {
+  border-color: var(--border-input-hover);
 }
 .c-checkbox__box--checked {
   background: var(--primary);
   border-color: var(--primary);
 }
 
-/* A7: the input itself is invisible, so the ring goes on what the user sees. */
+/* The input itself is invisible, so the system's ring goes on what the user sees. */
 .c-checkbox__input:focus-visible + .c-checkbox__box {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .c-checkbox__label {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: var(--lh-snug);
 }
 </style>

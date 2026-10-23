@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, useAttrs, useId } from 'vue'
+import { AlertTriangle } from '@/components/ui/icons'
 // Multi-line text input with label and error state.
 
 withDefaults(
@@ -43,90 +44,34 @@ function onInput(e: Event): void {
 // reader saw an unlabelled field beside some loose text. useId() (Vue 3.5)
 // pairs them and stays unique across every instance on the page.
 const fieldId = useId()
+const errorId = fieldId + '-error'
 </script>
 
 <template>
-  <div class="c-input-group" v-bind="rootAttrs">
-    <label v-if="label" :for="fieldId" class="c-input-label">{{ label }}</label>
+  <div class="ds-field c-field" :data-size="size === 'compact' ? 'sm' : undefined" v-bind="rootAttrs">
+    <label v-if="label" :for="fieldId" class="ds-field__label">{{ label }}</label>
     <textarea
       :id="fieldId"
-      class="c-textarea"
-      :class="[
-        { 'c-textarea--error': !!error },
-        size === 'compact' && 'c-textarea--compact',
-        mono && 'c-textarea--mono',
-      ]"
+      class="ds-input"
+      :class="{ 'ds-input--num': mono }"
       :value="modelValue"
       :placeholder="placeholder"
       :rows="rows"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="error ? errorId : undefined"
       v-bind="controlAttrs"
       @input="onInput"
     />
-    <div v-if="error" class="c-input-error">
-      {{ error }}
-    </div>
+    <p v-if="error" :id="errorId" class="ds-field__error">
+      <AlertTriangle :size="16" />
+      <span>{{ error }}</span>
+    </p>
   </div>
 </template>
 
 <style scoped>
-.c-input-group {
-  margin-bottom: var(--space-4);
-}
-.c-input-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--space-2);
-}
-
-.c-textarea {
-  width: 100%;
-  padding: var(--space-4) var(--space-4);
-  border: 2px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  background: var(--bg-page);
-  color: var(--text-primary);
-  resize: vertical;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-.c-textarea--compact {
-  padding: var(--space-3);
-  border-width: 1px;
-  border-radius: var(--radius-sm);
-  line-height: 1.5;
-  transition: border-color 0.15s;
-}
-
-.c-textarea--mono {
-  font-family: var(--font-mono);
-}
-
-.c-textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
-}
-.c-textarea::placeholder {
-  color: var(--text-tertiary);
-}
-/* The kit had no disabled state at all, which went unnoticed because until
-   attribute pass-through existed nothing could pass `disabled` to the control.
-   The forms that adopt this variant disable their fields while submitting. */
-.c-textarea:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.c-textarea--error {
-  border-color: var(--danger);
-}
-.c-input-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  margin-top: var(--space-1);
+/* The cabinet's forms stack their fields on this gap. */
+.c-field {
+  margin-block-end: var(--space-4);
 }
 </style>

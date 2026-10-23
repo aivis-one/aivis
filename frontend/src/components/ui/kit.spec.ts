@@ -83,7 +83,7 @@ describe('attribute pass-through reaches the control, not the wrapper', () => {
     })
     expect(w.find(tag).attributes('aria-label')).toBe('Search')
     // and NOT on the group wrapper, where it would name nothing
-    expect(w.find('.c-input-group').attributes('aria-label')).toBeUndefined()
+    expect(w.find('.ds-field').attributes('aria-label')).toBeUndefined()
   })
 
   it.each([
@@ -101,7 +101,7 @@ describe('attribute pass-through reaches the control, not the wrapper', () => {
     ['CSelect', CSelect, { options: OPTIONS }],
   ])('%s keeps class on the root so a consumer can position the group', (_name, Comp, extra) => {
     const w = mount(Comp as never, { props: { ...extra } as never, attrs: { class: 'my-spacing' } })
-    expect(w.find('.c-input-group').classes()).toContain('my-spacing')
+    expect(w.find('.ds-field').classes()).toContain('my-spacing')
   })
 })
 
@@ -160,7 +160,7 @@ describe('CButton', () => {
 
   it('applies the variant class', () => {
     const w = mount(CButton, { props: { variant: 'danger' }, slots: { default: 'Delete' } })
-    expect(w.classes()).toContain('c-btn--danger')
+    expect(w.classes()).toContain('ds-button--danger')
   })
 
   it('is a real <button>, so Enter and Space come from the platform', () => {

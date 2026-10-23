@@ -1,7 +1,10 @@
 <script setup lang="ts">
-// Progress bar with configurable value, max, and color.
+// Progress bar, on the design system's Progress (K18). The accessible name is
+// the caller's (an aria-label on the component lands on the progressbar).
 
 import { computed } from 'vue'
+
+defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(defineProps<{ value: number; max?: number; color?: string }>(), {
   max: 100,
@@ -12,22 +15,17 @@ const pct = computed(() => Math.min(100, Math.max(0, (props.value / props.max) *
 </script>
 
 <template>
-  <div class="c-progress">
-    <div class="c-progress__fill" :style="{ width: pct + '%', background: color }" />
+  <div class="ds-progress">
+    <div
+      class="ds-progress__track"
+      role="progressbar"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-valuenow="Math.round(pct)"
+      :style="{ '--_fill': color }"
+      v-bind="$attrs"
+    >
+      <span class="ds-progress__fill" :style="{ '--value': pct + '%' }" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.c-progress {
-  width: 100%;
-  height: 6px;
-  background: var(--border-default);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-}
-.c-progress__fill {
-  height: 100%;
-  border-radius: var(--radius-pill);
-  transition: width 0.3s ease;
-}
-</style>

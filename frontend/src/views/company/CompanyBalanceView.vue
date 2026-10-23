@@ -821,7 +821,7 @@ onMounted(() => {
 .cbal__control {
   margin-bottom: 0;
 }
-.cbal__control--payout :deep(.c-textarea) {
+.cbal__control--payout :deep(.ds-input) {
   min-height: 160px;
 }
 .cbal__field-label {

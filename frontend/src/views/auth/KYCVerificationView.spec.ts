@@ -75,7 +75,7 @@ async function fillDetails(w: VueWrapper): Promise<void> {
   const texts = w.findAll('input:not([type="file"])')
   await texts[0].setValue('Ada')
   await texts[1].setValue('Lovelace')
-  await w.find('select.c-select').setValue('DE')
+  await w.find('select.ds-input').setValue('DE')
 }
 
 function submitButton(w: VueWrapper) {

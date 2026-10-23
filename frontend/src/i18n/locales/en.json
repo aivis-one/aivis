@@ -21,6 +21,14 @@
     "all": "All",
     "statusActive": "Active",
     "primaryNav": "Main navigation",
+    "language": {
+      "current": "Language: {name}",
+      "label": "Language"
+    },
+    "theme": {
+      "toLight": "Switch to light theme",
+      "toDark": "Switch to dark theme"
+    },
     "moveUp": "Move up",
     "moveDown": "Move down",
     "showPassword": "Show password",

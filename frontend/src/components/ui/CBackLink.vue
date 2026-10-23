@@ -61,23 +61,23 @@ defineProps<{
 
 <style scoped>
 .c-back-link {
-  /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--touch-min);
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-2) var(--space-3);
   background: none;
   border: none;
   color: var(--text-secondary);
   font-family: inherit;
   font-size: var(--fs-sm);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   transition:
-    background 0.12s ease,
-    color 0.12s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .c-back-link:hover {
@@ -85,11 +85,9 @@ defineProps<{
   color: var(--text-primary);
 }
 
-/* R32 A11Y-32-01: keyboard focus ring. `:focus-visible` shows only
-   on keyboard / programmatic focus -- mouse clicks suppress it via
-   browser default behaviour. */
+/* The system's focus indicator. */
 .c-back-link:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 </style>

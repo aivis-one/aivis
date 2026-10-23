@@ -567,7 +567,7 @@ onUnmounted(() => {
    the gradient: 1.02 in dark, 1.15 in light. --on-primary gives 5.85 / 8.48.
    Third instance of one shape: a semantic colour placed on a coloured panel.
    Scoped to this hero so the variant is unchanged everywhere else. */
-.cp__aggregate .c-btn--outline {
+.cp__aggregate .ds-button--secondary {
   color: var(--on-primary);
   border-color: currentColor;
 }

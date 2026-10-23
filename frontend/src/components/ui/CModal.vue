@@ -53,35 +53,37 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 </template>
 
 <style scoped>
+/* The system has no dialog; this one keeps its form and takes the system's
+   scrim, surface, modal radius, shadow and motion tokens. */
 .c-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
 }
 .c-modal-dialog {
-  background: var(--bg-page);
-  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border-radius: var(--radius-modal);
   padding: var(--space-5);
-  width: 100%;
-  max-width: 420px;
-  max-height: 90vh;
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form-wide);
+  max-block-size: 90vh;
   overflow-y: auto;
   position: relative;
   box-shadow: var(--shadow-deep);
 }
 .c-modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   padding: var(--space-1);
   display: flex;
   align-items: center;
@@ -93,11 +95,11 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 /* Transition */
 .c-modal-enter-active,
 .c-modal-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base) var(--ease-standard);
 }
 .c-modal-enter-active .c-modal-dialog,
 .c-modal-leave-active .c-modal-dialog {
-  transition: transform 0.2s;
+  transition: transform var(--dur-base) var(--ease-standard);
 }
 .c-modal-enter-from,
 .c-modal-leave-to {

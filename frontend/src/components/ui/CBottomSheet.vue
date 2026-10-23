@@ -79,11 +79,13 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 </template>
 
 <style scoped>
+/* The system has no sheet; this one keeps its form and takes the system's
+   scrim, surface, modal radius, shadow and motion tokens. */
 .c-sheet-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -91,35 +93,35 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 
 .c-sheet-close {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-3);
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-3);
+  min-inline-size: var(--tap-min);
+  min-block-size: var(--tap-min);
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .c-sheet-dialog {
   position: relative;
-  background: var(--bg-page);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  max-height: 85dvh;
+  background: var(--bg-surface);
+  border-radius: var(--radius-modal) var(--radius-modal) 0 0;
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form-wide);
+  max-block-size: 85vh;
+  max-block-size: 85dvh;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-deep);
 }
 
 .c-sheet-handle {
-  width: var(--size-xl);
-  height: 4px;
+  inline-size: var(--size-xl);
+  block-size: var(--space-1);
   background: var(--border-default);
   border-radius: var(--radius-pill);
   margin: var(--space-2) auto var(--space-1);
@@ -127,12 +129,14 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 }
 
 .c-sheet-header {
-  padding: var(--space-3) var(--space-4-lg);
-  border-bottom: 1px solid var(--border-default);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4-lg);
+  border-block-end: thin solid var(--border-default);
   flex-shrink: 0;
 }
 
 .c-sheet-title {
+  font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text-primary);
@@ -140,7 +144,8 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 }
 
 .c-sheet-body {
-  padding: var(--space-4) var(--space-4-lg) var(--space-4-lg);
+  padding-block: var(--space-4) var(--space-4-lg);
+  padding-inline: var(--space-4-lg);
   overflow-y: auto;
   flex: 1;
 }
@@ -148,11 +153,11 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 /* Transition: overlay fades, dialog slides from the bottom. */
 .c-sheet-enter-active,
 .c-sheet-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base) var(--ease-standard);
 }
 .c-sheet-enter-active .c-sheet-dialog,
 .c-sheet-leave-active .c-sheet-dialog {
-  transition: transform 0.25s ease-out;
+  transition: transform var(--dur-base) var(--ease-exit);
 }
 .c-sheet-enter-from,
 .c-sheet-leave-to {

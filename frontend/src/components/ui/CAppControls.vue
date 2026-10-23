@@ -1,37 +1,34 @@
 <script setup lang="ts">
-// Language + theme control, for surfaces a signed-out visitor reaches.
+// Language + theme control, for surfaces a signed-out visitor reaches, on the
+// design system's K40 contract: the buttons are the system's Button, and every
+// accessible name comes from the translation tables.
 //
-// WHY IT EXISTS: both mechanisms already worked and neither had any UI before
-// sign-in. `useTheme` was wired into InvestorSettingsView only, and the locale
-// was set exclusively from `user.language` at login -- so a visitor on /login
-// could neither switch language nor pick a theme, in any language they might
-// not read.
+// LANGUAGE: the collapsed control shows the two-letter code alone; inside the
+// open list each option shows its flag and the language's own name. The list is
+// built from SUPPORTED_LOCALES, which stays the single source of truth -- adding
+// a language lights it up here with no change to this file.
 //
-// LANGUAGE, per the owner's spec: the collapsed control shows the two-letter
-// code ALONE. The flag appears only inside the open list, beside each code.
-// The list is built from SUPPORTED_LOCALES, which stays the single source of
-// truth -- adding a language lights it up here with no change to this file.
-//
-// THEME: a plain light <-> dark toggle. `useTheme` also has an 'auto' state
-// that follows the OS, and that stays the DEFAULT until the visitor first
-// presses this button -- so dark-by-system-setting is not lost by adding a
-// manual switch.
+// THEME: a plain light <-> dark toggle. `useTheme` also has an 'auto' state that
+// follows the OS, and that stays the DEFAULT until the visitor first presses
+// this button -- so dark-by-system-setting is not lost by adding a manual switch.
+// The button's name is the action, not the state.
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { useTheme } from '@/composables/useTheme'
+import { Moon, Sun } from '@/components/ui/icons'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const { effective, set: setTheme } = useTheme()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
-const currentShort = computed(
-  () => SUPPORTED_LOCALES.find((l) => l.code === locale.value)?.short ?? 'EN',
-)
+const current = computed(() => SUPPORTED_LOCALES.find((l) => l.code === locale.value))
+const currentShort = computed(() => current.value?.short ?? 'EN')
+const currentName = computed(() => current.value?.label ?? 'English')
 
 async function pick(code: string) {
   open.value = false
@@ -65,16 +62,16 @@ onBeforeUnmount(() => {
     <div class="app-controls__lang">
       <button
         type="button"
-        class="app-controls__btn app-controls__btn--code"
+        class="ds-button ds-button--secondary"
         :aria-expanded="open"
         aria-haspopup="listbox"
-        :aria-label="'Language: ' + currentShort"
+        :aria-label="t('common.language.current', { name: currentName })"
         @click="open = !open"
       >
         {{ currentShort }}
       </button>
 
-      <ul v-if="open" class="app-controls__menu" role="listbox">
+      <ul v-if="open" class="app-controls__menu" role="listbox" :aria-label="t('common.language.label')">
         <li v-for="l in SUPPORTED_LOCALES" :key="l.code">
           <button
             type="button"
@@ -85,7 +82,7 @@ onBeforeUnmount(() => {
             @click="pick(l.code)"
           >
             <span class="app-controls__flag" aria-hidden="true">{{ l.flag }}</span>
-            <span class="app-controls__code">{{ l.short }}</span>
+            <span>{{ l.label }}</span>
           </button>
         </li>
       </ul>
@@ -93,37 +90,12 @@ onBeforeUnmount(() => {
 
     <button
       type="button"
-      class="app-controls__btn app-controls__btn--theme"
-      :aria-label="effective === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+      class="ds-button ds-button--secondary ds-button--icon"
+      :aria-label="effective === 'dark' ? t('common.theme.toLight') : t('common.theme.toDark')"
       @click="toggleTheme"
     >
-      <svg
-        v-if="effective === 'dark'"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="4" />
-        <path
-          d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-        />
-      </svg>
-      <svg
-        v-else
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-      </svg>
+      <Sun v-if="effective === 'dark'" size="sm" />
+      <Moon v-else size="sm" />
     </button>
   </div>
 </template>
@@ -139,51 +111,19 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.app-controls__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 44px minimum in BOTH axes. These shipped at 40x32 on 2026-08-18 and the
-     measurement pass caught it the same day -- a control added to fix an
-     accessibility-adjacent gap that was itself below the touch-target floor. */
-  min-width: var(--size-2xl);
-  min-height: var(--size-2xl);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-}
-
-.app-controls__btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-}
-
-.app-controls__btn--theme svg {
-  width: 16px;
-  height: 16px;
-}
-
+/* The open list. The system's Action menu (K26) is a menu; this is a listbox,
+   so it keeps its form and takes the system's surface, border, radius, shadow. */
 .app-controls__menu {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
   z-index: 200;
-  min-width: 84px;
+  min-inline-size: var(--size-4xl);
   padding: var(--space-1);
   margin: 0;
   list-style: none;
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-2);
 }
@@ -192,16 +132,18 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-3) var(--space-2);
-  min-height: var(--size-2xl);
+  inline-size: 100%;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-3);
+  min-block-size: var(--touch-min);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: var(--fs-sm);
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -217,9 +159,5 @@ onBeforeUnmount(() => {
 .app-controls__flag {
   font-size: var(--fs-sm);
   line-height: 1;
-}
-
-.app-controls__code {
-  letter-spacing: 0.5px;
 }
 </style>

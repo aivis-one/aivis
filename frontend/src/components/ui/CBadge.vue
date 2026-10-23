@@ -1,47 +1,26 @@
 <script setup lang="ts">
-// Status badge.
+// Status badge, on the design system's Badge (K08).
+import { computed } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   variant?: 'success' | 'warning' | 'danger' | 'primary' | 'accent' | 'neutral'
   text: string
 }>()
+
+// The cabinet's names on the system's Badge (K08): primary is `info`; the
+// system has no accent badge (its colours equal the warning badge's), so accent
+// is `warning`; neutral is the badge with no modifier.
+const LOOKS = {
+  success: 'ds-badge--success',
+  warning: 'ds-badge--warning',
+  danger: 'ds-badge--danger',
+  primary: 'ds-badge--info',
+  accent: 'ds-badge--warning',
+  neutral: undefined,
+} as const
+const look = computed(() => LOOKS[props.variant ?? 'neutral'])
 </script>
 
 <template>
-  <span class="c-badge" :class="'c-badge--' + (variant ?? 'neutral')">{{ text }}</span>
+  <span class="ds-badge" :class="look">{{ text }}</span>
 </template>
-
-<style scoped>
-.c-badge {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  display: inline-block;
-  white-space: nowrap;
-}
-.c-badge--success {
-  background: var(--success-subtle);
-  color: var(--success);
-}
-.c-badge--warning {
-  background: var(--warning-subtle);
-  color: var(--warning);
-}
-.c-badge--danger {
-  background: var(--danger-subtle);
-  color: var(--danger);
-}
-.c-badge--primary {
-  background: var(--primary-subtle);
-  color: var(--primary);
-}
-.c-badge--accent {
-  background: var(--accent-subtle);
-  color: var(--accent);
-}
-.c-badge--neutral {
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-}
-</style>

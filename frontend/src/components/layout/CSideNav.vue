@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // Side navigation for the tablet and desktop tiers.
 //
-// ONE menu with its labels switched off, not a third layout — the owner's
-// ruling. Tablet (>=820) renders it as an icon rail; desktop (>=1472) shows
-// the same rail with labels. Below 820 it is not rendered at all and CTabBar
-// carries navigation instead; the two are mutually exclusive at every width,
-// which is why they had to land in one change.
+// ONE menu with its labels switched off, not a third layout. It is the rail and
+// wide tiers of the design system's navigation (K25): the icon rail from the
+// system's 880 width, the same rail with labels from its 1120 width. Below 880
+// it is not rendered at all and CTabBar carries navigation instead; the two are
+// mutually exclusive at every width, which is why they had to land in one change.
 //
 // It takes the SAME TabItem[] the tab bar takes, from @/router/tabs, so the
 // two can never drift apart: a tab added for the phone appears here for free.
@@ -97,132 +97,121 @@ function navigate(tab: TabItem): void {
     <button
       v-for="tab in items"
       :key="tab.id"
-      class="c-sidenav__item"
-      :class="{ 'c-sidenav__item--active': isActive(tab) }"
+      type="button"
+      class="c-sidenav__item ds-navitem"
       :aria-label="t(tab.labelKey)"
       :aria-current="isActive(tab) ? 'page' : undefined"
       @click="navigate(tab)"
     >
-      <span class="c-sidenav__icon">
-        <component :is="iconMap[tab.icon]" :size="20" />
-      </span>
-      <span class="c-sidenav__label">{{ t(tab.labelKey) }}</span>
+      <component :is="iconMap[tab.icon]" />
+      <span class="ds-navitem__label">{{ t(tab.labelKey) }}</span>
     </button>
     <template v-if="extra.length > 0">
       <hr class="c-sidenav__rule" />
       <button
         v-for="tab in extra"
         :key="tab.id"
-        class="c-sidenav__item"
-        :class="{ 'c-sidenav__item--active': isActive(tab) }"
+        type="button"
+        class="c-sidenav__item ds-navitem"
         :aria-label="t(tab.labelKey)"
         :aria-current="isActive(tab) ? 'page' : undefined"
         @click="navigate(tab)"
       >
-        <span class="c-sidenav__icon">
-          <component :is="iconMap[tab.icon]" :size="20" />
-        </span>
-        <span class="c-sidenav__label">{{ t(tab.labelKey) }}</span>
+        <component :is="iconMap[tab.icon]" />
+        <span class="ds-navitem__label">{{ t(tab.labelKey) }}</span>
       </button>
     </template>
   </nav>
 </template>
 
 <style scoped>
-/* Not rendered below the tablet tier: the phone uses CTabBar. Mobile-first,
-   so the menu appears at a min-width rather than the bar disappearing at a
-   max-width — the product is written that way throughout. */
+/* Not rendered below the rail tier: the phone uses CTabBar. Mobile-first, so the
+   menu appears at a min-width rather than the bar disappearing at a max-width. */
 .c-sidenav {
   display: none;
 }
 
+/* K25, the rail tier (from --bp-lg). The system draws the rail inside its
+   one-grid shell; the cabinet keeps its two navigation components, so the rail's
+   box is written here from the same tokens, rule for rule. */
 @media (min-width: 880px) {
   .c-sidenav {
+    --_pad: calc(var(--focus-width) + var(--focus-offset));
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
     flex: 0 0 auto;
-    width: 72px;
-    padding: var(--space-3) var(--space-2);
-    border-inline-end: 1px solid var(--border-default);
-    background: var(--bg-page);
+    box-sizing: border-box;
+    inline-size: calc(var(--size-4xl) + var(--space-4));
+    padding: var(--_pad);
+    padding-block: var(--space-3);
+    border-inline-end: thin solid var(--border-subtle);
+    background: var(--bg-surface);
     overflow-y: auto;
   }
 
   .c-sidenav__item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: var(--size-2xl);
-    padding: var(--space-2);
+    min-block-size: var(--size-3xl);
     border: none;
-    border-radius: var(--radius-md);
     background: none;
-    color: var(--text-tertiary);
     font-family: inherit;
-    font-size: var(--fs-sm);
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      color 0.2s,
-      background-color 0.2s;
-    /* Rail: the icon centres in the row. Desktop re-aligns to the start. */
-    justify-content: center;
+  }
+  .c-sidenav__item[aria-current='page'] {
+    background: var(--primary-subtle);
+  }
+  /* The current mark in the rail: a line at the start, in the primary colour. */
+  .c-sidenav__item[aria-current='page']::before {
+    inset-block: var(--space-2);
+    inset-inline: auto;
+    inset-inline-start: 0;
+    inline-size: calc(var(--border-input-width) * 2);
+    block-size: auto;
+    margin-inline: 0;
+    background: var(--primary);
   }
 
   /* The line between the shell's tabs and the lines that lie inside them. */
   .c-sidenav__rule {
-    width: 100%;
-    margin: var(--space-2) 0;
+    inline-size: 100%;
+    margin-block: var(--space-2);
     border: none;
-    border-top: 1px solid var(--border-default);
-  }
-
-  .c-sidenav__item:hover {
-    color: var(--primary-hover);
-    background: var(--bg-subtle);
-  }
-  .c-sidenav__item:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-  }
-  .c-sidenav__item--active {
-    color: var(--primary);
-    background: var(--primary-subtle);
-  }
-
-  .c-sidenav__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
+    border-block-start: thin solid var(--border-subtle);
   }
 
   /* Hidden in the rail; the accessible name is on the button's aria-label. */
-  .c-sidenav__label {
-    display: none;
+  .c-sidenav__item .ds-navitem__label {
+    position: absolute;
+    inline-size: thin;
+    block-size: thin;
+    margin: calc(var(--border-input-width) * -1);
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
-/* --bp-tier-lg. Moved off 1280 on 2026-08-25: the step to a 232px rail took
-   more width than crossing into the wide tier gave back, so the content column
-   got NARROWER at the boundary -- 1207 -> 1048 for staff. Measured, not
-   modelled. The value must stay equal to --bp-tier-lg; a media query cannot
-   read a custom property, and checks/breakpoints.py is what holds them in
-   step. See the tier table in variables.css. */
+/* The wide tier (from --bp-xl): the rail with its labels. */
 @media (min-width: 1120px) {
   .c-sidenav {
-    width: 232px;
-    padding: var(--space-3);
+    inline-size: calc(var(--size-4xl) * 4 + var(--space-2));
   }
   .c-sidenav__item {
+    flex-direction: row;
     justify-content: flex-start;
+    gap: var(--space-3);
     padding-inline: var(--space-3);
-  }
-  .c-sidenav__label {
-    display: block;
-    line-height: 1.2;
+    font-size: var(--fs-sm);
     text-align: start;
+  }
+  .c-sidenav__item .ds-navitem__label {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
   }
 }
 

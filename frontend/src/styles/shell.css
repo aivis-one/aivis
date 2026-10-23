@@ -33,8 +33,8 @@
 .shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
 }
 
@@ -56,8 +56,8 @@
    THAT ASYMMETRY IS NOT DRIFT TO BE TIDIED HERE — it is `B-3.3` and it is the
    owner's call. Folding it into one value would decide his question silently. */
 .shell__measure {
-  width: 100%;
-  max-width: var(--maxw);
+  inline-size: 100%;
+  max-inline-size: var(--maxw);
   margin-inline: auto;
 }
 
@@ -84,12 +84,12 @@
   .shell--tabbed .shell__body {
     display: flex;
     flex: 1;
-    min-height: 0;
+    min-block-size: 0;
   }
 
   .shell--tabbed .shell__content {
     flex: 1;
-    min-width: 0;
+    min-inline-size: 0;
   }
 
   /* (0,3,0) on purpose — see the header note. */

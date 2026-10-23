@@ -7,7 +7,8 @@
    from frontend/ alone); a change to a token is made in design-system/ first.
 
    Product-owned, declared once and the same in both themes:
-   --tab-bar-height  the source of truth for the tab bar's height and for the
+   --tab-bar-height  the source of truth for the tab bar's height (the system's
+                     56 nav item, its padding and its hairline) and for the
                      floating call-to-action strips that pin themselves above
                      it. The shell sets it to 0 from the rail width up
                      (shell.css). The safe-area inset is not folded in: a
@@ -15,6 +16,6 @@
    --cta-bar-height  the floating sub-route call-to-action strip.
    ============================================================ */
 :root {
-  --tab-bar-height: var(--size-4xl);
+  --tab-bar-height: calc(var(--size-4xl) + var(--space-2) + var(--border-input-width));
   --cta-bar-height: var(--size-4xl);
 }

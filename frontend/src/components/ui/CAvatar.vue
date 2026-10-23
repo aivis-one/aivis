@@ -36,10 +36,10 @@ const initials = computed(() => {
 
 <style scoped>
 .c-avatar {
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid var(--primary-hover);
+  border: calc(var(--border-input-width) * 2) solid var(--primary-hover);
 }
 .c-avatar--initials {
   background: var(--primary);

@@ -179,13 +179,19 @@ watch(showBell, (isAuth) => {
 </script>
 
 <template>
-  <header class="c-header">
+  <header class="c-header ds-header">
     <div class="c-header__left">
-      <button v-if="showBack" :aria-label="t('common.back')" class="c-header__back" @click="goBack">
-        <ChevronLeft :size="24" />
+      <button
+        v-if="showBack"
+        type="button"
+        :aria-label="t('common.back')"
+        class="ds-button ds-button--ghost ds-button--icon"
+        @click="goBack"
+      >
+        <ChevronLeft />
       </button>
       <AivisLogo v-if="showLogo && !showBack" :height="28" :show-text="false" />
-      <span v-if="title" class="c-header__title">{{ title }}</span>
+      <span v-if="title" class="c-header__title ds-header__title">{{ title }}</span>
     </div>
     <div class="c-header__right">
       <template v-if="showBalance && isAgentShell">
@@ -215,17 +221,17 @@ watch(showBell, (isAuth) => {
         :aria-label="t(isCompanyShell ? 'comp.header.balance' : 'inv.header.balance')"
         @click="goToBalance"
       >
-        <Wallet :size="18" aria-hidden="true" />
+        <Wallet size="sm" aria-hidden="true" />
         <span class="c-header__balance-amount">{{ balanceDisplay }}</span>
       </button>
       <button
         v-if="showBell"
         type="button"
-        class="c-header__bell"
+        class="c-header__bell ds-button ds-button--ghost ds-button--icon"
         :aria-label="t('common.notifications')"
         @click="goToNotifications"
       >
-        <Bell :size="20" />
+        <Bell />
         <span v-if="unreadDisplay" class="c-header__bell-badge">{{ unreadDisplay }}</span>
       </button>
       <CAppControls />
@@ -235,17 +241,12 @@ watch(showBell, (isAuth) => {
 </template>
 
 <style scoped>
+/* The system's header (K25) is the look: sticky, the surface ground, a hairline
+   below, --header-height at least. What is the cabinet's own stays here: the
+   header sits above the shell's content and the tab bar. */
 .c-header {
-  position: sticky;
-  top: 0;
   z-index: 100;
-  background: var(--bg-page);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
 }
 .c-header__left {
   display: flex;
@@ -254,30 +255,8 @@ watch(showBell, (isAuth) => {
   /* Claim the remaining width and allow the title child to shrink
      below its intrinsic content size (needed for ellipsis). */
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   overflow: hidden;
-}
-.c-header__title {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--primary-active);
-  /* Truncate long titles with ellipsis rather than push the right
-     slot off the edge. */
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.c-header__back {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-primary);
-  padding: var(--space-1);
-  display: flex;
-  align-items: center;
-  margin-left: -4px;
-  flex-shrink: 0;
 }
 .c-header__right {
   display: flex;
@@ -288,21 +267,25 @@ watch(showBell, (isAuth) => {
   flex-shrink: 0;
 }
 
+/* The balance chip: the system has no counterpart, so it is the cabinet's own,
+   on the system's tokens. */
 .c-header__balance {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--size-2xl);
+  min-block-size: var(--touch-min);
   border: none;
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 0 var(--space-1);
+  padding-block: 0;
+  padding-inline: var(--space-1);
   font-size: var(--fs-sm);
   font-weight: 700;
   white-space: nowrap;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  transition: color 0.15s;
+  transition: color var(--dur-fast) var(--ease-standard);
 }
 .c-header__balance:hover {
   color: var(--primary);
@@ -315,46 +298,32 @@ watch(showBell, (isAuth) => {
   align-items: flex-start;
   justify-content: center;
   gap: 0;
-  line-height: 1.2;
+  line-height: var(--lh-tight);
 }
 .c-header__balance-label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-tertiary, var(--text-secondary));
+  font-family: var(--font-body);
+  font-size: var(--fs-3xs);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .c-header__bell {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* A5: 44px tap-target floor, same box CAppControls' own buttons use. */
-  min-width: var(--size-2xl);
-  min-height: var(--size-2xl);
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.15s;
-}
-.c-header__bell:hover {
-  color: var(--primary);
 }
 
 .c-header__bell-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 999px;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+  min-inline-size: var(--space-4);
+  block-size: var(--space-4);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-pill);
   background: var(--danger);
   color: var(--on-danger);
-  font-size: 10px;
+  font-size: var(--fs-3xs);
   font-weight: 700;
-  line-height: 16px;
+  line-height: var(--space-4);
   text-align: center;
   pointer-events: none;
 }

@@ -23,34 +23,25 @@ defineProps<{ title?: string; description?: string }>()
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-7) var(--space-5);
+  padding-block: var(--space-7);
+  padding-inline: var(--space-5);
   text-align: center;
 }
 .c-empty__icon {
-  margin-bottom: var(--space-4);
-  color: var(--text-tertiary);
+  margin-block-end: var(--space-4);
+  color: var(--text-secondary);
 }
 .c-empty__title {
   font-size: var(--fs-body);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
+/* Descriptive text only: capped at the reading measure. */
 .c-empty__desc {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  line-height: 1.5;
-  max-width: 280px;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.c-empty__desc {
-  max-width: var(--maxw-prose);
+  line-height: var(--lh-normal);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

@@ -14,22 +14,27 @@
 
 import { defineComponent, h } from 'vue'
 
+// size: a number of pixels (the screens' own sizes), or 'sm' (16) or 'md' (24, the
+// default), the system's two icon sizes, which the stylesheet draws.
 export function icon(name: string, key: string) {
   return defineComponent({
     name,
-    props: { size: { type: [Number, String], default: 24 } },
+    props: { size: { type: [Number, String], default: 'md' } },
     setup(props) {
-      return () =>
-        h(
+      return () => {
+        const px = Number(props.size)
+        const own = Number.isFinite(px)
+        return h(
           'svg',
           {
-            class: 'ds-icon',
+            class: ['ds-icon', props.size === 'md' && 'ds-icon--md'],
             'aria-hidden': 'true',
             viewBox: '0 0 24 24',
-            style: { inlineSize: props.size + 'px', blockSize: props.size + 'px' },
+            style: own ? { inlineSize: px + 'px', blockSize: px + 'px' } : undefined,
           },
           [h('use', { href: '#i-' + key })],
         )
+      }
     },
   })
 }
@@ -75,6 +80,7 @@ export const HelpCircle = icon('HelpCircle', 'help-circle')
 export const History = icon('History', 'history')
 export const Home = icon('Home', 'home')
 export const Image = icon('Image', 'image')
+export const Info = icon('Info', 'info')
 export const ImageUp = icon('ImageUp', 'image-up')
 export const Layers = icon('Layers', 'layers')
 export const LayoutGrid = icon('LayoutGrid', 'layout-grid')

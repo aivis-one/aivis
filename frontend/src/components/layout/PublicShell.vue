@@ -105,16 +105,16 @@ function goToCabinet(): void {
         <button
           v-if="authStore.isAuthenticated"
           type="button"
-          class="shell__login"
+          class="ds-button ds-button--primary"
           @click="goToCabinet"
         >
           {{ t('public.shell.cabinetButton') }}
         </button>
         <template v-else>
-          <button type="button" class="shell__register" @click="goToRegister">
+          <button type="button" class="ds-button ds-button--secondary" @click="goToRegister">
             {{ t('public.shell.registerButton') }}
           </button>
-          <button type="button" class="shell__login" @click="goToLogin">
+          <button type="button" class="ds-button ds-button--primary" @click="goToLogin">
             {{ t('public.shell.loginButton') }}
           </button>
         </template>
@@ -130,56 +130,9 @@ function goToCabinet(): void {
 </template>
 
 <style scoped>
-/* PublicShell owns ONLY its login button. `.shell`, `.shell__content` and
-   `.shell__measure` are shared chrome and live in styles/shell.css.
-   ⚠ IT DELIBERATELY DOES NOT CARRY `shell--tabbed`: the storefront has no
-   tab bar and no side nav, so it gets no tier rules. Whether it SHOULD is
-   the owner's open call in `BATCH-PLAN.md` B-3.1 -- answering it is adding
-   one class to the root element above, and nothing else. */
-.shell__login {
-  /* A5: pointer target floor. */
-  min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border: none;
-  border-radius: var(--radius-md);
-  /* --primary, not --accent: this is the screen's PRIMARY action. The owner
-     found eight of these and they were fixed; the sweep found this one
-     outside that pass's scope. `background: var(--accent)` resolves
-     perfectly, so no token audit can ever see it -- only reading the
-     selector name against the token name does. */
-  background: var(--primary);
-  color: var(--on-primary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-/* "Register" sits beside "Sign in" as the quieter of the two. */
-.shell__register {
-  min-height: var(--tap-min);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--primary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.shell__register:hover {
-  opacity: 0.8;
-}
-
-.shell__login:hover {
-  opacity: 0.9;
-}
-
-.shell__login:active {
-  opacity: 0.8;
-}
+/* PublicShell owns no rule of its own: its buttons are the system's Button
+   (Sign in the primary action, Register the quieter one beside it), and `.shell`,
+   `.shell__content` and `.shell__measure` are shared chrome in styles/shell.css.
+   It deliberately does not carry `shell--tabbed`: the storefront has no tab bar
+   and no side nav, so it gets no tier rules. */
 </style>
