@@ -1613,7 +1613,7 @@
     },
     "products": {
       "title": "Products",
-      "subtitle": "Your products in the store",
+      "subtitle": "Your products, every status",
       "errorTitle": "Could not load products",
       "errorRetry": "Retry",
       "empty": {
