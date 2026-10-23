@@ -82,7 +82,7 @@ Additions. The count on an icon button `ds-badge--count` (the danger ground, `--
 
 ## K46 Stat tile
 
-`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one link in the label. `.ds-stats` lays tiles out two across on a phone and up to four above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
+`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one control in the label: a link (`a.ds-stat__link`, a tile that goes to another screen) or a button (`button.ds-stat__link`, a tile that opens something in place), drawn the same: the font of the label, start alignment, no border or ground, and a hit area stretched over the whole tile; the focus outline is drawn round the tile. An optional icon part, `.ds-stat__icon`, is the first child, above the label: an icon of the set at `--icon-size-md` in `--icon-secondary`, or a lead box (`.ds-lead`, K23, with its own size and tone); it is decoration and is not part of the control. `.ds-stats` lays tiles out two across on a phone and up to four above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
 
 ## K47 Hero
 

@@ -730,6 +730,11 @@ textarea.ds-input {
 .ds-stat--interactive:hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
 .ds-stat--interactive:active { box-shadow: var(--shadow-1); background: var(--bg-inset); }
 .ds-stat__link { color: inherit; text-decoration: none; }
+/* the button form of the link: a tile that opens from a button reads as the one that opens from an anchor (the same font, start alignment and stretched hit area) */
+button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; }
+/* the icon part: above the label, at an icon size of the scale; a lead box (.ds-lead, K23) or a navigation tile's icon box keeps its own size */
+.ds-stat__icon { display: flex; align-items: center; margin-block-end: var(--space-1); color: var(--icon-secondary); }
+.ds-stat__icon > .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
 .ds-stat__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
 .ds-stat__link:focus-visible { outline: none; }
 .ds-stat:has(.ds-stat__link:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }

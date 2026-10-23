@@ -2113,11 +2113,16 @@
   "name": "Stat tile",
   "status": "built",
   "markup": "markup/stat.html",
-  "class_root": ".ds-stat, .ds-stats",
+  "class_root": ".ds-stat, .ds-stats, .ds-stat__link, .ds-stat__icon",
   "variants": {
    "look": [
     "plain (default)",
-    "interactive (one link in the label)"
+    "interactive (one link in the label)",
+    "interactive from a button (button.ds-stat__link in the label: the same look, alignment and stretched hit area as the anchor form)"
+   ],
+   "icon": [
+    "none (default)",
+    "icon part (.ds-stat__icon, the first child, above the label: an icon of the set at --icon-size-md, or a lead box, K23)"
    ],
    "change": [
     "up (data-trend=\"up\")",
@@ -2151,6 +2156,8 @@
    "--font-mono",
    "--fs-lg",
    "--fs-xs",
+   "--icon-secondary",
+   "--icon-size-md",
    "--lh-snug",
    "--lh-tight",
    "--radius-card",
@@ -2164,9 +2171,9 @@
    "--text-secondary",
    "--tile-min"
   ],
-  "accessibility": "A label above a figure, read in that order. The change is said in text with its sign and repeated by an arrow icon, so it is never colour alone; --success and --danger stand on the white surface (6.30 and 7.86 day). An interactive tile holds one link in its label that stretches over the tile; no click handler on the container. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "A label above a figure, read in that order. The change is said in text with its sign and repeated by an arrow icon, so it is never colour alone; --success and --danger stand on the white surface (6.30 and 7.86 day). An interactive tile holds one control in its label that stretches over the tile, a link or, where the tile opens something that is not an address, a button (button.ds-stat__link): the label text is its accessible name and Enter and Space come from the platform; no click handler on the container. The icon part is decoration and sits outside the control: an icon of the set is aria-hidden,. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
   "purpose": "A figure with its label, and often how it moved.",
-  "usage": "Use it for a KPI or a balance line; a summary on the primary colour is the brand Card (K07). The app writes the figure, the unit and the sign.",
+  "usage": "Use it for a KPI or a balance line; a summary on the primary colour is the brand Card (K07). The app writes the figure, the unit and the sign. A tile that goes to another screen uses the anchor form; one that opens a dialog or runs a view change in place uses the button form. The icon part is for the tiles that show one, a single icon of the set or a lead box (K23) above the label.",
   "notes": ""
  },
  {
