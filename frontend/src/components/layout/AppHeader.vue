@@ -1,5 +1,8 @@
 <script setup lang="ts">
-// The frame's header (K25): the leading back control, one h1, the actions.
+// The frame's header (K25): the leading slot, one h1, the actions. The slot holds
+// the back control; in the nav-less frame (the storefront, which has no menu) it
+// holds the AIVIS mark as a link to the home page, the same mark and the same
+// target the menu's mark has.
 //
 // WHAT A SCREEN SETS comes from `useScreenHeader` (./screenHeader): the title,
 // the back target and the screen's own icon buttons. The lead line is drawn by
@@ -22,6 +25,7 @@ import { Bell } from '@/components/ui/icons'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import CBackLink from '@/components/ui/CBackLink.vue'
 import { safeNavigate } from '@/composables/safeNavigate'
+import { getRoleDashboard } from '@/router/guards'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
@@ -48,6 +52,16 @@ const tabTitle = computed(() => {
   return tab ? t(tab.labelKey) : undefined
 })
 const title = computed(() => header.value.title ?? tabTitle.value ?? t('app.name'))
+
+// ---------------------------------------------------------------------------
+// The mark of the nav-less frame
+// ---------------------------------------------------------------------------
+// A route with no tab list (the storefront) has no menu to carry the mark, so the
+// leading slot does; where a screen sets a back control the control has the slot.
+const navless = computed(() => !tabsFor(route.meta.shell))
+const markSrc = `${import.meta.env.BASE_URL}aivis-mark.svg`
+const homeRoute = computed(() => getRoleDashboard(authStore.role))
+const homeLabel = computed(() => `${t('app.name')}, ${t('tab.home')}`)
 
 // ---------------------------------------------------------------------------
 // The back control
@@ -160,8 +174,17 @@ watch(showBell, (isAuth) => {
 
 <template>
   <header class="ds-header">
-    <div v-if="header.back" class="ds-header__lead">
-      <CBackLink icon-only :label="t('common.back')" :to="backTarget" @click="onBack" />
+    <div v-if="header.back || navless" class="ds-header__lead">
+      <CBackLink
+        v-if="header.back"
+        icon-only
+        :label="t('common.back')"
+        :to="backTarget"
+        @click="onBack"
+      />
+      <RouterLink v-else class="ds-header__logo" :to="homeRoute" :aria-label="homeLabel">
+        <img class="ds-header__mark" :src="markSrc" alt="" />
+      </RouterLink>
     </div>
     <h1 class="ds-header__title">{{ title }}</h1>
     <div class="ds-header__actions">

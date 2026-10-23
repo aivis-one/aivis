@@ -730,6 +730,11 @@ textarea.ds-input {
 .ds-stat--interactive:hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
 .ds-stat--interactive:active { box-shadow: var(--shadow-1); background: var(--bg-inset); }
 .ds-stat__link { color: inherit; text-decoration: none; }
+/* the button form of the link: a tile that opens from a button reads as the one that opens from an anchor (the same font, start alignment and stretched hit area) */
+button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; }
+/* the icon part: above the label, at an icon size of the scale; a lead box (.ds-lead, K23) or a navigation tile's icon box keeps its own size */
+.ds-stat__icon { display: flex; align-items: center; margin-block-end: var(--space-1); color: var(--icon-secondary); }
+.ds-stat__icon > .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
 .ds-stat__link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
 .ds-stat__link:focus-visible { outline: none; }
 .ds-stat:has(.ds-stat__link:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
@@ -1585,6 +1590,7 @@ textarea.ds-input {
 .ds-header__figure:active { background: var(--primary-subtle); border-color: var(--primary); }
 .ds-header__figure:focus-visible,
 .ds-nav__logo:focus-visible,
+.ds-header__logo:focus-visible,
 .ds-subnav__link:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
@@ -1594,6 +1600,9 @@ textarea.ds-input {
 .ds-nav__brand { display: none; }
 .ds-nav__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--size-3xl); border-radius: var(--radius-control); }
 .ds-nav__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
+/* the same mark in the lead slot of the nav-less header (the public storefront, which has no menu): a link to the home page, the mark alone, at the size the menu's mark has */
+.ds-header__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--touch-min); min-inline-size: var(--touch-min); border-radius: var(--radius-control); }
+.ds-header__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
 .ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-nav__brand { display: block; }
 .ds-shell[data-tier="wide"] .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
 @media (min-width: 880px) {
@@ -1993,6 +2002,14 @@ textarea.ds-input {
 /* the page ground carries the shell; the form stands on .ds-auth__panel, decided by the owner, 2026-10-17 */
 .ds-auth { display: flex; flex-direction: column; box-sizing: border-box; min-block-size: 100dvh; background: var(--bg-page); color: var(--text-primary); }
 .ds-auth--framed { min-block-size: 100%; }
+/* the banner row of the frame (K25, .ds-shell__banner) stands above the header here too, as the first child: sticky at the top, in the flow,
+   one line high; the header below it no longer pads for the top safe-area inset, the banner took it, and the banner text starts where the logo does */
+.ds-auth { --_banner-h: calc(var(--size-3xl) + var(--space-safe-top)); }
+.ds-auth > .ds-shell__banner {
+  flex: none;
+  padding-inline: max(var(--space-5), var(--space-safe-left)) max(var(--space-5), var(--space-safe-right));
+}
+.ds-auth:has(> .ds-shell__banner) .ds-auth__header { padding-block-start: var(--space-4); }
 .ds-auth__header {
   display: flex;
   align-items: center;
@@ -2128,7 +2145,8 @@ textarea.ds-input {
   .ds-combobox__option { min-block-size: var(--touch-min); }
   .ds-reorder__move { inline-size: var(--touch-min); block-size: var(--touch-min); }
   .ds-payout__actions > .ds-button { flex: 1 1 100%; }
-  .ds-auth__header { padding-inline: max(var(--space-4), var(--space-safe-left)) max(var(--space-4), var(--space-safe-right)); }
+  .ds-auth__header,
+  .ds-auth > .ds-shell__banner { padding-inline: max(var(--space-4), var(--space-safe-left)) max(var(--space-4), var(--space-safe-right)); }
   .ds-auth__main { justify-content: flex-start; padding-inline: var(--space-gutter-mobile); padding-block: var(--space-4) var(--space-6); }
   .ds-auth__panel { padding: var(--space-4); max-inline-size: calc(var(--maxw-form) + var(--space-4) * 2); }
   .ds-auth__link { display: inline-flex; align-items: center; min-block-size: var(--touch-min); }

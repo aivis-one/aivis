@@ -12,8 +12,10 @@
 // platform and the click reaches the parent's handler. The display-only call sites
 // stay plain tiles and out of the tab order.
 //
-// The system's tile has no icon; the `icon` slot is kept for the call sites that
-// use it and draws above the label.
+// The `icon` slot is the system's icon part (`.ds-stat__icon`, K46): the first
+// child, above the label, drawn only when a call site fills the slot. The control
+// of an interactive tile is a native <button class="ds-stat__link">, which the
+// system draws the same as its anchor form.
 import { computed, useAttrs } from 'vue'
 import { ArrowDownLeft, ArrowUpRight } from '@/components/ui/icons'
 
@@ -41,7 +43,7 @@ const interactive = computed(() => attrs.onClick !== undefined)
 
 <template>
   <div class="ds-stat" :class="{ 'ds-stat--interactive': interactive }" v-bind="rootAttrs">
-    <slot name="icon" />
+    <span v-if="$slots.icon" class="ds-stat__icon"><slot name="icon" /></span>
     <p class="ds-stat__label">
       <button v-if="interactive" type="button" class="ds-stat__link" @click="press">{{ label }}</button>
       <template v-else>{{ label }}</template>

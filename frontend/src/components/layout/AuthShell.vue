@@ -6,7 +6,8 @@
 // (`ds-auth__foot`). On a phone the panel starts from the top, at desktop widths
 // it is centred. The `start` slot replaces the logo where a screen puts
 // something beside it (a back button). While staff act as another user the banner
-// row of the frame (K25) stands above the header here too.
+// row of the frame (K25) is the first child of the shell, above the header, the
+// system's banner slot of this shell (K33).
 
 import AvatarBanner from '@/components/layout/AvatarBanner.vue'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
