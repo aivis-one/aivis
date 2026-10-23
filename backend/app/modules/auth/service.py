@@ -146,6 +146,7 @@ from app.core.comms_sync import sync_recipient
 from app.core.config import settings
 from app.core.crypto import decrypt_secret
 from app.core.database import get_session_factory
+from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import (
     BadRequestError,
@@ -357,6 +358,12 @@ async def _request_verification_email(
                 "If you did not request this, please ignore this email."
             ),
             "expiry_at": expires_at.isoformat(),
+            # The variables of comms-profile/templates/<locale>.yaml: the
+            # letter's wording and language come from there, the body
+            # above stays as the fallback and the stored copy.
+            "action_data": email_action_data(
+                code=code, minutes=_VERIFICATION_CODE_TTL_MINUTES
+            ),
         },
     )
 
@@ -395,6 +402,9 @@ async def _request_password_reset_email(
                 "email -- your password will not be changed."
             ),
             "expiry_at": expires_at.isoformat(),
+            "action_data": email_action_data(
+                reset_url=reset_link, minutes=_PASSWORD_RESET_TOKEN_TTL_MINUTES
+            ),
         },
     )
 

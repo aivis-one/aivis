@@ -284,6 +284,14 @@ def main(argv):
         for f in sorted((args.assets_dir / "img").iterdir()):
             if f.is_file():
                 shutil.copy2(f, img_out / f.name)
+        # the e-mail letters' logo, served at /email/logo.png (an address the letters carry for good)
+        email_src = args.assets_dir / "email"
+        if email_src.is_dir():
+            email_out = tmp_dir / "email"
+            email_out.mkdir(parents=True, exist_ok=True)
+            for f in sorted(email_src.iterdir()):
+                if f.is_file():
+                    shutil.copy2(f, email_out / f.name)
         write(tmp_dir / "cloudflare-redirect-rule.txt", redirect_rule_snippet(site))
         # the investor documents' Markdown, offered as a template next to each document page
         for loc in site["locales"]:

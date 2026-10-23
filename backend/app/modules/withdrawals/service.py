@@ -42,6 +42,7 @@ from app.core.audit import record_audit
 from app.core.comms import comms_configured
 from app.core.config import settings
 from app.core.constants import LedgerReason
+from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.modules.ledgers.models import LedgerStatus
@@ -124,6 +125,9 @@ async def _notify_withdrawal(
             "target_value": str(withdrawal.user_id),
             "title": _WITHDRAWAL_NOTIFICATION_TITLES[withdrawal.status],
             "body": body,
+            # E-mail since 2026-10-23: the wording, in the user's language,
+            # is comms-profile/templates/<locale>.yaml over these variables.
+            "action_data": email_action_data(amount=amount, reason=reason),
         },
     )
 

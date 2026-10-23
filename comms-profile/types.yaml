@@ -139,9 +139,9 @@ types:
   # All three share ONE category so today they mute together; splitting the
   # category is free later if that turns out to be wanted.
   #
-  # title/body are sent as literal English strings by the emitter, not through
-  # a per-locale template in this profile (no templates/ directory exists yet
-  # in this repo) -- this matches every other backend-authored user-facing
+  # title/body are sent as literal English strings by the emitter; these in-app
+  # types have no per-locale template (templates/<locale>.yaml holds the e-mail types only)
+  # -- this matches every other backend-authored user-facing
   # string today (core/email.py has no locale branching either). Localizing
   # outbound notification copy is a real gap, but it is a PRE-EXISTING one
   # this batch does not newly create, and it is out of scope for a delivery
@@ -187,22 +187,28 @@ types:
   # the withdrawal's CURRENT status, not the audit-event name -- confirm's MVP
   # cascade (confirmed -> processing, immediate) means a withdrawal is never
   # actually left sitting in "confirmed", so PROCESSING is the type a user
-  # receives, not "withdrawal.confirmed". One shared category: all four are the
-  # same real-money lifecycle from the user's side, and a future preference
-  # screen has no reason yet to let someone mute "your money was sent" while
-  # keeping "your money didn't go through".
+  # receives, not "withdrawal.confirmed". Since 2026-10-23 they go to e-mail too and carry no category (the block below says why).
+
+  # E-MAIL FOR MONEY AND DEBT (2026-10-23). The four withdrawal types and
+  # the two installment types tranche_overdue and plan_defaulted go to
+  # e-mail as well as the cabinet: they touch the person's money or a debt.
+  # Every other type stays in the cabinet only. The texts are in
+  # templates/<locale>.yaml. A type routed to e-mail carries NO category
+  # (checks/comms_profile.py: a category is the mute gate, and nobody may
+  # mute the word that their money was sent or that an installment is
+  # overdue), so these six no longer carry theirs.
 
   withdrawal.processing:
-    category: withdrawals
+    channels: [in_app, email]
 
   withdrawal.rejected:
-    category: withdrawals
+    channels: [in_app, email]
 
   withdrawal.completed:
-    category: withdrawals
+    channels: [in_app, email]
 
   withdrawal.failed:
-    category: withdrawals
+    channels: [in_app, email]
 
   # =============================================================================
   # aivis product types -- phase 2, batch 3 continued (2026-08-27)
@@ -245,7 +251,7 @@ types:
     category: installments
 
   installment.tranche_overdue:
-    category: installments
+    channels: [in_app, email]
 
   # Plan-level installment events (2026-08-27) -- the follow-up the
   # per-tranche block above named. Both from the same installments module:
@@ -259,7 +265,7 @@ types:
     category: installments
 
   installment.plan_defaulted:
-    category: installments
+    channels: [in_app, email]
 
   # =============================================================================
   # aivis product types -- phase 2, batch 3 continued (2026-08-27)

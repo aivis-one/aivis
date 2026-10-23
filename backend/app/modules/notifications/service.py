@@ -258,7 +258,6 @@ _KNOWN_CATEGORIES = (
     "purchases",
     "staff_messages",
     "support_messages",
-    "withdrawals",
 )
 
 

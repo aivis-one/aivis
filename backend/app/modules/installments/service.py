@@ -65,6 +65,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.comms import comms_configured
 from app.core.constants import LedgerReason
+from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, InsufficientBalanceError, NotFoundError
 from app.modules.companies.models import CompanyProfile
@@ -439,6 +440,10 @@ async def pay_tranche(
                             f"be charged due to insufficient balance. "
                             f"Please top up your balance."
                         ),
+                        "action_data": email_action_data(
+                            tranche_number=tranche.number,
+                            amount=f"{tranche.amount_cents / 100:,.2f}",
+                        ),
                     },
                 )
 
@@ -750,6 +755,7 @@ async def default_plan(
                     "payment. You keep the units from tranches already "
                     "paid; the remaining tranches were cancelled."
                 ),
+                "action_data": email_action_data(),
             },
         )
 

@@ -51,7 +51,6 @@ _DEFAULT_CATEGORIES = (
     "purchases",
     "staff_messages",
     "support_messages",
-    "withdrawals",
 )
 
 
@@ -287,7 +286,7 @@ async def test_get_returns_the_quiet_window_comms_periods_describe(
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["categories"]["kyc"] is False
-    assert body["categories"]["withdrawals"] is True
+    assert body["categories"]["payments"] is True
     assert body["schedule"] == {"from": "22:00", "to": "07:00", "days": ["mon", "fri"]}
     assert body["timezone"] == "Europe/Moscow"
 
@@ -302,19 +301,19 @@ async def test_patch_forwards_partial_category_toggles(
     response = await client.patch(
         "/api/v1/notifications/preferences",
         headers=headers,
-        json={"categories": {"kyc": False, "withdrawals": False}},
+        json={"categories": {"kyc": False, "payments": False}},
     )
 
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["categories"]["kyc"] is False
-    assert body["categories"]["withdrawals"] is False
+    assert body["categories"]["payments"] is False
     # Everything else untouched.
     assert body["categories"]["deposits"] is True
 
     # Only the listed toggles were forwarded -- not the whole map.
     call = comms.calls[-1]
-    assert call["json"] == {"categories": {"kyc": False, "withdrawals": False}}
+    assert call["json"] == {"categories": {"kyc": False, "payments": False}}
 
 
 @pytest.mark.asyncio

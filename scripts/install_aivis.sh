@@ -1104,8 +1104,8 @@ MAX_CONCURRENT_SESSIONS=5
 # -- Telegram --
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_VAL}
 # Derived from the token by the installer (Telegram getMe), never typed.
-# The backend does not read it -- Settings has no such field and drops it
-# (extra="ignore"). It lives here because backend/.env is the SINGLE
+# The backend reads it for the letters' support link
+# (core/email_vars.py). It lives here because backend/.env is the SINGLE
 # source the comms hand-over reads from: comms builds every deep-link
 # button from it, and a value invented in two places is a value that can
 # disagree with itself.

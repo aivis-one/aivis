@@ -143,6 +143,13 @@ class Settings(BaseSettings):
     # default below is the vite dev server and serves development only:
     # _validate refuses it anywhere else.
     frontend_base_url: str = "http://localhost:5173"
+    # Where a letter sends a reader who needs help: the support bot's link
+    # and the company's public mailbox (core/email_vars.py). Both are
+    # deployment addresses, so they come from here and not from the code;
+    # empty is allowed -- the letter then points at TELEGRAM_BOT_URL, else at the site's own address
+    # and at hello@ on the site's host.
+    support_url: str = ""
+    support_email: str = ""
 
     # -- Database --
     database_url: str = ""
@@ -203,6 +210,10 @@ class Settings(BaseSettings):
 
     # -- Telegram --
     telegram_bot_token: str = "TEST"
+    # The bot's public link, derived by the installer from the token
+    # (Telegram getMe) and written to backend/.env. The letters' support
+    # link falls back to it (core/email_vars.py).
+    telegram_bot_url: str = ""
 
     # -- Telegram Auth Security --
     auth_rate_limit_max_requests: int = 5

@@ -81,6 +81,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
+from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import AivisError, BadRequestError, NotFoundError
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
@@ -570,6 +571,15 @@ async def request_agreement_email(
                 f"{documents_link(data.company.id, data.purchase.id)}\n\n"
                 f"Best regards,\n"
                 f"AIVIS.ONE Platform"
+            ),
+            "action_data": email_action_data(
+                investor_name=data.investor_name,
+                agreement_number=agreement_number,
+                company=data.company.name,
+                product=data.product.name,
+                units=data.purchase.units,
+                total_paid=format_cents(data.purchase.paid_cents),
+                documents_url=documents_link(data.company.id, data.purchase.id),
             ),
         },
     )
