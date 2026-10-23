@@ -379,8 +379,8 @@ async function submitMfaCode(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
@@ -388,11 +388,11 @@ async function submitMfaCode(): Promise<void> {
 
 .auth-header {
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 100;
   background: var(--bg-page);
   padding: var(--space-4) var(--space-4-lg);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -410,7 +410,7 @@ async function submitMfaCode(): Promise<void> {
 /* The entry screen leads with the BRAND, not a generic padlock glyph: the mark
    plus the drawn wordmark, at 64px. This is the first thing a user sees. */
 .auth-brand {
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
   display: flex;
   justify-content: center;
 }
@@ -419,42 +419,42 @@ async function submitMfaCode(): Promise<void> {
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-6);
+  margin-block-end: var(--space-6);
   text-align: center;
   line-height: 1.5;
 }
 
 .auth-form {
-  width: 100%;
-  max-width: var(--maxw-form);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form);
 }
 
 .forgot-row {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .auth-error {
   padding: var(--space-3) var(--space-4);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
   font-size: var(--fs-xs);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   line-height: 1.5;
 }
 
 .btn {
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
@@ -465,7 +465,7 @@ async function submitMfaCode(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base);
 }
 
 .btn:disabled {
@@ -483,14 +483,14 @@ async function submitMfaCode(): Promise<void> {
 }
 
 .btn-spinner {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  border: 2px solid currentColor;
+  border: calc(var(--border-input-width) * 2) solid currentColor;
   opacity: 0.35;
-  border-top-color: currentColor;
+  border-block-start-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -518,11 +518,11 @@ async function submitMfaCode(): Promise<void> {
 .btn-link::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 
 .btn-link:hover {
@@ -531,12 +531,12 @@ async function submitMfaCode(): Promise<void> {
 
 .auth-footer {
   text-align: center;
-  margin-top: var(--space-5);
+  margin-block-start: var(--space-5);
 }
 
 .auth-footer-text {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-right: var(--space-1);
+  margin-inline-end: var(--space-1);
 }
 </style>

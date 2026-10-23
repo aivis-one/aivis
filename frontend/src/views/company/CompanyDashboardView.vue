@@ -292,8 +292,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 200px);
-  min-height: calc(100dvh - 200px);
+  min-block-size: calc(100vh - 200px);
+  min-block-size: calc(100dvh - 200px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -324,36 +324,36 @@ onMounted(() => {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .dash__hero-logo {
-  width: var(--size-4xl);
-  height: var(--size-4xl);
+  inline-size: var(--size-4xl);
+  block-size: var(--size-4xl);
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .dash__hero-logo-img {
-  width: 100%;
-  height: 100%;
+  inline-size: 100%;
+  block-size: 100%;
   object-fit: cover;
 }
 .dash__hero-logo-fallback {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--primary);
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-wide);
 }
 .dash__hero-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .dash__hero-name {
   font-size: var(--fs-h4);
@@ -370,7 +370,7 @@ onMounted(() => {
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   color: var(--text-primary);
 }
 .dash__balance-head {
@@ -401,7 +401,7 @@ onMounted(() => {
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .dash__pool-head {
   display: flex;
@@ -453,7 +453,8 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-  margin: var(--space-1) 0 0 0;
+  margin-block: var(--space-1) 0;
+  margin-inline: 0 0;
 }
 .dash__recent-empty {
   font-size: var(--fs-xs);
@@ -462,7 +463,7 @@ onMounted(() => {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px dashed var(--border-default);
+  border: thin dashed var(--border-default);
   text-align: center;
 }
 
@@ -482,14 +483,14 @@ onMounted(() => {
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .dash__tx-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
@@ -497,7 +498,7 @@ onMounted(() => {
 }
 .dash__tx-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -537,7 +538,7 @@ onMounted(() => {
 .dash__link {
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast);
 }
 .dash__link:hover {
   border-color: var(--primary);
@@ -569,7 +570,7 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px dashed var(--border-default);
+  border: thin dashed var(--border-default);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
@@ -600,7 +601,7 @@ onMounted(() => {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .dash__metrics {
-    max-width: calc(3 * var(--tile-max));
+    max-inline-size: calc(3 * var(--tile-max));
   }
 }
 
@@ -612,6 +613,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .dash__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

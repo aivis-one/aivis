@@ -275,7 +275,7 @@ onMounted(() => {
   border: 0;
   background: none;
   padding: 0;
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   cursor: pointer;
@@ -300,7 +300,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .caf__center {
@@ -309,7 +309,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -324,7 +324,7 @@ onMounted(() => {
 
 .caf__row {
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
   display: flex;
@@ -369,7 +369,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 .caf__loadmore-error {
@@ -378,9 +378,9 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-subtle);
   font-size: var(--fs-xs);
   color: var(--text-secondary);

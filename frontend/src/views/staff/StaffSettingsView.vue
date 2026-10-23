@@ -185,37 +185,37 @@ const version = __APP_VERSION__
 .staff-settings__profile {
   text-align: center;
   padding: var(--space-4-lg) 0;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .staff-settings__name {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
 }
 .staff-settings__email {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .staff-settings__badges {
   display: inline-flex;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 
 .staff-settings__section {
-  border-top: 1px solid var(--border-default);
-  padding-top: var(--space-4);
-  margin-top: var(--space-4);
+  border-block-start: thin solid var(--border-default);
+  padding-block-start: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .staff-settings__section-label {
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--space-3);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-3);
 }
 
 .staff-settings__nav-item {
@@ -227,12 +227,12 @@ const version = __APP_VERSION__
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   cursor: pointer;
   font-size: var(--fs-sm);
   color: var(--text-primary);
@@ -242,7 +242,7 @@ const version = __APP_VERSION__
 }
 .staff-settings__nav-item--danger {
   color: var(--danger);
-  border-bottom: none;
+  border-block-end: none;
 }
 .staff-settings__nav-left {
   display: flex;
@@ -258,7 +258,7 @@ const version = __APP_VERSION__
   display: flex;
   justify-content: space-between;
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }

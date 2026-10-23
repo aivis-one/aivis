@@ -263,7 +263,7 @@ async function onDownload(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -279,7 +279,8 @@ async function onDownload(): Promise<void> {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  padding-block: var(--space-2) var(--space-2);
+  padding-inline: var(--space-2) var(--space-3);
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -288,8 +289,8 @@ async function onDownload(): Promise<void> {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    background 0.12s ease,
-    color 0.12s ease;
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .atl__back:hover {
@@ -311,8 +312,8 @@ async function onDownload(): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 96px;
-  height: 96px;
+  inline-size: 96px;
+  block-size: 96px;
   background: var(--bg-page);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
@@ -352,7 +353,7 @@ async function onDownload(): Promise<void> {
 }
 
 .atl__cta :deep(.c-button) {
-  min-width: 200px;
+  min-inline-size: 200px;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -363,6 +364,6 @@ async function onDownload(): Promise<void> {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .atl__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

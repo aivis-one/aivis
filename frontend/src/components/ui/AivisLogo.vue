@@ -33,7 +33,7 @@ const baseUrl = import.meta.env.BASE_URL
       class="aivis-logo-icon"
       :src="`${baseUrl}aivis-mark.svg`"
       alt="AIVIS"
-      :style="{ width: height + 'px', height: height + 'px' }"
+      :style="{ inlineSize: height + 'px', blockSize: height + 'px' }"
     />
     <svg
       v-if="showText"
@@ -41,7 +41,7 @@ const baseUrl = import.meta.env.BASE_URL
       viewBox="237 453 120 25"
       role="img"
       aria-label="aivis.one"
-      :style="{ height: Math.round(height * 0.5) + 'px' }"
+      :style="{ blockSize: Math.round(height * 0.5) + 'px' }"
     >
       <g fill="currentColor">
         <rect x="257.17" y="461.49" width="2.86" height="14.96" />
@@ -88,7 +88,7 @@ const baseUrl = import.meta.env.BASE_URL
    with everything else instead of carrying a colour of its own. */
 .aivis-logo-wordmark {
   flex-shrink: 0;
-  width: auto;
+  inline-size: auto;
   color: var(--text-primary);
 }
 </style>

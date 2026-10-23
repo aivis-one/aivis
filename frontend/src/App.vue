@@ -133,9 +133,9 @@ onMounted(() => {
 /* Avatar overlay banner */
 .avatar-banner {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -147,7 +147,7 @@ onMounted(() => {
      vertical padding is --space-1 so the tallest child (the 26px button) plus
      padding stays inside that reserve -- measured 40px against 40px. */
   padding: var(--space-1) var(--space-4);
-  min-height: var(--space-6-lg);
+  min-block-size: var(--space-6-lg);
   background: var(--accent);
   color: var(--on-accent);
   /* Was 13px -- the retired step. Moved to --fs-sm, the size this kind of
@@ -161,7 +161,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .avatar-banner__text {
@@ -204,7 +204,7 @@ onMounted(() => {
 /* Push content down when avatar banner is visible */
 .app--avatar-active {
   /* Same token as the banner's min-height above -- see the note there. */
-  padding-top: var(--space-6-lg);
+  padding-block-start: var(--space-6-lg);
 }
 
 /* Auth error screen */
@@ -213,8 +213,8 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   gap: var(--space-4);
   padding: var(--space-5);

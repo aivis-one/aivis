@@ -22,8 +22,8 @@ const { t } = useI18n()
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-block-size: calc(100vh - 120px);
+  min-block-size: calc(100dvh - 120px);
   padding: var(--space-5);
   text-align: center;
 }

@@ -312,17 +312,17 @@ onMounted(() => {
   gap: var(--space-4);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
-  text-align: left;
+  text-align: start;
   font-family: inherit;
   cursor: pointer;
   transition:
-    border-color 0.15s,
-    background 0.15s,
-    box-shadow 0.15s;
-  min-height: 72px;
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+  min-block-size: 72px;
 }
 .more__tile:hover {
   border-color: var(--primary-hover);
@@ -337,8 +337,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-2xl);
-  height: var(--size-2xl);
+  inline-size: var(--size-2xl);
+  block-size: var(--size-2xl);
   border-radius: var(--radius-sm);
   background: var(--primary-subtle);
   color: var(--primary);
@@ -347,7 +347,7 @@ onMounted(() => {
 
 .more__tile-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -375,6 +375,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .more__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

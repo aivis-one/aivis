@@ -310,8 +310,8 @@ onMounted(loadProduct)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-block-size: calc(100vh - 120px);
+  min-block-size: calc(100dvh - 120px);
   padding: var(--space-5);
 }
 
@@ -327,20 +327,20 @@ onMounted(loadProduct)
 /* Hero with cover image */
 .pd__hero {
   position: relative;
-  height: 220px;
+  block-size: 220px;
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  color: #fff;
+  color: var(--neutral-0);
 }
 .pd__hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
+  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
   pointer-events: none;
 }
 .pd__hero--fallback {
@@ -365,7 +365,7 @@ onMounted(loadProduct)
   position: relative;
   z-index: 2;
   padding: var(--space-4-lg);
-  width: 100%;
+  inline-size: 100%;
 }
 .pd__hero--fallback .pd__hero-content {
   text-align: center;
@@ -376,7 +376,7 @@ onMounted(loadProduct)
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -411,7 +411,7 @@ onMounted(loadProduct)
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .pd__stat-value {
   font-size: var(--fs-h4);
@@ -424,7 +424,7 @@ onMounted(loadProduct)
 .pd__stat-unit {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .pd__section {
@@ -480,22 +480,22 @@ onMounted(loadProduct)
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    transform 0.05s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
 }
 .pd__plan:hover {
   border-color: var(--primary);
 }
 .pd__plan:focus-visible {
-  outline: none;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .pd__plan:active {
   transform: scale(0.99);
@@ -527,7 +527,7 @@ onMounted(loadProduct)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding-top: var(--space-2);
+  padding-block-start: var(--space-2);
 }
 @media (min-width: 480px) {
   .pd__actions {
@@ -550,7 +550,7 @@ onMounted(loadProduct)
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .pd__stats {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 
@@ -562,6 +562,6 @@ onMounted(loadProduct)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .pd__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

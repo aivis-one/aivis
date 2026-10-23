@@ -237,7 +237,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5) var(--space-2);
 }
 .iev__list {
@@ -246,7 +246,7 @@ onMounted(() => {
   gap: var(--space-3);
 }
 .iev__sentinel {
-  height: 1px;
+  block-size: 1px;
 }
 .iev__retry {
   display: flex;
@@ -255,7 +255,7 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
 }
 .iev__retry-text {
@@ -267,16 +267,16 @@ onMounted(() => {
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--dur-fast) var(--ease-standard);
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -290,11 +290,11 @@ onMounted(() => {
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   border-color: var(--accent);

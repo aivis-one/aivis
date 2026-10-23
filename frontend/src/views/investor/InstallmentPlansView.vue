@@ -321,7 +321,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .ipl__center {
@@ -330,7 +330,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -346,26 +346,26 @@ onMounted(() => {
 .ipl__item {
   appearance: none;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   margin: 0;
   padding: var(--space-4);
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast);
 }
 .ipl__item:hover {
   border-color: var(--primary);
 }
 .ipl__item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* Defaulted plans must be unmistakable in the list, not just via the
@@ -400,8 +400,8 @@ onMounted(() => {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-1);
 }
 .ipl__item-stat-value {
   font-size: var(--fs-sm);
@@ -424,7 +424,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 .ipl__loadmore-error {
@@ -433,9 +433,9 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-subtle);
   font-size: var(--fs-xs);
   color: var(--text-secondary);

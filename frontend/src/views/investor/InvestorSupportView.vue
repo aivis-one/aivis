@@ -367,7 +367,7 @@ onMounted(() => {
      under the shell chrome -- match InstallmentView's full-height
      detail-screen convention rather than InvestorEventsView's plain
      list flow. */
-  min-height: 0;
+  min-block-size: 0;
   flex: 1;
 }
 
@@ -393,7 +393,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5) var(--space-2);
   flex: 1;
 }
@@ -403,7 +403,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-2);
   flex: 1;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 .isup__toolbar {
@@ -417,7 +417,7 @@ onMounted(() => {
   gap: var(--space-2);
   overflow-y: auto;
   flex: 1;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 /* Bubble alignment via align-self, not left/right: a column flexbox's
@@ -432,7 +432,7 @@ onMounted(() => {
    relative cap is the standard messenger convention and scales with
    whatever container this ends up in, mobile or desktop. */
 .isup__msg {
-  max-width: 85%;
+  max-inline-size: 85%;
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--bg-subtle);
@@ -459,8 +459,8 @@ onMounted(() => {
    since that class is private to CButton's own scoped style. */
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inline-size: 1px;
+  block-size: 1px;
   padding: 0;
   margin: -1px;
   overflow: hidden;
@@ -473,8 +473,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-default);
+  padding-block-start: var(--space-2);
+  border-block-start: thin solid var(--border-default);
 }
 
 .isup__composer-error {

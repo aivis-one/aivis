@@ -285,8 +285,8 @@ async function handleRegister(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
@@ -294,11 +294,11 @@ async function handleRegister(): Promise<void> {
 
 .auth-header {
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 100;
   background: var(--bg-page);
   padding: var(--space-4) var(--space-4-lg);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -325,51 +325,51 @@ async function handleRegister(): Promise<void> {
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-6);
+  margin-block-end: var(--space-6);
   text-align: center;
   line-height: 1.5;
 }
 
 .auth-form {
-  width: 100%;
-  max-width: var(--maxw-form);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form);
 }
 
 .form-group {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 /* The field inside a hint pair gives up its own margin to the wrapper. */
 .form-group__field {
-  margin-bottom: 0;
+  margin-block-end: 0;
 }
 
 .form-hint {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .auth-error {
   padding: var(--space-3) var(--space-4);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
   font-size: var(--fs-xs);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   line-height: 1.5;
 }
 
 .btn {
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
@@ -380,7 +380,7 @@ async function handleRegister(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base);
 }
 
 .btn:disabled {
@@ -398,14 +398,14 @@ async function handleRegister(): Promise<void> {
 }
 
 .btn-spinner {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  border: 2px solid currentColor;
+  border: calc(var(--border-input-width) * 2) solid currentColor;
   opacity: 0.35;
-  border-top-color: currentColor;
+  border-block-start-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -433,11 +433,11 @@ async function handleRegister(): Promise<void> {
 .btn-link::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 
 .btn-link:hover {
@@ -448,26 +448,26 @@ async function handleRegister(): Promise<void> {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  width: 100%;
-  margin-top: var(--space-3);
-  margin-bottom: var(--space-3);
+  inline-size: 100%;
+  margin-block-start: var(--space-3);
+  margin-block-end: var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  text-align: left;
+  text-align: start;
   line-height: 1.5;
 }
 
 .auth-consent--second {
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
 }
 
 .auth-note {
-  width: 100%;
-  max-width: var(--maxw-form);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form);
   padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -478,8 +478,8 @@ async function handleRegister(): Promise<void> {
   flex: none;
   /* centre the box on the first text line: (line-height 1.5 * fs-xs - box) / 2 */
   margin: calc((1.5 * var(--fs-xs) - 1rem) / 2) 0 0;
-  width: 1rem;
-  height: 1rem;
+  inline-size: 1rem;
+  block-size: 1rem;
 }
 
 .auth-consent a {
@@ -489,12 +489,12 @@ async function handleRegister(): Promise<void> {
 
 .auth-footer {
   text-align: center;
-  margin-top: var(--space-5);
+  margin-block-start: var(--space-5);
 }
 
 .auth-footer-text {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-right: var(--space-1);
+  margin-inline-end: var(--space-1);
 }
 </style>

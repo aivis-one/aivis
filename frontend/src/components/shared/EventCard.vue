@@ -185,7 +185,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
   flex: 1;
 }
 .event-card__title {
@@ -212,7 +212,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .event-card__desc {
   margin: var(--space-1) 0 0;
@@ -235,22 +235,22 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;
-  width: fit-content;
+  inline-size: fit-content;
 }
 
 .event-card__link::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 
 /* Compact variant: single clickable row. */
@@ -258,17 +258,17 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .event-card--compact .event-card__badge {
-  width: var(--size-3xl);
-  height: var(--size-3xl);
+  inline-size: var(--size-3xl);
+  block-size: var(--size-3xl);
 }
 .event-card__chev {
   color: var(--text-secondary);
@@ -283,14 +283,14 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   display: flex;
   flex-direction: column;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 .event-card__cover {
   position: relative;
   aspect-ratio: 16 / 9;
-  width: 100%;
+  inline-size: 100%;
   background-size: cover;
   background-position: center;
   background-color: var(--bg-subtle);
@@ -304,10 +304,10 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 }
 .event-card__cover-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: var(--size-2xl);
-  height: var(--size-2xl);
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  inline-size: var(--size-2xl);
+  block-size: var(--size-2xl);
   background: var(--bg-page);
   box-shadow: var(--shadow-1);
 }
@@ -323,6 +323,6 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .event-card__desc {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

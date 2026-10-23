@@ -237,7 +237,7 @@ onMounted(loadCompany)
 .scd {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-block-size: 100%;
 }
 
 /* Inline page-header block (iter 2.7 batch B2 pattern):
@@ -263,9 +263,9 @@ onMounted(loadCompany)
   gap: var(--space-2);
   overflow-x: auto;
   padding: 0 var(--space-4) var(--space-3);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 9;
   background: var(--bg-page);
 }
@@ -285,12 +285,12 @@ onMounted(loadCompany)
      grows instead -- the pattern .filter-chip already uses. Measured by
      HIT TEST (elementFromPoint), which is what showed the overlay failing
      exactly one probe: the vertical one. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   display: inline-flex;
   align-items: center;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
@@ -299,9 +299,9 @@ onMounted(loadCompany)
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
 }
 
 .scd__tab:hover {

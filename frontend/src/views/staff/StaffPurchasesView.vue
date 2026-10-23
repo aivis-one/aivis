@@ -267,7 +267,7 @@ onMounted(() => {
   margin: 0 0 var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .purch__filters {
@@ -275,14 +275,14 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .purch__buyer {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 14rem;
+  min-inline-size: 14rem;
 }
 
 .purch__label {
@@ -296,7 +296,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-3);
 }
 
@@ -317,12 +317,12 @@ onMounted(() => {
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .purch__main {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .purch__top {
@@ -384,7 +384,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 .purch__page {

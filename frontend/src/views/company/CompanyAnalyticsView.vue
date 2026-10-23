@@ -424,7 +424,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
               <div class="canl__chart-bar-wrap">
                 <div
                   class="canl__chart-bar"
-                  :style="{ height: barHeightPercent(entry) + '%' }"
+                  :style="{ blockSize: barHeightPercent(entry) + '%' }"
                   :title="tooltipFor(entry)"
                 />
               </div>
@@ -501,8 +501,8 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 240px);
-  min-height: calc(100dvh - 240px);
+  min-block-size: calc(100vh - 240px);
+  min-block-size: calc(100dvh - 240px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -526,7 +526,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   opacity: 0.85;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .canl__metrics-value {
   font-size: var(--fs-2xl);
@@ -538,7 +538,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .canl__metrics-sub-label {
   font-size: var(--fs-xs);
@@ -546,7 +546,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   opacity: 0.8;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 .canl__metrics-sub-value {
   font-size: var(--fs-body);
@@ -584,7 +584,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px dashed var(--border-default);
+  border: thin dashed var(--border-default);
   text-align: center;
 }
 
@@ -593,14 +593,14 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   padding: var(--space-4) var(--space-3) var(--space-2);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .canl__chart-bars {
   display: flex;
   align-items: stretch;
   gap: var(--space-2);
-  height: 160px;
+  block-size: 160px;
 }
 
 /*
@@ -615,25 +615,25 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-2);
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .canl__chart-bar-wrap {
   flex: 1;
   display: flex;
   flex-direction: column-reverse;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 .canl__chart-bar {
-  width: 100%;
+  inline-size: 100%;
   background: var(--primary);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   transition:
-    height 0.3s ease,
-    opacity 0.15s;
+    block-size var(--dur-base) var(--ease-standard),
+    opacity var(--dur-fast) var(--ease-standard);
   cursor: default;
-  min-height: 1px;
+  min-block-size: 1px;
 }
 .canl__chart-bar:hover {
   opacity: 0.8;
@@ -675,12 +675,12 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .canl__row-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -716,7 +716,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .canl__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 .canl__tools {
   display: flex;
@@ -730,9 +730,9 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
   gap: var(--space-1);
 }
 .canl__period {
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
   padding: 0 var(--space-3);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);

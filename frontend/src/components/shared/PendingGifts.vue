@@ -124,7 +124,7 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--primary-subtle);
 }
@@ -136,7 +136,7 @@ onMounted(() => {
 
 .gifts__body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .gifts__units {
   font-size: var(--fs-sm);
@@ -144,7 +144,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .gifts__date {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }

@@ -509,7 +509,7 @@ onUnmounted(() => {
 .cp {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .cp__center {
@@ -518,11 +518,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 .cp__center--small {
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   padding: var(--space-3);
 }
 
@@ -558,7 +558,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
 }
 
 /* A6: `.cp__aggregate` is the azure gradient carrying --on-primary, but a
@@ -585,8 +585,8 @@ onUnmounted(() => {
   font-size: var(--fs-xs);
   opacity: 0.85;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-1);
 }
 .cp__agg-val {
   font-size: var(--fs-sm);
@@ -616,7 +616,7 @@ onUnmounted(() => {
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
 }
 
@@ -624,8 +624,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -644,7 +644,7 @@ onUnmounted(() => {
 
 .cp__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -683,7 +683,7 @@ onUnmounted(() => {
  */
 .cp__ownership-actions {
   display: flex;
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 /* Sentinel */
@@ -691,7 +691,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 /* loadMore error banner */
@@ -700,7 +700,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
@@ -709,7 +709,7 @@ onUnmounted(() => {
 }
 .cp__loadmore-error-text {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
@@ -724,7 +724,7 @@ onUnmounted(() => {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .cp__agg-grid {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 </style>

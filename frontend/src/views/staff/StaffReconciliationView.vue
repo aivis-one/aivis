@@ -166,7 +166,7 @@ onMounted(run)
   margin: 0 0 var(--space-4);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .recon__center {
@@ -174,7 +174,7 @@ onMounted(run)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -189,7 +189,7 @@ onMounted(run)
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .recon__counts {
@@ -205,7 +205,7 @@ onMounted(run)
 
 .recon__row {
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .recon__row-head {
@@ -227,10 +227,10 @@ onMounted(run)
 }
 
 .recon__what {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-sm);
   color: var(--text-primary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .recon__details {

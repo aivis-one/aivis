@@ -378,11 +378,11 @@ onMounted(load)
   margin: 0 0 var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .scprod__toolbar {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .scprod__center {
@@ -390,7 +390,7 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-3);
 }
 
@@ -411,12 +411,12 @@ onMounted(load)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .scprod__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .scprod__name {
@@ -429,10 +429,10 @@ onMounted(load)
 }
 
 .scprod__desc {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .scprod__actions {
@@ -447,7 +447,7 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 .scprod__page {
@@ -456,7 +456,7 @@ onMounted(load)
 }
 
 .scprod__meta {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
@@ -477,6 +477,6 @@ onMounted(load)
 .scprod__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 </style>

@@ -189,7 +189,7 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-3);
 }
 
@@ -204,7 +204,7 @@ onMounted(load)
   margin: 0 0 var(--space-4);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .scpool__note {
@@ -217,7 +217,7 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .scpool__label {
@@ -242,12 +242,12 @@ onMounted(load)
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 var(--space-3);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .scpool__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 </style>

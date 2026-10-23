@@ -221,7 +221,7 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-3);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
 }
@@ -235,12 +235,12 @@ onMounted(() => {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-secondary);
-  min-width: var(--size-lg);
+  min-inline-size: var(--size-lg);
 }
 
 .lb__name {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -254,7 +254,7 @@ onMounted(() => {
    not on a flex container's anonymous text item) and its overflow:hidden ate
    the adjacent flex-shrink:0 badge instead of trimming the name. */
 .lb__nametext {
-  min-width: 0;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -285,6 +285,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .lb__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

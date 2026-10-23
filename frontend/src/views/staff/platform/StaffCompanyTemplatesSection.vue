@@ -229,11 +229,11 @@ onMounted(loadTemplates)
 
     <!-- Detail modal -->
     <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="sct__center" style="min-height: 160px">
+      <div v-if="detailLoading" class="sct__center" style="min-block-size: var(--center-md)">
         <CLoader :size="24" />
       </div>
 
-      <div v-else-if="detailError" class="sct__center" style="min-height: 160px">
+      <div v-else-if="detailError" class="sct__center" style="min-block-size: var(--center-md)">
         <p class="sct__detail-error">
           {{ t('staff.platform.templates.detailError') }}
         </p>
@@ -294,21 +294,21 @@ onMounted(loadTemplates)
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .sct__filter-row {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  padding-bottom: var(--space-1);
+  padding-block-end: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -328,11 +328,11 @@ onMounted(loadTemplates)
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -345,7 +345,7 @@ onMounted(loadTemplates)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-4);
 }
 .sct__detail-error {
@@ -367,27 +367,27 @@ onMounted(loadTemplates)
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--dur-fast);
 }
 .tpl-item:hover {
   background: var(--bg-subtle);
 }
 .tpl-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .tpl-item__top {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .tpl-item__title {
   font-size: var(--fs-sm);
@@ -400,7 +400,7 @@ onMounted(loadTemplates)
 .tpl-item__meta {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .sct__modal-title {
@@ -416,12 +416,12 @@ onMounted(loadTemplates)
   flex-wrap: wrap;
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .sct__storage,
 .sct__assets {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .sct__storage-label,
 .sct__assets-label,
@@ -432,7 +432,7 @@ onMounted(loadTemplates)
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .sct__storage-value {
   font-size: var(--fs-xs);
@@ -458,7 +458,7 @@ onMounted(loadTemplates)
 }
 
 .sct__html {
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .sct__html-pre {
   font-size: var(--fs-xs);
@@ -468,7 +468,7 @@ onMounted(loadTemplates)
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   overflow: auto;
-  max-height: 360px;
+  max-block-size: 360px;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -477,7 +477,7 @@ onMounted(loadTemplates)
 .sct__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 </style>

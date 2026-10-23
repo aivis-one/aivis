@@ -201,7 +201,7 @@ async function retryLoadMore(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
 }
 
 .cl__grid {
@@ -217,8 +217,8 @@ async function retryLoadMore(): Promise<void> {
 }
 
 .cl__sentinel {
-  width: 100%;
-  height: 1px;
+  inline-size: 100%;
+  block-size: 1px;
 }
 
 .cl__retry {
@@ -228,7 +228,7 @@ async function retryLoadMore(): Promise<void> {
   gap: var(--space-2);
   padding: var(--space-4);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
 }
 
@@ -245,6 +245,6 @@ async function retryLoadMore(): Promise<void> {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .cl__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

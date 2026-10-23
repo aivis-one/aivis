@@ -597,7 +597,7 @@ onMounted(() => {
   flex-direction: column;
   padding: var(--space-4);
   gap: var(--space-4);
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .abal__header {
@@ -623,8 +623,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 240px);
-  min-height: calc(100dvh - 240px);
+  min-block-size: calc(100vh - 240px);
+  min-block-size: calc(100dvh - 240px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -633,7 +633,7 @@ onMounted(() => {
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .abal__balance {
@@ -666,7 +666,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
   flex-wrap: wrap;
 }
 .abal__rule {
@@ -700,7 +700,7 @@ onMounted(() => {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px dashed var(--border-default);
+  border: thin dashed var(--border-default);
   text-align: center;
 }
 
@@ -719,14 +719,14 @@ onMounted(() => {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .abal__item-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
@@ -734,7 +734,7 @@ onMounted(() => {
 }
 .abal__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -763,8 +763,8 @@ onMounted(() => {
   white-space: nowrap;
   color: var(--danger);
   font-style: italic;
-  text-align: right;
-  max-width: 60%;
+  text-align: end;
+  max-inline-size: 60%;
 }
 
 .abal__badge {
@@ -780,22 +780,22 @@ onMounted(() => {
 .abal__badge--success {
   background: var(--bg-page);
   color: var(--success);
-  border: 1px solid var(--success);
+  border: thin solid var(--success);
 }
 .abal__badge--warning {
   background: var(--bg-page);
   color: var(--warning);
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
 }
 .abal__badge--danger {
   background: var(--bg-page);
   color: var(--danger);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
 }
 .abal__badge--neutral {
   background: var(--bg-page);
   color: var(--text-secondary);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .abal__sentinel {
@@ -803,7 +803,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 .abal__loadmore-error {
@@ -812,9 +812,9 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-surface);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
@@ -833,7 +833,7 @@ onMounted(() => {
 }
 /* See CompanyBalanceView: the flex gap is the field's rhythm. */
 .abal__control {
-  margin-bottom: 0;
+  margin-block-end: 0;
 }
 .abal__field-label {
   font-size: var(--fs-xs);
@@ -854,12 +854,12 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   color: var(--danger);
 }
 .abal__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
   color: var(--warning);
 }
 
@@ -867,7 +867,7 @@ onMounted(() => {
   display: flex;
   gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -878,6 +878,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .abal__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

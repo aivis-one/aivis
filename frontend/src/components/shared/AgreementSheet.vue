@@ -247,7 +247,7 @@ function onSave(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  min-height: 320px;
+  min-block-size: 320px;
 }
 
 .ags__center {
@@ -256,7 +256,7 @@ function onSave(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
 }
 
 .ags__loading-hint {
@@ -265,12 +265,12 @@ function onSave(): void {
 }
 
 .ags__iframe {
-  width: 100%;
-  height: 60vh;
-  height: 60dvh;
-  border: 1px solid var(--border-default);
+  inline-size: 100%;
+  block-size: 60vh;
+  block-size: 60dvh;
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
-  background: #fff; /* document HTML expects a white canvas */
+  background: var(--paper); /* document HTML expects a white canvas */
 }
 
 .ags__actions {

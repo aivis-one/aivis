@@ -190,7 +190,7 @@ function goBack(): void {
 .cfaq {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .cfaq__header {
@@ -205,7 +205,7 @@ function goBack(): void {
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   padding: 0;
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
   cursor: pointer;
 }
 .cfaq__back:hover {
@@ -224,17 +224,17 @@ function goBack(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
 .cfaq__iframe {
-  height: 65vh;
-  height: 65dvh;
+  block-size: 65vh;
+  block-size: 65dvh;
   margin: 0 var(--space-4);
-  width: calc(100% - var(--space-4) * 2);
-  border: 1px solid var(--border-default);
+  inline-size: calc(100% - var(--space-4) * 2);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
 }
 </style>

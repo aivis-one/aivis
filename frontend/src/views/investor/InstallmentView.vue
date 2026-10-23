@@ -591,8 +591,8 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-block-size: calc(100vh - 120px);
+  min-block-size: calc(100dvh - 120px);
   padding: var(--space-5);
 }
 
@@ -606,20 +606,20 @@ onMounted(load)
 /* Hero with cover */
 .iv__hero {
   position: relative;
-  height: 160px;
+  block-size: 160px;
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  color: #fff;
+  color: var(--neutral-0);
 }
 .iv__hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
+  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
   pointer-events: none;
 }
 .iv__hero--fallback {
@@ -642,7 +642,7 @@ onMounted(load)
   position: relative;
   z-index: 2;
   padding: var(--space-4) var(--space-4-lg);
-  width: 100%;
+  inline-size: 100%;
 }
 .iv__hero--fallback .iv__hero-content {
   text-align: center;
@@ -653,7 +653,7 @@ onMounted(load)
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -717,22 +717,22 @@ onMounted(load)
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    transform 0.05s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
 }
 .iv__plan:hover {
   border-color: var(--primary);
 }
 .iv__plan:focus-visible {
-  outline: none;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .iv__plan:active {
   transform: scale(0.99);
@@ -778,10 +778,10 @@ onMounted(load)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .iv__tranche:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 .iv__tranche-num {
   font-size: var(--fs-xs);
@@ -792,12 +792,12 @@ onMounted(load)
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
-  text-align: right;
+  text-align: end;
 }
 .iv__tranche-units {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  text-align: right;
+  text-align: end;
   white-space: nowrap;
 }
 
@@ -836,7 +836,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -847,9 +847,9 @@ onMounted(load)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .iv__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 .iv__note {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

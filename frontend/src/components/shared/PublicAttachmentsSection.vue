@@ -377,7 +377,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__filter {
   flex-shrink: 0;
-  min-width: 140px;
+  min-inline-size: 140px;
 }
 
 .ats__center {
@@ -386,7 +386,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
 }
 
 .ats__groups {
@@ -428,18 +428,18 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    transform 0.12s ease;
+    background var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
 }
 
 .ats__item:hover {
@@ -456,8 +456,8 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-xl);
-  height: var(--size-xl);
+  inline-size: var(--size-xl);
+  block-size: var(--size-xl);
   background: var(--bg-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -465,7 +465,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -506,8 +506,8 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
 }

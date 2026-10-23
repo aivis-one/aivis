@@ -300,7 +300,7 @@ function onRetry(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
 }
 
 .pps__grid {
@@ -328,6 +328,6 @@ function onRetry(): void {
 .pps__cta {
   display: flex;
   justify-content: center;
-  padding-top: var(--space-2);
+  padding-block-start: var(--space-2);
 }
 </style>

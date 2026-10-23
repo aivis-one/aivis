@@ -302,7 +302,7 @@ function goBack(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -310,6 +310,6 @@ function goBack(): void {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 </style>

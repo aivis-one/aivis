@@ -374,7 +374,7 @@ function onRoadmapPostClick(postId: string): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -400,7 +400,7 @@ function onRoadmapPostClick(postId: string): void {
      behind the CTA when the user scrolls to the end. The extra
      --space-xl is breathing room so the last item doesn't visually
      kiss the CTA shadow. */
-  padding-bottom: calc(
+  padding-block-end: calc(
     var(--space-7) + var(--cta-bar-height) + var(--tab-bar-height) +
       env(safe-area-inset-bottom, 0px)
   );
@@ -415,7 +415,7 @@ function onRoadmapPostClick(postId: string): void {
 }
 
 .co__hero-cover {
-  width: 100%;
+  inline-size: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
   background-size: cover;
@@ -502,29 +502,29 @@ function onRoadmapPostClick(postId: string): void {
    otherwise sneak between them. */
 .co__cta {
   position: fixed;
-  left: var(--space-4);
-  right: var(--space-4);
-  bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
+  inset-inline-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  inset-block-end: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
   /* min-height (not height) pins the visible strip to --cta-bar-height
      so the token is the real source of truth that .co__main's
      padding-bottom relies on. min-height (rather than height) keeps
      room for the button to grow if the inner label wraps under an
      extreme translation -- the layout above adapts via calc, the CTA
      itself never crops content. */
-  min-height: var(--cta-bar-height);
+  min-block-size: var(--cta-bar-height);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   z-index: 100;
   padding: var(--space-2);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-3);
 }
 
 .co__cta :deep(.c-button) {
-  width: 100%;
+  inline-size: 100%;
 }
 
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
@@ -539,7 +539,7 @@ function onRoadmapPostClick(postId: string): void {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .co__stats {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 </style>

@@ -550,9 +550,9 @@ onBeforeUnmount(() => {
   color: var(--on-primary);
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-family: inherit;
-  transition: transform 0.15s;
+  transition: transform var(--dur-fast);
 }
 .dash__portfolio:hover {
   transform: translateY(-1px);
@@ -590,9 +590,9 @@ onBeforeUnmount(() => {
 .dash__portfolio-stat-label {
   font-size: var(--fs-xs);
   opacity: 0.8;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--tracking-wide);
 }
 .dash__portfolio-stat-value {
   font-size: var(--fs-sm);
@@ -626,12 +626,12 @@ onBeforeUnmount(() => {
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   color: var(--text-primary);
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast);
 }
 .dash__balance:hover {
   border-color: var(--primary);
@@ -673,7 +673,7 @@ onBeforeUnmount(() => {
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: inherit;
@@ -681,8 +681,8 @@ onBeforeUnmount(() => {
   font-weight: 600;
   cursor: pointer;
   transition:
-    border-color 0.15s,
-    color 0.15s;
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 .dash__action:hover {
   border-color: var(--primary);
@@ -707,7 +707,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   padding: var(--space-4) var(--space-2);
 }
 .dash__posts-list {
@@ -721,16 +721,16 @@ onBeforeUnmount(() => {
 .dash__post {
   display: flex;
   gap: var(--space-3);
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: inherit;
   font-family: inherit;
   text-align: start;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast);
 }
 .dash__post:hover {
   border-color: var(--primary);
@@ -741,7 +741,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
+  inline-size: 100%;
   padding: 0;
   border: none;
   background: none;
@@ -756,10 +756,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;
@@ -787,7 +787,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: var(--space-1);
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .dash__kyc-title,
 .dash__gift-text {
@@ -801,8 +801,8 @@ onBeforeUnmount(() => {
   overflow-wrap: anywhere;
 }
 .dash__post-cover {
-  width: var(--size-4xl);
-  height: var(--size-4xl);
+  inline-size: var(--size-4xl);
+  block-size: var(--size-4xl);
   object-fit: cover;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
@@ -811,7 +811,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
   flex: 1;
 }
 .dash__post-title {
@@ -847,7 +847,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   padding: var(--space-4) var(--space-2);
 }
 .dash__events-list {
@@ -871,7 +871,7 @@ onBeforeUnmount(() => {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .dash__actions {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 
@@ -883,6 +883,6 @@ onBeforeUnmount(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .dash__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

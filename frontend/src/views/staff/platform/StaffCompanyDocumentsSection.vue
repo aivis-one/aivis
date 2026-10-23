@@ -355,14 +355,14 @@ onMounted(loadAttachments)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-4);
 }
 
 .scd__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .scd__hint {
@@ -375,7 +375,7 @@ onMounted(loadAttachments)
 }
 
 .scd__group {
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
 }
 .scd__group-title {
   font-size: var(--fs-sm);
@@ -396,7 +396,7 @@ onMounted(loadAttachments)
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .doc-item__reorder {
   display: flex;
@@ -408,9 +408,9 @@ onMounted(loadAttachments)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-sm);
-  height: var(--size-xs);
-  border: 1px solid var(--border-default);
+  inline-size: var(--size-sm);
+  block-size: var(--size-xs);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   cursor: pointer;
@@ -426,14 +426,14 @@ onMounted(loadAttachments)
 
 .doc-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .doc-item__top {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 .doc-item__lang {
   font-size: var(--fs-xs);
@@ -448,7 +448,7 @@ onMounted(loadAttachments)
 .doc-item__meta {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .doc-item__storage {
   display: block;
@@ -458,7 +458,7 @@ onMounted(loadAttachments)
   background: var(--bg-subtle);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   word-break: break-all;
 }
 
@@ -466,8 +466,8 @@ onMounted(loadAttachments)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -501,7 +501,7 @@ onMounted(loadAttachments)
 .scd__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 
@@ -515,10 +515,10 @@ onMounted(loadAttachments)
 .scd__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .scd__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

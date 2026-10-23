@@ -98,7 +98,7 @@ onMounted(load)
 .post {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .post__back {
@@ -111,8 +111,8 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: calc(100vh - 160px);
-  min-height: calc(100dvh - 160px);
+  min-block-size: calc(100vh - 160px);
+  min-block-size: calc(100dvh - 160px);
   padding: var(--space-5);
 }
 
@@ -124,8 +124,8 @@ onMounted(load)
 }
 
 .post__cover {
-  width: 100%;
-  max-height: 240px;
+  inline-size: 100%;
+  max-block-size: 240px;
   object-fit: cover;
   border-radius: var(--radius-md);
 }
@@ -155,7 +155,7 @@ onMounted(load)
 /* On a wide screen the text keeps a reading measure instead of the full row. */
 @media (min-width: 880px) {
   .post__article {
-    max-width: var(--maxw-prose);
+    max-inline-size: var(--maxw-prose);
   }
 }
 </style>

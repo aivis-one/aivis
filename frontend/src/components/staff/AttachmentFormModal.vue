@@ -320,6 +320,6 @@ async function onReplaceSelected(e: Event): Promise<void> {
 .afm__actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 </style>

@@ -23,12 +23,12 @@ const initials = computed(() => {
     class="c-avatar"
     :src="url"
     :alt="name ?? ''"
-    :style="{ width: size + 'px', height: size + 'px' }"
+    :style="{ inlineSize: size + 'px', blockSize: size + 'px' }"
   />
   <div
     v-else
     class="c-avatar c-avatar--initials"
-    :style="{ width: size + 'px', height: size + 'px', fontSize: size * 0.4 + 'px' }"
+    :style="{ inlineSize: size + 'px', blockSize: size + 'px', fontSize: size * 0.4 + 'px' }"
   >
     {{ initials }}
   </div>

@@ -624,7 +624,7 @@ function goBack(): void {
 
 <style scoped>
 .cpost {
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .cpost__header {
@@ -639,7 +639,7 @@ function goBack(): void {
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   padding: 0;
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
   cursor: pointer;
 }
 .cpost__back:hover {
@@ -665,10 +665,10 @@ function goBack(): void {
 }
 .filter-chip {
   position: relative;
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -681,11 +681,11 @@ function goBack(): void {
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -701,7 +701,7 @@ function goBack(): void {
   display: flex;
   justify-content: flex-end;
   padding: 0 var(--space-4);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .cpost__center {
@@ -710,8 +710,8 @@ function goBack(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 280px);
-  min-height: calc(100dvh - 280px);
+  min-block-size: calc(100vh - 280px);
+  min-block-size: calc(100dvh - 280px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -727,17 +727,17 @@ function goBack(): void {
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .post-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .post-item__top {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .post-item__title {
   font-size: var(--fs-sm);
@@ -750,7 +750,7 @@ function goBack(): void {
   flex-wrap: wrap;
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .post-item__actions {
@@ -763,16 +763,16 @@ function goBack(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-sm);
+  inline-size: var(--size-md);
+  block-size: var(--size-sm);
   border: none;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    color 0.2s,
-    background 0.2s;
+    color var(--dur-base) var(--ease-standard),
+    background var(--dur-base) var(--ease-standard);
 }
 .post-item__action:hover {
   color: var(--text-primary);
@@ -784,7 +784,7 @@ function goBack(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .cpost__page {
   font-size: var(--fs-xs);
@@ -806,7 +806,7 @@ function goBack(): void {
 .cpost__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 
@@ -815,17 +815,17 @@ function goBack(): void {
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 
 .cpost__tags-group {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .cpost__chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .cpost__chip {
   display: inline-flex;
@@ -859,11 +859,11 @@ function goBack(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .cpost__preview-cover {
-  width: 100%;
-  max-height: 200px;
+  inline-size: 100%;
+  max-block-size: 200px;
   object-fit: cover;
   border-radius: var(--radius-md);
 }

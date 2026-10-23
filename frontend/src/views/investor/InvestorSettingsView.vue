@@ -826,7 +826,7 @@ onMounted(() => {
 .sett {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 /* Inline page header -- MarketView pattern */
@@ -868,7 +868,7 @@ onMounted(() => {
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 .sett__email {
   font-size: var(--fs-sm);
@@ -876,7 +876,7 @@ onMounted(() => {
 }
 .sett__role-badge {
   display: inline-block;
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
   padding: var(--space-1) var(--space-3);
@@ -889,7 +889,7 @@ onMounted(() => {
 /* Section */
 .sett__section {
   padding: 0 var(--space-4);
-  margin-bottom: var(--space-4-lg);
+  margin-block-end: var(--space-4-lg);
 }
 .sett__section-title {
   font-size: var(--fs-xs);
@@ -897,7 +897,7 @@ onMounted(() => {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   padding: 0 var(--space-1);
 }
 .sett__section-title--row {
@@ -909,8 +909,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-sm);
+  inline-size: var(--size-md);
+  block-size: var(--size-sm);
   padding: 0;
   border: none;
   background: transparent;
@@ -918,8 +918,8 @@ onMounted(() => {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    color 0.2s,
-    background 0.2s;
+    color var(--dur-base) var(--ease-standard),
+    background var(--dur-base) var(--ease-standard);
 }
 .sett__edit-btn:hover {
   color: var(--primary);
@@ -938,24 +938,24 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
-  min-height: var(--size-3xl);
+  border-block-end: thin solid var(--border-default);
+  min-block-size: var(--size-3xl);
 }
 .sett__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 button.sett__row {
-  width: 100%;
+  inline-size: 100%;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 button.sett__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 
 .sett__row--block {
@@ -963,7 +963,7 @@ button.sett__row:last-child {
   align-items: stretch;
 }
 .sett__row--clickable {
-  transition: background 0.15s;
+  transition: background var(--dur-fast);
 }
 .sett__row--clickable:hover {
   background: var(--bg-subtle);
@@ -994,7 +994,7 @@ button.sett__row:last-child {
 .sett__row-value {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
-  text-align: right;
+  text-align: end;
 }
 
 /* Theme chips */
@@ -1005,13 +1005,13 @@ button.sett__row:last-child {
 }
 .sett__chip {
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -1019,9 +1019,9 @@ button.sett__row:last-child {
   cursor: pointer;
   font-family: inherit;
   transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 .sett__chip:hover {
   border-color: var(--primary-hover);
@@ -1039,15 +1039,15 @@ button.sett__row:last-child {
    shadow alone. Both sides now read --toggle-* and the pair is 4.57:1 in BOTH
    themes. See variables.css for the values and for what moves on screen. */
 .sett__toggle {
-  width: var(--size-2xl);
-  height: var(--size-xs);
+  inline-size: var(--size-2xl);
+  block-size: var(--size-xs);
   background: var(--toggle-track);
   border-radius: var(--radius-md);
   position: relative;
   cursor: pointer;
   transition:
-    background 0.2s,
-    opacity 0.2s;
+    background var(--dur-base) var(--ease-standard),
+    opacity var(--dur-base) var(--ease-standard);
   border: none;
   padding: 0;
   flex-shrink: 0;
@@ -1059,23 +1059,23 @@ button.sett__row:last-child {
 .sett__toggle::before {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .sett__toggle::after {
   content: '';
   position: absolute;
-  width: var(--size-2xs);
-  height: var(--size-2xs);
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
   background: var(--toggle-knob);
   border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  transition: transform var(--dur-base);
+  box-shadow: var(--shadow-1);
 }
 .sett__toggle--active {
   background: var(--primary);

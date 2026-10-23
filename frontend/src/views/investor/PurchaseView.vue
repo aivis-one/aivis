@@ -466,28 +466,28 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-block-size: calc(100vh - 120px);
+  min-block-size: calc(100dvh - 120px);
   padding: var(--space-5);
 }
 
 /* Hero with cover */
 .pv__hero {
   position: relative;
-  height: 160px;
+  block-size: 160px;
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  color: #fff;
+  color: var(--neutral-0);
 }
 .pv__hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
+  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
   pointer-events: none;
 }
 .pv__hero--fallback {
@@ -510,7 +510,7 @@ onMounted(load)
   position: relative;
   z-index: 2;
   padding: var(--space-4) var(--space-4-lg);
-  width: 100%;
+  inline-size: 100%;
 }
 .pv__hero--fallback .pv__hero-content {
   text-align: center;
@@ -521,7 +521,7 @@ onMounted(load)
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -564,9 +564,9 @@ onMounted(load)
   padding: var(--space-2) 0;
 }
 .pv__row--total {
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-default);
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: thin solid var(--border-default);
 }
 .pv__row-label {
   font-size: var(--fs-sm);
@@ -602,6 +602,6 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 </style>

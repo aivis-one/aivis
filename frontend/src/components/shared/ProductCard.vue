@@ -99,15 +99,15 @@ const available = computed(() => props.product.available_packages)
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    transform var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard);
 }
 .product-card:hover {
   transform: translateY(-4px);
@@ -115,7 +115,7 @@ const available = computed(() => props.product.available_packages)
 }
 
 .product-card__img {
-  height: 120px;
+  block-size: 120px;
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
@@ -123,13 +123,13 @@ const available = computed(() => props.product.available_packages)
   align-items: center;
   justify-content: center;
   position: relative;
-  color: #fff;
+  color: var(--neutral-0);
 }
 .product-card__img::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.6));
+  background: linear-gradient(transparent 40%, color-mix(in srgb, var(--neutral-950) 60%, transparent));
   pointer-events: none;
 }
 .product-card__img--fallback {
@@ -148,16 +148,16 @@ const available = computed(() => props.product.available_packages)
 
 .product-card__company {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
   z-index: 2;
   font-size: var(--fs-xs);
   font-weight: 600;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  max-width: calc(100% - 16px);
+  background: color-mix(in srgb, var(--neutral-950) 45%, transparent);
+  color: var(--neutral-0);
+  max-inline-size: calc(100% - 16px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -171,13 +171,13 @@ const available = computed(() => props.product.available_packages)
   font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 
 .product-card__desc {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -201,7 +201,7 @@ const available = computed(() => props.product.available_packages)
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .product-card__price {
@@ -243,6 +243,6 @@ const available = computed(() => props.product.available_packages)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .product-card__desc {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

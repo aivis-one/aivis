@@ -159,7 +159,7 @@ onMounted(loadFeed)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-4);
 }
 
@@ -172,14 +172,14 @@ onMounted(loadFeed)
 }
 .audit-feed__row {
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .audit-feed__head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 .audit-feed__event {
   font-size: var(--fs-sm);
@@ -189,7 +189,7 @@ onMounted(loadFeed)
 .audit-feed__date {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .audit-feed__data {
   margin: 0;
@@ -208,7 +208,7 @@ onMounted(loadFeed)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .scau__page {
   font-size: var(--fs-xs);

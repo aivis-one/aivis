@@ -284,7 +284,7 @@ onMounted(() => {
 
 .ref__card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   display: flex;
@@ -376,7 +376,7 @@ onMounted(() => {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .ref__card-counters {
-    max-width: calc(3 * var(--tile-max));
+    max-inline-size: calc(3 * var(--tile-max));
   }
 }
 
@@ -388,6 +388,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .ref__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

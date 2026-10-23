@@ -431,24 +431,24 @@ async function submitDisable(): Promise<void> {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
-  min-height: var(--size-3xl);
-  width: 100%;
+  border-block-end: thin solid var(--border-default);
+  min-block-size: var(--size-3xl);
+  inline-size: 100%;
   background: transparent;
-  border-left: 0;
-  border-right: 0;
-  border-top: 0;
+  border-inline-start: 0;
+  border-inline-end: 0;
+  border-block-start: 0;
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--dur-fast);
 }
 .tfs__row:hover {
   background: var(--bg-subtle);
 }
 .tfs__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 .tfs__row-label {
   display: inline-flex;
@@ -500,8 +500,8 @@ async function submitDisable(): Promise<void> {
   margin: 0 0 var(--space-4);
 }
 .tfs__qr :deep(svg) {
-  width: 180px;
-  height: 180px;
+  inline-size: 180px;
+  block-size: 180px;
   border-radius: var(--radius-sm);
 }
 
@@ -552,7 +552,7 @@ async function submitDisable(): Promise<void> {
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   color: var(--danger);
 }
 
@@ -560,10 +560,10 @@ async function submitDisable(): Promise<void> {
   display: flex;
   gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .tfs__actions--left {
   justify-content: flex-start;
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 </style>

@@ -485,21 +485,21 @@ onMounted(loadEvents)
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .evd__filters {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  padding-bottom: var(--space-1);
+  padding-block-end: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -519,11 +519,11 @@ onMounted(loadEvents)
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -536,7 +536,7 @@ onMounted(loadEvents)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -549,17 +549,17 @@ onMounted(loadEvents)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .event-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .event-item__top {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .event-item__title {
   font-size: var(--fs-sm);
@@ -572,12 +572,12 @@ onMounted(loadEvents)
 .event-item__date {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .event-item__loc {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .event-item__actions {
   display: flex;
@@ -588,16 +588,16 @@ onMounted(loadEvents)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border: none;
   background: none;
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    background 0.15s,
-    color 0.15s;
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 .event-item__icon-btn:hover {
   background: var(--bg-subtle);
@@ -611,7 +611,7 @@ onMounted(loadEvents)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .evd__page {
   font-size: var(--fs-xs);
@@ -638,7 +638,7 @@ onMounted(loadEvents)
 .evd__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 
@@ -646,6 +646,6 @@ onMounted(loadEvents)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 </style>

@@ -165,7 +165,7 @@ const openTitle = computed(() =>
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-page);
 }
@@ -219,8 +219,8 @@ const openTitle = computed(() =>
 
 .pt__accept input[type='checkbox'] {
   flex: none;
-  width: 1rem;
-  height: 1rem;
+  inline-size: 1rem;
+  block-size: 1rem;
   margin: calc((1.5 * var(--fs-sm) - 1rem) / 2) 0 0;
 }
 </style>

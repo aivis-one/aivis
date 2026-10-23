@@ -314,7 +314,7 @@ function onRoadmapPostClick(postId: string): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -329,7 +329,7 @@ function onRoadmapPostClick(postId: string): void {
      a floating .co__cta and the CTabBar; the public shell has neither,
      so the natural bottom padding from .co__main's last child is
      enough. */
-  padding-bottom: var(--space-7);
+  padding-block-end: var(--space-7);
 }
 
 /* ---------- Hero ---------- */
@@ -341,7 +341,7 @@ function onRoadmapPostClick(postId: string): void {
 }
 
 .co__hero-cover {
-  width: 100%;
+  inline-size: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
   background-size: cover;
@@ -421,7 +421,7 @@ function onRoadmapPostClick(postId: string): void {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .co__stats {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 </style>

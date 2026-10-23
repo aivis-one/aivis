@@ -95,31 +95,31 @@ watch(
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 var(--space-3);
-  padding-right: var(--space-5); /* room for close button */
+  padding-inline-end: var(--space-5); /* room for close button */
   overflow-wrap: anywhere;
 }
 .doc-modal__body {
-  min-height: 120px;
-  max-height: 60vh;
+  min-block-size: 120px;
+  max-block-size: 60vh;
   overflow-y: auto;
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
   background: var(--bg-subtle);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .doc-modal__center {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
 }
 .doc-modal__spinner {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
-  border: 2px solid currentColor;
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
+  border: calc(var(--border-input-width) * 2) solid currentColor;
   opacity: 0.35;
-  border-top-color: currentColor;
+  border-block-start-color: currentColor;
   border-radius: 50%;
   animation: doc-modal-spin 0.6s linear infinite;
   display: inline-block;
@@ -155,14 +155,14 @@ watch(
 .doc-modal__content :deep(ul),
 .doc-modal__content :deep(ol) {
   margin: 0 0 var(--space-3);
-  padding-left: var(--space-4-lg);
+  padding-inline-start: var(--space-4-lg);
 }
 .doc-modal__content :deep(li) {
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 .doc-modal__content :deep(table) {
   display: block;
-  max-width: 100%;
+  max-inline-size: 100%;
   overflow-x: auto;
 }
 
@@ -174,7 +174,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 120px;
+  min-inline-size: 120px;
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--primary);

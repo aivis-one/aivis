@@ -294,7 +294,7 @@ onMounted(() => {
 
 .comm__card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   display: flex;
@@ -331,7 +331,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .comm__detail-main {
@@ -398,7 +398,7 @@ onMounted(() => {
 .comm__more {
   display: flex;
   justify-content: center;
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -409,6 +409,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .comm__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

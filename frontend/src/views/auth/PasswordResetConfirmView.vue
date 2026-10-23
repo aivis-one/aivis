@@ -221,8 +221,8 @@ async function handleSubmit(): Promise<void> {
 
 <style scoped>
 .auth-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
@@ -230,11 +230,11 @@ async function handleSubmit(): Promise<void> {
 
 .auth-header {
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 100;
   background: var(--bg-page);
   padding: var(--space-4) var(--space-4-lg);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -250,7 +250,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 .auth-brand {
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
   display: flex;
   justify-content: center;
 }
@@ -259,57 +259,57 @@ async function handleSubmit(): Promise<void> {
   display: flex;
   color: var(--primary);
   justify-content: center;
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
 }
 
 .auth-title {
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   text-align: center;
 }
 
 .auth-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-6);
+  margin-block-end: var(--space-6);
   text-align: center;
   line-height: 1.5;
 }
 
 .auth-form {
-  width: 100%;
-  max-width: var(--maxw-form);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form);
 }
 
 .form-group {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .form-group__field {
-  margin-bottom: 0;
+  margin-block-end: 0;
 }
 
 .form-hint {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .auth-error {
   padding: var(--space-3) var(--space-4);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   border-radius: var(--radius-md);
   color: var(--danger);
   font-size: var(--fs-xs);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   line-height: 1.5;
 }
 
 .btn {
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-4);
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
@@ -320,7 +320,7 @@ async function handleSubmit(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base);
 }
 
 .btn:disabled {
@@ -338,11 +338,11 @@ async function handleSubmit(): Promise<void> {
 }
 
 .btn-spinner {
-  width: var(--size-2xs);
-  height: var(--size-2xs);
-  border: 2px solid currentColor;
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
+  border: calc(var(--border-input-width) * 2) solid currentColor;
   opacity: 0.35;
-  border-top-color: currentColor;
+  border-block-start-color: currentColor;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

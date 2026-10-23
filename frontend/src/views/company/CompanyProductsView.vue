@@ -140,7 +140,7 @@ function onCardClick(): void {
 }
 
 .cprods__header {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .cprods__title {
   font-size: var(--fs-lg);
@@ -160,7 +160,7 @@ function onCardClick(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
   text-align: center;
 }
@@ -191,7 +191,7 @@ function onCardClick(): void {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  min-height: var(--size-xl);
+  min-block-size: var(--size-xl);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -202,7 +202,7 @@ function onCardClick(): void {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .cprods__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .cprods__card {
@@ -214,7 +214,7 @@ function onCardClick(): void {
   overflow: hidden;
   background: var(--bg-subtle);
   color: var(--text-primary);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-lg);
 }
 .cprods__cover {

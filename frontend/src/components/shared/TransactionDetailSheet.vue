@@ -283,7 +283,7 @@ function onClose(): void {
   display: flex;
   flex-direction: column;
   gap: 0;
-  border-top: 1px solid var(--border-default);
+  border-block-start: thin solid var(--border-default);
 }
 .tds__row {
   display: flex;
@@ -291,7 +291,7 @@ function onClose(): void {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   font-size: var(--fs-sm);
 }
 .tds__key {
@@ -304,7 +304,7 @@ function onClose(): void {
   text-align: end;
   font-family: inherit;
   word-break: break-word;
-  min-width: 0;
+  min-inline-size: 0;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -342,6 +342,6 @@ function onClose(): void {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .tds__summary {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

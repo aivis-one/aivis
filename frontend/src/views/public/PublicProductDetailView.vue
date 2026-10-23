@@ -384,7 +384,7 @@ function onBuyClick(): void {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-lg);
+  min-block-size: var(--center-lg);
   padding: var(--space-4);
 }
 
@@ -400,21 +400,21 @@ function onBuyClick(): void {
    ProductDetailView for visual consistency across flows. */
 .ppd__hero {
   position: relative;
-  height: 220px;
+  block-size: 220px;
   background-color: var(--bg-subtle);
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  color: #fff;
+  color: var(--neutral-0);
 }
 
 .ppd__hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.75));
+  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
   pointer-events: none;
 }
 
@@ -441,7 +441,7 @@ function onBuyClick(): void {
   position: relative;
   z-index: 2;
   padding: var(--space-4-lg);
-  width: 100%;
+  inline-size: 100%;
 }
 
 .ppd__hero--fallback .ppd__hero-content {
@@ -454,7 +454,7 @@ function onBuyClick(): void {
   font-size: var(--fs-xs);
   font-weight: 600;
   opacity: 0.85;
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -491,7 +491,7 @@ function onBuyClick(): void {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 
 .ppd__stat-value {
@@ -507,7 +507,7 @@ function onBuyClick(): void {
 .ppd__stat-unit {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .ppd__section {
@@ -563,7 +563,7 @@ function onBuyClick(): void {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
 }
 
@@ -584,7 +584,7 @@ function onBuyClick(): void {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding-top: var(--space-2);
+  padding-block-start: var(--space-2);
 }
 
 @media (min-width: 480px) {
@@ -608,7 +608,7 @@ function onBuyClick(): void {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .ppd__stats {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 
@@ -620,6 +620,6 @@ function onBuyClick(): void {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .ppd__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

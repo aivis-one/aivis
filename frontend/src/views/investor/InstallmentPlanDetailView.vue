@@ -289,7 +289,7 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -319,7 +319,7 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .ipd__title {
   font-size: var(--fs-lg);
@@ -333,7 +333,7 @@ onMounted(load)
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
   font-weight: 600;
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .ipd__alert--danger {
   background: var(--danger-subtle);
@@ -346,10 +346,10 @@ onMounted(load)
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .ipd__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 .ipd__row-label {
   font-size: var(--fs-sm);
@@ -376,7 +376,7 @@ onMounted(load)
 .ipd__tranche {
   padding: var(--space-3);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   display: flex;
   flex-direction: column;
@@ -412,8 +412,8 @@ onMounted(load)
   font-size: var(--fs-3xs);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-1);
 }
 .ipd__tranche-stat-value {
   font-size: var(--fs-sm);

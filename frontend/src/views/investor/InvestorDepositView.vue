@@ -611,7 +611,7 @@ onMounted(load)
 .dv {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .dv__center {
@@ -620,8 +620,8 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-block-size: calc(100vh - 120px);
+  min-block-size: calc(100dvh - 120px);
   padding: var(--space-5);
 }
 
@@ -684,9 +684,9 @@ onMounted(load)
 }
 
 .dv__network {
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-page);
   color: var(--text-primary);
@@ -709,15 +709,15 @@ onMounted(load)
 }
 
 .dv__cta {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .dv__qr-section {
   align-items: center;
 }
 .dv__qr {
-  width: 240px;
-  max-width: 100%;
+  inline-size: 240px;
+  max-inline-size: 100%;
   padding: var(--space-3);
   background: var(--neutral-0);
   border-radius: var(--radius-sm);
@@ -726,13 +726,13 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-block-size: 120px;
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
 
 .dv__address {
-  width: 100%;
+  inline-size: 100%;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--text-primary);

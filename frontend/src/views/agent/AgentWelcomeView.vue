@@ -159,8 +159,8 @@ onMounted(() => {
 
 <style scoped>
 .welcome {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg-page);
@@ -171,12 +171,12 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .welcome__card {
-  width: 100%;
-  max-width: var(--maxw-prose, 560px);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-prose, 560px);
   margin: 0 auto;
   padding: var(--space-5) var(--space-4);
   display: flex;
@@ -224,7 +224,7 @@ onMounted(() => {
 
 .welcome__icon {
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-block-start: 1px;
   color: var(--primary);
 }
 
@@ -240,13 +240,13 @@ onMounted(() => {
 .welcome__logout {
   display: flex;
   justify-content: center;
-  padding-top: var(--space-2);
+  padding-block-start: var(--space-2);
 }
 
 /* On a tablet and a desktop the card gets more room above it. */
 @media (min-width: 880px) {
   .welcome__card {
-    padding-top: var(--space-6, 32px);
+    padding-block-start: var(--space-6, 32px);
   }
 }
 </style>

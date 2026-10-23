@@ -34,8 +34,8 @@ function goHome(): void {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   padding: var(--space-5);
   text-align: center;
@@ -63,6 +63,6 @@ function goHome(): void {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .not-found__text {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

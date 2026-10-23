@@ -24,22 +24,22 @@ const baseUrl = import.meta.env.BASE_URL
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   gap: var(--space-4);
 }
 
 .home-logo img {
-  width: 80px;
-  height: 80px;
+  inline-size: 80px;
+  block-size: 80px;
 }
 
 .home-title {
   font-size: var(--fs-2xl);
   font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: var(--tracking-tight);
 }
 
 .home-version {

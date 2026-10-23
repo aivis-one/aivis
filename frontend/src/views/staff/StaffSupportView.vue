@@ -535,7 +535,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  min-height: 0;
+  min-block-size: 0;
   flex: 1;
 }
 
@@ -556,7 +556,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5) var(--space-2);
   flex: 1;
 }
@@ -575,7 +575,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-wide);
   margin: 0 0 var(--space-2);
 }
 
@@ -585,14 +585,14 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   cursor: pointer;
 }
 .ssup__row-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .ssup__group-note {
   font-size: var(--fs-xs);
@@ -617,9 +617,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-default);
-  min-width: 0;
+  padding-block-end: var(--space-3);
+  border-block-end: thin solid var(--border-default);
+  min-inline-size: 0;
 }
 .ssup__panel-client {
   font-size: var(--fs-body);
@@ -650,7 +650,7 @@ onMounted(() => {
   background: var(--primary);
   border-radius: var(--radius-pill);
   padding: 0 var(--space-2);
-  min-width: 20px;
+  min-inline-size: 20px;
   text-align: center;
 }
 .ssup__row-error {
@@ -681,7 +681,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-2);
   flex: 1;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 .ssup__feed {
@@ -690,14 +690,14 @@ onMounted(() => {
   gap: var(--space-2);
   overflow-y: auto;
   flex: 1;
-  min-height: 0;
+  min-block-size: 0;
 }
 
 /* Same alignment technique as InvestorSupportView's copy (stake B):
    align-self on a column flexbox mirrors correctly under [dir="rtl"]
    with no extra override needed. */
 .ssup__msg {
-  max-width: 85%;
+  max-inline-size: 85%;
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--bg-subtle);
@@ -721,8 +721,8 @@ onMounted(() => {
 
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inline-size: 1px;
+  block-size: 1px;
   padding: 0;
   margin: -1px;
   overflow: hidden;
@@ -735,8 +735,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-default);
+  padding-block-start: var(--space-2);
+  border-block-start: thin solid var(--border-default);
 }
 
 .ssup__composer-error {

@@ -109,9 +109,9 @@ onMounted(() => {
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-3);
-  min-height: 92px;
+  min-block-size: 92px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font: inherit;
@@ -152,7 +152,7 @@ onMounted(() => {
 
 @media (min-width: 880px) {
   .ahc__tiles {
-    max-width: calc(3 * var(--tile-max));
+    max-inline-size: calc(3 * var(--tile-max));
   }
   .ahc__copy {
     align-self: flex-start;

@@ -322,7 +322,7 @@ onMounted(() => {
 .bv {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 /* Page header (inline, not CHeader -- shell already renders CHeader) */
@@ -370,7 +370,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--accent);
   line-height: 1.1;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   word-break: break-word;
 }
 
@@ -379,9 +379,9 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-top: var(--space-2);
-  margin-top: var(--space-1);
-  border-top: 1px solid var(--border-default);
+  padding-block-start: var(--space-2);
+  margin-block-start: var(--space-1);
+  border-block-start: thin solid var(--border-default);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
@@ -400,7 +400,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--danger-subtle);
@@ -409,7 +409,7 @@ onMounted(() => {
 }
 
 .bv__deposit {
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 /* History */
@@ -446,13 +446,13 @@ onMounted(() => {
   padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .bv__item-icon {
   flex-shrink: 0;
-  width: var(--size-lg);
-  height: var(--size-lg);
+  inline-size: var(--size-lg);
+  block-size: var(--size-lg);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -463,7 +463,7 @@ onMounted(() => {
 
 .bv__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -500,7 +500,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 

@@ -288,7 +288,7 @@ onMounted(reload)
   padding: var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-4-lg);
+  margin-block-end: var(--space-4-lg);
 }
 .scpr__current-info {
   display: flex;
@@ -311,7 +311,7 @@ onMounted(reload)
   margin: calc(-1 * var(--space-2)) 0 var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .scpr__history-title {
@@ -326,7 +326,7 @@ onMounted(reload)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-4);
 }
 
@@ -337,7 +337,7 @@ onMounted(reload)
 .price-history__head {
   display: flex;
   padding: var(--space-2) 0;
-  border-bottom: 2px solid var(--border-default);
+  border-block-end: calc(var(--border-input-width) * 2) solid var(--border-default);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
@@ -347,7 +347,7 @@ onMounted(reload)
 .price-history__row {
   display: flex;
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   font-size: var(--fs-sm);
   color: var(--text-primary);
 }
@@ -365,7 +365,7 @@ onMounted(reload)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .scpr__page {
   font-size: var(--fs-xs);
@@ -386,7 +386,7 @@ onMounted(reload)
 .scpr__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 </style>

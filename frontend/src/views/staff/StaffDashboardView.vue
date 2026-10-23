@@ -160,7 +160,7 @@ onMounted(reload)
 }
 
 .staff-dash__greeting {
-  margin-bottom: var(--space-4-lg);
+  margin-block-end: var(--space-4-lg);
 }
 
 .staff-dash__label {
@@ -179,7 +179,7 @@ onMounted(reload)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .stats-grid .c-stat {
@@ -194,7 +194,7 @@ onMounted(reload)
   padding: var(--space-3);
   background: var(--warning-subtle);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .staff-dash__center {
@@ -202,7 +202,7 @@ onMounted(reload)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -224,7 +224,7 @@ onMounted(reload)
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .stats-grid {
-    max-width: calc(2 * var(--tile-max));
+    max-inline-size: calc(2 * var(--tile-max));
   }
 }
 </style>

@@ -244,7 +244,7 @@ onMounted(loadQueue)
   padding: var(--space-3);
   background: var(--bg-surface);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
@@ -254,7 +254,7 @@ onMounted(loadQueue)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -267,11 +267,11 @@ onMounted(loadQueue)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .app-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .app-item__name {
   font-size: var(--fs-sm);
@@ -287,7 +287,7 @@ onMounted(loadQueue)
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .app-item__kyc-label {
   font-size: var(--fs-xs);
@@ -299,7 +299,7 @@ onMounted(loadQueue)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .apps-pagination__page {
   font-size: var(--fs-xs);
@@ -317,15 +317,15 @@ onMounted(loadQueue)
 }
 
 .app-btn {
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border-radius: var(--radius-sm);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-base);
 }
 .app-btn:disabled {
   opacity: 0.5;
@@ -355,7 +355,7 @@ onMounted(loadQueue)
 .reject__actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -366,7 +366,7 @@ onMounted(loadQueue)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .staff-apps__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 /* A5: this control is deliberately 32px to sit right in its row, so the PAINTED
@@ -379,10 +379,10 @@ onMounted(loadQueue)
 .app-btn::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: var(--tap-min);
-  height: var(--tap-min);
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
   transform: translate(-50%, -50%);
 }
 </style>

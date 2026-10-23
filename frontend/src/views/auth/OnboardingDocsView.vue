@@ -286,8 +286,8 @@ async function handleSignAll(): Promise<void> {
 .auth-screen {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
 }
 .auth-header {
@@ -309,13 +309,13 @@ async function handleSignAll(): Promise<void> {
   font-size: var(--fs-h3);
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   text-align: center;
 }
 .auth-subtitle {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-6);
+  margin-block-end: var(--space-6);
   text-align: center;
   line-height: 1.5;
 }
@@ -323,8 +323,8 @@ async function handleSignAll(): Promise<void> {
   font-size: var(--fs-xs);
   color: var(--danger);
   text-align: center;
-  margin-bottom: var(--space-4);
-  max-width: var(--maxw-form-wide);
+  margin-block-end: var(--space-4);
+  max-inline-size: var(--maxw-form-wide);
 }
 
 .docs-loading {
@@ -337,16 +337,16 @@ async function handleSignAll(): Promise<void> {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-align: center;
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
 }
 
 .doc-list {
-  width: 100%;
-  max-width: var(--maxw-form-wide);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form-wide);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .doc-item {
   display: flex;
@@ -354,10 +354,10 @@ async function handleSignAll(): Promise<void> {
   gap: var(--space-4);
   padding: var(--space-4);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dur-base);
 }
 .doc-item:hover {
   border-color: var(--primary-hover);
@@ -369,16 +369,16 @@ async function handleSignAll(): Promise<void> {
 
 .doc-checkbox {
   position: relative;
-  width: var(--size-xs);
-  height: var(--size-xs);
-  min-width: var(--size-xs);
-  border: 2px solid var(--border-default);
+  inline-size: var(--size-xs);
+  block-size: var(--size-xs);
+  min-inline-size: var(--size-xs);
+  border: calc(var(--border-input-width) * 2) solid var(--border-default);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  margin-top: var(--space-1);
+  transition: all var(--dur-base);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
   color: var(--on-primary);
 }
@@ -389,11 +389,11 @@ async function handleSignAll(): Promise<void> {
 .doc-checkbox::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .doc-checkbox.checked {
   background: var(--primary);
@@ -412,14 +412,14 @@ async function handleSignAll(): Promise<void> {
    Same idiom already used by .event-card__body and .company-item__info. */
 .doc-info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .doc-title {
   overflow-wrap: anywhere;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
 .doc-meta {
   display: flex;
@@ -437,14 +437,14 @@ async function handleSignAll(): Promise<void> {
   align-items: center;
   gap: var(--space-2);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   background: none;
   border: none;
   padding: var(--space-1) var(--space-1);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--fs-xs);
-  transition: color 0.2s;
+  transition: color var(--dur-base);
 }
 
 /* A5: 8 of these failed the 44px area test -- found ONLY by loading
@@ -454,11 +454,11 @@ async function handleSignAll(): Promise<void> {
 .doc-link::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .doc-link:hover {
   color: var(--primary);
@@ -467,16 +467,16 @@ async function handleSignAll(): Promise<void> {
 .doc-counter {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 .doc-actions {
-  width: 100%;
-  max-width: var(--maxw-form-wide);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form-wide);
 }
 
 .btn {
-  width: 100%;
+  inline-size: 100%;
 }
 .btn-primary {
   display: flex;
@@ -501,11 +501,11 @@ async function handleSignAll(): Promise<void> {
   /* currentColor, not white: the spinner sits inside a primary button whose
      colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
      A white ring on the dark theme's light-azure button is near-invisible. */
-  width: var(--size-2xs);
-  height: var(--size-2xs);
-  border: 2px solid currentColor;
+  inline-size: var(--size-2xs);
+  block-size: var(--size-2xs);
+  border: calc(var(--border-input-width) * 2) solid currentColor;
   opacity: 0.35;
-  border-top-color: currentColor;
+  border-block-start-color: currentColor;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
   display: inline-block;
@@ -518,6 +518,6 @@ async function handleSignAll(): Promise<void> {
 .entry-logout {
   display: flex;
   justify-content: center;
-  margin-top: var(--space-5);
+  margin-block-start: var(--space-5);
 }
 </style>

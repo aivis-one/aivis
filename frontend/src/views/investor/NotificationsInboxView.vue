@@ -220,7 +220,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .nib__back-row {
@@ -238,7 +238,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .nib__title {
   font-size: var(--fs-lg);
@@ -250,7 +250,7 @@ onMounted(() => {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0;
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .nib__center {
@@ -259,7 +259,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-6) var(--space-2);
 }
 
@@ -277,21 +277,22 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
+  padding-block: var(--space-3) var(--space-3);
+  padding-inline: var(--space-5) var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   cursor: pointer;
   transition:
-    border-color 0.15s,
-    background 0.15s;
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 .nib__item:hover {
   border-color: var(--primary-hover);
 }
 .nib__item:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 .nib__item--unread {
   background: var(--primary-subtle);
@@ -307,10 +308,10 @@ onMounted(() => {
 
 .nib__item-dot {
   position: absolute;
-  left: var(--space-2);
-  top: var(--space-4);
-  width: 8px;
-  height: 8px;
+  inset-inline-start: var(--space-2);
+  inset-block-start: var(--space-4);
+  inline-size: 8px;
+  block-size: 8px;
   border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0;
@@ -318,7 +319,7 @@ onMounted(() => {
 
 .nib__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -343,7 +344,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 .nib__loadmore-error {
@@ -352,9 +353,9 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-subtle);
   font-size: var(--fs-xs);
   color: var(--text-secondary);

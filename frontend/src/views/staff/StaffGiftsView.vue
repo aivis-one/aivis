@@ -295,7 +295,7 @@ onMounted(loadProducts)
   margin: 0 0 var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .gifts__limit {
@@ -305,7 +305,7 @@ onMounted(loadProducts)
   border-radius: var(--radius-md);
   font-size: var(--fs-xs);
   color: var(--text-primary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .gifts__center {
@@ -313,7 +313,7 @@ onMounted(loadProducts)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-3);
 }
 
@@ -327,7 +327,7 @@ onMounted(loadProducts)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .gifts__field {
@@ -349,7 +349,7 @@ onMounted(loadProducts)
 }
 
 .gifts__list {
-  margin-top: var(--space-5);
+  margin-block-start: var(--space-5);
 }
 
 .gifts__list-title {
@@ -363,7 +363,7 @@ onMounted(loadProducts)
   margin: 0 0 var(--space-3);
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .gifts__row {
@@ -371,12 +371,12 @@ onMounted(loadProducts)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 
 .gifts__row-info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .gifts__row-main {
@@ -424,7 +424,7 @@ onMounted(loadProducts)
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 var(--space-3);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .gifts__summary {
@@ -446,6 +446,6 @@ onMounted(loadProducts)
 .gifts__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 </style>

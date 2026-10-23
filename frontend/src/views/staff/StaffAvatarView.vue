@@ -54,7 +54,7 @@ async function handleStart(): Promise<void> {
         size="sm"
         :loading="loading"
         :disabled="!targetUserId.trim()"
-        style="margin-top: 12px"
+        style="margin-block-start: var(--space-3)"
         @click="handleStart"
       >
         <Ghost :size="16" /> {{ t('staff.avatar.start') }}
@@ -86,7 +86,7 @@ async function handleStart(): Promise<void> {
   background: var(--accent);
   color: var(--on-accent);
   border-radius: var(--radius-lg);
-  margin-bottom: var(--space-4-lg);
+  margin-block-end: var(--space-4-lg);
   text-align: center;
 }
 .avatar-header__title {
@@ -100,18 +100,18 @@ async function handleStart(): Promise<void> {
 .avatar-header__sub {
   font-size: var(--fs-sm);
   opacity: 0.9;
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .avatar-form {
-  margin-bottom: var(--space-5);
+  margin-block-end: var(--space-5);
 }
 .avatar-form__label {
   display: block;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 
 .avatar-restrictions {
@@ -126,7 +126,7 @@ async function handleStart(): Promise<void> {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .avatar-restrictions__list {
   list-style: none;
@@ -154,6 +154,6 @@ async function handleStart(): Promise<void> {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .avatar-header__sub {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

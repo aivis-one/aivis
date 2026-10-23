@@ -813,7 +813,7 @@ async function handleCreate(): Promise<void> {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .scl__title {
   font-size: var(--fs-h4);
@@ -835,14 +835,14 @@ async function handleCreate(): Promise<void> {
   margin: 0 0 var(--space-4);
 }
 .scl__field {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scl__field-label {
   display: block;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .scl__field-error {
   font-size: var(--fs-xs);
@@ -854,7 +854,7 @@ async function handleCreate(): Promise<void> {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scl__header-actions {
   display: flex;
@@ -863,7 +863,7 @@ async function handleCreate(): Promise<void> {
 .scl__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 
@@ -871,16 +871,16 @@ async function handleCreate(): Promise<void> {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-1);
+  margin-block-end: var(--space-3);
+  padding-block-end: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -901,11 +901,11 @@ async function handleCreate(): Promise<void> {
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -918,7 +918,7 @@ async function handleCreate(): Promise<void> {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -935,21 +935,21 @@ async function handleCreate(): Promise<void> {
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--dur-fast);
 }
 .company-item:hover {
   background: var(--bg-subtle);
 }
 .company-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .company-item__name {
   font-size: var(--fs-sm);
@@ -962,7 +962,7 @@ async function handleCreate(): Promise<void> {
 .company-item__detail {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .scl__pagination {
@@ -970,7 +970,7 @@ async function handleCreate(): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .scl__page {
   font-size: var(--fs-xs);

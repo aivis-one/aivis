@@ -105,17 +105,17 @@ const coverImage = computed(() => resolveCoverImage({ cover_url: props.company.c
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .company-card:hover {
@@ -130,7 +130,7 @@ const coverImage = computed(() => resolveCoverImage({ cover_url: props.company.c
 .company-card__img {
   /* 16:9 keeps the grid baseline predictable across screen sizes. */
   aspect-ratio: 16 / 9;
-  width: 100%;
+  inline-size: 100%;
   background-size: cover;
   background-position: center;
   background-color: var(--bg-subtle);
@@ -196,7 +196,7 @@ const coverImage = computed(() => resolveCoverImage({ cover_url: props.company.c
      three lines that occupy 60.9px, and the equal-height guarantee this rule
      exists for did not hold. A literal inside a calc is invisible to a scan
      that looks at font-size declarations. */
-  min-height: calc(var(--fs-sm) * 1.45 * 3);
+  min-block-size: calc(var(--fs-sm) * 1.45 * 3);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -211,6 +211,6 @@ const coverImage = computed(() => resolveCoverImage({ cover_url: props.company.c
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .company-card__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

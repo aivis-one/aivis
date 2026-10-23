@@ -347,7 +347,7 @@ onMounted(() => {
 .tv {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 /* Page header */
@@ -361,7 +361,7 @@ onMounted(() => {
   gap: var(--space-3);
 }
 .tv__header-text {
-  min-width: 0;
+  min-inline-size: 0;
 }
 .tv__title {
   font-size: var(--fs-lg);
@@ -392,7 +392,7 @@ onMounted(() => {
   flex-shrink: 0;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
@@ -401,9 +401,9 @@ onMounted(() => {
   cursor: pointer;
   white-space: nowrap;
   transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 
 /* A5: the PAINTED box stays this size on purpose -- growing it would move the
@@ -417,11 +417,11 @@ onMounted(() => {
 .tv__tab::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .tv__tab:hover {
   border-color: var(--primary);
@@ -462,18 +462,18 @@ onMounted(() => {
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   cursor: pointer;
   transition:
-    border-color 0.15s,
-    background 0.15s;
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
 }
 .tv__item:hover,
 .tv__item:focus-visible {
@@ -486,8 +486,8 @@ onMounted(() => {
 
 .tv__item-icon {
   flex-shrink: 0;
-  width: var(--size-lg);
-  height: var(--size-lg);
+  inline-size: var(--size-lg);
+  block-size: var(--size-lg);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -498,7 +498,7 @@ onMounted(() => {
 
 .tv__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -543,7 +543,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 /* loadMore error banner -- shown under the sentinel when page > 1
@@ -564,7 +564,7 @@ onMounted(() => {
 }
 .tv__loadmore-error-text {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -575,6 +575,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .tv__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

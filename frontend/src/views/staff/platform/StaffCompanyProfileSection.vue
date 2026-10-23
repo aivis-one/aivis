@@ -462,16 +462,16 @@ function formatPrice(cents: number): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
 .scp__cover {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scp__cover-img {
-  width: 100%;
-  max-height: 180px;
+  inline-size: 100%;
+  max-block-size: 180px;
   object-fit: cover;
   border-radius: var(--radius-md);
   display: block;
@@ -482,7 +482,7 @@ function formatPrice(cents: number): string {
   justify-content: space-between;
   align-items: center;
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .scp__label {
   font-size: var(--fs-xs);
@@ -523,7 +523,7 @@ function formatPrice(cents: number): string {
 }
 
 .scp__section {
-  margin-top: var(--space-4-lg);
+  margin-block-start: var(--space-4-lg);
 }
 .scp__section-title {
   font-size: var(--fs-sm);
@@ -561,6 +561,6 @@ function formatPrice(cents: number): string {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .scp__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

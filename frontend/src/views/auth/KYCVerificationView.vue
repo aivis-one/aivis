@@ -506,7 +506,7 @@ onMounted(() => {
 
 <style scoped>
 .auth-page {
-  min-height: 100vh;
+  min-block-size: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -518,18 +518,18 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: var(--space-4);
-  width: 100%;
+  inline-size: 100%;
 }
 
 .logo {
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 
 /* Fixed-width by intent -- registered in checks/preauth.py, which says
    what the card holds. A wider column would only stretch its content. */
 .kyc-card {
-  width: 100%;
-  max-width: var(--maxw-form);
+  inline-size: 100%;
+  max-inline-size: var(--maxw-form);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -553,7 +553,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  text-align: left;
+  text-align: start;
 }
 
 .kyc-field {
@@ -569,7 +569,7 @@ onMounted(() => {
 
 .kyc-select,
 .kyc-file {
-  width: 100%;
+  inline-size: 100%;
 }
 
 .kyc-hint {
@@ -584,7 +584,7 @@ onMounted(() => {
 
 .kyc-row__col {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .kyc-reason {
@@ -609,7 +609,7 @@ onMounted(() => {
 
 .kyc-error {
   color: var(--danger);
-  max-width: var(--maxw-form);
+  max-inline-size: var(--maxw-form);
   text-align: center;
 }
 </style>

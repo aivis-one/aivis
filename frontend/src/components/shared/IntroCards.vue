@@ -91,8 +91,8 @@ function next(): void {
   gap: var(--space-1);
 }
 .intro__dot {
-  width: var(--space-2);
-  height: var(--space-2);
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--border-default);
 }

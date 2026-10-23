@@ -193,7 +193,7 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .partners__header {
@@ -213,7 +213,7 @@ onMounted(() => {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .partners__center {
@@ -228,7 +228,7 @@ onMounted(() => {
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
 }
 
@@ -306,11 +306,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
-  min-height: 44px;
+  inline-size: 100%;
+  min-block-size: 44px;
   padding: var(--space-3) var(--space-4);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font: inherit;
@@ -332,7 +332,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 2px;
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 
 .partners__row-title {
@@ -348,7 +348,7 @@ onMounted(() => {
 @media (min-width: 880px) {
   .partners__link,
   .partners__rows {
-    max-width: calc(3 * var(--tile-max));
+    max-inline-size: calc(3 * var(--tile-max));
   }
 }
 </style>

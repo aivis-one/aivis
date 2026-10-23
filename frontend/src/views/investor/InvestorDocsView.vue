@@ -474,7 +474,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 /* iter 2.7 batch B2 -- inline page-header replaces the previous
@@ -502,7 +502,7 @@ function metaLabel(doc: DocumentResponse): string {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -524,17 +524,17 @@ function metaLabel(doc: DocumentResponse): string {
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition:
-    border-color 0.2s,
-    background 0.2s;
+    border-color var(--dur-base) var(--ease-standard),
+    background var(--dur-base) var(--ease-standard);
 }
 .docs__item:hover {
   border-color: var(--primary-hover);
@@ -545,8 +545,8 @@ function metaLabel(doc: DocumentResponse): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-lg);
-  height: var(--size-lg);
+  inline-size: var(--size-lg);
+  block-size: var(--size-lg);
   border-radius: var(--radius-sm);
   background: var(--primary-subtle);
   color: var(--primary);
@@ -555,7 +555,7 @@ function metaLabel(doc: DocumentResponse): string {
 
 .docs__body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .docs__title {
   font-size: var(--fs-sm);
@@ -565,7 +565,7 @@ function metaLabel(doc: DocumentResponse): string {
 .docs__meta {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .docs__status {
@@ -591,7 +591,7 @@ function metaLabel(doc: DocumentResponse): string {
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 var(--space-4);
-  padding-right: var(--space-6);
+  padding-inline-end: var(--space-6);
 }
 
 .docs-modal__center {
@@ -599,7 +599,7 @@ function metaLabel(doc: DocumentResponse): string {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-4) 0;
 }
 .docs-modal__hint {
@@ -608,12 +608,12 @@ function metaLabel(doc: DocumentResponse): string {
 }
 
 .docs-modal__iframe {
-  width: 100%;
-  height: 55vh;
-  height: 55dvh;
-  border: 1px solid var(--border-default);
+  inline-size: 100%;
+  block-size: 55vh;
+  block-size: 55dvh;
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--paper);
 }
 
 .docs-modal__download {
@@ -632,9 +632,9 @@ function metaLabel(doc: DocumentResponse): string {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  margin-top: var(--space-4);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-default);
+  margin-block-start: var(--space-4);
+  padding-block-start: var(--space-3);
+  border-block-start: thin solid var(--border-default);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -645,6 +645,6 @@ function metaLabel(doc: DocumentResponse): string {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .docs-modal__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

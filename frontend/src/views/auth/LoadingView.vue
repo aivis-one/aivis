@@ -24,19 +24,19 @@ const { t } = useI18n()
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
   background: var(--bg-page);
   gap: var(--space-4);
 }
 
 .loading-spinner {
-  margin-top: var(--space-5);
+  margin-block-start: var(--space-5);
 }
 
 .loading-text {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
 }
 </style>

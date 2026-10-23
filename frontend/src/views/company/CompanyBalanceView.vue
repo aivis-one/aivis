@@ -586,7 +586,7 @@ onMounted(() => {
   flex-direction: column;
   padding: var(--space-4);
   gap: var(--space-4);
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 .cbal__header {
@@ -612,8 +612,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 240px);
-  min-height: calc(100dvh - 240px);
+  min-block-size: calc(100vh - 240px);
+  min-block-size: calc(100dvh - 240px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -622,7 +622,7 @@ onMounted(() => {
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .cbal__balance {
@@ -655,7 +655,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
   flex-wrap: wrap;
 }
 .cbal__cta-hint {
@@ -685,7 +685,7 @@ onMounted(() => {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px dashed var(--border-default);
+  border: thin dashed var(--border-default);
   text-align: center;
 }
 
@@ -704,14 +704,14 @@ onMounted(() => {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .cbal__item-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-md);
+  inline-size: var(--size-md);
+  block-size: var(--size-md);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
@@ -719,7 +719,7 @@ onMounted(() => {
 }
 .cbal__item-body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -748,8 +748,8 @@ onMounted(() => {
   white-space: nowrap;
   color: var(--danger);
   font-style: italic;
-  text-align: right;
-  max-width: 60%;
+  text-align: end;
+  max-inline-size: 60%;
 }
 
 .cbal__badge {
@@ -765,22 +765,22 @@ onMounted(() => {
 .cbal__badge--success {
   background: var(--bg-page);
   color: var(--success);
-  border: 1px solid var(--success);
+  border: thin solid var(--success);
 }
 .cbal__badge--warning {
   background: var(--bg-page);
   color: var(--warning);
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
 }
 .cbal__badge--danger {
   background: var(--bg-page);
   color: var(--danger);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
 }
 .cbal__badge--neutral {
   background: var(--bg-page);
   color: var(--text-secondary);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 .cbal__sentinel {
@@ -788,14 +788,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: var(--space-4) 0 0;
-  min-height: var(--size-md);
+  min-block-size: var(--size-md);
 }
 
 .cbal__json {
   margin: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
@@ -819,10 +819,10 @@ onMounted(() => {
    would add a second, larger one inside it. The payout box keeps the height it
    was given -- :deep() because that height belongs to the control, not the group. */
 .cbal__control {
-  margin-bottom: 0;
+  margin-block-end: 0;
 }
 .cbal__control--payout :deep(.ds-input) {
-  min-height: 160px;
+  min-block-size: 160px;
 }
 .cbal__field-label {
   font-size: var(--fs-xs);
@@ -843,12 +843,12 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   font-size: var(--fs-xs);
   background: var(--danger-subtle);
-  border: 1px solid var(--danger);
+  border: thin solid var(--danger);
   color: var(--danger);
 }
 .cbal__form-error--soft {
   background: transparent;
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
   color: var(--warning);
 }
 
@@ -856,7 +856,7 @@ onMounted(() => {
   display: flex;
   gap: var(--space-2);
   justify-content: flex-end;
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 /* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
@@ -867,7 +867,7 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .cbal__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .cbal__rule {
@@ -883,7 +883,7 @@ onMounted(() => {
   padding: var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
 }
 .cbal__active-head {
   font-size: var(--fs-xs);
@@ -909,6 +909,6 @@ onMounted(() => {
   margin: 0;
   color: var(--text-primary);
   word-break: break-all;
-  text-align: right;
+  text-align: end;
 }
 </style>

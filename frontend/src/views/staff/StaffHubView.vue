@@ -90,7 +90,7 @@ function go(path: string): void {
 .hub {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-block-size: 100%;
 }
 
 .hub__nav {
@@ -98,10 +98,10 @@ function go(path: string): void {
   gap: var(--space-2);
   overflow-x: auto;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   background: var(--bg-page);
   position: sticky;
-  top: 0;
+  inset-block-start: 0;
   z-index: 10;
   scrollbar-width: none;
 }
@@ -111,10 +111,10 @@ function go(path: string): void {
 
 .hub__chip {
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -123,9 +123,9 @@ function go(path: string): void {
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
 }
 .hub__chip:hover {
   background: var(--bg-subtle);

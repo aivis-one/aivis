@@ -326,7 +326,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
      (12px) centered with room for breathing space. */
   grid-template-columns: 32px 1fr;
   gap: var(--space-4);
-  padding-bottom: var(--space-6);
+  padding-block-end: var(--space-6);
 }
 
 .roadmap__axis {
@@ -337,20 +337,20 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 
 .roadmap__line {
   position: absolute;
-  top: 0;
+  inset-block-start: 0;
   /* Bleed the axis line into the gap below so consecutive items share
      a continuous visual axis. calc() because plain `-var()` is invalid
      in CSS syntax. */
-  bottom: calc(-1 * var(--space-6));
-  width: 2px;
+  inset-block-end: calc(-1 * var(--space-6));
+  inline-size: 2px;
   background: var(--border-default);
 }
 
 .roadmap__dot {
   position: relative;
-  width: 12px;
-  height: 12px;
-  margin-top: var(--space-2); /* align with the card's first line of text */
+  inline-size: 12px;
+  block-size: 12px;
+  margin-block-start: var(--space-2); /* align with the card's first line of text */
   border-radius: var(--radius-pill);
   background: var(--primary);
   box-shadow: 0 0 0 4px var(--bg-page);
@@ -362,13 +362,13 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   flex-direction: column;
   gap: var(--space-2);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .roadmap__cover {
-  width: 100%;
+  inline-size: 100%;
   aspect-ratio: 16 / 9;
   background-size: cover;
   background-position: center;
@@ -439,7 +439,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  width: 100%;
+  inline-size: 100%;
   padding: 0;
   border: none;
   background: none;
@@ -450,14 +450,14 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 }
 
 .roadmap__toggle-text {
-  min-width: 0;
+  min-inline-size: 0;
   overflow-wrap: anywhere;
 }
 
 .roadmap__chev {
   flex-shrink: 0;
   color: var(--text-tertiary);
-  transition: transform 0.15s ease;
+  transition: transform var(--dur-fast) var(--ease-standard);
 }
 
 .roadmap__chev--open {
@@ -478,14 +478,14 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   margin: 0 var(--space-4);
   padding: var(--space-2);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   /* Reset native button styling -- the affordance is the link below. */
   font: inherit;
   color: inherit;
-  transition: background 0.12s ease;
+  transition: background var(--dur-fast) var(--ease-standard);
 }
 
 .roadmap__post:hover {
@@ -494,7 +494,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 
 .roadmap__post-cover {
   flex-shrink: 0;
-  width: 72px;
+  inline-size: 72px;
   aspect-ratio: 1 / 1;
   background-size: cover;
   background-position: center;
@@ -507,7 +507,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  min-width: 0; /* allow text truncation to work inside flex */
+  min-inline-size: 0; /* allow text truncation to work inside flex */
 }
 
 .roadmap__post-title {
@@ -534,7 +534,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 }
 
 .roadmap__post-link {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--primary);
@@ -549,20 +549,20 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 
 .roadmap__action {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   padding: var(--space-2) var(--space-4);
   font-size: var(--fs-sm);
   font-weight: 500;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background var(--dur-fast) var(--ease-standard);
   font: inherit;
 }
 
 .roadmap__action--primary {
   color: var(--bg-page);
   background: var(--primary);
-  border: 1px solid var(--primary);
+  border: thin solid var(--primary);
 }
 
 .roadmap__action--primary:hover {
@@ -572,7 +572,7 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 .roadmap__action--outline {
   color: var(--primary);
   background: transparent;
-  border: 1px solid var(--primary);
+  border: thin solid var(--primary);
 }
 
 .roadmap__action--outline:hover {
@@ -589,18 +589,18 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
 }
 
 .roadmap__axis--terminal {
-  height: var(--size-sm); /* compact -- no card to anchor against */
+  block-size: var(--size-sm); /* compact -- no card to anchor against */
 }
 
 .roadmap__line--terminal {
   /* The terminal line stops at the dot (no bleed into a non-existent
      next item). Pull bottom up to match the dot center. */
-  top: 0;
-  bottom: 50%;
+  inset-block-start: 0;
+  inset-block-end: 50%;
 }
 
 .roadmap__dot--terminal {
-  margin-top: var(--space-2);
+  margin-block-start: var(--space-2);
   background: var(--border-default); /* terminal dot is muted vs progress dots */
 }
 
@@ -618,6 +618,6 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .roadmap__description {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

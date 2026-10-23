@@ -856,7 +856,7 @@ onMounted(() => {
 .cset {
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--space-5);
+  padding-block-end: var(--space-5);
 }
 
 /* Header */
@@ -882,8 +882,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  min-height: calc(100vh - 280px);
-  min-height: calc(100dvh - 280px);
+  min-block-size: calc(100vh - 280px);
+  min-block-size: calc(100dvh - 280px);
   padding: var(--space-5);
   text-align: center;
 }
@@ -897,36 +897,36 @@ onMounted(() => {
   margin: 0 var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 .cset__hero-logo {
-  width: var(--size-4xl);
-  height: var(--size-4xl);
+  inline-size: var(--size-4xl);
+  block-size: var(--size-4xl);
   border-radius: var(--radius-sm);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .cset__hero-logo-img {
-  width: 100%;
-  height: 100%;
+  inline-size: 100%;
+  block-size: 100%;
   object-fit: cover;
 }
 .cset__hero-logo-fallback {
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--primary);
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-wide);
 }
 .cset__hero-text {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .cset__hero-name {
   font-size: var(--fs-h4);
@@ -948,17 +948,17 @@ onMounted(() => {
 .cset__status--success {
   background: var(--bg-surface);
   color: var(--success);
-  border: 1px solid var(--success);
+  border: thin solid var(--success);
 }
 .cset__status--warning {
   background: var(--bg-surface);
   color: var(--warning);
-  border: 1px solid var(--warning);
+  border: thin solid var(--warning);
 }
 .cset__status--neutral {
   background: var(--bg-surface);
   color: var(--text-secondary);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
 }
 
 /* Status hint (hidden / archived explanation, under the status row) */
@@ -990,7 +990,7 @@ onMounted(() => {
 /* Section */
 .cset__section {
   padding: 0 var(--space-4);
-  margin-bottom: var(--space-4-lg);
+  margin-block-end: var(--space-4-lg);
 }
 .cset__section-title {
   font-size: var(--fs-xs);
@@ -998,7 +998,7 @@ onMounted(() => {
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   padding: 0 var(--space-1);
 }
 .cset__section-title--row {
@@ -1010,8 +1010,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-sm);
+  inline-size: var(--size-md);
+  block-size: var(--size-sm);
   padding: 0;
   border: none;
   background: transparent;
@@ -1019,8 +1019,8 @@ onMounted(() => {
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    color 0.2s,
-    background 0.2s;
+    color var(--dur-base) var(--ease-standard),
+    background var(--dur-base) var(--ease-standard);
 }
 .cset__edit-btn:hover {
   color: var(--primary);
@@ -1034,27 +1034,27 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-default);
-  min-height: var(--size-3xl);
+  border-block-end: thin solid var(--border-default);
+  min-block-size: var(--size-3xl);
 }
 .cset__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 a.cset__row,
 button.cset__row {
-  width: 100%;
+  inline-size: 100%;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   text-decoration: none;
 }
 a.cset__row:last-child,
 button.cset__row:last-child {
-  border-bottom: none;
+  border-block-end: none;
 }
 
 .cset__row--block {
@@ -1063,7 +1063,7 @@ button.cset__row:last-child {
   flex-direction: column;
 }
 .cset__row--clickable {
-  transition: background 0.15s;
+  transition: background var(--dur-fast);
 }
 .cset__row--clickable:hover {
   background: var(--bg-subtle);
@@ -1094,7 +1094,7 @@ button.cset__row:last-child {
 .cset__row-value {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
-  text-align: right;
+  text-align: end;
   word-break: break-word;
 }
 .cset__row-multiline {
@@ -1111,7 +1111,7 @@ button.cset__row:last-child {
   margin: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
@@ -1138,6 +1138,6 @@ button.cset__row:last-child {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .cset__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

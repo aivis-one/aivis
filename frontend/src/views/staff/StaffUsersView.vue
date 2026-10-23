@@ -910,7 +910,7 @@ onMounted(loadUsers)
 
     <!-- Detail modal -->
     <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="staff-users__center" style="min-height: 200px">
+      <div v-if="detailLoading" class="staff-users__center" style="min-block-size: var(--center-md)">
         <CLoader :size="24" />
       </div>
       <template v-else-if="detailUser">
@@ -944,7 +944,7 @@ onMounted(loadUsers)
         <div class="detail__row">
           <span class="detail__label">{{ t('staff.userDetail.registered') }}</span>
           <span class="detail__value">
-            <Clock :size="16" style="vertical-align: -1px" />
+            <Clock :size="16" style="vertical-align: middle" />
             {{ formatDate(detailUser.created_at) }}
           </span>
         </div>
@@ -1184,7 +1184,7 @@ onMounted(loadUsers)
         :label="t('staff.userDetail.blockReason')"
         :placeholder="t('staff.userDetail.blockReason')"
       />
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showBlockModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1213,7 +1213,7 @@ onMounted(loadUsers)
         :label="t('staff.userDetail.changeEmailReason')"
         :placeholder="t('staff.userDetail.changeEmailReason')"
       />
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showEmailModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1238,7 +1238,7 @@ onMounted(loadUsers)
       <p class="detail__confirm-text">
         {{ t('staff.userDetail.unblockConfirm') }}
       </p>
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showUnblockModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1256,7 +1256,7 @@ onMounted(loadUsers)
       <p class="detail__confirm-text">
         {{ t('staff.userDetail.deactivateConfirm') }}
       </p>
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showDeactivateModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1274,7 +1274,7 @@ onMounted(loadUsers)
       <p class="detail__confirm-text">
         {{ t('staff.userDetail.promoteConfirm') }}
       </p>
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showPromoteModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1300,7 +1300,7 @@ onMounted(loadUsers)
         :label="t('staff.userDetail.kyc.reason')"
         :placeholder="t('staff.userDetail.kyc.reason')"
       />
-      <div class="detail__actions" style="margin-top: 16px">
+      <div class="detail__actions" style="margin-block-start: var(--space-4)">
         <CButton variant="outline" size="sm" @click="showKycDecisionModal = false">
           {{ t('common.cancel') }}
         </CButton>
@@ -1329,21 +1329,21 @@ onMounted(loadUsers)
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .staff-users__filter-row {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  padding-bottom: var(--space-1);
+  padding-block-end: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -1365,11 +1365,11 @@ onMounted(loadUsers)
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -1397,21 +1397,21 @@ onMounted(loadUsers)
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--dur-base);
 }
 .user-item:hover {
   background: var(--bg-subtle);
 }
 .user-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .user-item__name {
   font-size: var(--fs-sm);
@@ -1424,11 +1424,11 @@ onMounted(loadUsers)
   text-transform: capitalize;
 }
 .user-item__right {
-  text-align: right;
+  text-align: end;
   flex-shrink: 0;
 }
 .user-item__blocked {
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 .staff-users__pagination {
@@ -1436,7 +1436,7 @@ onMounted(loadUsers)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .staff-users__page {
   font-size: var(--fs-xs);
@@ -1448,7 +1448,7 @@ onMounted(loadUsers)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -1470,7 +1470,7 @@ onMounted(loadUsers)
   justify-content: space-between;
   align-items: center;
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .detail__label {
   font-size: var(--fs-xs);
@@ -1481,7 +1481,7 @@ onMounted(loadUsers)
   color: var(--text-primary);
 }
 .detail__section {
-  margin-top: var(--space-3);
+  margin-block-start: var(--space-3);
 }
 .detail__perm {
   padding: var(--space-1) 0;
@@ -1490,7 +1490,7 @@ onMounted(loadUsers)
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin: 0 0 var(--space-2);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 .detail__admin-badge {
   margin-inline-start: var(--space-2);
@@ -1499,12 +1499,12 @@ onMounted(loadUsers)
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-block-end: var(--space-3);
 }
 .detail__actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   flex-wrap: wrap;
 }
 .detail__confirm-text {
@@ -1555,7 +1555,7 @@ onMounted(loadUsers)
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -1587,6 +1587,6 @@ onMounted(loadUsers)
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .detail__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

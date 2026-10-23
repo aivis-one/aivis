@@ -320,7 +320,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   padding: var(--space-5);
 }
 
@@ -346,14 +346,14 @@ onMounted(() => {
 .pv__hero-row {
   display: flex;
   gap: var(--space-5);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 .pv__hero-stat-label {
   font-size: var(--fs-xs);
   opacity: 0.8;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-1);
 }
 .pv__hero-stat-value {
   font-size: var(--fs-body);
@@ -378,23 +378,23 @@ onMounted(() => {
   font: inherit;
   color: inherit;
   text-align: start;
-  width: 100%;
+  inline-size: 100%;
   padding: var(--space-4) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-fast);
 }
 .pv__item:hover {
   border-color: var(--primary);
 }
 .pv__item:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .pv__item-head {
@@ -417,13 +417,13 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .pv__item-company-icon {
   flex-shrink: 0;
 }
 .pv__item-company-name {
-  min-width: 0;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -447,8 +447,8 @@ onMounted(() => {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: var(--space-1);
+  letter-spacing: var(--tracking-wide);
+  margin-block-end: var(--space-1);
 }
 .pv__item-stat-value {
   font-size: var(--fs-sm);
@@ -494,7 +494,7 @@ onMounted(() => {
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .pv__item-stats {
-    max-width: calc(3 * var(--tile-max));
+    max-inline-size: calc(3 * var(--tile-max));
   }
 }
 
@@ -506,6 +506,6 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .pv__subtitle {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

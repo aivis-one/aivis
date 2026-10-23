@@ -1009,14 +1009,14 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-sm);
+  min-block-size: var(--center-sm);
   gap: var(--space-4);
 }
 
 .scr__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 
 /* -- List -- */
@@ -1045,16 +1045,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-sm);
-  height: var(--size-xs);
-  border: 1px solid var(--border-default);
+  inline-size: var(--size-sm);
+  block-size: var(--size-xs);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   background: var(--bg-page);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    border-color 0.2s,
-    color 0.2s;
+    border-color var(--dur-base) var(--ease-standard),
+    color var(--dur-base) var(--ease-standard);
 }
 .rm-item__move:hover:not(:disabled) {
   border-color: var(--primary);
@@ -1069,8 +1069,8 @@ onMounted(() => {
   flex: 0 0 auto;
 }
 .rm-item__cover-img {
-  width: var(--size-4xl);
-  height: var(--size-4xl);
+  inline-size: var(--size-4xl);
+  block-size: var(--size-4xl);
   object-fit: cover;
   border-radius: var(--radius-sm);
   display: block;
@@ -1078,7 +1078,7 @@ onMounted(() => {
 
 .rm-item__body {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -1130,16 +1130,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--size-md);
-  height: var(--size-sm);
+  inline-size: var(--size-md);
+  block-size: var(--size-sm);
   border: none;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition:
-    color 0.2s,
-    background 0.2s;
+    color var(--dur-base) var(--ease-standard),
+    background var(--dur-base) var(--ease-standard);
 }
 .rm-item__action:hover {
   color: var(--text-primary);
@@ -1161,7 +1161,7 @@ onMounted(() => {
 .scr__modal-actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
   justify-content: flex-end;
 }
 
@@ -1174,14 +1174,14 @@ onMounted(() => {
 
 /* Kind tab strip */
 .scr__kind {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scr__kind-label {
   display: block;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .scr__kind-hint {
   font-size: var(--fs-xs);
@@ -1196,14 +1196,14 @@ onMounted(() => {
 .scr__kind-tab {
   flex: 1;
   padding: var(--space-3) var(--space-2);
-  border: 2px solid var(--border-default);
+  border: calc(var(--border-input-width) * 2) solid var(--border-default);
   border-radius: var(--radius-md);
   background: var(--bg-page);
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dur-base);
 }
 .scr__kind-tab--active {
   border-color: var(--primary);
@@ -1213,31 +1213,31 @@ onMounted(() => {
 
 /* Native date field (no CDatePicker in the kit) */
 .scr__field {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scr__field-label {
   display: block;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .scr__field-error {
   font-size: var(--fs-xs);
   color: var(--danger);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
 }
 
 /* Cover block (D2) */
 .scr__cover {
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
 }
 .scr__cover-preview {
-  margin-bottom: var(--space-2);
+  margin-block-end: var(--space-2);
 }
 .scr__cover-img {
-  width: 100%;
-  max-height: 180px;
+  inline-size: 100%;
+  max-block-size: 180px;
   object-fit: cover;
   border-radius: var(--radius-md);
   display: block;
@@ -1259,9 +1259,9 @@ onMounted(() => {
    are deliberately NOT capped — a name is not prose, and capping it would only
    leave dead space in its row. */
 .rm-item__desc {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 .scr__hint {
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

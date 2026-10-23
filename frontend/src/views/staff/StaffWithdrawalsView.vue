@@ -327,26 +327,26 @@ onMounted(loadWithdrawals)
   padding: var(--space-3);
   background: var(--bg-surface);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
+  margin-block-end: var(--space-4);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 
 .staff-wd__filters {
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-1);
+  margin-block-end: var(--space-4);
+  padding-block-end: var(--space-1);
 }
 .filter-chip {
   position: relative;
   /* A5: pointer target floor. */
-  min-height: var(--tap-min);
+  min-block-size: var(--tap-min);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
@@ -362,11 +362,11 @@ onMounted(loadWithdrawals)
 .filter-chip::after {
   content: '';
   position: absolute;
-  left: 50%;
-  top: 50%;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
   transform: translate(-50%, -50%);
-  width: max(100%, var(--tap-min));
-  height: max(100%, var(--tap-min));
+  inline-size: max(100%, var(--tap-min));
+  block-size: max(100%, var(--tap-min));
 }
 .filter-chip.active {
   background: var(--primary);
@@ -379,7 +379,7 @@ onMounted(loadWithdrawals)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: var(--center-md);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 
@@ -392,11 +392,11 @@ onMounted(loadWithdrawals)
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) 0;
-  border-bottom: 1px solid var(--border-default);
+  border-block-end: thin solid var(--border-default);
 }
 .wd-item__info {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
 }
 .wd-item__amount {
   font-size: var(--fs-sm);
@@ -410,17 +410,17 @@ onMounted(loadWithdrawals)
 .wd-item__user {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-family: var(--font-mono);
 }
 .wd-item__note {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-top: var(--space-1);
-  max-width: var(--maxw-prose);
+  margin-block-start: var(--space-1);
+  max-inline-size: var(--maxw-prose);
 }
 .wd-item__right {
-  text-align: right;
+  text-align: end;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -457,7 +457,7 @@ onMounted(loadWithdrawals)
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 .staff-wd__page {
   font-size: var(--fs-xs);
@@ -474,7 +474,7 @@ onMounted(loadWithdrawals)
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0 0 var(--space-2);
-  max-width: var(--maxw-prose);
+  max-inline-size: var(--maxw-prose);
 }
 .modal__amount {
   font-size: var(--fs-body);
@@ -494,7 +494,7 @@ onMounted(loadWithdrawals)
   font-size: var(--fs-xs);
   color: var(--text-primary);
   background: var(--bg-page);
-  border: 1px solid var(--border-default);
+  border: thin solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   margin: 0 0 var(--space-4);
@@ -502,13 +502,13 @@ onMounted(loadWithdrawals)
   grid-template-columns: max-content 1fr;
   gap: var(--space-1) var(--space-3);
   word-break: break-word;
-  max-height: 200px;
+  max-block-size: 200px;
   overflow-y: auto;
 }
 .modal__actions {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-block-start: var(--space-4);
 }
 
 .modal__payout dt {
@@ -523,7 +523,7 @@ onMounted(loadWithdrawals)
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 0 var(--space-3);
-  margin-top: var(--space-1);
+  margin-block-start: var(--space-1);
   font-size: var(--fs-xs);
 }
 .wd-item__payout-key {
