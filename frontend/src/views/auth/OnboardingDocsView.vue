@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ExternalLink } from '@/components/ui/icons'
+import AuthShell from '@/components/layout/AuthShell.vue'
+import CLoader from '@/components/ui/CLoader.vue'
+import { ExternalLink, ShieldAlert } from '@/components/ui/icons'
 // Document signing screen.
 // Flow:
 //   1. GET /api/v1/documents -> list for user's role, already resolved
@@ -25,8 +27,6 @@ import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import type { DocumentResponse } from '@/api/types'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import { postEntryTarget } from '@/utils/postAuthReturn'
 import { updateMe } from '@/api/users'
@@ -174,36 +174,30 @@ async function handleSignAll(): Promise<void> {
 </script>
 
 <template>
-  <div class="auth-screen">
-    <header class="auth-header">
-      <AivisLogo :height="28" />
-      <CAppControls />
-    </header>
+  <AuthShell>
+    <h1 class="ds-auth__title">
+      {{ t('auth.docs.title') }}
+    </h1>
+    <p class="ds-auth__subtitle">
+      {{ t('auth.docs.subtitle') }}
+    </p>
 
-    <div class="auth-content">
-      <h1 class="auth-title">
-        {{ t('auth.docs.title') }}
-      </h1>
-      <p class="auth-subtitle">
-        {{ t('auth.docs.subtitle') }}
-      </p>
+    <!-- Loading -->
+    <div v-if="loadingDocs" class="docs-loading">
+      <CLoader />
+    </div>
 
-      <!-- Loading -->
-      <div v-if="loadingDocs" class="docs-loading">
-        <span class="btn-spinner" />
-      </div>
-
-      <!-- Document list / empty state -->
-      <template v-else>
-        <div v-if="documents.length > 0" class="doc-list">
-          <div
-            v-for="doc in documents"
-            :key="doc.id"
-            class="doc-item"
-            :class="{ signed: doc.is_signed }"
-            @click="toggleCheck(doc)"
-          >
-            <!--
+    <!-- Document list / empty state -->
+    <template v-else>
+      <div v-if="documents.length > 0" class="doc-list">
+        <div
+          v-for="doc in documents"
+          :key="doc.id"
+          class="doc-item"
+          :class="{ signed: doc.is_signed }"
+          @click="toggleCheck(doc)"
+        >
+          <!--
               A11y: the ROW carries @click and used to be the only way to toggle
               this, which made it mouse-only. It cannot become role="button" --
               it contains the "open document" button, and an ARIA button must not
@@ -211,65 +205,68 @@ async function handleSignAll(): Promise<void> {
               What the row actually IS is a checkbox, so the box itself takes the
               role, the state and the keyboard, and the link stays a sibling.
             -->
-            <div
-              class="doc-checkbox"
-              :class="{ checked: isChecked(doc), locked: doc.is_signed }"
-              role="checkbox"
-              :aria-checked="isChecked(doc)"
-              :aria-label="doc.title"
-              :tabindex="doc.is_signed ? -1 : 0"
-              @click.stop="toggleCheck(doc)"
-              @keydown.enter.prevent="toggleCheck(doc)"
-              @keydown.space.prevent="toggleCheck(doc)"
-            >
-              <span v-if="isChecked(doc)">✓</span>
-            </div>
-            <div class="doc-info">
-              <div class="doc-title">
-                {{ doc.title }}
-              </div>
-              <div class="doc-meta">
-                <span class="doc-required">{{ t('auth.docs.required') }}</span>
-              </div>
-            </div>
-            <button type="button" class="doc-link" @click.stop="openDocument(doc)">
-              <ExternalLink :size="16" />
-              <span class="doc-link-label">{{ t('auth.docs.read') }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Counter -->
-        <div v-if="documents.length > 0" class="doc-counter">
-          {{ t('auth.docs.checkedOf', { checked: checkedCount, total: documents.length }) }}
-        </div>
-
-        <!-- No docs required for this role -->
-        <div v-if="documents.length === 0" class="no-docs">
-          {{ t('auth.docs.noDocs') }}
-        </div>
-
-        <div v-if="error" class="auth-error">
-          {{ error }}
-        </div>
-
-        <div class="doc-actions">
-          <button
-            class="btn btn-primary"
-            type="button"
-            :disabled="!canSignAll || signing"
-            @click="handleSignAll"
+          <div
+            class="doc-checkbox"
+            :class="{ checked: isChecked(doc), locked: doc.is_signed }"
+            role="checkbox"
+            :aria-checked="isChecked(doc)"
+            :aria-label="doc.title"
+            :tabindex="doc.is_signed ? -1 : 0"
+            @click.stop="toggleCheck(doc)"
+            @keydown.enter.prevent="toggleCheck(doc)"
+            @keydown.space.prevent="toggleCheck(doc)"
           >
-            <span v-if="signing" class="btn-spinner" />
-            <span v-else>{{ t('auth.docs.signDocumentsBtn') }}</span>
+            <span v-if="isChecked(doc)">✓</span>
+          </div>
+          <div class="doc-info">
+            <div class="doc-title">
+              {{ doc.title }}
+            </div>
+            <div class="doc-meta">
+              <span class="doc-required">{{ t('auth.docs.required') }}</span>
+            </div>
+          </div>
+          <button type="button" class="doc-link" @click.stop="openDocument(doc)">
+            <ExternalLink :size="16" />
+            <span class="doc-link-label">{{ t('auth.docs.read') }}</span>
           </button>
         </div>
+      </div>
 
-        <div class="entry-logout">
-          <AuthLogoutLink />
+      <!-- Counter -->
+      <div v-if="documents.length > 0" class="doc-counter">
+        {{ t('auth.docs.checkedOf', { checked: checkedCount, total: documents.length }) }}
+      </div>
+
+      <!-- No docs required for this role -->
+      <div v-if="documents.length === 0" class="no-docs">
+        {{ t('auth.docs.noDocs') }}
+      </div>
+
+      <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ error }}</p>
         </div>
-      </template>
-    </div>
+      </div>
+
+      <div class="doc-actions">
+        <button
+          class="ds-button ds-button--primary ds-button--block"
+          :aria-busy="signing || undefined"
+          type="button"
+          :disabled="!canSignAll || signing"
+          @click="handleSignAll"
+        >
+          <span v-if="signing" class="ds-button__spinner" aria-hidden="true" />
+          <span>{{ t('auth.docs.signDocumentsBtn') }}</span>
+        </button>
+      </div>
+
+      <div class="entry-logout">
+        <AuthLogoutLink />
+      </div>
+    </template>
 
     <!-- Document preview modal -->
     <LegalDocModal
@@ -279,67 +276,21 @@ async function handleSignAll(): Promise<void> {
       :type="viewingDoc ? viewingDoc.type : ''"
       @close="closeModal"
     />
-  </div>
+  </AuthShell>
 </template>
 
 <style scoped>
-.auth-screen {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-}
-.auth-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4) var(--space-5);
-}
-.auth-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5);
-  overflow-y: auto;
-}
-.auth-title {
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-  text-align: center;
-}
-.auth-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-6);
-  text-align: center;
-  line-height: 1.5;
-}
-.auth-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  text-align: center;
-  margin-block-end: var(--space-4);
-  max-inline-size: var(--maxw-form-wide);
-}
-
 .docs-loading {
   display: flex;
   justify-content: center;
   padding: var(--space-6-lg);
 }
-
 .no-docs {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-align: center;
   margin-block-end: var(--space-5);
 }
-
 .doc-list {
   inline-size: 100%;
   max-inline-size: var(--maxw-form-wide);
@@ -366,7 +317,6 @@ async function handleSignAll(): Promise<void> {
 .doc-item.signed {
   cursor: default;
 }
-
 .doc-checkbox {
   position: relative;
   inline-size: var(--size-xs);
@@ -382,7 +332,6 @@ async function handleSignAll(): Promise<void> {
   font-size: var(--fs-xs);
   color: var(--on-primary);
 }
-
 /* A5: 24x24 painted. It only became visible to a hit test once it was given
    role="checkbox" -- before that no interactive-element query could select
    it at all. The painted box stays; the hit area is expanded past it. */
@@ -402,7 +351,6 @@ async function handleSignAll(): Promise<void> {
 .doc-checkbox.locked {
   opacity: 0.8;
 }
-
 /* A flex item defaults to min-width:auto, so it will not shrink below its
    content. With a long document title this pushed .doc-info to 435px against
    a 390 viewport -- and documentElement.scrollWidth stayed 390, so the
@@ -430,7 +378,6 @@ async function handleSignAll(): Promise<void> {
   color: var(--danger);
   font-weight: 500;
 }
-
 .doc-link {
   position: relative;
   display: inline-flex;
@@ -446,7 +393,6 @@ async function handleSignAll(): Promise<void> {
   font-size: var(--fs-xs);
   transition: color var(--dur-base);
 }
-
 /* A5: 8 of these failed the 44px area test -- found ONLY by loading
    /onboarding/docs directly; the push sweep renders no documents here and
    reported the route clean. The painted link stays inline beside the row
@@ -463,57 +409,14 @@ async function handleSignAll(): Promise<void> {
 .doc-link:hover {
   color: var(--primary);
 }
-
 .doc-counter {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   margin-block-end: var(--space-4);
 }
-
 .doc-actions {
   inline-size: 100%;
   max-inline-size: var(--maxw-form-wide);
-}
-
-.btn {
-  inline-size: 100%;
-}
-.btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  border: none;
-  cursor: pointer;
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-spinner {
-  /* currentColor, not white: the spinner sits inside a primary button whose
-     colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
-     A white ring on the dark theme's light-azure button is near-invisible. */
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  border: calc(var(--border-input-width) * 2) solid currentColor;
-  opacity: 0.35;
-  border-block-start-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  display: inline-block;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 .entry-logout {
   display: flex;

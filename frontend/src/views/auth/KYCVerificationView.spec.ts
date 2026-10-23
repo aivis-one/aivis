@@ -129,7 +129,7 @@ describe('KYCVerificationView — a rejected file leaves nothing staged', () => 
   it('says why, so the blank field is not a mystery', async () => {
     const w = await mountForm()
     await pick(w, 0, 'front.heic')
-    expect(w.find('.kyc-error').exists()).toBe(true)
+    expect(w.find('.ds-alert--danger').exists()).toBe(true)
   })
 
   it('the slot can be filled again after a rejection', async () => {

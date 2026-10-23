@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AuthShell from '@/components/layout/AuthShell.vue'
+import { ChevronDown, ShieldAlert } from '@/components/ui/icons'
 // Identity verification screen (H10).
 //
 // ONE SCREEN CARRYING FOUR STATES, not a modal over the page the 402
@@ -53,8 +55,6 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { acceptDocumentByType } from '@/api/documents'
 import { updateMe } from '@/api/users'
 import { COUNTRIES } from '@/utils/countries'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput, CSelect } from '@/components/ui'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
@@ -116,7 +116,9 @@ const emailMissing = ref(false)
 // the cabinet; sending the application records it as read.
 const noticeOpen = ref(false)
 const docLang = computed(() => (locale.value === 'ru' ? 'ru' : 'en'))
-const noticeUrl = computed(() => `${import.meta.env.BASE_URL}legal/${docLang.value}/kyc_notice.html`)
+const noticeUrl = computed(
+  () => `${import.meta.env.BASE_URL}legal/${docLang.value}/kyc_notice.html`,
+)
 
 const documentType = ref<KycDocumentType>('passport')
 
@@ -193,16 +195,12 @@ function onDocumentTypeChange(): void {
   }
 }
 
-const feeUsd = computed(() =>
-  status.value ? (status.value.fee_cents / 100).toFixed(2) : '0.00',
-)
+const feeUsd = computed(() => (status.value ? (status.value.fee_cents / 100).toFixed(2) : '0.00'))
 const availableUsd = computed(() =>
   status.value ? (status.value.available_cents / 100).toFixed(2) : '0.00',
 )
 const canAfford = computed(
-  () =>
-    status.value !== null &&
-    status.value.available_cents >= status.value.fee_cents,
+  () => status.value !== null && status.value.available_cents >= status.value.fee_cents,
 )
 
 // Declared after canAfford on purpose: it reads it, and a const that
@@ -224,8 +222,7 @@ async function load(): Promise<void> {
       void safeNavigate(router.push('/'), '[KYCVerificationView] approved')
     }
   } catch (e) {
-    error.value =
-      e instanceof ApiResponseError ? e.detail : t('kyc.errorLoad')
+    error.value = e instanceof ApiResponseError ? e.detail : t('kyc.errorLoad')
   } finally {
     loading.value = false
   }
@@ -299,10 +296,7 @@ function toSettings(): void {
 }
 
 function toSupport(): void {
-  void safeNavigate(
-    router.push('/investor/support'),
-    '[KYCVerificationView] to support',
-  )
+  void safeNavigate(router.push('/investor/support'), '[KYCVerificationView] to support')
 }
 
 // Back to where the person came from -- usually the purchase,
@@ -323,90 +317,86 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="auth-page">
-    <div class="auth-content">
-      <AivisLogo class="logo" />
-      <CAppControls />
+  <AuthShell>
+    <div v-if="loading" class="kyc-card">{{ t('common.loading') }}</div>
 
-      <div v-if="loading" class="kyc-card">{{ t('common.loading') }}</div>
+    <div v-else-if="status" class="kyc-card">
+      <!-- Paid, waiting -->
+      <template v-if="status.kyc_status === 'submitted'">
+        <h1 class="ds-auth__title">{{ t('kyc.pendingTitle') }}</h1>
+        <p class="kyc-text">{{ t('kyc.pendingText') }}</p>
+      </template>
 
-      <div v-else-if="status" class="kyc-card">
-        <!-- Paid, waiting -->
-        <template v-if="status.kyc_status === 'submitted'">
-          <h1 class="kyc-title">{{ t('kyc.pendingTitle') }}</h1>
-          <p class="kyc-text">{{ t('kyc.pendingText') }}</p>
-        </template>
+      <!-- Not started, refused, or an approval withdrawn: the same form -->
+      <template v-else>
+        <h1 class="ds-auth__title">
+          {{
+            status.kyc_status === 'revoked'
+              ? t('kyc.revokedTitle')
+              : status.kyc_status === 'rejected'
+                ? t('kyc.rejectedTitle')
+                : t('kyc.title')
+          }}
+        </h1>
+        <p class="kyc-text">
+          {{
+            status.kyc_status === 'revoked'
+              ? t('kyc.revokedText')
+              : status.kyc_status === 'rejected'
+                ? t('kyc.rejectedText', { fee: feeUsd })
+                : t('kyc.introPaid', { fee: feeUsd })
+          }}
+        </p>
+        <p
+          v-if="status.kyc_status === 'rejected' && status.rejection_reason"
+          class="ds-field__error"
+        >
+          {{ t('kyc.rejectedReason', { reason: status.rejection_reason }) }}
+        </p>
+        <p class="kyc-balance">
+          {{ t('kyc.balance', { available: availableUsd }) }}
+        </p>
 
-        <!-- Not started, refused, or an approval withdrawn: the same form -->
-        <template v-else>
-          <h1 class="kyc-title">
-            {{
-              status.kyc_status === 'revoked'
-                ? t('kyc.revokedTitle')
-                : status.kyc_status === 'rejected'
-                  ? t('kyc.rejectedTitle')
-                  : t('kyc.title')
-            }}
-          </h1>
-          <p class="kyc-text">
-            {{
-              status.kyc_status === 'revoked'
-                ? t('kyc.revokedText')
-                : status.kyc_status === 'rejected'
-                  ? t('kyc.rejectedText', { fee: feeUsd })
-                  : t('kyc.introPaid', { fee: feeUsd })
-            }}
-          </p>
-          <p
-            v-if="status.kyc_status === 'rejected' && status.rejection_reason"
-            class="kyc-reason"
+        <!-- Verification starts from a confirmed e-mail -->
+        <div v-if="emailMissing" class="kyc-gate">
+          <p class="kyc-text">{{ t('kyc.emailFirst') }}</p>
+          <button
+            type="button"
+            class="ds-button ds-button--primary ds-button--block"
+            @click="toSettings"
           >
-            {{ t('kyc.rejectedReason', { reason: status.rejection_reason }) }}
-          </p>
-          <p class="kyc-balance">
-            {{ t('kyc.balance', { available: availableUsd }) }}
-          </p>
+            {{ t('kyc.toSettings') }}
+          </button>
+        </div>
 
-          <!-- Verification starts from a confirmed e-mail -->
-          <div v-if="emailMissing" class="kyc-gate">
-            <p class="kyc-text">{{ t('kyc.emailFirst') }}</p>
-            <button type="button" class="btn btn-primary" @click="toSettings">
-              {{ t('kyc.toSettings') }}
-            </button>
-          </div>
-
-          <template v-else>
-            <div class="kyc-form">
-              <div class="kyc-row">
-                <CInput
-                  v-model="firstName"
-                  class="kyc-row__col"
-                  :label="t('kyc.details.firstName')"
-                  autocomplete="given-name"
-                />
-                <CInput
-                  v-model="lastName"
-                  class="kyc-row__col"
-                  :label="t('kyc.details.lastName')"
-                  autocomplete="family-name"
-                />
-              </div>
+        <template v-else>
+          <div class="kyc-form">
+            <div class="kyc-row">
               <CInput
-                v-model="phone"
-                :label="t('kyc.details.phone')"
-                type="tel"
-                autocomplete="tel"
+                v-model="firstName"
+                class="kyc-row__col"
+                :label="t('kyc.details.firstName')"
+                autocomplete="given-name"
               />
-              <CSelect
-                v-model="country"
-                :label="t('kyc.details.country')"
-                :options="countryOptions"
-                placeholder="—"
+              <CInput
+                v-model="lastName"
+                class="kyc-row__col"
+                :label="t('kyc.details.lastName')"
+                autocomplete="family-name"
               />
+            </div>
+            <CInput v-model="phone" :label="t('kyc.details.phone')" type="tel" autocomplete="tel" />
+            <CSelect
+              v-model="country"
+              :label="t('kyc.details.country')"
+              :options="countryOptions"
+              placeholder="—"
+            />
 
-              <label class="kyc-field">
-                <span class="kyc-label">{{ t('kyc.upload.documentType') }}</span>
-                <select v-model="documentType" class="kyc-select" @change="onDocumentTypeChange">
+            <label class="ds-field">
+              <span class="ds-field__label">{{ t('kyc.upload.documentType') }}</span>
+              <div class="ds-select">
+                <select v-model="documentType" class="ds-input" @change="onDocumentTypeChange">
                   <option value="passport">
                     {{ t('kyc.upload.typePassport') }}
                   </option>
@@ -417,81 +407,94 @@ onMounted(() => {
                     {{ t('kyc.upload.typeDrivingLicence') }}
                   </option>
                 </select>
-              </label>
+                <ChevronDown size="sm" />
+              </div>
+            </label>
 
-              <label class="kyc-field">
-                <span class="kyc-label">{{ t('kyc.upload.front') }}</span>
-                <input
-                  type="file"
-                  class="kyc-file"
-                  :accept="KYC_ACCEPT_ATTRIBUTE"
-                  @change="pickFile('front', $event)"
-                />
-              </label>
+            <label class="ds-field">
+              <span class="ds-field__label">{{ t('kyc.upload.front') }}</span>
+              <input
+                type="file"
+                class="ds-input"
+                :accept="KYC_ACCEPT_ATTRIBUTE"
+                @change="pickFile('front', $event)"
+              />
+            </label>
 
-              <label v-if="needsBack" class="kyc-field">
-                <span class="kyc-label">{{ t('kyc.upload.back') }}</span>
-                <input
-                  type="file"
-                  class="kyc-file"
-                  :accept="KYC_ACCEPT_ATTRIBUTE"
-                  @change="pickFile('back', $event)"
-                />
-              </label>
+            <label v-if="needsBack" class="ds-field">
+              <span class="ds-field__label">{{ t('kyc.upload.back') }}</span>
+              <input
+                type="file"
+                class="ds-input"
+                :accept="KYC_ACCEPT_ATTRIBUTE"
+                @change="pickFile('back', $event)"
+              />
+            </label>
 
-              <label class="kyc-field">
-                <span class="kyc-label">{{ t('kyc.upload.selfie') }}</span>
-                <input
-                  type="file"
-                  class="kyc-file"
-                  :accept="KYC_ACCEPT_ATTRIBUTE"
-                  @change="pickFile('selfie', $event)"
-                />
-              </label>
+            <label class="ds-field">
+              <span class="ds-field__label">{{ t('kyc.upload.selfie') }}</span>
+              <input
+                type="file"
+                class="ds-input"
+                :accept="KYC_ACCEPT_ATTRIBUTE"
+                @change="pickFile('selfie', $event)"
+              />
+            </label>
 
-              <p class="kyc-hint">{{ t('kyc.upload.hint') }}</p>
-              <p class="kyc-hint">
-                {{ t('kyc.notice.lead') }}
-                <a :href="noticeUrl" target="_blank" rel="noopener" @click.prevent="noticeOpen = true">{{
-                  t('kyc.notice.link')
-                }}</a
-                >.
-              </p>
-            </div>
+            <p class="ds-field__hint">{{ t('kyc.upload.hint') }}</p>
+            <p class="ds-field__hint">
+              {{ t('kyc.notice.lead') }}
+              <a
+                :href="noticeUrl"
+                target="_blank"
+                rel="noopener"
+                @click.prevent="noticeOpen = true"
+                >{{ t('kyc.notice.link') }}</a
+              >.
+            </p>
+          </div>
 
-            <button
-              v-if="canAfford"
-              class="btn btn-primary"
-              :disabled="submitting || !canSubmit"
-              @click="startVerification"
-            >
-              {{
-                status.kyc_status === 'not_started'
-                  ? t('kyc.start', { fee: feeUsd })
-                  : t('kyc.startAgain', { fee: feeUsd })
-              }}
-            </button>
-            <template v-else>
-              <p class="kyc-text">{{ t('kyc.needsTopUp') }}</p>
-              <button class="btn btn-primary" @click="toDeposit">
-                {{ t('kyc.toDeposit') }}
-              </button>
-            </template>
-            <button v-if="status.kyc_status !== 'not_started'" class="btn btn-outline" @click="toSupport">
-              {{ t('kyc.toSupport') }}
+          <button
+            v-if="canAfford"
+            class="ds-button ds-button--primary ds-button--block"
+            :disabled="submitting || !canSubmit"
+            @click="startVerification"
+          >
+            {{
+              status.kyc_status === 'not_started'
+                ? t('kyc.start', { fee: feeUsd })
+                : t('kyc.startAgain', { fee: feeUsd })
+            }}
+          </button>
+          <template v-else>
+            <p class="kyc-text">{{ t('kyc.needsTopUp') }}</p>
+            <button class="ds-button ds-button--primary ds-button--block" @click="toDeposit">
+              {{ t('kyc.toDeposit') }}
             </button>
           </template>
+          <button
+            v-if="status.kyc_status !== 'not_started'"
+            class="ds-button ds-button--secondary ds-button--block"
+            @click="toSupport"
+          >
+            {{ t('kyc.toSupport') }}
+          </button>
         </template>
+      </template>
 
-        <p class="kyc-text">{{ t('kyc.unlocks') }}</p>
-        <button class="btn btn-outline" @click="goBack">
-          {{ t('kyc.back') }}
-        </button>
-        <div class="kyc-logout">
-          <AuthLogoutLink />
-        </div>
+      <p class="kyc-text">{{ t('kyc.unlocks') }}</p>
+      <button class="ds-button ds-button--secondary ds-button--block" @click="goBack">
+        {{ t('kyc.back') }}
+      </button>
+      <div class="kyc-logout">
+        <AuthLogoutLink />
       </div>
-      <p v-if="error" class="kyc-error">{{ error }}</p>
+    </div>
+    <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+      <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ error }}</p>
+      </div>
     </div>
 
     <LegalDocModal
@@ -501,115 +504,48 @@ onMounted(() => {
       type="kyc_notice"
       @close="noticeOpen = false"
     />
-  </div>
+  </AuthShell>
 </template>
 
 <style scoped>
-.auth-page {
-  min-block-size: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-}
-
-.auth-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  inline-size: 100%;
-}
-
-.logo {
-  margin-block-end: var(--space-2);
-}
-
-/* Fixed-width by intent -- registered in checks/preauth.py, which says
-   what the card holds. A wider column would only stretch its content. */
 .kyc-card {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   text-align: center;
 }
-
-.kyc-title {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-
 .kyc-text {
   color: var(--text-secondary);
 }
-
 .kyc-balance {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-
 .kyc-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   text-align: start;
 }
-
-.kyc-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.kyc-label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.kyc-select,
-.kyc-file {
-  inline-size: 100%;
-}
-
-.kyc-hint {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
 .kyc-row {
   display: flex;
   gap: var(--space-3);
 }
-
 .kyc-row__col {
   flex: 1;
   min-inline-size: 0;
 }
-
-.kyc-reason {
-  color: var(--danger);
-}
-
 .kyc-gate {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-
-.kyc-hint a {
+.ds-field__hint a {
   color: var(--primary);
   text-decoration: underline;
 }
-
 .kyc-logout {
   display: flex;
   justify-content: center;
-}
-
-.kyc-error {
-  color: var(--danger);
-  max-inline-size: var(--maxw-form);
-  text-align: center;
 }
 </style>

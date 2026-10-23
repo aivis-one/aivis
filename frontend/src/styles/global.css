@@ -157,3 +157,10 @@ body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* === The auth form ========================================================
+   The system's auth form stacks its fields on its own gap; the cabinet field's
+   stacking margin (c-field) is not added to it. */
+.ds-auth__form > .c-field.c-field {
+  margin-block-end: 0;
+}

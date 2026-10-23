@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MailCheck } from '@/components/ui/icons'
+import AuthShell from '@/components/layout/AuthShell.vue'
+import { MailCheck, ShieldAlert } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- PasswordResetConfirmView
 // =============================================================================
@@ -27,8 +28,6 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 
 const { t } = useI18n()
@@ -127,229 +126,97 @@ async function handleSubmit(): Promise<void> {
 </script>
 
 <template>
-  <div class="auth-screen">
-    <header class="auth-header">
-      <AivisLogo :height="28" />
-      <CAppControls />
-    </header>
+  <AuthShell>
+    <template v-if="linkMissing || tokenRejected">
+      <h1 class="ds-auth__title">
+        {{ t('auth.passwordReset.invalidLinkTitle') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('auth.passwordReset.invalidLinkText') }}
+      </p>
 
-    <div class="auth-content">
-      <div class="auth-brand">
-        <AivisLogo :height="64" />
+      <div class="ds-auth__form">
+        <button class="ds-button ds-button--primary ds-button--block" @click="goToRequest">
+          {{ t('auth.passwordReset.requestNewLink') }}
+        </button>
+      </div>
+    </template>
+
+    <template v-else-if="done">
+      <div class="ds-auth__icon">
+        <MailCheck />
       </div>
 
-      <template v-if="linkMissing || tokenRejected">
-        <h1 class="auth-title">
-          {{ t('auth.passwordReset.invalidLinkTitle') }}
-        </h1>
-        <p class="auth-subtitle">
-          {{ t('auth.passwordReset.invalidLinkText') }}
-        </p>
+      <h1 class="ds-auth__title">
+        {{ t('auth.passwordReset.confirmSuccessTitle') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('auth.passwordReset.confirmSuccessText') }}
+      </p>
 
-        <div class="auth-form">
-          <button class="btn btn-primary" @click="goToRequest">
-            {{ t('auth.passwordReset.requestNewLink') }}
-          </button>
-        </div>
-      </template>
+      <div class="ds-auth__form">
+        <button class="ds-button ds-button--primary ds-button--block" @click="goToLogin">
+          {{ t('auth.passwordReset.signInBtn') }}
+        </button>
+      </div>
+    </template>
 
-      <template v-else-if="done">
-        <div class="success-icon">
-          <MailCheck :size="64" />
-        </div>
+    <template v-else>
+      <h1 class="ds-auth__title">
+        {{ t('auth.passwordReset.confirmTitle') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('auth.passwordReset.confirmSubtitle') }}
+      </p>
 
-        <h1 class="auth-title">
-          {{ t('auth.passwordReset.confirmSuccessTitle') }}
-        </h1>
-        <p class="auth-subtitle">
-          {{ t('auth.passwordReset.confirmSuccessText') }}
-        </p>
-
-        <div class="auth-form">
-          <button class="btn btn-primary" @click="goToLogin">
-            {{ t('auth.passwordReset.signInBtn') }}
-          </button>
-        </div>
-      </template>
-
-      <template v-else>
-        <h1 class="auth-title">
-          {{ t('auth.passwordReset.confirmTitle') }}
-        </h1>
-        <p class="auth-subtitle">
-          {{ t('auth.passwordReset.confirmSubtitle') }}
-        </p>
-
-        <div class="auth-form">
-          <div class="form-group">
-            <CInput
-              v-model="newPassword"
-              class="form-group__field"
-              :label="t('auth.passwordReset.newPassword')"
-              type="password"
-              :placeholder="t('auth.passwordReset.newPassPlaceholder')"
-              autocomplete="new-password"
-              @keydown.enter="handleSubmit"
-            />
-            <div class="form-hint">
-              {{ t('auth.passwordReset.newPasswordHint') }}
-            </div>
-          </div>
-
+      <div class="ds-auth__form">
+        <div class="ds-field">
           <CInput
-            v-model="confirmPassword"
-            :label="t('auth.passwordReset.confirmPassword')"
+            v-model="newPassword"
+            class="form-group__field"
+            :label="t('auth.passwordReset.newPassword')"
             type="password"
-            :placeholder="t('auth.passwordReset.confirmPassPlaceholder')"
+            :placeholder="t('auth.passwordReset.newPassPlaceholder')"
             autocomplete="new-password"
             @keydown.enter="handleSubmit"
           />
-
-          <div v-if="error" class="auth-error">
-            {{ error }}
+          <div class="ds-field__hint">
+            {{ t('auth.passwordReset.newPasswordHint') }}
           </div>
-
-          <button class="btn btn-primary" :disabled="loading" @click="handleSubmit">
-            <span v-if="loading" class="btn-spinner" />
-            <span v-else>{{ t('auth.passwordReset.confirmBtn') }}</span>
-          </button>
         </div>
-      </template>
-    </div>
-  </div>
+
+        <CInput
+          v-model="confirmPassword"
+          :label="t('auth.passwordReset.confirmPassword')"
+          type="password"
+          :placeholder="t('auth.passwordReset.confirmPassPlaceholder')"
+          autocomplete="new-password"
+          @keydown.enter="handleSubmit"
+        />
+
+        <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ error }}</p>
+          </div>
+        </div>
+
+        <button
+          class="ds-button ds-button--primary ds-button--block"
+          :aria-busy="loading || undefined"
+          :disabled="loading"
+          @click="handleSubmit"
+        >
+          <span v-if="loading" class="ds-button__spinner" aria-hidden="true" />
+          <span>{{ t('auth.passwordReset.confirmBtn') }}</span>
+        </button>
+      </div>
+    </template>
+  </AuthShell>
 </template>
 
 <style scoped>
-.auth-screen {
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-  display: flex;
-  flex-direction: column;
-}
-
-.auth-header {
-  position: sticky;
-  inset-block-start: 0;
-  z-index: 100;
-  background: var(--bg-page);
-  padding: var(--space-4) var(--space-4-lg);
-  border-block-end: thin solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.auth-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-6) var(--space-5);
-  overflow-y: auto;
-}
-
-.auth-brand {
-  margin-block-end: var(--space-5);
-  display: flex;
-  justify-content: center;
-}
-
-.success-icon {
-  display: flex;
-  color: var(--primary);
-  justify-content: center;
-  margin-block-end: var(--space-5);
-}
-
-.auth-title {
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-  text-align: center;
-}
-
-.auth-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-6);
-  text-align: center;
-  line-height: 1.5;
-}
-
-.auth-form {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form);
-}
-
-.form-group {
-  margin-block-end: var(--space-4);
-}
-
 .form-group__field {
   margin-block-end: 0;
-}
-
-.form-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.auth-error {
-  padding: var(--space-3) var(--space-4);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  border-radius: var(--radius-md);
-  color: var(--danger);
-  font-size: var(--fs-xs);
-  margin-block-end: var(--space-4);
-  line-height: 1.5;
-}
-
-.btn {
-  inline-size: 100%;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  transition: opacity var(--dur-base);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: var(--on-primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-spinner {
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  border: calc(var(--border-input-width) * 2) solid currentColor;
-  opacity: 0.35;
-  border-block-start-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 </style>

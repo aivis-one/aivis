@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AuthShell from '@/components/layout/AuthShell.vue'
+import { ShieldAlert } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- LoginView (iter 2.6 batch 2 + R22 STYLE-22-01 + STYLE-22-02)
 // =============================================================================
@@ -71,8 +73,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import { CInput } from '@/components/ui'
 
 const { t } = useI18n()
@@ -257,286 +257,156 @@ async function submitMfaCode(): Promise<void> {
 </script>
 
 <template>
-  <div class="auth-screen">
-    <header class="auth-header">
-      <AivisLogo :height="28" />
-      <CAppControls />
-    </header>
+  <AuthShell>
+    <template v-if="!mfaStep">
+      <h1 class="ds-auth__title">
+        {{ t('auth.login.title') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('auth.login.subtitle') }}
+      </p>
 
-    <div class="auth-content">
-      <div class="auth-brand">
-        <AivisLogo :height="64" />
-      </div>
+      <div class="ds-auth__form">
+        <CInput
+          v-model="email"
+          :label="t('auth.login.email')"
+          type="email"
+          placeholder="name@example.com"
+          autocomplete="email"
+          @keydown.enter="handleLogin"
+        />
 
-      <template v-if="!mfaStep">
-        <h1 class="auth-title">
-          {{ t('auth.login.title') }}
-        </h1>
-        <p class="auth-subtitle">
-          {{ t('auth.login.subtitle') }}
-        </p>
+        <CInput
+          v-model="password"
+          :label="t('auth.login.password')"
+          type="password"
+          :placeholder="t('auth.login.passPlaceholder')"
+          autocomplete="current-password"
+          @keydown.enter="handleLogin"
+        />
 
-        <div class="auth-form">
-          <CInput
-            v-model="email"
-            :label="t('auth.login.email')"
-            type="email"
-            placeholder="name@example.com"
-            autocomplete="email"
-            @keydown.enter="handleLogin"
-          />
-
-          <CInput
-            v-model="password"
-            :label="t('auth.login.password')"
-            type="password"
-            :placeholder="t('auth.login.passPlaceholder')"
-            autocomplete="current-password"
-            @keydown.enter="handleLogin"
-          />
-
-          <div class="forgot-row">
-            <button type="button" class="btn-link" @click="goToPasswordReset">
-              {{ t('auth.login.forgot') }}
-            </button>
-          </div>
-
-          <div v-if="error" class="auth-error">
-            {{ error }}
-          </div>
-
-          <button class="btn btn-primary" :disabled="authStore.loading" @click="handleLogin">
-            <span v-if="authStore.loading" class="btn-spinner" />
-            <span v-else>{{ t('auth.login.btn') }}</span>
+        <div class="forgot-row">
+          <button
+            type="button"
+            class="ds-button ds-button--ghost"
+            data-size="sm"
+            @click="goToPasswordReset"
+          >
+            {{ t('auth.login.forgot') }}
           </button>
+        </div>
 
-          <div class="auth-footer">
-            <span class="auth-footer-text">{{ t('auth.login.noAccount') }}</span>
-            <button type="button" class="btn-link" @click="goToRegister">
-              {{ t('auth.login.createAccount') }}
-            </button>
+        <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ error }}</p>
           </div>
         </div>
-      </template>
 
-      <!-- TASK-38: 2FA code-entry step, shown after loginViaEmail resolves
+        <button
+          class="ds-button ds-button--primary ds-button--block"
+          :aria-busy="authStore.loading || undefined"
+          :disabled="authStore.loading"
+          @click="handleLogin"
+        >
+          <span v-if="authStore.loading" class="ds-button__spinner" aria-hidden="true" />
+          <span>{{ t('auth.login.btn') }}</span>
+        </button>
+
+        <div class="ds-auth__foot">
+          <span>{{ t('auth.login.noAccount') }}</span>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost"
+            data-size="sm"
+            @click="goToRegister"
+          >
+            {{ t('auth.login.createAccount') }}
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- TASK-38: 2FA code-entry step, shown after loginViaEmail resolves
            with mfaRequired=true. No email/password fields here -- those
            already succeeded; this step exists purely to complete the
            second factor via authStore.completeMfaLogin(). -->
-      <template v-else>
-        <h1 class="auth-title">
-          {{ t('auth.login.mfa.title') }}
-        </h1>
-        <p class="auth-subtitle">
-          {{ t('auth.login.mfa.subtitle') }}
-        </p>
+    <template v-else>
+      <h1 class="ds-auth__title">
+        {{ t('auth.login.mfa.title') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('auth.login.mfa.subtitle') }}
+      </p>
 
-        <div class="auth-form">
-          <CInput
-            v-model="mfaCode"
-            :label="useBackupCode ? t('auth.login.mfa.backupCodeLabel') : t('auth.login.mfa.codeLabel')"
-            type="text"
-            :inputmode="useBackupCode ? 'text' : 'numeric'"
-            autocomplete="one-time-code"
-            :maxlength="useBackupCode ? 20 : 6"
-            :placeholder="
+      <div class="ds-auth__form">
+        <CInput
+          v-model="mfaCode"
+          :label="
+            useBackupCode ? t('auth.login.mfa.backupCodeLabel') : t('auth.login.mfa.codeLabel')
+          "
+          type="text"
+          :inputmode="useBackupCode ? 'text' : 'numeric'"
+          autocomplete="one-time-code"
+          :maxlength="useBackupCode ? 20 : 6"
+          :placeholder="
+            useBackupCode
+              ? t('auth.login.mfa.backupCodePlaceholder')
+              : t('auth.login.mfa.codePlaceholder')
+          "
+          @keydown.enter="submitMfaCode"
+        />
+
+        <div class="forgot-row">
+          <button
+            type="button"
+            class="ds-button ds-button--ghost"
+            data-size="sm"
+            @click="toggleBackupCode"
+          >
+            {{
               useBackupCode
-                ? t('auth.login.mfa.backupCodePlaceholder')
-                : t('auth.login.mfa.codePlaceholder')
-            "
-            @keydown.enter="submitMfaCode"
-          />
-
-          <div class="forgot-row">
-            <button type="button" class="btn-link" @click="toggleBackupCode">
-              {{
-                useBackupCode
-                  ? t('auth.login.mfa.useCodeInstead')
-                  : t('auth.login.mfa.useBackupCodeInstead')
-              }}
-            </button>
-          </div>
-
-          <div v-if="mfaError" class="auth-error">
-            {{ mfaError }}
-          </div>
-
-          <button class="btn btn-primary" :disabled="authStore.loading" @click="submitMfaCode">
-            <span v-if="authStore.loading" class="btn-spinner" />
-            <span v-else>{{ t('auth.login.mfa.verifyBtn') }}</span>
+                ? t('auth.login.mfa.useCodeInstead')
+                : t('auth.login.mfa.useBackupCodeInstead')
+            }}
           </button>
+        </div>
 
-          <div class="auth-footer">
-            <button type="button" class="btn-link" @click="backToPassword">
-              {{ t('auth.login.mfa.backToPassword') }}
-            </button>
+        <div v-if="mfaError" class="ds-alert ds-alert--danger" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ mfaError }}</p>
           </div>
         </div>
-      </template>
-    </div>
-  </div>
+
+        <button
+          class="ds-button ds-button--primary ds-button--block"
+          :aria-busy="authStore.loading || undefined"
+          :disabled="authStore.loading"
+          @click="submitMfaCode"
+        >
+          <span v-if="authStore.loading" class="ds-button__spinner" aria-hidden="true" />
+          <span>{{ t('auth.login.mfa.verifyBtn') }}</span>
+        </button>
+
+        <div class="ds-auth__foot">
+          <button
+            type="button"
+            class="ds-button ds-button--ghost"
+            data-size="sm"
+            @click="backToPassword"
+          >
+            {{ t('auth.login.mfa.backToPassword') }}
+          </button>
+        </div>
+      </div>
+    </template>
+  </AuthShell>
 </template>
 
 <style scoped>
-.auth-screen {
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-  display: flex;
-  flex-direction: column;
-}
-
-.auth-header {
-  position: sticky;
-  inset-block-start: 0;
-  z-index: 100;
-  background: var(--bg-page);
-  padding: var(--space-4) var(--space-4-lg);
-  border-block-end: thin solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.auth-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-6) var(--space-5);
-  overflow-y: auto;
-}
-
-/* The entry screen leads with the BRAND, not a generic padlock glyph: the mark
-   plus the drawn wordmark, at 64px. This is the first thing a user sees. */
-.auth-brand {
-  margin-block-end: var(--space-5);
-  display: flex;
-  justify-content: center;
-}
-
-.auth-title {
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-  text-align: center;
-}
-
-.auth-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-6);
-  text-align: center;
-  line-height: 1.5;
-}
-
-.auth-form {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form);
-}
-
 .forgot-row {
   display: flex;
   justify-content: flex-end;
-  margin-block-end: var(--space-4);
-}
-
-.auth-error {
-  padding: var(--space-3) var(--space-4);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  border-radius: var(--radius-md);
-  color: var(--danger);
-  font-size: var(--fs-xs);
-  margin-block-end: var(--space-4);
-  line-height: 1.5;
-}
-
-.btn {
-  inline-size: 100%;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  transition: opacity var(--dur-base);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: var(--on-primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-spinner {
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  /* currentColor, not white: the spinner sits inside a primary button whose
-     colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
-     A white ring on the dark theme's light-azure button is near-invisible. */
-  border: calc(var(--border-input-width) * 2) solid currentColor;
-  opacity: 0.35;
-  border-block-start-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.btn-link {
-  position: relative;
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  padding: 0;
-}
-
-/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
-   it with a centred overlay. Growing the box itself would move the text this
-   control sits inside or beside. max() so an already-large box never shrinks. */
-.btn-link::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-
-.btn-link:hover {
-  text-decoration: underline;
-}
-
-.auth-footer {
-  text-align: center;
-  margin-block-start: var(--space-5);
-}
-
-.auth-footer-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-inline-end: var(--space-1);
 }
 </style>

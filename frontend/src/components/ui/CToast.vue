@@ -12,7 +12,9 @@ const { toastState, hideToast } = useToast()
 const { t } = useI18n()
 
 // The cabinet's `error` is the system's `danger`.
-const status = computed(() => (toastState.value.variant === 'error' ? 'danger' : toastState.value.variant))
+const status = computed(() =>
+  toastState.value.variant === 'error' ? 'danger' : toastState.value.variant,
+)
 const glyph = computed(
   () => ({ info: Info, success: Check, warning: AlertTriangle, danger: ShieldAlert })[status.value],
 )
@@ -33,7 +35,12 @@ const glyph = computed(
         <div class="ds-alert__content">
           <p class="ds-alert__text">{{ toastState.message }}</p>
         </div>
-        <button type="button" class="ds-alert__close" :aria-label="t('common.close')" @click="hideToast()">
+        <button
+          type="button"
+          class="ds-alert__close"
+          :aria-label="t('common.close')"
+          @click="hideToast()"
+        >
           <X size="sm" />
         </button>
       </div>

@@ -58,7 +58,11 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="ds-field c-field" :data-size="size === 'compact' ? 'sm' : undefined" v-bind="rootAttrs">
+  <div
+    class="ds-field c-field"
+    :data-size="size === 'compact' ? 'sm' : undefined"
+    v-bind="rootAttrs"
+  >
     <label v-if="label" :for="fieldId" class="ds-field__label">{{ label }}</label>
     <div class="ds-input-wrap">
       <input

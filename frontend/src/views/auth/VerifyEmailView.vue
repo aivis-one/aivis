@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MailCheck } from '@/components/ui/icons'
+import AuthShell from '@/components/layout/AuthShell.vue'
+import { MailCheck, ShieldAlert } from '@/components/ui/icons'
 // Email verification — 6 individual digit inputs with auto-focus.
 // POST /api/v1/auth/verify-email { code }
 // POST /api/v1/auth/verify-email/resend → 204
@@ -12,8 +13,6 @@ import { useAuthStore } from '@/stores/auth'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import type { UserResponse } from '@/api/types'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import { postEntryTarget } from '@/utils/postAuthReturn'
 
@@ -147,27 +146,28 @@ async function handleResend(): Promise<void> {
 </script>
 
 <template>
-  <div class="auth-screen">
-    <header class="auth-header">
-      <AivisLogo :height="28" />
-      <CAppControls />
-    </header>
+  <AuthShell>
+    <div class="ds-auth__icon">
+      <MailCheck />
+    </div>
 
-    <div class="auth-content">
-      <div class="verify-icon">
-        <MailCheck :size="64" />
-      </div>
+    <h1 class="ds-auth__title">
+      {{ t('auth.verify.title') }}
+    </h1>
+    <p class="ds-auth__subtitle">
+      {{ t('auth.verify.subtitle') }}
+      <br />
+      <strong>{{ userEmail }}</strong>
+    </p>
 
-      <h1 class="auth-title">
-        {{ t('auth.verify.title') }}
-      </h1>
-      <p class="auth-subtitle">
-        {{ t('auth.verify.subtitle') }}
-        <br />
-        <strong class="verify-email">{{ userEmail }}</strong>
-      </p>
-
-      <div class="code-inputs">
+    <div
+      class="ds-field ds-otp"
+      role="group"
+      aria-labelledby="verify-code-label"
+      :aria-busy="loading || undefined"
+    >
+      <span id="verify-code-label" class="ds-field__label">{{ t('common.codeGroup') }}</span>
+      <div class="ds-otp__cells">
         <input
           v-for="(_, index) in CODE_LENGTH"
           :key="index"
@@ -175,7 +175,10 @@ async function handleResend(): Promise<void> {
           type="text"
           inputmode="numeric"
           maxlength="6"
-          class="code-input"
+          class="ds-otp__cell"
+          :data-filled="!!digits[index]"
+          :aria-invalid="error ? 'true' : undefined"
+          :autocomplete="index === 0 ? 'one-time-code' : 'off'"
           :aria-label="t('common.codeDigit', { n: index + 1, total: CODE_LENGTH })"
           :value="digits[index]"
           @input="handleInput(index, $event)"
@@ -183,208 +186,51 @@ async function handleResend(): Promise<void> {
           @keydown.enter="handleVerify"
         />
       </div>
+    </div>
 
-      <div v-if="error" class="auth-error">
-        {{ error }}
-      </div>
-
-      <div class="auth-form">
-        <button
-          class="btn btn-primary"
-          type="button"
-          :disabled="!isCodeComplete || loading"
-          @click="handleVerify"
-        >
-          <span v-if="loading" class="btn-spinner" />
-          <span v-else>{{ t('auth.verify.btn') }}</span>
-        </button>
-
-        <div class="resend-section">
-          <span class="resend-label">{{ t('auth.verify.noCode') }}</span>
-          <button v-if="resendCooldown <= 0" type="button" class="btn-link" @click="handleResend">
-            {{ t('auth.verify.resend') }}
-          </button>
-          <span v-else class="resend-timer">
-            {{ t('auth.verify.resendIn', { seconds: resendCooldown }) }}
-          </span>
-        </div>
-
-        <div class="entry-logout">
-          <AuthLogoutLink />
-        </div>
+    <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+      <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ error }}</p>
       </div>
     </div>
-  </div>
+
+    <div class="ds-auth__form">
+      <button
+        class="ds-button ds-button--primary ds-button--block"
+        :aria-busy="loading || undefined"
+        type="button"
+        :disabled="!isCodeComplete || loading"
+        @click="handleVerify"
+      >
+        <span v-if="loading" class="ds-button__spinner" aria-hidden="true" />
+        <span>{{ t('auth.verify.btn') }}</span>
+      </button>
+
+      <div class="ds-auth__foot">
+        <span>{{ t('auth.verify.noCode') }}</span>
+        <button
+          v-if="resendCooldown <= 0"
+          type="button"
+          class="ds-button ds-button--ghost"
+          data-size="sm"
+          @click="handleResend"
+        >
+          {{ t('auth.verify.resend') }}
+        </button>
+        <span v-else>
+          {{ t('auth.verify.resendIn', { seconds: resendCooldown }) }}
+        </span>
+      </div>
+
+      <div class="entry-logout">
+        <AuthLogoutLink />
+      </div>
+    </div>
+  </AuthShell>
 </template>
 
 <style scoped>
-.auth-screen {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-}
-.auth-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4) var(--space-5);
-}
-.auth-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5);
-  overflow-y: auto;
-}
-.auth-title {
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-  text-align: center;
-}
-.auth-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-6);
-  text-align: center;
-  line-height: 1.5;
-}
-.auth-form {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form);
-}
-.auth-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  text-align: center;
-  margin-block-end: var(--space-4);
-  max-inline-size: var(--maxw-form);
-}
-
-.verify-icon {
-  display: flex;
-  color: var(--primary);
-  justify-content: center;
-  margin-block-end: var(--space-5);
-}
-.verify-email {
-  color: var(--text-primary);
-}
-
-.code-inputs {
-  display: flex;
-  gap: var(--space-3);
-  margin-block-end: var(--space-5);
-}
-.code-input {
-  inline-size: var(--size-3xl);
-  block-size: var(--size-4xl);
-  text-align: center;
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  border: calc(var(--border-input-width) * 2) solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-family: inherit;
-  transition:
-    border-color var(--dur-base) var(--ease-standard),
-    box-shadow var(--dur-base) var(--ease-standard);
-}
-.code-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: var(--shadow-focus);
-}
-
-.btn {
-  inline-size: 100%;
-}
-.btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 600;
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  border: none;
-  cursor: pointer;
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-spinner {
-  /* currentColor, not white: the spinner sits inside a primary button whose
-     colour is --on-primary, which is #FFFFFF in light and #04243E in dark.
-     A white ring on the dark theme's light-azure button is near-invisible. */
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  border: calc(var(--border-input-width) * 2) solid currentColor;
-  opacity: 0.35;
-  border-block-start-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.resend-section {
-  text-align: center;
-  margin-block-start: var(--space-4-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-}
-.resend-label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.resend-timer {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-}
-.btn-link {
-  position: relative;
-  font-size: var(--fs-sm);
-  color: var(--primary);
-  font-weight: 600;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 0;
-}
-
-/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
-   it with a centred overlay. Growing the box itself would move the text this
-   control sits inside or beside. max() so an already-large box never shrinks. */
-.btn-link::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.btn-link:hover {
-  text-decoration: underline;
-}
 .entry-logout {
   display: flex;
   justify-content: center;

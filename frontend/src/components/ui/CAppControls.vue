@@ -71,7 +71,12 @@ onBeforeUnmount(() => {
         {{ currentShort }}
       </button>
 
-      <ul v-if="open" class="app-controls__menu" role="listbox" :aria-label="t('common.language.label')">
+      <ul
+        v-if="open"
+        class="app-controls__menu"
+        role="listbox"
+        :aria-label="t('common.language.label')"
+      >
         <li v-for="l in SUPPORTED_LOCALES" :key="l.code">
           <button
             type="button"
