@@ -44,7 +44,7 @@ To the extent Georgian law allows, and except in cases of intent or gross neglig
 
 ## 10. Governing law and disputes {#la-h-law}
 
-This agreement is governed by the law of Georgia. A dispute with a consumer goes to the state courts of Tbilisi, Georgia, unless mandatory law where the consumer lives gives him the right to go to another forum. Any other dispute arising out of or in connection with this agreement is finally resolved by arbitration at the Georgian International Arbitration Centre in Tbilisi, in accordance with its arbitration rules.
+This agreement is governed by the law of Georgia. A dispute arising out of or in connection with this agreement goes to the state courts of Georgia in Tbilisi; a consumer keeps the protection that mandatory law where he lives gives him. After a dispute arises, the parties may sign a separate agreement for arbitration at the Georgian International Arbitration Centre in Tbilisi.
 
 ## 11. Changes, language and contact {#la-h-change}
 
