@@ -56,6 +56,7 @@ import NotificationPreferencesSection from '@/components/shared/NotificationPref
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
+import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useToast } from '@/composables/useToast'
 import { formatNumber, formatPrice } from '@/utils/format'
@@ -71,6 +72,7 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const profileStore = useCompanyProfileStore()
+const dashboardStore = useCompanyDashboardStore()
 const { showToast } = useToast()
 
 // ---------------------------------------------------------------------------
@@ -354,7 +356,7 @@ function openEditPerson(): void {
 }
 
 const canSubmitPerson = computed<boolean>(
-  () => draftFirstName.value.trim().length > 0 && draftLastName.value.trim().length > 0,
+  () => (draftFirstName.value.trim().length > 0) === (draftLastName.value.trim().length > 0),
 )
 
 async function handleSavePerson(): Promise<void> {
@@ -457,6 +459,7 @@ async function handleLogout(): Promise<void> {
 
 async function loadProfile(): Promise<void> {
   await profileStore.loadIfMissing()
+  if (dashboardStore.summary === null) void dashboardStore.refresh()
 }
 
 onMounted(() => {
@@ -591,7 +594,7 @@ onMounted(() => {
         </p>
         <div class="cset__row">
           <span class="cset__row-label">{{ t('comp.settings.parts.supply') }}</span>
-          <span class="cset__row-value">{{ formatNumber(profile.total_supply, locale) }}</span>
+          <span class="cset__row-value">{{ dashboardStore.summary?.pool ? formatNumber(dashboardStore.summary.pool.total_options, locale) : '—' }}</span>
         </div>
         <p class="cset__status-hint">
           {{ t('comp.settings.parts.supplyHint') }}

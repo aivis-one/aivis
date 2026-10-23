@@ -1090,7 +1090,7 @@
         "note": "Der Anteil des Projekts an den Bruttoeinnahmen aus dem Verkauf seines Produkts: {percent} % der Bruttoeinnahmen. Er bleibt null, bis das Produkt verkauft wird."
       },
       "metrics": {
-        "revenue": "Bruttoeinnahmen",
+        "revenue": "Verkäufe von Anteilen",
         "optionsSold": "Verkaufte Anteile"
       },
       "recent": {
@@ -1181,6 +1181,11 @@
     "products": {
       "empty": {
         "desc": "Wenden Sie sich an den Support, um Produkte zu Ihrem Projekt hinzuzufügen."
+      },
+      "status": {
+        "active": "Aktiv",
+        "hidden": "Ausgeblendet",
+        "archived": "Archiviert"
       }
     },
     "posts": {
@@ -1193,7 +1198,7 @@
     },
     "analytics": {
       "metrics": {
-        "totalRevenue": "Bruttoeinnahmen",
+        "totalRevenue": "Verkäufe von Anteilen",
         "optionsSold": "Verkaufte Anteile"
       },
       "chart": {

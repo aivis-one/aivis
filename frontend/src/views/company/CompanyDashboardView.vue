@@ -9,10 +9,10 @@
 // block stands on its own: a failed request removes only the blocks it feeds
 // and leaves a retry in their place.
 //
-// THE POOL. The project's pool is the project's share of the gross receipts
-// from sales of its product: a fixed 15 percent of them. It is zero until the
-// product sells, and it is computed here from the gross receipts the summary
-// carries, so it never shows a number the sales have not produced.
+// THE POOL. The project's pool is a fixed 15 percent of the gross receipts
+// from sales of the project's product. The money buyers pay for parts is
+// never gross receipts, and the Cabinet records no sale of a product in 1.0,
+// so the pool is zero until the product sells.
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
@@ -73,12 +73,12 @@ const passiveConfirmed = computed<number>(() => summary.value?.passive_balance.c
 const passiveFrozen = computed<number>(() => summary.value?.passive_balance.frozen ?? 0)
 const hasFrozen = computed<boolean>(() => passiveFrozen.value > 0)
 
-const grossReceipts = computed<number>(() => summary.value?.total_revenue_cents ?? 0)
+const partSales = computed<number>(() => summary.value?.total_revenue_cents ?? 0)
 const partsSold = computed<number>(() => summary.value?.total_options_sold ?? 0)
 const productsCount = computed<number>(() => summary.value?.products_count ?? 0)
 
-/** The project's pool: 15 percent of the gross receipts, zero until a sale. */
-const poolCents = computed<number>(() => Math.round((grossReceipts.value * POOL_PERCENT) / 100))
+/** The project's pool: 15 percent of the product's gross receipts. None is recorded in 1.0, so zero. */
+const poolCents = computed<number>(() => 0)
 
 const recentTransactions = computed<CompanyTransactionResponse[]>(
   () => summary.value?.recent_transactions ?? [],
@@ -206,7 +206,7 @@ onMounted(() => {
       <div class="dash__metrics">
         <RouterLink to="/company/analytics" class="dash__link dash__link--tile">
           <CStatCard
-            :value="formatPrice(grossReceipts)"
+            :value="formatPrice(partSales)"
             :label="t('comp.dashboard.metrics.revenue')"
           >
             <template #icon>

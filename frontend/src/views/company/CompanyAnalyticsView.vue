@@ -172,13 +172,13 @@ function usd(cents: number): string {
   return (cents / 100).toFixed(2)
 }
 
-/** Saves the sales of the chosen period, by month and by product, as one CSV file. */
+/** Saves the sales by month of the chosen period and the lifetime sales by product, as one CSV file. */
 function exportCsv(): void {
   const lines: string[] = [
-    ['month', 'gross_receipts_usd', 'parts_sold'].join(','),
+    ['month', 'parts_sales_usd', 'parts_sold'].join(','),
     ...salesByMonth.value.map((m) => [m.month, usd(m.revenue_cents), m.options_sold].join(',')),
     '',
-    ['product', 'gross_receipts_usd', 'parts_sold'].join(','),
+    ['product', 'parts_sales_usd_lifetime', 'parts_sold_lifetime'].join(','),
     ...(analytics.value?.sales_by_product ?? []).map((p) =>
       [csvCell(p.product_name), usd(p.revenue_cents), p.options_sold].join(','),
     ),

@@ -1,130 +1,76 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- CompanyProductsView (Phase F5.2 B0)
+// AIVIS.ONE Frontend -- CompanyProductsView
 // =============================================================================
 //
-// "Products" tab inside CompanyShell. Shows the active products of
-// the authenticated company on the public storefront (i.e. the way
-// investors see them).
+// "Products" tab inside CompanyShell. Shows ALL products of the signed-in
+// project, whatever their status (active, hidden, archived): the owner sees
+// what the store hides. The status is shown on every card.
 //
-// SHELL.
-//   Top-level tab view. CompanyShell paints the global CHeader and
-//   CTabBar -- this view renders only the content column with an
-//   inline page-header block. Mirrors MarketView / CompanyDashboardView.
+// DATA SOURCE.
+//   GET /api/v1/company/products (listMyProducts) -- the caller's own products,
+//   every status, scoped server-side to the caller's own project. All pages are
+//   read (100 per page) and shown together.
 //
-// DATA SOURCES.
-//   1. companyProfile.loadIfMissing()
-//        -> we need profile.id to filter the products endpoint.
-//        Cache-first: a previous visit to /company/dashboard or any
-//        F5.2 view that needed the profile leaves it loaded; the
-//        second call is a no-op.
-//   2. productsStore.setCompanyFilter(profile.id)
-//        -> kicks fetchFirstPage with company_id locked to the
-//        company. The shared products store is the same one
-//        MarketView uses; resetAllDataStores() on logout/role-switch
-//        already clears it so investor-side state cannot bleed.
-//
-// READ-ONLY (MVP).
-//   Product editing happens via staff endpoints (Sprint 4.1). The
-//   company-side UI shows products as the storefront does, and a tap
-//   on a card surfaces a toast pointing the user at support. A future
-//   F5+ scope can add a CompanyProductDetailView with edit affordances
-//   once company-side write endpoints exist; the click handler is the
-//   only place to grow.
-//
-// STORE SHARING NOTE.
-//   useProductsStore is a singleton across the app. MarketView (under
-//   investor / agent shells) uses it without a company filter; this
-//   view uses it with one. Two scenarios to watch:
-//     (a) company logs in fresh -> store is empty after the global
-//         resetAllDataStores() on _clearSession; setCompanyFilter
-//         loads page 1 cleanly.
-//     (b) company navigates dashboard -> products on the same session
-//         -> store stays in sync because setCompanyFilter normalises
-//         and re-fetches whenever the filter value changes.
-//   The investor shell never reaches a CompanyShell route (router
-//   guard meta.roles=['company']), so a stale investor filter cannot
-//   land in this view's first paint.
-//
-// COMPANY_ID GUARANTEED.
-//   The route guard already ensures the user has role=company. The
-//   /companies/me endpoint then returns a CompanyResponse for the
-//   single CompanyProfile owned by that user. profile.id is the
-//   company id we filter on -- we cannot reach this view with no
-//   company. The `null` fallback in the computed is type-narrowing
-//   only; the inner if-guard inside loadAll() makes the contract
-//   explicit at runtime.
+// READ-ONLY.
+//   Product editing happens by the staff. A tap on a card points the user at
+//   support.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { storeToRefs } from 'pinia'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
-import ProductCard from '@/components/shared/ProductCard.vue'
-import { useCompanyProfileStore } from '@/stores/companyProfile'
-import { useProductsStore } from '@/stores/products'
-import { useInfiniteScroll } from '@/composables/usePagination'
+import { listMyProducts } from '@/api/products'
+import type { OwnProductResponse } from '@/api/products'
+import { formatPrice } from '@/utils/format'
 import { useToast } from '@/composables/useToast'
 
+const PER_PAGE = 100
+
 const { t } = useI18n()
-const profileStore = useCompanyProfileStore()
-const productsStore = useProductsStore()
 const { showToast } = useToast()
 
-// storeToRefs keeps hasMore reactive when destructured into the
-// composable -- same pattern MarketView uses.
-const { hasMore } = storeToRefs(productsStore)
-
-const sentinelRef = ref<HTMLElement | null>(null)
-
-const myCompanyId = computed<string | null>(() => profileStore.profile?.id ?? null)
-
-// Initial load: empty store and no error yet, profile not yet
-// resolved -- show the central spinner. Once profile resolves AND
-// the products fetch runs, this flips false.
-const initialLoading = computed<boolean>(() => {
-  if (productsStore.error || profileStore.error) return false
-  if (productsStore.items.length > 0) return false
-  return profileStore.profile === null || productsStore.loading
-})
-
-const hasError = computed<boolean>(
-  () => profileStore.error !== null || productsStore.error !== null,
-)
-
-const errorMessage = computed<string>(
-  () => productsStore.error ?? profileStore.error ?? t('comp.products.errorTitle'),
-)
+const items = ref<OwnProductResponse[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 const isEmpty = computed<boolean>(
-  () => !initialLoading.value && !hasError.value && productsStore.items.length === 0,
+  () => !loading.value && error.value === null && items.value.length === 0,
 )
 
-useInfiniteScroll(sentinelRef, hasMore, productsStore.loadMore)
+function statusLabel(status: string): string {
+  return ['active', 'hidden', 'archived'].includes(status)
+    ? t(`comp.products.status.${status}`)
+    : status
+}
 
-/**
- * Resolve company id (cache-first) and pin the products filter to
- * it. The first fetch fires from setCompanyFilter as a side-effect
- * of changing the filter value.
- *
- * Idempotent: calling again is a no-op for the profile (cache hit)
- * and a no-op for the filter (same value short-circuits inside
- * setCompanyFilter). Used by onMounted and the Retry button.
- */
+function packPrice(p: OwnProductResponse): string {
+  return formatPrice(p.price_per_unit_cents * p.package_size)
+}
+
+function coverStyle(p: OwnProductResponse): Record<string, string> {
+  return p.cover_url ? { backgroundImage: `url("${encodeURI(p.cover_url)}")` } : {}
+}
+
+/** Reads every page of the project's own products. Also the Retry action. */
 async function loadAll(): Promise<void> {
-  await profileStore.loadIfMissing()
-  const id = myCompanyId.value
-  if (!id) return
-  // setCompanyFilter is idempotent on equal value; on first mount
-  // this is what triggers fetchFirstPage. On retry it does the
-  // same because we explicitly null the filter first to force a
-  // re-fetch even when the id is unchanged.
-  if (productsStore.companyIdFilter !== id) {
-    await productsStore.setCompanyFilter(id)
-  } else {
-    // Same filter, force a fresh fetch (Retry button path).
-    await productsStore.fetchFirstPage()
+  loading.value = true
+  error.value = null
+  try {
+    const all: OwnProductResponse[] = []
+    let page = 1
+    for (;;) {
+      const res = await listMyProducts({ page, per_page: PER_PAGE })
+      all.push(...res.items)
+      if (res.items.length === 0 || all.length >= res.total) break
+      page += 1
+    }
+    items.value = all
+  } catch {
+    error.value = t('comp.products.errorTitle')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -132,12 +78,7 @@ onMounted(() => {
   void loadAll()
 })
 
-/**
- * Card tap. MVP: product editing is staff-only, so we acknowledge
- * the tap with a toast pointing the user at support instead of
- * opening a non-existent detail view. ProductCard always emits a
- * click event by contract -- the parent decides what to do with it.
- */
+/** Card tap: product editing is staff-only, so the tap points the user at support. */
 function onCardClick(): void {
   showToast(t('comp.products.editViaSupport'), 'info')
 }
@@ -145,7 +86,6 @@ function onCardClick(): void {
 
 <template>
   <div class="cprods">
-    <!-- Header -->
     <div class="cprods__header">
       <h1 class="cprods__title">
         {{ t('comp.products.title') }}
@@ -155,20 +95,17 @@ function onCardClick(): void {
       </p>
     </div>
 
-    <!-- Initial load -->
-    <div v-if="initialLoading" class="cprods__center">
+    <div v-if="loading && items.length === 0" class="cprods__center">
       <CLoader :size="28" />
     </div>
 
-    <!-- Error -->
-    <div v-else-if="hasError" class="cprods__center">
-      <CEmptyState :title="t('comp.products.errorTitle')" :description="errorMessage" />
+    <div v-else-if="error !== null" class="cprods__center">
+      <CEmptyState :title="t('comp.products.errorTitle')" :description="error" />
       <CButton variant="outline" size="sm" @click="loadAll">
         {{ t('comp.products.errorRetry') }}
       </CButton>
     </div>
 
-    <!-- Empty -->
     <div v-else-if="isEmpty" class="cprods__center">
       <CEmptyState
         :title="t('comp.products.empty.title')"
@@ -176,20 +113,24 @@ function onCardClick(): void {
       />
     </div>
 
-    <!-- Grid + sentinel -->
-    <template v-else>
-      <div class="cprods__grid">
-        <ProductCard
-          v-for="item in productsStore.items"
-          :key="item.id"
-          :product="item"
-          @click="onCardClick"
-        />
-      </div>
-      <div ref="sentinelRef" class="cprods__sentinel">
-        <CLoader v-if="productsStore.loading" :size="20" />
-      </div>
-    </template>
+    <div v-else class="cprods__grid">
+      <button
+        v-for="item in items"
+        :key="item.id"
+        type="button"
+        class="cprods__card"
+        @click="onCardClick"
+      >
+        <div class="cprods__cover" :style="coverStyle(item)" />
+        <div class="cprods__body">
+          <div class="cprods__name">{{ item.name }}</div>
+          <div class="cprods__price">{{ packPrice(item) }}</div>
+          <span class="cprods__status" :class="`cprods__status--${item.status}`">
+            {{ statusLabel(item.status) }}
+          </span>
+        </div>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -262,5 +203,47 @@ function onCardClick(): void {
    leave dead space in its row. */
 .cprods__subtitle {
   max-width: var(--maxw-prose);
+}
+
+.cprods__card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+.cprods__cover {
+  aspect-ratio: 16 / 9;
+  background-color: var(--bg-secondary);
+  background-size: cover;
+  background-position: center;
+}
+.cprods__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+.cprods__name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.cprods__price {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.cprods__status {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
 }
 </style>

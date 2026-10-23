@@ -1601,7 +1601,7 @@
         "note": "The project's share of the gross receipts from sales of its product: {percent}% of the gross receipts. It stays zero until the product sells."
       },
       "metrics": {
-        "revenue": "Gross receipts",
+        "revenue": "Sales of parts",
         "optionsSold": "Parts sold",
         "products": "Products"
       },
@@ -1620,7 +1620,12 @@
         "title": "No products yet",
         "desc": "Contact support to add products to your project."
       },
-      "editViaSupport": "Product editing is handled via support."
+      "editViaSupport": "Product editing is handled via support.",
+      "status": {
+        "active": "Active",
+        "hidden": "Hidden",
+        "archived": "Archived"
+      }
     },
     "settings": {
       "title": "Settings",
@@ -2012,7 +2017,7 @@
       "errorTitle": "Could not load analytics",
       "errorRetry": "Retry",
       "metrics": {
-        "totalRevenue": "Gross receipts",
+        "totalRevenue": "Sales of parts",
         "thisMonth": "This month",
         "optionsSold": "Parts sold"
       },

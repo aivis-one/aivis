@@ -97,8 +97,8 @@ function goToNotifications(): void {
 // account. A press on either opens the Balance screen.
 const dashboardStore = useDashboardStore()
 
-// The project account's top bar shows one figure: the project's balance (the
-// part of the gross receipts that is paid to the project), withdrawn on request.
+// The project account's top bar shows one figure: the project's balance (its
+// earnings in the Cabinet), withdrawn on request.
 const companyDashboardStore = useCompanyDashboardStore()
 
 const isCompanyShell = computed(() => route.meta.shell === 'company')

@@ -75,3 +75,36 @@ export interface PurchasePreview {
 export function getPurchasePreview(id: string): Promise<PurchasePreview> {
   return api.get<PurchasePreview>(`/api/v1/products/${encodeURIComponent(id)}/purchase-preview`)
 }
+
+/** One product of the signed-in project, every status (staff-managed fields included). */
+export interface OwnProductResponse {
+  id: string
+  company_id: string
+  name: string
+  description: string | null
+  package_size: number
+  cover_url: string | null
+  price_per_unit_cents: number
+  status: string
+  created_at: string
+  updated_at: string | null
+}
+
+export interface OwnProductListResponse {
+  items: OwnProductResponse[]
+  total: number
+  page: number
+  per_page: number
+}
+
+/**
+ * GET /api/v1/company/products -- the signed-in project's own products,
+ * every status (active, hidden, archived). Project accounts only.
+ */
+export function listMyProducts(params?: {
+  page?: number
+  per_page?: number
+}): Promise<OwnProductListResponse> {
+  const qs = buildQueryString({ page: params?.page, per_page: params?.per_page })
+  return api.get<OwnProductListResponse>(`/api/v1/company/products${qs}`)
+}
