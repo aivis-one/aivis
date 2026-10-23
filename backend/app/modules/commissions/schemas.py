@@ -59,6 +59,10 @@ class CommissionEntry(BaseModel):
     level: int | None = None
     investor_name: str | None = None
     product_name: str | None = None
+    # The partner's id and the purchase, in the short form the cabinet
+    # shows ids in (the first 8 characters of the UUID).
+    investor_short_id: str | None = None
+    purchase_short_id: str | None = None
 
     # Volume bonus-specific fields.
     period_type: str | None = None

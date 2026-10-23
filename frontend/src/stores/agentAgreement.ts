@@ -38,7 +38,18 @@ export const useAgentAgreementStore = defineStore('agentAgreement', () => {
     let next: AgentAgreementStatus
     try {
       const doc = await getDocumentByType(AGENT_AGREEMENT_TYPE)
-      next = doc.is_signed ? 'signed' : 'unsigned'
+      let signed = !!doc.is_signed
+      if (!signed) {
+        // An acceptance counts whatever its language (the backend's link gate
+        // reads it by type): the other shipped language is read too.
+        const other = doc.language === 'ru' ? 'en' : 'ru'
+        try {
+          signed = !!(await getDocumentByType(AGENT_AGREEMENT_TYPE, other)).is_signed
+        } catch (err) {
+          if (!(err instanceof ApiResponseError && err.status === 404)) throw err
+        }
+      }
+      next = signed ? 'signed' : 'unsigned'
     } catch (err) {
       next = err instanceof ApiResponseError && err.status === 404 ? 'missing' : 'error'
     }

@@ -1028,6 +1028,8 @@
       "backLink": "العودة إلى الشركاء",
       "from": "من {name}",
       "forProduct": "عن {product}",
+      "partnerId": "المعرّف {id}",
+      "purchaseRef": "عملية الشراء {id}",
       "type": {
         "other": "استحقاق آخر"
       },

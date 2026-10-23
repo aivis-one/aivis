@@ -199,6 +199,8 @@ export interface CommissionEntry {
   level?: number | null
   investor_name?: string | null
   product_name?: string | null
+  investor_short_id?: string | null
+  purchase_short_id?: string | null
   period_type?: string | null
   rank?: number | null
 }

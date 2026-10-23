@@ -2139,7 +2139,9 @@
       },
       "backLink": "Back to Partners",
       "from": "From {name}",
-      "forProduct": "for {product}"
+      "forProduct": "for {product}",
+      "partnerId": "ID {id}",
+      "purchaseRef": "Purchase {id}"
     },
     "leaderboard": {
       "title": "Leaderboard",

@@ -1028,6 +1028,8 @@
       "backLink": "Zurück zu Partner",
       "from": "Von {name}",
       "forProduct": "für {product}",
+      "partnerId": "ID {id}",
+      "purchaseRef": "Kauf {id}",
       "type": {
         "other": "Sonstige Gutschrift"
       },

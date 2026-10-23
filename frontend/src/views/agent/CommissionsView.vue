@@ -29,8 +29,8 @@
 //   FP-15 -- type / status / period_type rendered via tOrRaw.
 //   A back-link to Partners: the commissions lie inside that tab.
 //
-// EACH ROW SAYS WHAT IT IS: from whom (the partner's name), how much, for what
-// (the product bought), at which level; a type the screen does not know is
+// EACH ROW SAYS WHAT IT IS: from whom (the partner's name and short id), how much, for what
+// (the purchase and the product bought), at which level; a type the screen does not know is
 // named plainly as "Other accrual", never by its raw token.
 //
 // PAGINATION.
@@ -184,6 +184,12 @@ onMounted(() => {
                 <span class="comm__detail-sub">
                   <span v-if="entry.product_name">
                     {{ t('agent.commissions.forProduct', { product: entry.product_name }) }}
+                  </span>
+                  <span v-if="entry.investor_short_id">
+                    {{ t('agent.commissions.partnerId', { id: entry.investor_short_id }) }}
+                  </span>
+                  <span v-if="entry.purchase_short_id">
+                    {{ t('agent.commissions.purchaseRef', { id: entry.purchase_short_id }) }}
                   </span>
                   <span v-if="entry.level != null" class="comm__level">
                     {{ levelLabel(entry.level) }}

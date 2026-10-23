@@ -58,6 +58,11 @@ _VOLUME_BONUS_RE = re.compile(
 )
 
 
+def short_id(value: UUID) -> str:
+    """Short display form of an id: the first 8 characters of the UUID."""
+    return str(value)[:8]
+
+
 def _extract_name(user: User) -> str:
     """Extract display name from User.profile JSONB."""
     if user.profile:
@@ -225,6 +230,8 @@ async def get_my_commissions(
             # Load purchase -> product + investor for display.
             investor_name: str | None = None
             product_name: str | None = None
+            investor_short_id: str | None = None
+            purchase_short_id: str | None = None
 
             try:
                 purchase_id = UUID(purchase_id_str)
@@ -233,6 +240,8 @@ async def get_my_commissions(
                     _purchase, product, investor = row
                     investor_name = _extract_name(investor)
                     product_name = product.name
+                    investor_short_id = short_id(investor.id)
+                    purchase_short_id = short_id(purchase_id)
             except ValueError:
                 # Invalid UUID in reason string -- skip enrichment.
                 pass
@@ -246,6 +255,8 @@ async def get_my_commissions(
                 level=level,
                 investor_name=investor_name,
                 product_name=product_name,
+                investor_short_id=investor_short_id,
+                purchase_short_id=purchase_short_id,
             ))
 
         elif volume_match:

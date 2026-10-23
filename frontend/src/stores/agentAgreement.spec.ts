@@ -32,6 +32,14 @@ describe('the agent-integrator agreement state', () => {
     expect(getDocumentByType).toHaveBeenCalledTimes(1)
   })
 
+  it('is signed when the acceptance sits on the other language row', async () => {
+    getDocumentByType
+      .mockResolvedValueOnce({ id: 'd1', language: 'en', is_signed: false } as never)
+      .mockResolvedValueOnce({ id: 'd2', language: 'ru', is_signed: true } as never)
+    expect(await useAgentAgreementStore().ensure()).toBe('signed')
+    expect(getDocumentByType).toHaveBeenNthCalledWith(2, 'agent_integrator_agreement', 'ru')
+  })
+
   it('is missing when no active document exists', async () => {
     getDocumentByType.mockRejectedValue(new ApiResponseError(404, 'not found'))
     expect(await useAgentAgreementStore().ensure()).toBe('missing')
