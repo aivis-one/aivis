@@ -43,7 +43,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, ChevronRight, Store } from 'lucide-vue-next'
+import { Building, ChevronRight, Store } from '@/components/ui/icons'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import PendingGifts from '@/components/shared/PendingGifts.vue'
 import { usePortfolioStore } from '@/stores/portfolio'

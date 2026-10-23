@@ -52,7 +52,7 @@
 
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ghost, Shield } from 'lucide-vue-next'
+import { Ghost, Shield } from '@/components/ui/icons'
 
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'

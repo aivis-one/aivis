@@ -70,7 +70,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, ShoppingCart } from 'lucide-vue-next'
+import { Building, ShoppingCart } from '@/components/ui/icons'
 import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { ApiResponseError } from '@/api/client'

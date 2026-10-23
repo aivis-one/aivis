@@ -49,7 +49,7 @@ import {
   Map as MapIcon,
   ImageUp,
   X,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import {
   CLoader,
   CButton,

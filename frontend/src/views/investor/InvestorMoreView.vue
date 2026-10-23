@@ -82,7 +82,7 @@ import {
   MessageCircle,
   Settings as SettingsIcon,
   UserPlus,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
 

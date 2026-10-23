@@ -12,7 +12,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, ExternalLink, FileText, Map as MapIcon, Newspaper } from 'lucide-vue-next'
+import { ChevronRight, ExternalLink, FileText, Map as MapIcon, Newspaper } from '@/components/ui/icons'
 
 import { CButton } from '@/components/ui'
 import { useCompanyProfileStore } from '@/stores/companyProfile'

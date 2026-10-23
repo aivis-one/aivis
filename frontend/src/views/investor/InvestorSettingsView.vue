@@ -123,7 +123,7 @@ import {
   Shield,
   Sun,
   UserPlus,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 
 import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'

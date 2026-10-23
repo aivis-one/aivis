@@ -56,7 +56,7 @@ import {
   FileText,
   Download,
   Upload,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import {
   CLoader,
   CButton,

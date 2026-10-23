@@ -58,7 +58,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
-import { Link2 } from 'lucide-vue-next'
+import { Link2 } from '@/components/ui/icons'
 import type { PublicCompanyListResponse } from '@/api/types'
 
 type CompanyListItem = PublicCompanyListResponse['items'][number]

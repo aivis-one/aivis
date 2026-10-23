@@ -17,10 +17,10 @@
 //   Coarse-grained mapping by mime prefix / known type. Anything
 //   unmapped falls through to a generic File icon. Adding a new
 //   bucket is a one-line addition; there is no contract beyond
-//   "return one of the imported lucide-vue-next icon components".
+//   "return one of the imported icon components".
 //
 // WHY A SEPARATE FILE.
-//   - The imports (lucide-vue-next icon components) are heavy compared
+//   - The imports (icon components) are heavy compared
 //     to plain string/number utils. Keeping them in their own module
 //     means callers that just need `formatBytes` don't drag in the
 //     icon set as a transitive dependency.
@@ -36,10 +36,10 @@ import {
   FileText,
   Image as ImageIcon,
   Video,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 
 /**
- * Map a MIME type to a representative lucide-vue-next icon component.
+ * Map a MIME type to a representative icon component.
  *
  * Returned component is suitable for `<component :is="mimeIcon(mime)" />`.
  * Unknown mimes resolve to the generic File icon -- adding a more

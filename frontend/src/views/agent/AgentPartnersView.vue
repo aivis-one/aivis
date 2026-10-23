@@ -23,7 +23,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Coins, Copy, Share2, Trophy, Users, Wallet } from 'lucide-vue-next'
+import { ChevronRight, Coins, Copy, Share2, Trophy, Users, Wallet } from '@/components/ui/icons'
 
 import { CButton, CLoader } from '@/components/ui'
 import { useAgentLink } from '@/composables/useAgentLink'

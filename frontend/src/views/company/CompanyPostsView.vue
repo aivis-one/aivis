@@ -53,7 +53,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X } from 'lucide-vue-next'
+import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X } from '@/components/ui/icons'
 import {
   CLoader,
   CButton,

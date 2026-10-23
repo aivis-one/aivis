@@ -28,7 +28,7 @@
 
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Building } from 'lucide-vue-next'
+import { Building } from '@/components/ui/icons'
 import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
 import type { PublicProductResponse } from '@/api/types'
 

@@ -20,7 +20,7 @@ import { useI18n } from 'vue-i18n'
 
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, ChevronLeft, Wallet } from 'lucide-vue-next'
+import { Bell, ChevronLeft, Wallet } from '@/components/ui/icons'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'
 import { safeNavigate } from '@/composables/safeNavigate'

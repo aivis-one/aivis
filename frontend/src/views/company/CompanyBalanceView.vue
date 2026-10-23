@@ -24,7 +24,7 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUpFromLine, CreditCard, ListChecks, Wallet } from 'lucide-vue-next'
+import { ArrowUpFromLine, CreditCard, ListChecks, Wallet } from '@/components/ui/icons'
 
 import { useRouter } from 'vue-router'
 

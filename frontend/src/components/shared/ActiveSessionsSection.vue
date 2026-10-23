@@ -39,7 +39,7 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Monitor, RefreshCw } from 'lucide-vue-next'
+import { ChevronRight, Monitor, RefreshCw } from '@/components/ui/icons'
 
 import { CButton, CLoader, CModal } from '@/components/ui'
 import { listSessions, revokeSession } from '@/api/auth'

@@ -59,7 +59,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, Calendar } from 'lucide-vue-next'
+import { Building, Calendar } from '@/components/ui/icons'
 import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'

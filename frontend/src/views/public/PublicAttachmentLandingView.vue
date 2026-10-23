@@ -60,7 +60,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Download, File as FileIcon } from 'lucide-vue-next'
+import { ArrowLeft, Download, File as FileIcon } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'

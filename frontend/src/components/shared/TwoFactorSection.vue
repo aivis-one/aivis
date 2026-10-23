@@ -44,7 +44,7 @@
 
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Copy, Shield, ShieldCheck } from 'lucide-vue-next'
+import { ChevronRight, Copy, Shield, ShieldCheck } from '@/components/ui/icons'
 import QRCode from 'qrcode'
 
 import { CButton, CInput, CModal } from '@/components/ui'

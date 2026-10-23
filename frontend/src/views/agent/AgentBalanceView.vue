@@ -33,7 +33,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownToLine, ArrowUpFromLine, CreditCard, ListChecks, Wallet } from 'lucide-vue-next'
+import { ArrowDownToLine, ArrowUpFromLine, CreditCard, ListChecks, Wallet } from '@/components/ui/icons'
 
 import {
   CBackLink,

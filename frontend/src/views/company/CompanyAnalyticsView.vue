@@ -91,7 +91,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Download } from 'lucide-vue-next'
+import { Download } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { getCompanyAnalytics } from '@/api/company'

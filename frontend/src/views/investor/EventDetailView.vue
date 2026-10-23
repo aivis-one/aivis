@@ -15,7 +15,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CalendarDays, ExternalLink, MapPin } from 'lucide-vue-next'
+import { CalendarDays, ExternalLink, MapPin } from '@/components/ui/icons'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { getPublicEvent } from '@/api/events'
 import { ApiResponseError } from '@/api/client'

@@ -61,7 +61,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
-import { ArrowLeft, Copy, ShieldAlert } from 'lucide-vue-next'
+import { ArrowLeft, Copy, ShieldAlert } from '@/components/ui/icons'
 import { CBackLink, CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
 import { ApiNetworkError, ApiResponseError, ApiTimeoutError } from '@/api/client'
 import {

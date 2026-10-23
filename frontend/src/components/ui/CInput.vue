@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 // Text input with label, error state, and optional password toggle.
 
 import { computed, ref, useAttrs, useId } from 'vue'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from '@/components/ui/icons'
 
 const props = withDefaults(
   defineProps<{

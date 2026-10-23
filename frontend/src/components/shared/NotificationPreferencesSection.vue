@@ -50,7 +50,7 @@
 
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, ChevronRight } from 'lucide-vue-next'
+import { Bell, ChevronRight } from '@/components/ui/icons'
 
 import { CButton, CCheckbox, CInput, CLoader, CModal } from '@/components/ui'
 import {

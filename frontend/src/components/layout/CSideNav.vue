@@ -39,7 +39,7 @@ import {
   ShieldCheck,
   MessageCircle,
   HelpCircle,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
 

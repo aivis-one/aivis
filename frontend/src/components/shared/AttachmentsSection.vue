@@ -69,7 +69,7 @@ import {
   FileText,
   Image as ImageIcon,
   Video,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
 import { downloadAttachment } from '@/api/attachments'

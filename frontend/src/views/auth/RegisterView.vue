@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronLeft } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- RegisterView (iter 2.6 batch 2 + R22 STYLE-22-02)
 // =============================================================================
@@ -172,16 +173,7 @@ async function handleRegister(): Promise<void> {
     <header class="auth-header">
       <AivisLogo :height="28" />
       <button type="button" class="btn-link btn-back" @click="goToLogin">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
+        <ChevronLeft :size="16" />
         {{ t('auth.back') }}
       </button>
       <CAppControls />
@@ -319,10 +311,6 @@ async function handleRegister(): Promise<void> {
   font-size: var(--fs-sm);
 }
 
-.btn-back svg {
-  width: 16px;
-  height: 16px;
-}
 
 .auth-content {
   flex: 1;

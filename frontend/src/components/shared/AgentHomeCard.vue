@@ -6,7 +6,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Coins, Copy, Trophy, UserPlus } from 'lucide-vue-next'
+import { Coins, Copy, Trophy, UserPlus } from '@/components/ui/icons'
 
 import { CButton, CLoader } from '@/components/ui'
 import { useAgentLink } from '@/composables/useAgentLink'

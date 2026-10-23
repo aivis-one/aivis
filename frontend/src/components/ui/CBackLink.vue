@@ -45,7 +45,7 @@
 //   suppressed by the browser default.
 // =============================================================================
 
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft } from '@/components/ui/icons'
 
 defineProps<{
   label: string

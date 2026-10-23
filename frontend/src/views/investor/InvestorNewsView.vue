@@ -17,7 +17,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CalendarDays, FileText } from 'lucide-vue-next'
+import { CalendarDays, FileText } from '@/components/ui/icons'
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { listPosts } from '@/api/posts'
 import { listPublicEvents, listUpcomingEvents } from '@/api/events'

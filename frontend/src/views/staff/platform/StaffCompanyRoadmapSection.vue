@@ -59,7 +59,7 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon, ImageUp, X } from 'lucide-vue-next'
+import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon, ImageUp, X } from '@/components/ui/icons'
 import {
   CLoader,
   CButton,

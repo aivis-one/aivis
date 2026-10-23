@@ -55,7 +55,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, History } from 'lucide-vue-next'
+import { ArrowLeft, History } from '@/components/ui/icons'
 import { CEmptyState, CLoader, CButton } from '@/components/ui'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { fetchOwnAuditFeed } from '@/api/company-audit'

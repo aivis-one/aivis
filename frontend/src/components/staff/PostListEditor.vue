@@ -28,7 +28,7 @@
 
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, X, Pencil, Trash2 } from 'lucide-vue-next'
+import { Plus, X, Pencil, Trash2 } from '@/components/ui/icons'
 import {
   CBadge,
   CLoader,

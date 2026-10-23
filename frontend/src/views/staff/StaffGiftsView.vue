@@ -25,7 +25,7 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Gift } from 'lucide-vue-next'
+import { Gift } from '@/components/ui/icons'
 import { CBadge, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { ApiResponseError } from '@/api/client'

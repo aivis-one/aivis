@@ -44,7 +44,7 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 

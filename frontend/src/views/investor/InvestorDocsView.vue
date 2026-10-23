@@ -76,7 +76,7 @@
 
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FileText } from 'lucide-vue-next'
+import { FileText } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'

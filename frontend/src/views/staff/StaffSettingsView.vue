@@ -19,7 +19,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Bell, FileText, LogOut } from 'lucide-vue-next'
+import { Bell, FileText, LogOut } from '@/components/ui/icons'
 import { CAvatar, CBadge, CSelect } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'

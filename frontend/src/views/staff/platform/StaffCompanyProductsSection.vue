@@ -22,7 +22,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Package } from 'lucide-vue-next'
+import { Package } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import {

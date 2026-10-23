@@ -8,6 +8,8 @@ import { i18n, setupI18n } from '@/i18n'
 import { installUpdateCheck } from '@/pwa/updateCheck'
 import { kycActionForRoute, showKycPrompt } from '@/composables/useKycPrompt'
 
+import iconSprite from '@/assets/icons/ds-icons.svg?raw'
+
 import '@/styles/variables.css'
 import '@/styles/global.css'
 // shell.css AFTER global.css: it is layout chrome that must win a same-specificity
@@ -21,6 +23,8 @@ import '@/styles/telegram.css'
 //   2. Create the app and wire Pinia, Router, i18n.
 //   3. Mount.
 async function bootstrap(): Promise<void> {
+  // The design system's icon sprite, once, before anything draws an icon.
+  document.body.insertAdjacentHTML('afterbegin', iconSprite)
   await setupI18n()
 
   const app = createApp(App)

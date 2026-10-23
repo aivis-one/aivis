@@ -10,7 +10,7 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ghost, Ban } from 'lucide-vue-next'
+import { Ghost, Ban } from '@/components/ui/icons'
 import { CButton } from '@/components/ui'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { useAvatar } from '@/composables/useAvatar'

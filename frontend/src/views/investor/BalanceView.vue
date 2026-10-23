@@ -52,7 +52,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownToLine, CreditCard, ListChecks, Wallet } from 'lucide-vue-next'
+import { ArrowDownToLine, CreditCard, ListChecks, Wallet } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'

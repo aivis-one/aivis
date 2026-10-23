@@ -19,7 +19,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Coins, Link2, Users, Wallet } from 'lucide-vue-next'
+import { Coins, Link2, Users, Wallet } from '@/components/ui/icons'
 
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import CAppControls from '@/components/ui/CAppControls.vue'

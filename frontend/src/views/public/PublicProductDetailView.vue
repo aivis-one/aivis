@@ -52,7 +52,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
-import { Building, ShoppingCart } from 'lucide-vue-next'
+import { Building, ShoppingCart } from '@/components/ui/icons'
 
 import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'

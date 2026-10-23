@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 // close button.
 
 import { ref, toRef } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X } from '@/components/ui/icons'
 import { useDialog } from '@/composables/useDialog'
 
 const props = withDefaults(

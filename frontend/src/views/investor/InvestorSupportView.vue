@@ -101,7 +101,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw } from '@/components/ui/icons'
 import { CBackLink, CButton, CEmptyState, CLoader, CTextarea } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { getShell } from '@/router/helpers'

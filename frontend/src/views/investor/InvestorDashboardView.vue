@@ -68,7 +68,7 @@ import {
   ShieldCheck,
   Store,
   Wallet,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import EventCard from '@/components/shared/EventCard.vue'
 import AgentHomeCard from '@/components/shared/AgentHomeCard.vue'

@@ -63,7 +63,7 @@
 
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight } from '@/components/ui/icons'
 
 import { tOrRaw } from '@/utils/i18n'
 import type { RoadmapItemResponse } from '@/api/types'

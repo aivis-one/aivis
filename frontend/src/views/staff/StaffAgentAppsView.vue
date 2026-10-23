@@ -11,7 +11,7 @@
 
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FileText, Check, X } from 'lucide-vue-next'
+import { FileText, Check, X } from '@/components/ui/icons'
 import { CAvatar, CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'

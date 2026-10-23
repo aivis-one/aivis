@@ -20,7 +20,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Users, ShieldAlert, CreditCard, UserCheck, Banknote, MessageCircle } from 'lucide-vue-next'
+import { Users, ShieldAlert, CreditCard, UserCheck, Banknote, MessageCircle } from '@/components/ui/icons'
 import type { Component } from 'vue'
 import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
 import { safeNavigate } from '@/composables/safeNavigate'

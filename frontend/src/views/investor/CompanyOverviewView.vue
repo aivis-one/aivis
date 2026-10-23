@@ -58,7 +58,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building } from 'lucide-vue-next'
+import { Building } from '@/components/ui/icons'
 
 import { CBackLink, CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import AttachmentsSection from '@/components/shared/AttachmentsSection.vue'

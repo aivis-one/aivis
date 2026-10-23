@@ -20,7 +20,7 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShoppingBag } from 'lucide-vue-next'
+import { ShoppingBag } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { ApiResponseError } from '@/api/client'

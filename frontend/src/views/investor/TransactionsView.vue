@@ -56,7 +56,7 @@ import {
   RefreshCw,
   Repeat,
   ShoppingBag,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 
 import { ApiResponseError } from '@/api/client'
 import { downloadTransactionsExport } from '@/api/transactions'

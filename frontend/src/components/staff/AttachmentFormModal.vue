@@ -21,7 +21,7 @@
 
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Upload } from 'lucide-vue-next'
+import { Upload } from '@/components/ui/icons'
 import { CButton, CCheckbox, CInput, CModal, CSelect, CTextarea } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import {

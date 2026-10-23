@@ -39,7 +39,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, ChevronDown, Trash2, FileText, Pencil, Upload } from 'lucide-vue-next'
+import { ChevronUp, ChevronDown, Trash2, FileText, Pencil, Upload } from '@/components/ui/icons'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
 import AttachmentFormModal from '@/components/staff/AttachmentFormModal.vue'
 import { useToast } from '@/composables/useToast'

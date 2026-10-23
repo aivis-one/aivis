@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ExternalLink } from '@/components/ui/icons'
 // Document signing screen.
 // Flow:
 //   1. GET /api/v1/documents -> list for user's role, already resolved
@@ -232,20 +233,7 @@ async function handleSignAll(): Promise<void> {
               </div>
             </div>
             <button type="button" class="doc-link" @click.stop="openDocument(doc)">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                width="16"
-                height="16"
-              >
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
+              <ExternalLink :size="16" />
               <span class="doc-link-label">{{ t('auth.docs.read') }}</span>
             </button>
           </div>

@@ -15,7 +15,7 @@
 // fixed. The focus ring is drawn on the box the user can actually see.
 
 import { computed, nextTick, useAttrs } from 'vue'
-import { Check } from 'lucide-vue-next'
+import { Check } from '@/components/ui/icons'
 
 const props = withDefaults(defineProps<{ modelValue?: boolean; label?: string }>(), {
   modelValue: false,

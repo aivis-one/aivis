@@ -8,7 +8,7 @@
 
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Gift } from 'lucide-vue-next'
+import { Gift } from '@/components/ui/icons'
 import { CButton } from '@/components/ui'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { ApiResponseError } from '@/api/client'

@@ -28,7 +28,7 @@ import {
   ShoppingBag,
   TrendingUp,
   Wallet,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 import type { Component } from 'vue'
 
 import { CButton, CLoader, CStatCard } from '@/components/ui'

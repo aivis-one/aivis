@@ -21,7 +21,7 @@
 
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CreditCard } from 'lucide-vue-next'
+import { CreditCard } from '@/components/ui/icons'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'

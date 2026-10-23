@@ -38,7 +38,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Copy } from 'lucide-vue-next'
+import { Copy } from '@/components/ui/icons'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CEmptyState, CLoader } from '@/components/ui'

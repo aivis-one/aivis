@@ -56,7 +56,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Clock } from 'lucide-vue-next'
+import { Clock } from '@/components/ui/icons'
 import {
   CAvatar,
   CBadge,

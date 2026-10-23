@@ -13,7 +13,7 @@
 
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Banknote } from 'lucide-vue-next'
+import { Banknote } from '@/components/ui/icons'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'

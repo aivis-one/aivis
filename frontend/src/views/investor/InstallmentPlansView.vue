@@ -47,7 +47,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CalendarClock, CreditCard } from 'lucide-vue-next'
+import { CalendarClock, CreditCard } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'

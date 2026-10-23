@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MailCheck } from '@/components/ui/icons'
 // Email verification — 6 individual digit inputs with auto-focus.
 // POST /api/v1/auth/verify-email { code }
 // POST /api/v1/auth/verify-email/resend → 204
@@ -154,22 +155,7 @@ async function handleResend(): Promise<void> {
 
     <div class="auth-content">
       <div class="verify-icon">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--primary)"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          width="64"
-          height="64"
-        >
-          <path
-            d="M22 13V6.5C22 5.4 21.1 4.5 20 4.5H4C2.9 4.5 2 5.4 2 6.5V17.5C2 18.6 2.9 19.5 4 19.5H13"
-          />
-          <polyline points="22 7 13.5 12.5 2 7" />
-          <polyline points="16 19 18 21 22 17" />
-        </svg>
+        <MailCheck :size="64" />
       </div>
 
       <h1 class="auth-title">
@@ -282,6 +268,7 @@ async function handleResend(): Promise<void> {
 
 .verify-icon {
   display: flex;
+  color: var(--primary);
   justify-content: center;
   margin-bottom: var(--space-5);
 }

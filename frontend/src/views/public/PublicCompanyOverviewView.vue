@@ -66,7 +66,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
-import { Building } from 'lucide-vue-next'
+import { Building } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'

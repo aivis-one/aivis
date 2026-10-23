@@ -19,7 +19,7 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShieldCheck } from 'lucide-vue-next'
+import { ShieldCheck } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { fetchConsistency } from '@/api/admin'

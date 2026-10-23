@@ -47,7 +47,7 @@ import {
   MessageCircle,
   Pencil,
   Video,
-} from 'lucide-vue-next'
+} from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CInput, CLoader, CModal, CSelect, CTextarea } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'

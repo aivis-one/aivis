@@ -24,7 +24,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { AlertTriangle, ChevronRight } from 'lucide-vue-next'
+import { AlertTriangle, ChevronRight } from '@/components/ui/icons'
 
 import { CButton, CInput, CModal } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'

@@ -25,7 +25,7 @@
 
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Search, X } from 'lucide-vue-next'
+import { Search, X } from '@/components/ui/icons'
 import { CInput, CLoader, CAvatar } from '@/components/ui'
 import { fetchUsers } from '@/api/admin'
 import type { UserListItem } from '@/api/types'

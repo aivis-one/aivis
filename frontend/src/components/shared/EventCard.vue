@@ -46,7 +46,7 @@
 
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CalendarDays, MapPin, ChevronRight, ExternalLink } from 'lucide-vue-next'
+import { CalendarDays, MapPin, ChevronRight, ExternalLink } from '@/components/ui/icons'
 import { resolveCoverImage } from '@/utils/format'
 import type { EventResponse } from '@/api/types'
 
