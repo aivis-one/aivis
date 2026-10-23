@@ -111,7 +111,7 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
   background: var(--bg-surface);
   border-radius: var(--radius-modal) var(--radius-modal) 0 0;
   inline-size: 100%;
-  max-inline-size: var(--maxw-form-wide);
+  max-inline-size: var(--maxw-prose);
   max-block-size: 85vh;
   max-block-size: 85dvh;
   display: flex;
