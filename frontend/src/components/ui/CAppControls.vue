@@ -122,7 +122,7 @@ onBeforeUnmount(() => {
   position: absolute;
   inset-block-start: calc(100% + var(--space-1));
   inset-inline-end: 0;
-  z-index: 200;
+  z-index: var(--z-menu);
   min-inline-size: var(--size-4xl);
   padding: var(--space-1);
   margin: 0;

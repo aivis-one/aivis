@@ -5,7 +5,7 @@
 //                              + iter 2.7 Block A2 + B1)
 // =============================================================================
 //
-// Full route map. Shell components as layout wrappers.
+// Full route map. The frame (AppShell) is the one layout wrapper.
 // All view imports are lazy-loaded via () => import().
 //
 // Structure:
@@ -14,11 +14,11 @@
 //   /verify, /onboarding/*     — onboarding (auth required, no role check)
 //   /portfolio/:id             -- document link from an email; redirects into
 //                                the reader's own shell (P-106)
-//   /investor/*                — InvestorShell (investor | agent)
-//   /agent/*                   — AgentShell (agent only, includes investor screens)
-//   /company/*                 — CompanyShell (company only)
-//   /staff/*                   — StaffShell (staff only)
-//   /public/*                  — PublicShell (anonymous storefront)
+//   /investor/*                — AppShell (investor | agent)
+//   /agent/*                   — AppShell (agent only, includes investor screens)
+//   /company/*                 — AppShell (company only)
+//   /staff/*                   — AppShell (staff only)
+//   /public/*                  — AppShell (anonymous storefront)
 //   /r/:code                   — referral capture + redirect to /public/companies
 //   /404                       — not found
 //   /:pathMatch(.*)*           — catch-all → /404
@@ -238,7 +238,7 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     {
       path: '/investor',
-      component: () => import('@/components/layout/InvestorShell.vue'),
+      component: () => import('@/components/layout/AppShell.vue'),
       meta: { roles: ['investor', 'agent'], shell: 'investor' },
       children: [
         {
@@ -434,7 +434,7 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     {
       path: '/agent',
-      component: () => import('@/components/layout/AgentShell.vue'),
+      component: () => import('@/components/layout/AppShell.vue'),
       meta: { roles: ['agent'], shell: 'agent' },
       children: [
         {
@@ -598,7 +598,7 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     {
       path: '/company',
-      component: () => import('@/components/layout/CompanyShell.vue'),
+      component: () => import('@/components/layout/AppShell.vue'),
       meta: { roles: ['company'], shell: 'company' },
       children: [
         {
@@ -735,7 +735,7 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     {
       path: '/staff',
-      component: () => import('@/components/layout/StaffShell.vue'),
+      component: () => import('@/components/layout/AppShell.vue'),
       meta: { roles: ['staff'], shell: 'staff' },
       children: [
         {
@@ -1007,7 +1007,7 @@ export const router = createRouter({
     // -----------------------------------------------------------------
     {
       path: '/public',
-      component: () => import('@/components/layout/PublicShell.vue'),
+      component: () => import('@/components/layout/AppShell.vue'),
       meta: { public: true },
       children: [
         {

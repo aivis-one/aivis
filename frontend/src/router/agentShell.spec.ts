@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { agentCounterpart } from './guards'
-import { AGENT_MENU_EXTRA, AGENT_TABS, INVESTOR_TABS } from './tabs'
+import * as tabsModule from './tabs'
+import { AGENT_TABS, INVESTOR_TABS, tabsFor } from './tabs'
 
 describe('the integrator stays in the integrator shell', () => {
   it('maps a buyer-shell route to the integrator one', () => {
@@ -33,11 +34,10 @@ describe('the integrator tabs', () => {
     expect(AGENT_TABS[4]?.id).toBe(INVESTOR_TABS[4]?.id)
   })
 
-  it('keep every inner section one line each in the web menu', () => {
-    const paths = AGENT_MENU_EXTRA.map((t) => t.path)
-    expect(paths).toContain('/agent/news')
-    expect(paths).toContain('/agent/partners/balance')
-    expect(paths).toContain('/agent/docs')
-    expect(new Set(paths).size).toBe(paths.length)
+  it('are the only menu: the second list of the web side menu is gone', () => {
+    expect(tabsModule).not.toHaveProperty('AGENT_MENU_EXTRA')
+    expect(tabsModule).not.toHaveProperty('INVESTOR_MENU_EXTRA')
+    expect(tabsFor('agent')).toBe(AGENT_TABS)
+    expect(tabsFor(undefined)).toBeUndefined()
   })
 })

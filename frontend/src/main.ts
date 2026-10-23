@@ -12,9 +12,7 @@ import iconSprite from '@/assets/icons/ds-icons.svg?raw'
 
 import '@/styles/variables.css'
 import '@/styles/global.css'
-// shell.css AFTER global.css: it is layout chrome that must win a same-specificity
-// tie against the reset, and BEFORE telegram.css, which is platform skinning.
-import '@/styles/shell.css'
+// telegram.css AFTER global.css: it is platform skinning laid over the system.
 import '@/styles/telegram.css'
 
 // Bootstrap sequence:

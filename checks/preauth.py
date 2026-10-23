@@ -70,10 +70,6 @@ REGISTER = {
                               "request sibling above -- .auth-form capped at var(--maxw-form), "
                               "centred by .auth-content's align-items:center. The new-password pair "
                               "is a plain stacked field group, nothing that reflows.",
-    "public-attachment-landing": "it renders inside PublicShell, which caps content at --maxw "
-                                 "(1080px) and centres it. PublicShell carries no tier gate ON "
-                                 "PURPOSE -- whether the storefront joins the tier system is the "
-                                 "owner's open call, B-3.1.",
 }
 
 
@@ -178,6 +174,16 @@ def derive(root: str) -> tuple[set[str], set[str], int]:
 
     cache: dict[str, set[str]] = {}
 
+    # THE FRAME'S WIDTH QUERIES LIVE IN THE SYSTEM'S STYLESHEET. AppShell draws the
+    # design system's shell (K25), whose tiers (880 and 1120) and phone rules are
+    # media queries in styles/ds/components.css, which no component imports; so a
+    # route inside AppShell reaches that stylesheet through the frame it is drawn
+    # in. The storefront is inside it too (its nav-less variant keeps the system's
+    # header and measure rules), which is why `public-attachment-landing` no longer
+    # needs a register line of its own.
+    frame = src_dir + "/components/layout/AppShell.vue"
+    frame_css = src_dir + "/styles/ds/components.css"
+
     def closure(start: str) -> set[str]:
         if start in cache:
             return cache[start]
@@ -187,6 +193,8 @@ def derive(root: str) -> tuple[set[str], set[str], int]:
             if p in seen:
                 continue
             seen.add(p)
+            if p == frame and frame_css in files:
+                stack.append(frame_css)
             for s in SPEC.findall(files[p]):
                 r = _resolve(s, p, src_dir, files)
                 if r and r not in seen:

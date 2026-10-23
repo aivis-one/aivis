@@ -2,8 +2,8 @@
 // AIVIS.ONE Frontend -- Tab Bar Configurations
 // =============================================================================
 //
-// Each role has its own tab set. Used by CTabBar in shell components.
-// Icons are Lucide component names imported in the shell.
+// Each role has its own tab set. AppShell hands it to the one menu (AppNav) of the
+// frame; `icon` is the name of an export of components/ui/icons.ts.
 //
 // The staff tabs: home / users / finance / platform / settings (STAFF_TABS below).
 // =============================================================================
@@ -28,24 +28,6 @@ export const INVESTOR_TABS: TabItem[] = [
   { id: 'settings', path: '/investor/settings', labelKey: 'tab.settings', icon: 'Settings' },
 ]
 
-// The web side menu: the five tabs above, then ONE LINE EACH for the sections
-// that lie inside a tab on a phone -- the news feed (inside Home), the
-// instalment plans (inside Portfolio), and the documents, identity
-// verification, support and FAQ (inside Settings).
-export const INVESTOR_MENU_EXTRA: TabItem[] = [
-  { id: 'news', path: '/investor/news', labelKey: 'tab.news', icon: 'Newspaper' },
-  {
-    id: 'installments',
-    path: '/investor/installments',
-    labelKey: 'tab.installments',
-    icon: 'CalendarClock',
-  },
-  { id: 'docs', path: '/investor/docs', labelKey: 'tab.docs', icon: 'FileText' },
-  { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },
-  { id: 'support', path: '/investor/support', labelKey: 'tab.support', icon: 'MessageCircle' },
-  { id: 'faq', path: '/investor/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
-]
-
 // The integrator's five tabs, in the same order rule as the buyer's: Home,
 // Storefront, Portfolio, Partners, Settings. There is no "More" tab.
 export const AGENT_TABS: TabItem[] = [
@@ -54,44 +36,6 @@ export const AGENT_TABS: TabItem[] = [
   { id: 'portfolio', path: '/agent/portfolio', labelKey: 'tab.portfolio', icon: 'Briefcase' },
   { id: 'partners', path: '/agent/partners', labelKey: 'tab.partners', icon: 'Users' },
   { id: 'settings', path: '/agent/settings', labelKey: 'tab.settings', icon: 'Settings' },
-]
-
-// The web side menu of the integrator: the five tabs, then one line each for
-// the sections that lie inside a tab on a phone -- the news feed (inside
-// Home), the instalment plans (inside Portfolio), the network, the
-// commissions, the rating and the balance (inside Partners), and the documents, identity verification, support and FAQ
-// (inside Settings).
-export const AGENT_MENU_EXTRA: TabItem[] = [
-  { id: 'news', path: '/agent/news', labelKey: 'tab.news', icon: 'Newspaper' },
-  {
-    id: 'installments',
-    path: '/agent/installments',
-    labelKey: 'tab.installments',
-    icon: 'CalendarClock',
-  },
-  {
-    id: 'network',
-    path: '/agent/partners/network',
-    labelKey: 'agent.partners.network',
-    icon: 'Users',
-  },
-  {
-    id: 'commissions',
-    path: '/agent/partners/commissions',
-    labelKey: 'agent.partners.commissions',
-    icon: 'Coins',
-  },
-  {
-    id: 'rating',
-    path: '/agent/partners/rating',
-    labelKey: 'agent.partners.rating',
-    icon: 'BarChart3',
-  },
-  { id: 'balance', path: '/agent/partners/balance', labelKey: 'tab.balance', icon: 'Wallet' },
-  { id: 'docs', path: '/agent/docs', labelKey: 'tab.docs', icon: 'FileText' },
-  { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },
-  { id: 'support', path: '/agent/support', labelKey: 'tab.support', icon: 'MessageCircle' },
-  { id: 'faq', path: '/agent/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
 ]
 
 // The project account's five tabs: Home (the balance and the summary), Products,
@@ -131,7 +75,8 @@ export const STAFF_TABS: TabItem[] = [
 ]
 
 // The tabs of a shell, as the frame draws them; none for a route outside the four
-// cabinets (the storefront has no menu).
+// cabinets (the storefront has no menu). The staff list is filtered by the member's
+// rights where it is drawn (AppShell).
 export function tabsFor(shell: Shell | undefined): TabItem[] | undefined {
   switch (shell) {
     case 'investor':

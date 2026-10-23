@@ -6,16 +6,28 @@
    are verbatim copies of design-system/tokens/ (the frontend image is built
    from frontend/ alone); a change to a token is made in design-system/ first.
 
-   Product-owned, declared once and the same in both themes:
-   --tab-bar-height  the source of truth for the tab bar's height (the system's
-                     56 nav item, its padding and its hairline) and for the
-                     floating call-to-action strips that pin themselves above
-                     it. The shell sets it to 0 from the rail width up
-                     (shell.css). The safe-area inset is not folded in: a
-                     consumer adds env(safe-area-inset-bottom, 0px).
+   Product-owned:
+   --tab-bar-height  the height of the frame's tab bar (K25), read from the
+                     shell's own measure (--_bar), for the floating strips that
+                     pin themselves above it. It is zero from the rail width
+                     (880) up, where the menu stands beside the content. It is
+                     set on the shell, not on :root, because the measure is.
+                     The safe-area inset is not folded in: a consumer adds
+                     env(safe-area-inset-bottom, 0px). The screen that reads it
+                     moves to the frame's floating action strip (K25) and this
+                     token goes with it.
    --cta-bar-height  the floating sub-route call-to-action strip.
    ============================================================ */
+.ds-shell {
+  --tab-bar-height: var(--_bar);
+}
+
+@media (min-width: 880px) {
+  .ds-shell {
+    --tab-bar-height: calc(var(--_bar) * 0);
+  }
+}
+
 :root {
-  --tab-bar-height: calc(var(--size-4xl) + var(--space-2) + var(--border-input-width));
   --cta-bar-height: var(--size-4xl);
 }
