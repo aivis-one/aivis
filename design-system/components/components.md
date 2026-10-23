@@ -82,7 +82,7 @@ Additions. The count on an icon button `ds-badge--count` (the danger ground, `--
 
 ## K46 Stat tile
 
-`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one link in the label. `.ds-stats` lays tiles out two across on a phone and as many as fit above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
+`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one link in the label. `.ds-stats` lays tiles out two across on a phone and up to four above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
 
 ## K47 Hero
 
@@ -240,7 +240,7 @@ Markup: `markup/file-input.html`. `.ds-field.ds-file` holds the visible label, t
 
 ## K38 Combobox / user picker
 
-Markup: `markup/combobox.html`. The ARIA 1.2 combobox: `input.ds-combobox__input[role=combobox]` with `aria-expanded`, `aria-controls`, `aria-autocomplete="list"` and `aria-activedescendant`; `ul[role=listbox]` of `li.ds-combobox__option[role=option]` (an `id`, `aria-selected`, `data-value`); a polite `role=status` for the count (`data-msg-count`, `data-msg-none` with `{n}`); an empty message as text; after a choice a chip (`.ds-combobox__chip`) with the option's avatar, name and detail and a Clear button. Focus stays in the input; Down opens and moves, Up moves back, Home and End go to the ends while open, Enter chooses, Escape closes and then empties the text. `data-filter="local"` filters the options in the page, otherwise the app replaces them on `ds-combobox-query`; `data-min-chars` is the shortest search the app wants. The active option is a `--bg-subtle` tint and a 2 line `--primary` bar at the start, never colour alone. The look: a bordered result list, a 32 initials disc in `--primary`, name `--fs-sm` 600, detail `--text-secondary`, a chip on `--bg-subtle`. States: rest, hover, focus, open, active option, selected option, no result, busy (`aria-busy`), chosen, disabled.
+Markup: `markup/combobox.html`. The ARIA 1.2 combobox: `input.ds-combobox__input[role=combobox]` with `aria-expanded`, `aria-controls`, `aria-autocomplete="list"` and `aria-activedescendant`; `ul[role=listbox]` of `li.ds-combobox__option[role=option]` (an `id`, `aria-selected`, `data-value`); a polite `role=status` for the count (`data-msg-count`, `data-msg-none` with `{n}`); an empty message as text; after a choice a chip (`.ds-combobox__chip`) with the option's avatar, name and detail and a Clear button. Focus stays in the input; Down opens and moves, Up moves back, Home and End go to the ends while open, Enter chooses, Escape closes and then empties the text. `data-filter="local"` filters the options in the page, otherwise the app replaces them on `ds-combobox-query`; `data-min-chars` is the shortest search the app wants. The active option is a `--bg-subtle` tint and a 2 line `--primary` bar at the start, never colour alone. The look: a bordered result list, a 32 px Avatar (K50, `data-size="sm"`), name `--fs-sm` 600, detail `--text-secondary`, a chip on `--bg-subtle`. States: rest, hover, focus, open, active option, selected option, no result, busy (`aria-busy`), chosen, disabled.
 
 ## K39 Reorder list
 
@@ -256,7 +256,7 @@ Markup: `markup/auth-shell.html`. `.ds-auth` is a column of `header.ds-auth__hea
 
 ## K50 Avatar
 
-`.ds-avatar`: a disc with the initials in `--on-primary` on `--primary`, or an `img` that covers; `ds-avatar--subtle` is the quiet disc (`--primary-subtle`). Sizes `data-size`: `sm` 32, the default 40, `lg` 56 (`--size-md`, `--size-xl`, `--size-4xl`). A photo carries alt text naming the person or the company; initials are a `span` with `role="img"` and `aria-label`, or `aria-hidden` when the name stands beside the disc. The combobox (K38) keeps its own 32 px disc as its slot. Markup: `markup/avatar.html`.
+`.ds-avatar`: a disc with the initials in `--on-primary` on `--primary`, or an `img` that covers; `ds-avatar--subtle` is the quiet disc (`--primary-subtle`). Sizes `data-size`: `sm` 32, the default 40, `lg` 56 (`--size-md`, `--size-xl`, `--size-4xl`). A photo carries alt text naming the person or the company; initials are a `span` with `role="img"` and `aria-label`, or `aria-hidden` when the name stands beside the disc. Markup: `markup/avatar.html`.
 
 ## K51 Chat thread and composer
 
@@ -331,7 +331,7 @@ Look: an icon box, a title, the description, the file name and size and a downlo
 
 ## The Booking card (KN1)
 
-Markup: `markup/booking-card.html`. A Card (`article.ds-card.ds-booking`, named by its heading): `header.ds-booking__head` (an icon box by basis, the title, a Badge with the basis in words), `dl.ds-booking__facts` (booked date, units), `p.ds-booking__basis` (the basis in plain words), and `ul.ds-booking__docs`: a row with the "View agreement" button that opens K36, and a K44 row for the signed PDF, or the unavailable row. It carries the amount paid for the purchase, as the app gives it (a fact in the `dl`), and never the price of a part or a payment term (decided by the owner, 2026-10-23, correcting the rule of 2026-10-14). The kind is a Badge: purchase, `info` or neutral (the gift is a second kind the app names). Look: a purchase row (an icon by basis, the kind, the date, the units, the amount paid, a view button) on the Card; states: rest, PDF available, PDF not uploaded.
+Markup: `markup/booking-card.html`. A Card (`article.ds-card.ds-booking`, named by its heading): `header.ds-booking__head` (an icon box by basis, the title, a Badge with the basis in words), `dl.ds-booking__facts` (booked date, units, the amount paid; a gift carries no amount), `p.ds-booking__basis` (the basis in plain words), and `ul.ds-booking__docs`: a row with the "View agreement" button that opens K36, and a K44 row for the signed PDF, or the unavailable row. It carries the amount paid for the purchase, as the app gives it (a fact in the `dl`), and never the price of a part or a payment term (decided by the owner, 2026-10-23, correcting the rule of 2026-10-14). The kind is a Badge: purchase, `info` or neutral (the gift is a second kind the app names). Look: a purchase row (an icon by basis, the kind, the date, the units, the amount paid, a view button) on the Card; states: rest, PDF available, PDF not uploaded.
 
 ## K43 Invoice and QR block
 

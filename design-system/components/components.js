@@ -587,7 +587,7 @@
     var cl = e.target.closest('[data-dialog-close]');
     if (cl) { dialogClose(cl.closest('.ds-dialog')); return; }
     var t = e.target;
-    if (t.classList && t.classList.contains('ds-dialog') && !t.classList.contains('ds-dialog--inline') && t.getAttribute('data-lock') !== 'true') dialogClose(t);
+    if (t.classList && t.classList.contains('ds-dialog') && !t.classList.contains('ds-dialog--inline')) { if (t.getAttribute('data-lock') === 'true') { var lp = t.querySelector('.ds-dialog__panel'); if (lp) lp.focus(); } else dialogClose(t); }
   });
   document.addEventListener('keydown', function (e) {
     var d = e.target.closest && e.target.closest('.ds-dialog:not(.ds-dialog--inline):not([hidden])');

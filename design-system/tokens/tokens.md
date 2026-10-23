@@ -72,7 +72,7 @@
 | `--toggle-knob` | switch knob |
 | `--paper` | a ground that stays white in both themes: the QR pad and the frame of a sandboxed document, which paints no ground and expects white; text on it is never a theme text colour |
 | `--scrim` | the veil behind a sheet or a modal: `--neutral-950` at 50 percent, the same in both themes |
-| `--scrim-strong` | the veil under text laid on a photo: `--neutral-950` at 70 percent, the same in both themes; the existing scrim does not reach 4.5:1 over a bright photo (3.72 for white text over a white photo), this one gives 7.66 over a white photo, 13.74 over a mid-grey one and 20.17 over a black one |
+| `--scrim-strong` | the veil under text laid on a photo: `--neutral-950` at 70 percent, the same in both themes; the existing scrim does not reach 4.5:1 over a bright photo (3.74 for white text over a white photo, `contrast.json`), this one gives 7.63 over a white photo, 13.81 over a mid-grey one and 20.17 over a black one |
 | `--text-on-scrim` | text laid on a photo under a veil: `#FFFFFF` in both themes, because a photo does not change with the theme (`--text-inverse` and `--on-primary` turn dark at night); stands under `--scrim-strong` and never under `--scrim` alone |
 | `--icon-primary` | icon default |
 | `--icon-secondary` | icon supporting |

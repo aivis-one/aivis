@@ -350,13 +350,10 @@
   ],
   "tokens": [
    "--bg-subtle",
-   "--border-input",
    "--border-subtle",
    "--danger",
    "--danger-subtle",
    "--danger-subtle-text",
-   "--dur-fast",
-   "--ease-standard",
    "--font-mono",
    "--fs-3xs",
    "--fs-xs",
@@ -1022,6 +1019,7 @@
    "--border-input-width",
    "--border-subtle",
    "--control-height-lg",
+   "--control-height-md",
    "--dur-fast",
    "--ease-standard",
    "--focus-offset",
@@ -1065,6 +1063,7 @@
    "--space-safe-top",
    "--text-primary",
    "--text-secondary",
+   "--touch-comfortable",
    "--touch-min",
    "--tracking-tight",
    "--tracking-wide",
@@ -1551,16 +1550,13 @@
    "--fs-sm",
    "--fs-xs",
    "--lh-snug",
-   "--on-primary",
    "--primary",
    "--radius-md",
-   "--radius-pill",
    "--radius-sm",
    "--shadow-2",
    "--size-2xl",
    "--size-3xl",
    "--size-lg",
-   "--size-md",
    "--space-1",
    "--space-2",
    "--space-3",
@@ -1571,7 +1567,7 @@
   "accessibility": "The ARIA 1.2 combobox: an input with role=\"combobox\", aria-expanded, aria-controls (the listbox id), aria-autocomplete=\"list\" and aria-activedescendant naming the option the keyboard is on; a ul role=\"listbox\" named by the label of the field, each option role=\"option\" with an id and aria-selected; aria-disabled for an option that cannot be chosen. Focus stays in the input. Down opens and moves, Up moves back, Home and End go to the first and the last option while the list is open, Enter chooses, Escape closes (and then empties the text). A polite status (role=status, text from data-msg-count and data-msg-none) says how many results there are; the empty message is text. The active option is a tint and a bar at the start, never colour alone. Choosing shows a chip with the option's avatar, name and detail and a Clear button (aria-label from the translation tables) that returns the focus to the input. data-min-chars holds the shortest search the app wants. The component fires ds-combobox-query and ds-combobox-select; debounce and the request are the app's. Focus is the system outline on the input.",
   "purpose": "Finding one record by typing: a user by name or e-mail, a company.",
   "usage": "Use when the list is too long for a select (more than about ten). The result detail line holds what tells two people apart (e-mail, role).",
-  "notes": "A bordered result list --radius-md, a 32 px avatar, name --fs-sm 600, detail --fs-xs --text-secondary, a chip on --bg-subtle; the roles and the keys are those of the combobox; the result list stands on --bg-surface; the avatar is an initials disc (--primary, --on-primary, 700)."
+  "notes": "A bordered result list --radius-md, a 32 px avatar, name --fs-sm 600, detail --fs-xs --text-secondary, a chip on --bg-subtle; the roles and the keys are those of the combobox; the result list stands on --bg-surface; the avatar is the Avatar (K50) at data-size sm."
  },
  {
   "id": "K39",
@@ -1934,7 +1930,7 @@
    "--text-secondary",
    "--tracking-wide"
   ],
-  "accessibility": "An article named by its heading (aria-labelledby). The facts are a dl (booked date, units). The basis is a sentence. The agreement as HTML opens K36 from a button; the signed agreement is a K44 row. The icon box is aria-hidden; the kind is in the badge text. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "accessibility": "An article named by its heading (aria-labelledby). The facts are a dl (booked date, units, the amount paid; a gift carries no amount). The basis is a sentence. The agreement as HTML opens K36 from a button; the signed agreement is a K44 row. The icon box is aria-hidden; the kind is in the badge text. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Show one purchase of an investor's position with its basis and its two documents.",
   "usage": "One card per purchase. The card carries the amount paid for the purchase, as the app gives it, and never the price of a part or a payment term (decided by the owner, 2026-10-23, correcting the rule of 2026-10-14). KN1 is a placeholder id.",
   "notes": "An icon by basis, the kind, the date, the units, the amount paid, a view button, on the Card (K07), with the K44 row for the PDF and the K36 button."
@@ -2122,7 +2118,7 @@
     "none"
    ],
    "layout": [
-    ".ds-stats: two across on a phone, as many as fit above"
+    ".ds-stats: two across on a phone, up to four above"
    ]
   },
   "sizes": [
@@ -2344,7 +2340,7 @@
   ],
   "accessibility": "A photo is an img with alt text naming the person or the company; initials are a span with role=\"img\" and aria-label, or aria-hidden when the name stands beside the disc. The initials are --on-primary on --primary (8.48 day, 5.85 night).",
   "purpose": "Who a person or a company is, in one disc.",
-  "usage": "A company logo disc is an Avatar. The combobox (K38) keeps its own 32 px disc as its slot.",
+  "usage": "A company logo disc is an Avatar.",
   "notes": ""
  },
  {
