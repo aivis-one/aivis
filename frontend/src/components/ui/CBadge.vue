@@ -7,15 +7,15 @@ const props = defineProps<{
   text: string
 }>()
 
-// The cabinet's names on the system's Badge (K08): primary is `info`; the
-// system has no accent badge (its colours equal the warning badge's), so accent
-// is `warning`; neutral is the badge with no modifier.
+// The cabinet's names on the system's Badge (K08): primary and accent are the
+// `info` look (an accent badge is the info badge); neutral is the badge with no
+// modifier.
 const LOOKS = {
   success: 'ds-badge--success',
   warning: 'ds-badge--warning',
   danger: 'ds-badge--danger',
   primary: 'ds-badge--info',
-  accent: 'ds-badge--warning',
+  accent: 'ds-badge--info',
   neutral: undefined,
 } as const
 const look = computed(() => LOOKS[props.variant ?? 'neutral'])

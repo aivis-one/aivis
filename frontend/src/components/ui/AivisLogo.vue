@@ -13,7 +13,9 @@
 // be loaded. The wordmark is the drawn lettering, so it is the same shape at
 // every size and in every locale.
 
-withDefaults(
+import { computed } from 'vue'
+
+const props = withDefaults(
   defineProps<{
     height?: number
     showText?: boolean
@@ -25,23 +27,31 @@ withDefaults(
 )
 
 const baseUrl = import.meta.env.BASE_URL
+
+// The height is a step of the system's size scale (the colour mark is
+// --size-sm in the auth shell and in the menu, K33 and K25); the wordmark is
+// half of it. A number that is not a step takes the nearest step below it.
+const STEPS: Array<[number, string]> = [
+  [56, '--size-4xl'],
+  [48, '--size-3xl'],
+  [44, '--size-2xl'],
+  [40, '--size-xl'],
+  [36, '--size-lg'],
+  [32, '--size-md'],
+  [28, '--size-sm'],
+]
+const step = computed(() => (STEPS.find(([px]) => props.height >= px) ?? STEPS[STEPS.length - 1])[1])
 </script>
 
 <template>
-  <span class="aivis-logo">
-    <img
-      class="aivis-logo-icon"
-      :src="`${baseUrl}aivis-mark.svg`"
-      alt="AIVIS"
-      :style="{ inlineSize: height + 'px', blockSize: height + 'px' }"
-    />
+  <span class="aivis-logo" :style="{ '--_h': `var(${step})` }">
+    <img class="aivis-logo-icon" :src="`${baseUrl}aivis-mark.svg`" alt="AIVIS" />
     <svg
       v-if="showText"
       class="aivis-logo-wordmark"
       viewBox="237 453 120 25"
       role="img"
       aria-label="aivis.one"
-      :style="{ blockSize: Math.round(height * 0.5) + 'px' }"
     >
       <g fill="currentColor">
         <rect x="257.17" y="461.49" width="2.86" height="14.96" />
@@ -82,6 +92,8 @@ const baseUrl = import.meta.env.BASE_URL
 
 .aivis-logo-icon {
   flex-shrink: 0;
+  inline-size: var(--_h);
+  block-size: var(--_h);
 }
 
 /* currentColor: the wordmark follows the surrounding text colour, so it themes
@@ -89,6 +101,7 @@ const baseUrl = import.meta.env.BASE_URL
 .aivis-logo-wordmark {
   flex-shrink: 0;
   inline-size: auto;
+  block-size: calc(var(--_h) / 2);
   color: var(--text-primary);
 }
 </style>

@@ -1,13 +1,19 @@
 <script setup lang="ts">
-// The cabinet's own document window: fetches the static legal HTML the cabinet
-// ships (BASE_URL + legal/<lang>/<type>.html), keeps only the <body> content and
-// shows it in a CModal. Used by the onboarding signing screen and by the consent
-// line on the registration screen. The legal folder ships with our own repo, so
-// the body is rendered with v-html without sanitising.
+// The cabinet's own document window, on the design system's Document sheet and
+// viewer (K36), placement `modal`: fetches the static legal HTML the cabinet ships
+// (BASE_URL + legal/<lang>/<type>.html), keeps only the <body> content and shows it
+// in the viewer's scrollable body. Used by the onboarding signing screen and by the
+// consent line on the registration screen. The legal folder ships with our own
+// repo, so the body is rendered with v-html without sanitising.
+//
+// States: loading (the body is busy, with a Loader), loaded, error (an Alert with a
+// Retry). Escape, the close buttons and a click on the scrim close it.
 
-import { ref, watch } from 'vue'
+import { ref, toRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CModal } from '@/components/ui'
+import { CLoader } from '@/components/ui'
+import { AlertTriangle, X } from '@/components/ui/icons'
+import { useDialog } from '@/composables/useDialog'
 
 const props = defineProps<{
   open: boolean
@@ -19,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
+const titleId = useId()
 
 const content = ref('')
 const loading = ref(false)
@@ -49,6 +56,10 @@ async function load(): Promise<void> {
   }
 }
 
+// Escape, focus containment and focus restore.
+const dialogEl = ref<HTMLElement | null>(null)
+useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
+
 watch(
   () => props.open,
   (isOpen) => {
@@ -66,98 +77,62 @@ watch(
 </script>
 
 <template>
-  <CModal :open="open" @close="emit('close')">
-    <h3 class="doc-modal__title">
-      {{ title }}
-    </h3>
-    <div class="doc-modal__body">
-      <div v-if="loading" class="doc-modal__center">
-        <CLoader />
-      </div>
-      <p v-else-if="error" class="doc-modal__error">
-        {{ error }}
-      </p>
-      <!-- Trusted content: HTML authored in our own repo. -->
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-else class="doc-modal__content" v-html="content" />
-    </div>
-    <div class="doc-modal__actions">
-      <button
-        type="button"
-        class="doc-modal__close ds-button ds-button--primary"
-        @click="emit('close')"
+  <Teleport to="body">
+    <div v-if="open" class="ds-docviewer" data-variant="modal" @click.self="emit('close')">
+      <div
+        ref="dialogEl"
+        class="ds-docviewer__dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        tabindex="-1"
       >
-        {{ t('common.close') }}
-      </button>
+        <div class="ds-docviewer__head">
+          <h2 :id="titleId" class="ds-docviewer__title">{{ title }}</h2>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="t('common.close')"
+            @click="emit('close')"
+          >
+            <X size="sm" />
+          </button>
+        </div>
+        <div
+          class="ds-docviewer__body"
+          tabindex="0"
+          role="region"
+          :aria-labelledby="titleId"
+          :aria-busy="loading ? 'true' : undefined"
+        >
+          <CLoader v-if="loading" />
+          <div v-else-if="error" class="ds-alert ds-alert--danger" role="alert">
+            <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+            <div class="ds-alert__content">
+              <p class="ds-alert__text">{{ error }}</p>
+              <div class="ds-alert__actions">
+                <button
+                  type="button"
+                  class="ds-button ds-button--secondary"
+                  data-size="sm"
+                  @click="load"
+                >
+                  {{ t('common.retry') }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Trusted content: HTML authored in our own repo. -->
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div v-else v-html="content" />
+        </div>
+        <div class="ds-docviewer__actions">
+          <button type="button" class="ds-button ds-button--primary" @click="emit('close')">
+            {{ t('common.close') }}
+          </button>
+        </div>
+      </div>
     </div>
-  </CModal>
+  </Teleport>
 </template>
-
-<style scoped>
-.doc-modal__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-  padding-inline-end: var(--space-5); /* room for close button */
-  overflow-wrap: anywhere;
-}
-.doc-modal__body {
-  min-block-size: var(--center-sm);
-  max-block-size: 60vh;
-  overflow-y: auto;
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  margin-block-end: var(--space-4);
-}
-.doc-modal__center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-}
-
-.doc-modal__error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  text-align: center;
-  margin: 0;
-}
-.doc-modal__content {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.doc-modal__content :deep(h1) {
-  font-size: var(--fs-lg);
-  margin: 0 0 var(--space-3);
-}
-.doc-modal__content :deep(h2) {
-  font-size: var(--fs-body);
-  margin: var(--space-4) 0 var(--space-2);
-}
-.doc-modal__content :deep(p) {
-  margin: 0 0 var(--space-3);
-}
-.doc-modal__content :deep(ul),
-.doc-modal__content :deep(ol) {
-  margin: 0 0 var(--space-3);
-  padding-inline-start: var(--space-4-lg);
-}
-.doc-modal__content :deep(li) {
-  margin-block-end: var(--space-1);
-}
-.doc-modal__content :deep(table) {
-  display: block;
-  max-inline-size: 100%;
-  overflow-x: auto;
-}
-
-.doc-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-</style>

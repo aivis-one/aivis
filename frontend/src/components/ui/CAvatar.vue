@@ -1,5 +1,9 @@
 <script setup lang="ts">
-// Avatar — shows photo if url provided, otherwise initials from name.
+// Avatar, on the design system's Avatar (K50): a photo if a url is given, otherwise
+// the initials of the name on a disc. The system has three sizes; a number of
+// pixels is read as the nearest: up to 32 the small one, up to 40 the default, more
+// the large one (56). A photo carries the name as its alt text; initials are an
+// image role named by the name, or hidden when there is no name.
 
 import { computed } from 'vue'
 
@@ -15,39 +19,21 @@ const initials = computed(() => {
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
 })
+
+const step = computed(() => (props.size <= 32 ? 'sm' : props.size <= 40 ? undefined : 'lg'))
 </script>
 
 <template>
-  <img
-    v-if="url"
-    class="c-avatar"
-    :src="url"
-    :alt="name ?? ''"
-    :style="{ inlineSize: size + 'px', blockSize: size + 'px' }"
-  />
-  <div
+  <span v-if="url" class="ds-avatar" :data-size="step"
+    ><img :src="url" :alt="name ?? ''"
+  /></span>
+  <span
     v-else
-    class="c-avatar c-avatar--initials"
-    :style="{ inlineSize: size + 'px', blockSize: size + 'px', fontSize: size * 0.4 + 'px' }"
+    class="ds-avatar"
+    :data-size="step"
+    :role="name ? 'img' : undefined"
+    :aria-label="name || undefined"
+    :aria-hidden="name ? undefined : 'true'"
+    >{{ initials }}</span
   >
-    {{ initials }}
-  </div>
 </template>
-
-<style scoped>
-.c-avatar {
-  border-radius: var(--radius-pill);
-  object-fit: cover;
-  flex-shrink: 0;
-  border: calc(var(--border-input-width) * 2) solid var(--primary-hover);
-}
-.c-avatar--initials {
-  background: var(--primary);
-  color: var(--on-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  border: none;
-}
-</style>

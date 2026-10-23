@@ -77,7 +77,7 @@ function mountSection() {
 }
 
 function modalButton(label: string): HTMLButtonElement {
-  return Array.from(document.body.querySelectorAll('.c-modal-dialog button')).find((b) =>
+  return Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
     (b.textContent ?? '').includes(label),
   ) as HTMLButtonElement
 }
@@ -133,7 +133,7 @@ describe('the project profile section', () => {
       .find((b) => b.text().includes('staff.platform.profile.profileEditCta'))!
     await open.trigger('click')
     await flushPromises()
-    const name = document.body.querySelector('.c-modal-dialog input') as HTMLInputElement
+    const name = document.body.querySelector('.ds-dialog__panel input') as HTMLInputElement
     name.value = 'Project Two'
     name.dispatchEvent(new Event('input'))
     await flushPromises()
@@ -171,7 +171,7 @@ describe('the project profile section', () => {
     await flushPromises()
     // The inputs of the form, in order: name, logo, cover, promo video, presentation.
     const inputs = Array.from(
-      document.body.querySelectorAll('.c-modal-dialog input'),
+      document.body.querySelectorAll('.ds-dialog__panel input'),
     ) as HTMLInputElement[]
     const logo = inputs[1]!
     logo.value = ''

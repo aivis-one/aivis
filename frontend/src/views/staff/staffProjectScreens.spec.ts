@@ -107,7 +107,7 @@ describe('the staff Home', () => {
     signInAs(['kyc_approve'])
     const wrapper = mount(StaffDashboardView)
     await flushPromises()
-    const labels = wrapper.findAll('.c-stat__label').map((l) => l.text())
+    const labels = wrapper.findAll('.ds-stat__label').map((l) => l.text())
     expect(labels).toEqual([
       'staff.users.stat',
       'staff.home.queues.kyc',
@@ -121,8 +121,8 @@ describe('the staff Home', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffDashboardView)
     await flushPromises()
-    expect(wrapper.findAll('.c-stat')).toHaveLength(6)
-    const values = wrapper.findAll('.c-stat__value').map((v) => v.text())
+    expect(wrapper.findAll('.ds-stat')).toHaveLength(6)
+    const values = wrapper.findAll('.ds-stat__value').map((v) => v.text())
     expect(values).toEqual(['12', '3', '0', '0', '0', '0'])
     wrapper.unmount()
   })
@@ -133,9 +133,9 @@ describe('the staff Home', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffDashboardView)
     await flushPromises()
-    const cards = wrapper.findAll('.c-stat')
+    const cards = wrapper.findAll('.ds-stat')
     const failed = cards.find((c) => c.text().includes('staff.home.queues.withdrawals'))!
-    expect(failed.find('.c-stat__value').text()).toBe('—')
+    expect(failed.find('.ds-stat__value').text()).toBe('—')
     expect(failed.text()).toContain('staff.home.loadFailed')
     expect(wrapper.find('.staff-dash__failed').exists()).toBe(true)
     wrapper.unmount()
@@ -240,7 +240,7 @@ describe('a project: the pool of parts for sale', () => {
     await flushPromises()
     await wrapper.find('button').trigger('click')
     await flushPromises()
-    const create = Array.from(document.body.querySelectorAll('.c-modal-dialog button')).find((b) =>
+    const create = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
       (b.textContent ?? '').includes('staff.platform.pool.create'),
     ) as HTMLButtonElement
     create.click()
@@ -373,7 +373,7 @@ describe('a project: products', () => {
     await row.findAll('button')[1]!.trigger('click')
     await flushPromises()
     expect(updateStaffProductStatus).not.toHaveBeenCalled()
-    const confirm = Array.from(document.body.querySelectorAll('.c-modal-dialog button')).find((b) =>
+    const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
       (b.textContent ?? '').includes('staff.platform.products.archive'),
     ) as HTMLButtonElement
     confirm.click()

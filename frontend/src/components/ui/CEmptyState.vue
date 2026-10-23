@@ -1,47 +1,28 @@
 <script setup lang="ts">
-// Empty state placeholder with icon slot, title, and description.
+// Empty state, on the design system's Empty state (K48): nothing here yet, or a
+// load that failed. An icon (drawn at --icon-size-xl by the system whatever size
+// the caller passes), a title, a description capped at the reading measure, and an
+// actions slot (Retry, Create). `tone="danger"` tints the icon for a failed load
+// and gives the block role="alert"; `framed` draws the dashed frame.
 
-defineProps<{ title?: string; description?: string }>()
+defineProps<{
+  title?: string
+  description?: string
+  tone?: 'danger'
+  framed?: boolean
+}>()
 </script>
 
 <template>
-  <div class="c-empty">
-    <div class="c-empty__icon">
-      <slot name="icon" />
-    </div>
-    <div v-if="title" class="c-empty__title">
-      {{ title }}
-    </div>
-    <div v-if="description" class="c-empty__desc">
-      {{ description }}
-    </div>
+  <div
+    class="ds-empty"
+    :class="{ 'ds-empty--framed': framed }"
+    :data-tone="tone"
+    :role="tone === 'danger' ? 'alert' : undefined"
+  >
+    <span v-if="$slots.icon" class="ds-empty__icon"><slot name="icon" /></span>
+    <h3 v-if="title" class="ds-empty__title">{{ title }}</h3>
+    <p v-if="description" class="ds-empty__text">{{ description }}</p>
+    <div v-if="$slots.actions" class="ds-empty__actions"><slot name="actions" /></div>
   </div>
 </template>
-
-<style scoped>
-.c-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-block: var(--space-7);
-  padding-inline: var(--space-5);
-  text-align: center;
-}
-.c-empty__icon {
-  margin-block-end: var(--space-4);
-  color: var(--text-secondary);
-}
-.c-empty__title {
-  font-size: var(--fs-body);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-/* Descriptive text only: capped at the reading measure. */
-.c-empty__desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: var(--lh-normal);
-  max-inline-size: var(--maxw-prose);
-}
-</style>

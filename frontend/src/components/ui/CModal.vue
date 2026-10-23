@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-// Modal overlay. Closes on Escape, on overlay click (if allowed), or on the
-// close button.
+// Modal dialog, on the design system's Dialog (K52), placement `modal`: centred
+// on a wide screen, capped at the system's form width. Closes on Escape, on a
+// click on the scrim (if allowed), or on the close button.
+//
+// The caller's content is the dialog's body (the default slot). An optional
+// `title` is the dialog's heading and names it; without one the content carries
+// its own heading and the head holds the close button alone.
 
-import { ref, toRef } from 'vue'
+import { ref, toRef, useId } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X } from '@/components/ui/icons'
 import { useDialog } from '@/composables/useDialog'
 
@@ -12,6 +17,7 @@ const props = withDefaults(
     open: boolean
     closeOnOverlay?: boolean
     showClose?: boolean
+    title?: string
   }>(),
   { closeOnOverlay: true, showClose: true },
 )
@@ -23,10 +29,11 @@ function onOverlay(): void {
 }
 
 // A1: the close control is an icon with no text; its name must come from an
-// aria-label. This component had no i18n binding.
+// aria-label.
 const { t } = useI18n()
+const titleId = useId()
 
-// Escape, focus containment and focus restore. The overlay click was the only
+// Escape, focus containment and focus restore. The click on the scrim was the only
 // dismissal a keyboard could not perform.
 const dialogEl = ref<HTMLElement | null>(null)
 useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
@@ -34,81 +41,39 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
 
 <template>
   <Teleport to="body">
-    <Transition name="c-modal">
-      <div v-if="open" class="c-modal-overlay" @click.self="onOverlay">
-        <div ref="dialogEl" class="c-modal-dialog" role="dialog" aria-modal="true" tabindex="-1">
+    <div
+      v-if="open"
+      class="ds-dialog"
+      data-variant="modal"
+      :data-lock="closeOnOverlay ? undefined : 'true'"
+      @click.self="onOverlay"
+    >
+      <div
+        ref="dialogEl"
+        class="ds-dialog__panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="title ? titleId : undefined"
+        tabindex="-1"
+      >
+        <div v-if="title || showClose" class="ds-dialog__head">
+          <h2 v-if="title" :id="titleId" class="ds-dialog__title">{{ title }}</h2>
+          <span v-else aria-hidden="true" />
           <button
             v-if="showClose"
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
             :aria-label="t('common.close')"
-            class="c-modal-close"
             @click="emit('close')"
           >
-            <X :size="20" />
+            <X size="sm" />
           </button>
+        </div>
+        <div class="ds-dialog__body">
           <slot />
         </div>
       </div>
-    </Transition>
+    </div>
   </Teleport>
 </template>
-
-<style scoped>
-/* The system has no dialog; this one keeps its form and takes the system's
-   scrim, surface, modal radius, shadow and motion tokens. */
-.c-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: var(--scrim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5);
-}
-.c-modal-dialog {
-  background: var(--bg-surface);
-  border-radius: var(--radius-modal);
-  padding: var(--space-5);
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form-wide);
-  max-block-size: 90vh;
-  overflow-y: auto;
-  position: relative;
-  box-shadow: var(--shadow-deep);
-}
-.c-modal-close {
-  position: absolute;
-  inset-block-start: var(--space-3);
-  inset-inline-end: var(--space-3);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: var(--space-1);
-  display: flex;
-  align-items: center;
-}
-.c-modal-close:hover {
-  color: var(--text-primary);
-}
-
-/* Transition */
-.c-modal-enter-active,
-.c-modal-leave-active {
-  transition: opacity var(--dur-base) var(--ease-standard);
-}
-.c-modal-enter-active .c-modal-dialog,
-.c-modal-leave-active .c-modal-dialog {
-  transition: transform var(--dur-base) var(--ease-standard);
-}
-.c-modal-enter-from,
-.c-modal-leave-to {
-  opacity: 0;
-}
-.c-modal-enter-from .c-modal-dialog {
-  transform: scale(0.95);
-}
-.c-modal-leave-to .c-modal-dialog {
-  transform: scale(0.95);
-}
-</style>

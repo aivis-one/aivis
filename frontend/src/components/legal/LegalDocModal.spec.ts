@@ -1,5 +1,5 @@
 // LegalDocModal -- fetches legal/<lang>/<type>.html, shows only the body, and
-// closes by the close button (Escape is CModal's own, covered by the kit).
+// closes by the close button (the document viewer, K36).
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -27,7 +27,7 @@ describe('LegalDocModal', () => {
     await flushPromises()
     expect(fetchFn).toHaveBeenCalledWith(`${import.meta.env.BASE_URL}legal/en/cabinet_terms.html`)
     expect(document.body.textContent).toContain('Cabinet Terms')
-    expect(document.body.querySelector('.doc-modal__content h1')?.textContent).toBe('Terms')
+    expect(document.body.querySelector('.ds-docviewer__body h1')?.textContent).toBe('Terms')
     expect(document.body.textContent).not.toContain('<title>')
     w.unmount()
   })
@@ -44,8 +44,8 @@ describe('LegalDocModal', () => {
     stubFetch(false)
     const w = mount(LegalDocModal, { props, attachTo: document.body })
     await flushPromises()
-    expect(document.body.querySelector('.doc-modal__error')).not.toBeNull()
-    expect(document.body.querySelector('.doc-modal__content')).toBeNull()
+    expect(document.body.querySelector('.ds-alert--danger')).not.toBeNull()
+    expect(document.body.querySelector('.ds-docviewer__body h1')).toBeNull()
     w.unmount()
   })
 
@@ -53,7 +53,7 @@ describe('LegalDocModal', () => {
     stubFetch()
     const w = mount(LegalDocModal, { props, attachTo: document.body })
     await flushPromises()
-    ;(document.body.querySelector('.doc-modal__close') as HTMLElement).click()
+    ;(document.body.querySelector('.ds-docviewer__actions .ds-button') as HTMLElement).click()
     expect(w.emitted('close')).toHaveLength(1)
     w.unmount()
   })
