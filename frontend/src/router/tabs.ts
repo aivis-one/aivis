@@ -72,9 +72,24 @@ export const AGENT_MENU_EXTRA: TabItem[] = [
     labelKey: 'tab.installments',
     icon: 'CalendarClock',
   },
-  { id: 'network', path: '/agent/partners/network', labelKey: 'agent.partners.network', icon: 'Users' },
-  { id: 'commissions', path: '/agent/partners/commissions', labelKey: 'agent.partners.commissions', icon: 'Coins' },
-  { id: 'rating', path: '/agent/partners/rating', labelKey: 'agent.partners.rating', icon: 'BarChart3' },
+  {
+    id: 'network',
+    path: '/agent/partners/network',
+    labelKey: 'agent.partners.network',
+    icon: 'Users',
+  },
+  {
+    id: 'commissions',
+    path: '/agent/partners/commissions',
+    labelKey: 'agent.partners.commissions',
+    icon: 'Coins',
+  },
+  {
+    id: 'rating',
+    path: '/agent/partners/rating',
+    labelKey: 'agent.partners.rating',
+    icon: 'BarChart3',
+  },
   { id: 'balance', path: '/agent/partners/balance', labelKey: 'tab.balance', icon: 'Wallet' },
   { id: 'docs', path: '/agent/docs', labelKey: 'tab.docs', icon: 'FileText' },
   { id: 'kyc', path: '/verification', labelKey: 'tab.kyc', icon: 'ShieldCheck' },
@@ -82,16 +97,24 @@ export const AGENT_MENU_EXTRA: TabItem[] = [
   { id: 'faq', path: '/agent/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
 ]
 
+// The project account's five tabs: Home (the balance and the summary), Products,
+// Publications (posts, the roadmap, documents), Analytics, Settings. The balance
+// stands in the top bar, as in the other cabinets, and opens its own screen.
 export const COMPANY_TABS: TabItem[] = [
   { id: 'home', path: '/company/dashboard', labelKey: 'tab.comp.home', icon: 'Home' },
   { id: 'products', path: '/company/products', labelKey: 'tab.comp.products', icon: 'Package' },
+  {
+    id: 'publications',
+    path: '/company/publications',
+    labelKey: 'tab.comp.publications',
+    icon: 'Newspaper',
+  },
   {
     id: 'analytics',
     path: '/company/analytics',
     labelKey: 'tab.comp.analytics',
     icon: 'BarChart3',
   },
-  { id: 'balance', path: '/company/balance', labelKey: 'tab.comp.balance', icon: 'Wallet' },
   { id: 'settings', path: '/company/settings', labelKey: 'tab.comp.settings', icon: 'Settings' },
 ]
 

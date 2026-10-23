@@ -179,8 +179,8 @@
       "home": "Home",
       "products": "Products",
       "analytics": "Analytics",
-      "balance": "Balance",
-      "settings": "Settings"
+      "settings": "Settings",
+      "publications": "Publications"
     },
     "staff": {
       "home": "Home",
@@ -1597,19 +1597,18 @@
         "frozen": "On hold"
       },
       "pool": {
-        "title": "Option pool",
-        "equity": "equity",
-        "consumed": "consumed",
-        "remaining": "remaining"
+        "title": "Project pool",
+        "note": "The project's share of the gross receipts from sales of its product: {percent}% of the gross receipts. It stays zero until the product sells."
       },
       "metrics": {
-        "revenue": "Total revenue",
-        "optionsSold": "Options sold",
+        "revenue": "Gross receipts",
+        "optionsSold": "Parts sold",
         "products": "Products"
       },
       "recent": {
         "title": "Recent activity",
-        "empty": "No recent activity yet"
+        "empty": "No recent activity yet",
+        "all": "All operations"
       }
     },
     "products": {
@@ -1619,13 +1618,13 @@
       "errorRetry": "Retry",
       "empty": {
         "title": "No products yet",
-        "desc": "Contact support to add products to your company."
+        "desc": "Contact support to add products to your project."
       },
       "editViaSupport": "Product editing is handled via support."
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Your company profile",
+      "subtitle": "Your project",
       "errorTitle": "Could not load settings",
       "errorRetry": "Retry",
       "status": {
@@ -1638,8 +1637,8 @@
         "description": "Description",
         "status": "Status",
         "editTitle": "Edit profile",
-        "editSuccess": "Company profile updated",
-        "editError": "Could not update company profile",
+        "editSuccess": "Project profile updated",
+        "editError": "Could not update the project profile",
         "urlFormatError": "Must start with http:// or https://",
         "withdrawCta": "Withdraw from the store",
         "withdrawConfirmTitle": "Withdraw from the store?",
@@ -1650,27 +1649,15 @@
         "hiddenHint": "This project is hidden from the store. Only an AIVIS admin can republish it.",
         "archivedHint": "This project is archived by an AIVIS admin."
       },
-      "pricing": {
-        "title": "Pricing & supply",
-        "name": "Company name",
-        "pricePerUnit": "Price per unit",
-        "totalSupply": "Total supply",
-        "sharesPerOption": "Shares per option",
-        "editTitle": "Edit pricing & supply",
-        "editSuccess": "Pricing & supply updated",
-        "editError": "Could not update pricing & supply",
-        "fieldPricePerUnit": "Price per unit (USD)",
-        "nameRequired": "Company name is required",
-        "priceInvalid": "Enter a price greater than 0",
-        "totalSupplyInvalid": "Enter a whole number greater than 0",
-        "sharesPerOptionInvalid": "Enter a whole number greater than 0",
-        "priceChangeConfirmTitle": "Confirm price change",
-        "priceChangeConfirmBody": "This updates the price on every one of your products, including hidden ones, and deletes their installment plan templates. This cannot be undone.",
-        "priceChangeConfirmSubmit": "Change price"
-      },
       "distribution": {
-        "title": "Distribution config",
-        "empty": "No distribution config set."
+        "title": "Distribution of parts",
+        "rows": {
+          "sale": "Offered for sale",
+          "index": "Index of projects",
+          "bonus": "Bonus fund",
+          "reserve": "Reserve and parts of the company"
+        },
+        "hint": "The division is fixed and cannot be changed from the project account."
       },
       "links": {
         "title": "Media",
@@ -1679,22 +1666,6 @@
         "promoVideo": "Promo video",
         "presentation": "Presentation",
         "open": "Open"
-      },
-      "notifications": {
-        "title": "Notifications",
-        "cta": "View notifications"
-      },
-      "roadmap": {
-        "title": "Roadmap",
-        "cta": "Manage roadmap"
-      },
-      "posts": {
-        "title": "Posts",
-        "cta": "Manage posts"
-      },
-      "attachments": {
-        "title": "Attachments",
-        "cta": "Manage attachments"
       },
       "support": {
         "title": "Support",
@@ -1708,7 +1679,6 @@
         "title": "Activity",
         "cta": "View activity history"
       },
-      "adminManagedHint": "Distribution config is managed by AIVIS staff. Contact support to request a change.",
       "actions": {
         "title": "Account",
         "logout": "Sign out",
@@ -1811,8 +1781,32 @@
           "cancelBtn": "Cancel",
           "confirmBtn": "Deactivate",
           "errorIncorrectPassword": "Incorrect password",
-          "errorGeneric": "Something went wrong. Please try again."
+          "errorGeneric": "Something went wrong. Please try again.",
+          "errorActiveProducts": "A project cannot deactivate its account while a product is on sale. Hide or archive the product first."
         }
+      },
+      "person": {
+        "title": "Personal data",
+        "name": "Name",
+        "email": "E-mail",
+        "language": "Language",
+        "notSet": "Not set",
+        "editTitle": "Edit personal data",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "editSuccess": "Personal data updated",
+        "editError": "Could not update personal data"
+      },
+      "parts": {
+        "title": "Parts",
+        "price": "Price of a part",
+        "priceHint": "The price of a part is the fair value of the project divided by 1,000,000,000, the same for every project. It changes only when the project is revalued, never by a hand entry.",
+        "supply": "Parts for sale",
+        "supplyHint": "25% of the parts are offered for sale. Parts are never added."
+      },
+      "docs": {
+        "title": "Documents",
+        "cta": "Read the legal documents"
       }
     },
     "roadmap": {
@@ -1889,7 +1883,9 @@
       "updated": "Post updated",
       "deleted": "Post deleted",
       "deleteTitle": "Delete post",
-      "deleteConfirm": "This post will be deleted. This action cannot be undone."
+      "deleteConfirm": "This post will be deleted. This action cannot be undone.",
+      "preview": "Preview",
+      "previewNote": "This is how a buyer will see the post. Nothing is published yet."
     },
     "attachments": {
       "title": "Attachments",
@@ -1920,7 +1916,9 @@
       "fileReplaced": "File replaced",
       "deleted": "Attachment deleted",
       "deleteTitle": "Delete attachment",
-      "deleteConfirm": "This attachment will be hidden from all flows. The file stays in storage."
+      "deleteConfirm": "This attachment will be hidden from all flows. The file stays in storage.",
+      "download": "Open the file",
+      "downloadError": "Could not open the file"
     },
     "auditFeed": {
       "list": {
@@ -1961,14 +1959,16 @@
           "attachment_soft_deleted": "Document removed",
           "post_created": "Update published",
           "post_updated": "Update edited",
-          "post_deleted": "Update removed"
+          "post_deleted": "Update removed",
+          "attachment_hard_deleted": "Document deleted",
+          "supply_updated": "Supply updated"
         }
       },
       "field": {
         "name": "Name",
         "user_id": "Owner account",
         "total_supply": "Total supply",
-        "shares_per_option": "Shares per option",
+        "shares_per_option": "Shares per unit",
         "description": "Description",
         "logo_url": "Logo",
         "cover_url": "Cover image",
@@ -2012,26 +2012,31 @@
       "errorTitle": "Could not load analytics",
       "errorRetry": "Retry",
       "metrics": {
-        "totalRevenue": "Total revenue",
+        "totalRevenue": "Gross receipts",
         "thisMonth": "This month",
-        "optionsSold": "Options sold"
+        "optionsSold": "Parts sold"
       },
       "chart": {
         "title": "Sales by month",
         "empty": "No sales data yet",
         "range": "{start} — {end}",
-        "tooltipUnits": "{units} units"
+        "tooltipUnits": "{units} parts"
       },
       "byProduct": {
         "title": "By product",
         "empty": "No products yet",
-        "units": "{n} units",
+        "units": "{n} parts",
         "noSales": "No sales yet"
-      }
+      },
+      "period": {
+        "label": "Period",
+        "months": "{n} months"
+      },
+      "export": "Export CSV"
     },
     "balance": {
       "title": "Balance",
-      "subtitle": "Earnings, withdrawals, and payout details",
+      "subtitle": "The project's balance and its withdrawals",
       "errorTitle": "Could not load balance",
       "errorRetry": "Retry",
       "card": {
@@ -2063,26 +2068,67 @@
           "errorInsuffCard": "Insufficient balance",
           "errorPayout": "Configure payout details first",
           "error": "Could not create withdrawal",
-          "successToast": "Withdrawal request submitted"
+          "successToast": "Withdrawal request submitted",
+          "networkLabel": "Network",
+          "networkPlaceholder": "Choose a network",
+          "walletLabel": "Wallet address",
+          "walletPlaceholder": "Wallet address",
+          "errorWallet": "Enter a wallet address without spaces"
         }
       },
       "payout": {
         "title": "Payout details",
-        "empty": "No payout details set yet",
-        "editButton": "Edit details",
-        "form": {
-          "title": "Edit payout details",
-          "label": "Payout details (JSON)",
-          "placeholder": "Enter JSON object",
-          "hint": "Free-form JSON object. Replaces existing details on save.",
-          "submit": "Save",
-          "cancel": "Cancel",
-          "errorJson": "Must be valid JSON",
-          "errorObject": "Must be a JSON object",
-          "errorEmpty": "Add at least one payout field",
-          "error": "Could not save payout details",
-          "successToast": "Payout details updated"
-        }
+        "empty": "No payout details yet; they are saved with your first request"
+      },
+      "operations": "All operations",
+      "rule": "A withdrawal is at least {min} and at most {max}. The administrator reviews every request.",
+      "internalUse": "A withdrawal is used only inside AIVIS and changes no rights of the holders of parts.",
+      "active": {
+        "title": "Request in review",
+        "note": "The administrator is reviewing this request. Its status is shown here and in the history."
+      }
+    },
+    "header": {
+      "balance": "Balance"
+    },
+    "welcome": {
+      "title": "Welcome to the project account",
+      "intro": "Before you start, accept the documents of the cabinet. Read each one behind its link and tick it.",
+      "read": "Read",
+      "accept": "Continue",
+      "error": "Could not record the acceptance. Try again.",
+      "errorTitle": "Could not check the documents"
+    },
+    "publications": {
+      "title": "Publications",
+      "subtitle": "News, the roadmap and documents shown to buyers",
+      "viewOnStore": "View on the store",
+      "posts": {
+        "title": "Posts",
+        "desc": "News and updates on the project page"
+      },
+      "roadmap": {
+        "title": "Roadmap",
+        "desc": "Milestones, events and announcements"
+      },
+      "documents": {
+        "title": "Documents",
+        "desc": "Files and images shown to buyers"
+      },
+      "hint": "The project publishes posts, the roadmap and documents itself, without approval."
+    },
+    "operations": {
+      "title": "Operations",
+      "subtitle": "Sales, withdrawals and other movements of the project's balance",
+      "tabs": {
+        "sales": "Sales",
+        "withdrawals": "Withdrawals"
+      },
+      "type": {
+        "purchase:completed": "Sale",
+        "purchase:reversed": "Sale reversed",
+        "purchase:gift": "Bonus parts granted",
+        "installment:tranche_paid": "Instalment received"
       }
     }
   },

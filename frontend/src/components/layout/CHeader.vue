@@ -26,6 +26,7 @@ import CAppControls from '@/components/ui/CAppControls.vue'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useNotificationsStore } from '@/stores/notifications'
 import { formatPrice } from '@/utils/format'
 
@@ -96,16 +97,26 @@ function goToNotifications(): void {
 // account. A press on either opens the Balance screen.
 const dashboardStore = useDashboardStore()
 
+// The project account's top bar shows one figure: the project's balance (the
+// part of the gross receipts that is paid to the project), withdrawn on request.
+const companyDashboardStore = useCompanyDashboardStore()
+
+const isCompanyShell = computed(() => route.meta.shell === 'company')
+
 const showBalance = computed(
   () =>
     authStore.isAuthenticated &&
-    (route.meta.shell === 'investor' || route.meta.shell === 'agent'),
+    (route.meta.shell === 'investor' ||
+      route.meta.shell === 'agent' ||
+      route.meta.shell === 'company'),
 )
 
 const isAgentShell = computed(() => route.meta.shell === 'agent')
 
 const balanceDisplay = computed(() =>
-  formatPrice(dashboardStore.summary?.active_balance?.confirmed ?? 0, 'USD'),
+  isCompanyShell.value
+    ? formatPrice(companyDashboardStore.summary?.passive_balance?.confirmed ?? 0, 'USD')
+    : formatPrice(dashboardStore.summary?.active_balance?.confirmed ?? 0, 'USD'),
 )
 
 const commissionDisplay = computed(() =>
@@ -114,13 +125,26 @@ const commissionDisplay = computed(() =>
 
 function goToBalance(): void {
   void safeNavigate(
-    router.push({ name: route.meta.shell === 'agent' ? 'agent-balance' : 'investor-balance' }),
+    router.push({
+      name: isCompanyShell.value
+        ? 'company-balance'
+        : route.meta.shell === 'agent'
+          ? 'agent-balance'
+          : 'investor-balance',
+    }),
     '[CHeader] to balance',
   )
 }
 
 function loadBalanceIfNeeded(): void {
-  if (showBalance.value && !dashboardStore.summary && !dashboardStore.loading) {
+  if (!showBalance.value) return
+  if (isCompanyShell.value) {
+    if (!companyDashboardStore.summary && !companyDashboardStore.loading) {
+      void companyDashboardStore.refresh()
+    }
+    return
+  }
+  if (!dashboardStore.summary && !dashboardStore.loading) {
     void dashboardStore.refresh()
   }
 }
@@ -188,7 +212,7 @@ watch(showBell, (isAuth) => {
         v-else-if="showBalance"
         type="button"
         class="c-header__balance"
-        :aria-label="t('inv.header.balance')"
+        :aria-label="t(isCompanyShell ? 'comp.header.balance' : 'inv.header.balance')"
         @click="goToBalance"
       >
         <Wallet :size="18" aria-hidden="true" />

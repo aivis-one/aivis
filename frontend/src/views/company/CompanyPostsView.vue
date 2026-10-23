@@ -53,7 +53,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, Pencil, Trash2, Newspaper, Plus, X } from 'lucide-vue-next'
+import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X } from 'lucide-vue-next'
 import {
   CLoader,
   CButton,
@@ -69,7 +69,7 @@ import { ApiResponseError } from '@/api/client'
 import { fetchOwnPosts, createOwnPost, updateOwnPost, deleteOwnPost } from '@/api/company-posts'
 import type { PostResponse, CreateCompanyPostRequest, UpdateCompanyPostRequest } from '@/api/types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { showToast } = useToast()
 const router = useRouter()
 
@@ -165,6 +165,11 @@ const draftTitle = ref('')
 const draftBody = ref('')
 const draftCoverUrl = ref('')
 const draftTags = ref<string[]>([])
+
+// The preview: the post as a buyer will read it, built from the draft before
+// anything is published. Nothing is sent to the server.
+const showPreview = ref(false)
+const previewDate = computed<string>(() => new Date().toLocaleDateString(locale.value))
 const draftIsPublished = ref(false)
 
 // Tag chip-add: the in-progress tag text before Enter / comma commits it.
@@ -366,7 +371,7 @@ async function handleDelete(): Promise<void> {
 }
 
 function goBack(): void {
-  void router.push('/company/settings')
+  void router.push('/company/publications')
 }
 </script>
 
@@ -376,7 +381,7 @@ function goBack(): void {
     <div class="cpost__header">
       <button type="button" class="cpost__back" @click="goBack">
         <ArrowLeft :size="16" />
-        {{ t('comp.settings.title') }}
+        {{ t('comp.publications.title') }}
       </button>
       <h1 class="cpost__page-title">
         {{ t('comp.posts.title') }}
@@ -551,6 +556,10 @@ function goBack(): void {
         <CButton variant="outline" size="sm" @click="closeForm">
           {{ t('common.cancel') }}
         </CButton>
+        <CButton variant="outline" size="sm" @click="showPreview = true">
+          <Eye :size="16" />
+          {{ t('comp.posts.preview') }}
+        </CButton>
         <CButton
           variant="primary"
           size="sm"
@@ -559,6 +568,36 @@ function goBack(): void {
           @click="handleSave"
         >
           {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Preview: the post as a buyer will see it -->
+    <CModal :open="showPreview" @close="showPreview = false">
+      <p class="cpost__preview-note">
+        {{ t('comp.posts.previewNote') }}
+      </p>
+      <article class="cpost__preview">
+        <img
+          v-if="draftCoverUrl.trim() && coverUrlValid"
+          :src="draftCoverUrl.trim()"
+          :alt="draftTitle"
+          class="cpost__preview-cover"
+        />
+        <h3 class="cpost__preview-title">
+          {{ draftTitle }}
+        </h3>
+        <time class="cpost__preview-date">{{ previewDate }}</time>
+        <p class="cpost__preview-body">
+          {{ draftBody }}
+        </p>
+        <div v-if="draftTags.length > 0" class="cpost__chips">
+          <span v-for="tag in draftTags" :key="tag" class="cpost__chip">{{ tag }}</span>
+        </div>
+      </article>
+      <div class="cpost__modal-actions">
+        <CButton variant="outline" size="sm" @click="showPreview = false">
+          {{ t('common.close') }}
         </CButton>
       </div>
     </CModal>
@@ -810,5 +849,41 @@ function goBack(): void {
 }
 .cpost__chip-x:hover {
   color: var(--danger);
+}
+.cpost__preview-note {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3);
+}
+.cpost__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.cpost__preview-cover {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+.cpost__preview-title {
+  margin: 0;
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.cpost__preview-date {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.cpost__preview-body {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 </style>

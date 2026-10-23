@@ -25,6 +25,7 @@ import {
   Users,
   CreditCard,
   LayoutGrid,
+  Newspaper,
 } from 'lucide-vue-next'
 import type { TabItem } from '@/router/tabs'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -50,6 +51,7 @@ const iconMap: Record<string, Component> = {
   Users,
   CreditCard,
   LayoutGrid,
+  Newspaper,
 }
 
 function isActive(tab: TabItem): boolean {

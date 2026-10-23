@@ -1,117 +1,42 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- CompanySettingsView (Phase F5.2 B5)
+// AIVIS.ONE Frontend -- CompanySettingsView (the project account's Settings tab)
 // =============================================================================
 //
-// Settings tab inside CompanyShell. Read-only render of CompanyResponse
-// (the staff-side profile served by GET /companies/me, Sprint 4.5).
+// Settings tab inside CompanyShell, in the order a project looks for things:
+//   1. Hero -- logo, name, status.
+//   2. Personal block -- the name, the e-mail and the language of the person
+//      who works in the account.
+//   3. Profile -- description, status (or the "withdraw" button while the
+//      project is on sale), and a pencil that opens the profile and media form.
+//   4. Parts -- the price of a part and the parts for sale, READ ONLY. The price
+//      of a part is the fair value of the project divided by 1,000,000,000,
+//      one for every project; it changes only by a revaluation of the project,
+//      never by a hand entry here, and the parts for sale are 25 percent of the
+//      parts and never grow. Nothing on this screen writes either figure.
+//   5. Distribution -- the fixed division of the parts, a table, read only.
+//   6. Documents (the project's legal documents to read), Support, FAQ,
+//      Activity (the change log).
+//   7. Media links, then the account: two-factor authentication, sessions,
+//      notification preferences, deactivation, sign-out.
 //
-// CompanyShell renders the global CHeader and CTabBar -- this view has
-// only inline content with an <h1> + <p> page header, mirroring
-// InvestorSettingsView and the F5.1 dashboard.
+// Posts, the roadmap and documents of the project live on the Publications
+// tab; the balance in the top bar opens the balance screen.
 //
-// PRICING & SUPPLY EDIT POLICY (originally MVP READ-ONLY under TASK-30
-// ruling 10/12; TASK-39 item 6 supersedes that IN PART).
-//   Originally: Pricing & supply (price_per_unit_cents / total_supply /
-//   shares_per_option) and the distribution_config JSON stayed
-//   staff/admin-only by deliberate ruling ("the project describes,
-//   the admin owns and prices") -- rendered as plain read-only
-//   rows/JSON, backed by a short hint pointing at support.
+// A project may withdraw itself from the store (status -> hidden) through
+// PATCH /api/v1/companies/me while it is active. It may not republish itself or
+// archive itself: both are the administrator's, and this view shows a hidden or
+// archived project's status as plain text with a short explanation, never a
+// button that would only be refused.
 //
-//   TASK-39 item 6 (explicit owner decision, 2026-08): name,
-//   price_per_unit_cents, total_supply, and shares_per_option are now
-//   SELF-SERVICE EDITABLE, because every company on the platform today
-//   is the owner's own project rather than a third party. This is
-//   TIME-BOXED, not a repeal of ruling 10 -- it holds only while that
-//   remains true, and admin-side price/volume validation must land
-//   before the first non-owner company is onboarded (see
-//   TASK-39 item 6, owner ruling 2026-08-29). distribution_config stays
-//   read-only/admin-only, unaffected by this change -- still rendered
-//   as plain JSON with the support hint below it.
-//
-//   A price_per_unit_cents change is DESTRUCTIVE server-side: it
-//   cascades the new price to every active/hidden product and
-//   soft-deletes those products' installment plan templates
-//   (products/service.py::cascade_price(), reused as-is by the backend
-//   -- see companies/service.py::_apply_price_change). The edit flow
-//   below therefore shows a SEPARATE confirmation step naming that
-//   consequence before submitting a price change (see "Pricing &
-//   supply: self-service edit" below) -- the same withdraw/deactivate
-//   confirm-modal pattern already used elsewhere on this view, not a
-//   generic "Are you sure?". total_supply / shares_per_option changes
-//   are plain field writes with no cascade (nothing else in this
-//   codebase can change them post-creation either), so they submit
-//   directly like the Profile fields do.
-//
-//   TASK-30 ruling 12 carves out one narrow self-service write on
-//   STATUS: while ACTIVE, the project may withdraw itself
-//   (status -> HIDDEN) via PATCH /api/v1/companies/me
-//   (api/companies.ts::updateOwnCompany). It may NOT republish itself
-//   (HIDDEN -> ACTIVE) or archive itself -- both are staff-only,
-//   enforced server-side by update_own_company() which 400s any
-//   transition other than ACTIVE -> HIDDEN. This view mirrors that
-//   asymmetry: a HIDDEN or ARCHIVED company sees status as plain text
-//   with a short explanation, never a button that would just 400 when
-//   clicked.
-//
-//   W1 UPDATE: the other TASK-30 project-editable fields -- description /
-//   logo_url / cover_url / promo_video_url / presentation_url -- WERE
-//   flagged above as "not wired to editing here, out of scope for this
-//   pass". They now ARE wired: an edit pencil next to the Profile
-//   section title opens a form modal covering all five, PATCHes only
-//   the fields that actually changed (exclude_unset semantics --
-//   omitted fields are left alone server-side), and applies the
-//   response back onto the profile store on success. See the "Profile:
-//   self-service edit" block below for the diff-and-submit logic.
-//
-// SECTIONS, in render order:
-//   1. Hero card -- logo + name + status badge.
-//   2. Profile -- description, status (label + badge, or a "withdraw"
-//      CTA when ACTIVE -- see the Status self-service block below),
-//      plus an edit pencil that opens the profile/media form modal.
-//   3. Pricing & supply -- name, price_per_unit, total_supply,
-//      shares_per_option. Self-service editable (TASK-39 item 6, see
-//      the PRICING & SUPPLY EDIT POLICY note above), via an edit
-//      pencil next to the section title -- price changes route through
-//      a dedicated consequence-confirmation modal first.
-//   4. Distribution config -- raw JSON view (<pre>) of the JSONB
-//      object. The platform's revenue-split contract changes over
-//      time without a frontend release; rendering as JSON keeps the
-//      view honest and forward-compatible. Empty `{}` shows the
-//      "empty" placeholder line. Read-only, staff/admin-only, followed
-//      by a short hint that distribution config stays staff-managed.
-//   5. Media -- logo / cover / promo video / presentation as
-//      "Open" links. Skipped entirely if every URL is null -- these
-//      URLs are edited from the same modal as the Profile section
-//      (§2), not from a control in this section.
-//   6. Actions -- sign-out only. Without this, a company role has
-//      no way to leave the session.
-//
-// FIELDS DELIBERATELY OMITTED.
-//   - id / user_id        -- internal UUIDs, no operational use.
-//   - created_at          -- noise.
-//   - updated_at          -- noise.
-//   - currency            -- not on CompanyResponse; formatPrice
-//                            falls back to USD (TD-F08a).
-//
-// DATA SOURCE.
-//   companyProfile.loadIfMissing() -- cache-first. The dashboard view
-//   (F5.1 B2) typically loads it before the user reaches this tab,
-//   in which case onMounted is a no-op. On a hard refresh into
-//   /company/settings, the cache is empty and we fetch.
-//
-// RENDER POLICY.
-//   Same all-or-nothing pattern as the dashboard: full-screen loader
-//   until profile resolves; full-screen retry on error; everything
-//   else only after the profile is non-null. Avoids partial-state
-//   confusion.
+// DATA SOURCE. companyProfile.loadIfMissing() -- cache-first. Everything else
+// appears only after the profile is non-null; a failed load shows a retry.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Bell,
   ChevronRight,
   ExternalLink,
   FileText,
@@ -119,16 +44,12 @@ import {
   History,
   Image as ImageIcon,
   LogOut,
-  Layers,
-  Map as MapIcon,
   MessageCircle,
-  Newspaper,
-  Package,
   Pencil,
   Video,
 } from 'lucide-vue-next'
 
-import { CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
+import { CButton, CEmptyState, CInput, CLoader, CModal, CSelect, CTextarea } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -140,8 +61,11 @@ import { useToast } from '@/composables/useToast'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import { updateOwnCompany } from '@/api/companies'
+import { updateMe } from '@/api/users'
+import { setLocale } from '@/i18n'
+import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { ApiResponseError } from '@/api/client'
-import type { UpdateOwnCompanyRequest } from '@/api/types'
+import type { UpdateOwnCompanyRequest, UserUpdate } from '@/api/types'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -376,186 +300,91 @@ async function handleSaveProfile(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Pricing & supply: self-service edit (TASK-39 item 6)
+// Parts -- price and parts for sale, read only
 // ---------------------------------------------------------------------------
-//
-// Time-boxed supersession of TASK-30 ruling 10 (see the PRICING & SUPPLY
-// EDIT POLICY note at the top of this file): name, price_per_unit_cents,
-// total_supply, and shares_per_option are now project-editable.
-// distribution_config is NOT part of this form -- it stays read-only/
-// admin-only, unaffected.
-//
-// A price change is destructive server-side (cascade_price(): propagates
-// the new price to every active/hidden product and soft-deletes those
-// products' installment plan templates -- companies/service.py::
-// _apply_price_change reuses the exact same helper the staff price
-// endpoint uses). So the submit flow branches:
-//   - price UNCHANGED: PATCH fires immediately from the edit modal, same
-//     as the Profile edit flow above.
-//   - price CHANGED: the edit modal closes and a SEPARATE confirmation
-//     modal opens, naming that exact consequence (installment plan
-//     templates deleted) in place of a generic "Are you sure?" --
-//     mirrors the Withdraw confirm modal's two-step pattern above. The
-//     PATCH (covering the price change AND any other edited field in
-//     the same request) only fires after that second confirmation.
 
-const showEditPricing = ref(false)
-const savingPricing = ref(false)
-const showPriceChangeConfirm = ref(false)
+// The fixed division of the parts, in percent. Shown as a table; the project
+// does not edit it.
+const DISTRIBUTION_ROWS: readonly { key: string; percent: number }[] = [
+  { key: 'sale', percent: 25 },
+  { key: 'index', percent: 10 },
+  { key: 'bonus', percent: 14 },
+  { key: 'reserve', percent: 51 },
+]
 
-const draftName = ref('')
-const draftPriceDollars = ref('') // dollars, as typed -- converted to cents on submit
-const draftTotalSupply = ref('')
-const draftSharesPerOption = ref('')
+// ---------------------------------------------------------------------------
+// Personal block -- name, e-mail, language
+// ---------------------------------------------------------------------------
 
-// Holds the diffed body while the price-change confirmation modal is
-// open, so "Confirm" can submit exactly what "Save" computed without
-// re-diffing against a profile that may have been re-rendered.
-const pendingPricingUpdate = ref<UpdateOwnCompanyRequest | null>(null)
-
-function openEditPricing(): void {
-  const p = profile.value
-  if (!p) return
-  draftName.value = p.name
-  draftPriceDollars.value = (p.price_per_unit_cents / 100).toFixed(2)
-  draftTotalSupply.value = String(p.total_supply)
-  draftSharesPerOption.value = String(p.shares_per_option)
-  showEditPricing.value = true
+function userProfile(): Record<string, unknown> {
+  const p = authStore.user?.profile
+  return p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
 }
 
-function closeEditPricing(): void {
-  showEditPricing.value = false
+const firstName = computed<string>(() => {
+  const v = userProfile().first_name
+  return typeof v === 'string' ? v : ''
+})
+const lastName = computed<string>(() => {
+  const v = userProfile().last_name
+  return typeof v === 'string' ? v : ''
+})
+const personName = computed<string>(() =>
+  [firstName.value, lastName.value].filter(Boolean).join(' ').trim(),
+)
+const personEmail = computed<string>(() => authStore.user?.email ?? '')
+const currentLanguage = computed<string>(() => authStore.user?.language ?? '')
+const languageLabel = computed<string>(
+  () =>
+    SUPPORTED_LOCALES.find((l) => l.code === currentLanguage.value)?.label ?? currentLanguage.value,
+)
+const languageOptions = SUPPORTED_LOCALES.map((l) => ({ value: l.code, label: l.label }))
+
+const showEditPerson = ref(false)
+const savingPerson = ref(false)
+const draftFirstName = ref('')
+const draftLastName = ref('')
+const draftLanguage = ref('')
+
+function openEditPerson(): void {
+  draftFirstName.value = firstName.value
+  draftLastName.value = lastName.value
+  draftLanguage.value = currentLanguage.value
+  showEditPerson.value = true
 }
 
-const trimmedName = computed<string>(() => draftName.value.trim())
-const nameValid = computed<boolean>(() => trimmedName.value.length > 0)
-
-// Parse the dollar draft into integer cents, same rule as
-// StaffCompanyPriceSection: null (invalid) when not a positive number.
-const draftPriceCents = computed<number | null>(() => {
-  const v = draftPriceDollars.value.trim()
-  if (!v) return null
-  const dollars = Number(v)
-  if (Number.isNaN(dollars) || dollars <= 0) return null
-  return Math.round(dollars * 100)
-})
-const priceValid = computed<boolean>(() => draftPriceCents.value !== null)
-
-const draftTotalSupplyInt = computed<number | null>(() => {
-  const v = draftTotalSupply.value.trim()
-  if (!v) return null
-  const n = Number(v)
-  if (!Number.isInteger(n) || n <= 0) return null
-  return n
-})
-const totalSupplyValid = computed<boolean>(() => draftTotalSupplyInt.value !== null)
-
-const draftSharesPerOptionInt = computed<number | null>(() => {
-  const v = draftSharesPerOption.value.trim()
-  if (!v) return null
-  const n = Number(v)
-  if (!Number.isInteger(n) || n <= 0) return null
-  return n
-})
-const sharesPerOptionValid = computed<boolean>(() => draftSharesPerOptionInt.value !== null)
-
-const canSubmitPricing = computed<boolean>(
-  () => nameValid.value && priceValid.value && totalSupplyValid.value && sharesPerOptionValid.value,
+const canSubmitPerson = computed<boolean>(
+  () => draftFirstName.value.trim().length > 0 && draftLastName.value.trim().length > 0,
 )
 
-// Diff against the loaded profile -- send only fields that changed,
-// same exclude_unset contract as buildProfileUpdateBody above.
-function buildPricingUpdateBody(): UpdateOwnCompanyRequest {
-  const body: UpdateOwnCompanyRequest = {}
-  const p = profile.value
-  if (!p || draftPriceCents.value === null || draftTotalSupplyInt.value === null) return body
-  if (draftSharesPerOptionInt.value === null) return body
-
-  if (trimmedName.value !== p.name) {
-    body.name = trimmedName.value
-  }
-  if (draftPriceCents.value !== p.price_per_unit_cents) {
-    body.price_per_unit_cents = draftPriceCents.value
-  }
-  if (draftTotalSupplyInt.value !== p.total_supply) {
-    body.total_supply = draftTotalSupplyInt.value
-  }
-  if (draftSharesPerOptionInt.value !== p.shares_per_option) {
-    body.shares_per_option = draftSharesPerOptionInt.value
-  }
-
-  return body
-}
-
-async function handleSavePricing(): Promise<void> {
-  if (!canSubmitPricing.value) return
-
-  const body = buildPricingUpdateBody()
+async function handleSavePerson(): Promise<void> {
+  if (!canSubmitPerson.value) return
+  const body: UserUpdate = {}
+  const changes: Record<string, unknown> = {}
+  if (draftFirstName.value.trim() !== firstName.value)
+    changes.first_name = draftFirstName.value.trim()
+  if (draftLastName.value.trim() !== lastName.value) changes.last_name = draftLastName.value.trim()
+  if (Object.keys(changes).length > 0) body.profile = changes
+  const newLanguage =
+    draftLanguage.value && draftLanguage.value !== currentLanguage.value ? draftLanguage.value : ''
+  if (newLanguage) body.language = newLanguage
   if (Object.keys(body).length === 0) {
-    showEditPricing.value = false
+    showEditPerson.value = false
     return
   }
-
-  // Price is changing -- hand off to the dedicated consequence
-  // confirmation instead of PATCHing directly.
-  if (body.price_per_unit_cents !== undefined) {
-    pendingPricingUpdate.value = body
-    showEditPricing.value = false
-    showPriceChangeConfirm.value = true
-    return
-  }
-
-  await submitPricingUpdate(body)
-}
-
-async function submitPricingUpdate(body: UpdateOwnCompanyRequest): Promise<void> {
-  savingPricing.value = true
+  savingPerson.value = true
   try {
-    const updated = await updateOwnCompany(body)
-    profileStore.applyProfile(updated)
-    showEditPricing.value = false
-    showPriceChangeConfirm.value = false
-    pendingPricingUpdate.value = null
-    showToast(t('comp.settings.pricing.editSuccess'), 'success')
-  } catch (err) {
-    const message =
-      err instanceof ApiResponseError && err.detail
-        ? err.detail
-        : t('comp.settings.pricing.editError')
-    showToast(message, 'error')
+    await updateMe(body)
+    await authStore.fetchMe()
+    if (newLanguage) await setLocale(newLanguage)
+    showEditPerson.value = false
+    showToast(t('comp.settings.person.editSuccess'), 'success')
+  } catch {
+    showToast(t('comp.settings.person.editError'), 'error')
   } finally {
-    savingPricing.value = false
+    savingPerson.value = false
   }
 }
-
-async function handleConfirmPriceChange(): Promise<void> {
-  if (!pendingPricingUpdate.value) return
-  await submitPricingUpdate(pendingPricingUpdate.value)
-}
-
-function cancelPriceChangeConfirm(): void {
-  showPriceChangeConfirm.value = false
-  pendingPricingUpdate.value = null
-}
-
-// ---------------------------------------------------------------------------
-// Distribution config -- JSON view
-// ---------------------------------------------------------------------------
-
-const distributionJson = computed<string>(() => {
-  const cfg = profile.value?.distribution_config
-  if (!cfg) return ''
-  // Pretty-print with 2-space indent. Object guaranteed to be plain
-  // JSON-able by the backend contract (Record<string, unknown> over
-  // the wire as JSONB).
-  return JSON.stringify(cfg, null, 2)
-})
-
-const hasDistributionConfig = computed<boolean>(() => {
-  const cfg = profile.value?.distribution_config
-  if (!cfg) return false
-  return Object.keys(cfg).length > 0
-})
 
 // ---------------------------------------------------------------------------
 // Media links -- show the section only if at least one is set
@@ -680,6 +509,33 @@ onMounted(() => {
         </div>
       </section>
 
+      <!-- Personal block -->
+      <section class="cset__section">
+        <div class="cset__section-title cset__section-title--row">
+          <span>{{ t('comp.settings.person.title') }}</span>
+          <button
+            type="button"
+            class="cset__edit-btn"
+            :aria-label="t('common.edit')"
+            @click="openEditPerson"
+          >
+            <Pencil :size="14" />
+          </button>
+        </div>
+        <div class="cset__row">
+          <span class="cset__row-label">{{ t('comp.settings.person.name') }}</span>
+          <span class="cset__row-value">{{ personName || t('comp.settings.person.notSet') }}</span>
+        </div>
+        <div class="cset__row">
+          <span class="cset__row-label">{{ t('comp.settings.person.email') }}</span>
+          <span class="cset__row-value">{{ personEmail }}</span>
+        </div>
+        <div class="cset__row">
+          <span class="cset__row-label">{{ t('comp.settings.person.language') }}</span>
+          <span class="cset__row-value">{{ languageLabel }}</span>
+        </div>
+      </section>
+
       <!-- Profile -->
       <section v-if="profile.description || status" class="cset__section">
         <div class="cset__section-title cset__section-title--row">
@@ -721,64 +577,50 @@ onMounted(() => {
         </p>
       </section>
 
-      <!-- Notifications (Phase 6, the bell) -- same "no dead 6th tab-bar
-           slot" reasoning as the Roadmap/Posts/Attachments rows below:
-           COMPANY_TABS has 5 fixed slots, so a route not on the tab bar
-           gets a settings row instead. Investor/Agent/StaffMoreView all
-           got an equivalent tile added for this same route; this row is
-           company's version of the same entry point (an adversarial
-           review of the notifications build caught that company had
-           been left without one, reachable only via the header bell). -->
+      <!-- Parts: the price of a part and the parts for sale, read only -->
       <section class="cset__section">
         <div class="cset__section-title">
-          {{ t('comp.settings.notifications.title') }}
+          {{ t('comp.settings.parts.title') }}
         </div>
-        <RouterLink to="/company/notifications" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <Bell :size="16" />
-            {{ t('comp.settings.notifications.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
+        <div class="cset__row">
+          <span class="cset__row-label">{{ t('comp.settings.parts.price') }}</span>
+          <span class="cset__row-value">{{ formatPrice(profile.price_per_unit_cents) }}</span>
+        </div>
+        <p class="cset__status-hint">
+          {{ t('comp.settings.parts.priceHint') }}
+        </p>
+        <div class="cset__row">
+          <span class="cset__row-label">{{ t('comp.settings.parts.supply') }}</span>
+          <span class="cset__row-value">{{ formatNumber(profile.total_supply, locale) }}</span>
+        </div>
+        <p class="cset__status-hint">
+          {{ t('comp.settings.parts.supplyHint') }}
+        </p>
       </section>
 
-      <!-- Roadmap (TASK-30 self-service, §4) -->
+      <!-- Distribution: the fixed division of the parts, read only -->
       <section class="cset__section">
         <div class="cset__section-title">
-          {{ t('comp.settings.roadmap.title') }}
+          {{ t('comp.settings.distribution.title') }}
         </div>
-        <RouterLink to="/company/roadmap" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <MapIcon :size="16" />
-            {{ t('comp.settings.roadmap.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
+        <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="cset__row">
+          <span class="cset__row-label">{{ t(`comp.settings.distribution.rows.${row.key}`) }}</span>
+          <span class="cset__row-value">{{ row.percent }}%</span>
+        </div>
+        <p class="cset__status-hint">
+          {{ t('comp.settings.distribution.hint') }}
+        </p>
       </section>
 
-      <!-- Posts (TASK-30 self-service, §4, W4) -->
+      <!-- Documents: the project's legal documents to read -->
       <section class="cset__section">
         <div class="cset__section-title">
-          {{ t('comp.settings.posts.title') }}
+          {{ t('comp.settings.docs.title') }}
         </div>
-        <RouterLink to="/company/posts" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <Newspaper :size="16" />
-            {{ t('comp.settings.posts.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
-      </section>
-
-      <!-- Attachments (TASK-30 self-service, §4) -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.attachments.title') }}
-        </div>
-        <RouterLink to="/company/attachments" class="cset__row cset__row--clickable">
+        <RouterLink to="/company/docs" class="cset__row cset__row--clickable">
           <span class="cset__row-label">
             <FileText :size="16" />
-            {{ t('comp.settings.attachments.cta') }}
+            {{ t('comp.settings.docs.cta') }}
           </span>
           <ChevronRight :size="16" />
         </RouterLink>
@@ -839,77 +681,6 @@ onMounted(() => {
           <ChevronRight :size="16" />
         </RouterLink>
       </section>
-
-      <!-- Pricing & supply (TASK-39 item 6: self-service editable) -->
-      <section class="cset__section">
-        <div class="cset__section-title cset__section-title--row">
-          <span>{{ t('comp.settings.pricing.title') }}</span>
-          <button
-            type="button"
-            class="cset__edit-btn"
-            :aria-label="t('common.edit')"
-            @click="openEditPricing"
-          >
-            <Pencil :size="14" />
-          </button>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">
-            {{ t('comp.settings.pricing.name') }}
-          </span>
-          <span class="cset__row-value">
-            {{ profile.name }}
-          </span>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">
-            <Package :size="16" />
-            {{ t('comp.settings.pricing.pricePerUnit') }}
-          </span>
-          <span class="cset__row-value">
-            {{ formatPrice(profile.price_per_unit_cents) }}
-          </span>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">
-            <Layers :size="16" />
-            {{ t('comp.settings.pricing.totalSupply') }}
-          </span>
-          <span class="cset__row-value">
-            {{ formatNumber(profile.total_supply, locale) }}
-          </span>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">
-            {{ t('comp.settings.pricing.sharesPerOption') }}
-          </span>
-          <span class="cset__row-value">
-            {{ formatNumber(profile.shares_per_option, locale) }}
-          </span>
-        </div>
-      </section>
-
-      <!-- Distribution config -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.distribution.title') }}
-        </div>
-        <div v-if="!hasDistributionConfig" class="cset__row">
-          <span class="cset__row-label cset__row-label--muted">
-            {{ t('comp.settings.distribution.empty') }}
-          </span>
-        </div>
-        <pre v-else class="cset__json">{{ distributionJson }}</pre>
-      </section>
-
-      <!-- Distribution config stays staff/admin-only (TASK-30 ruling,
-           unaffected by TASK-39 item 6's pricing/supply supersession
-           above) -- this replaces the old page-wide "contact support
-           to edit" hint now that description/media/pricing/supply are
-           all self-service. -->
-      <p class="cset__hint">
-        {{ t('comp.settings.adminManagedHint') }}
-      </p>
 
       <!-- Media links -->
       <section v-if="mediaLinks.length > 0" class="cset__section">
@@ -1039,86 +810,38 @@ onMounted(() => {
         </div>
       </CModal>
 
-      <!-- Pricing & supply edit modal (TASK-39 item 6): name, price,
-           total supply, shares per option. distribution_config is NOT
-           here -- stays admin-only, unaffected. A price change does
-           NOT submit from here -- Save hands off to the price-change
-           confirmation modal below when the price was edited. -->
-      <CModal :open="showEditPricing" @close="closeEditPricing">
+      <!-- Personal block edit modal: name and language -->
+      <CModal :open="showEditPerson" @close="showEditPerson = false">
         <h3 class="cset__modal-title">
-          {{ t('comp.settings.pricing.editTitle') }}
+          {{ t('comp.settings.person.editTitle') }}
         </h3>
-
         <CInput
-          v-model="draftName"
-          :label="t('comp.settings.pricing.name')"
-          maxlength="500"
-          :error="!nameValid ? t('comp.settings.pricing.nameRequired') : ''"
+          v-model="draftFirstName"
+          :label="t('comp.settings.person.firstName')"
+          maxlength="100"
         />
-
         <CInput
-          v-model="draftPriceDollars"
-          type="number"
-          :label="t('comp.settings.pricing.fieldPricePerUnit')"
-          :placeholder="t('staff.platform.price.fieldPricePlaceholder')"
-          :error="!priceValid ? t('comp.settings.pricing.priceInvalid') : ''"
+          v-model="draftLastName"
+          :label="t('comp.settings.person.lastName')"
+          maxlength="100"
         />
-
-        <CInput
-          v-model="draftTotalSupply"
-          type="number"
-          :label="t('comp.settings.pricing.totalSupply')"
-          :error="!totalSupplyValid ? t('comp.settings.pricing.totalSupplyInvalid') : ''"
+        <CSelect
+          v-model="draftLanguage"
+          :label="t('comp.settings.person.language')"
+          :options="languageOptions"
         />
-
-        <CInput
-          v-model="draftSharesPerOption"
-          type="number"
-          :label="t('comp.settings.pricing.sharesPerOption')"
-          :error="!sharesPerOptionValid ? t('comp.settings.pricing.sharesPerOptionInvalid') : ''"
-        />
-
         <div class="cset__modal-actions">
-          <CButton variant="outline" size="sm" @click="closeEditPricing">
+          <CButton variant="outline" size="sm" @click="showEditPerson = false">
             {{ t('common.cancel') }}
           </CButton>
           <CButton
             variant="primary"
             size="sm"
-            :loading="savingPricing"
-            :disabled="!canSubmitPricing"
-            @click="handleSavePricing"
+            :loading="savingPerson"
+            :disabled="!canSubmitPerson"
+            @click="handleSavePerson"
           >
             {{ t('common.save') }}
-          </CButton>
-        </div>
-      </CModal>
-
-      <!-- Price-change consequence confirmation (TASK-39 item 6). Only
-           shown when the pricing form's Save included a price change --
-           names the EXACT server-side consequence (cascade_price():
-           price propagated to every active/hidden product, their
-           installment plan templates deleted) rather than a generic
-           "Are you sure?". Mirrors the Withdraw confirm modal's
-           two-step pattern above. -->
-      <CModal :open="showPriceChangeConfirm" @close="cancelPriceChangeConfirm">
-        <h3 class="cset__modal-title">
-          {{ t('comp.settings.pricing.priceChangeConfirmTitle') }}
-        </h3>
-        <p class="cset__modal-hint">
-          {{ t('comp.settings.pricing.priceChangeConfirmBody') }}
-        </p>
-        <div class="cset__modal-actions">
-          <CButton variant="outline" size="sm" @click="cancelPriceChangeConfirm">
-            {{ t('common.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
-            size="sm"
-            :loading="savingPricing"
-            @click="handleConfirmPriceChange"
-          >
-            {{ t('comp.settings.pricing.priceChangeConfirmSubmit') }}
           </CButton>
         </div>
       </CModal>

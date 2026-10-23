@@ -1,89 +1,25 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- CompanyDashboardView (Phase F5.1 B2 + B3)
+// AIVIS.ONE Frontend -- CompanyDashboardView (the project account's Home tab)
 // =============================================================================
 //
-// Company home screen. Rendered by CompanyShell at /company/dashboard
-// (the "home" tab). Shell already paints CHeader + CTabBar, so this
-// view is a plain content column -- no embedded CHeader (mirrors
-// MarketView / InvestorDashboardView convention for top-level tab views).
+// What the project sees first: the balance, the project's pool, three figures
+// and the recent operations. Every block is a link to the screen that holds its
+// detail (the balance, the operations, the analytics, the products), and every
+// block stands on its own: a failed request removes only the blocks it feeds
+// and leaves a retry in their place.
 //
-// WIDGETS, in render order:
-//
-//   1. Page header -- title + subtitle, no data call.
-//
-//   2. Hero card -- company identity. Logo with initials fallback +
-//      company name. Non-clickable: Settings (where the company can
-//      view its profile in read-only) lands in F5.2 B5; routing it
-//      from here today would lead to the stub.
-//
-//   3. Balance card -- passive_balance.confirmed (large) plus an
-//      "On hold" hint for frozen > 0. Non-clickable in B2 -- the
-//      Balance view is a stub until F5.2 B3.
-//
-//   4. Pool widget (B3) -- only when summary.pool is non-null.
-//      consumed / total progress bar + equity_percent + remaining
-//      caption. The pool is created by staff during company setup;
-//      a freshly-created company without a pool is a legitimate
-//      transient state, not an error -- so we hide the widget
-//      entirely instead of rendering a placeholder. Non-clickable:
-//      pool management is a staff-side concern.
-//
-//   5. Metrics row -- three CStatCard tiles: total revenue, options
-//      sold (sale + installment_tranche, Sprint 4.6 hotfix on the
-//      backend), products count.
-//
-//   6. Recent transactions (B3) -- list of summary.recent_transactions
-//      (last 20, embedded in the dashboard payload by the backend).
-//      Read-only feed: no detail-sheet click in B3 -- the full
-//      transactions view for the company role is a future scope item.
-//      MUST NOT issue a separate /transactions fetch -- the embed is
-//      the contract.
-//
-// DEFERRED.
-//   i18n JSON keys (`comp.dashboard.*`) + null-state polish = B4.
-//   Until B4 lands, vue-i18n's missing-key fallback echoes the raw
-//   key for static labels; for transaction TYPE labels we use
-//   tOrRaw so the bare type token (e.g. "purchase:completed")
-//   shows instead of the dotted i18n path -- considerably more
-//   readable while we wait for the catalogue.
-//
-// DATA FLOW.
-//   onMounted fires Promise.all over loadIfMissing() (profile,
-//   cache-first) and refresh() (dashboard, always re-fetches because
-//   balances and counters move with every purchase / withdrawal).
-//   The two probes are independent on the network but coupled in
-//   the UI: see RENDER POLICY.
-//
-// RENDER POLICY -- ALL OR NOTHING.
-//   The view has three top-level states:
-//     - initialLoading: full-screen CLoader. Holds until BOTH stores
-//                       have populated (or one errors). Avoids the
-//                       fast-store / slow-store flash where balance
-//                       briefly shows $0 because passive_balance is
-//                       defaulted via `?? 0` while the dashboard
-//                       fetch is still running.
-//     - hasError:       full-screen CEmptyState + Retry. Any error
-//                       on either store routes here -- a partial
-//                       dashboard with a working hero but a broken
-//                       balance card would be confusingly broken
-//                       rather than obviously broken.
-//     - loaded:         the actual content. Both stores are
-//                       guaranteed non-null and error-free.
-//
-// AUTH ASSUMPTIONS.
-//   CompanyShell sits behind the auth + role guard (meta.roles =
-//   ['company']), so this component can assume an authenticated
-//   company-role user. Backend serves /companies/me + /company/dashboard
-//   behind get_current_company_profile, returning 403 to anyone
-//   without a CompanyProfile -- which the route guard already
-//   prevents from reaching here.
+// THE POOL. The project's pool is the project's share of the gross receipts
+// from sales of its product: a fixed 15 percent of them. It is zero until the
+// product sells, and it is computed here from the gross receipts the summary
+// carries, so it never shows a number the sales have not produced.
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowUpRight,
+  ChevronRight,
   CreditCard,
   Layers,
   Package,
@@ -95,34 +31,31 @@ import {
 } from 'lucide-vue-next'
 import type { Component } from 'vue'
 
-import { CButton, CEmptyState, CLoader, CProgressBar, CStatCard } from '@/components/ui'
+import { CButton, CLoader, CStatCard } from '@/components/ui'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
-import type { CompanyTransactionResponse, PoolEmbedResponse } from '@/api/types'
-import { formatNumber, formatPrice, formatSignedPrice } from '@/utils/format'
+import type { CompanyTransactionResponse } from '@/api/types'
+import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
+
+// The share of the gross receipts that forms the project's pool, in percent.
+const POOL_PERCENT = 15
 
 const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
 const dashboardStore = useCompanyDashboardStore()
 
 // ---------------------------------------------------------------------------
-// Hero -- profile-derived
+// Identity
 // ---------------------------------------------------------------------------
 
 const companyName = computed<string>(() => profileStore.profile?.name ?? '')
 const logoUrl = computed<string | null>(() => profileStore.profile?.logo_url ?? null)
 
-/**
- * Initials fallback when logo_url is null. Takes the first letter of
- * up to two whitespace-separated chunks: "Test Company" -> "TC",
- * "Acme" -> "A". Always uppercase. Falls back to a single 'C' on the
- * theoretically-impossible empty-name case so the avatar tile never
- * renders blank.
- */
+/** Initials when there is no logo: the first letters of up to two words. */
 const initials = computed<string>(() => {
   const name = companyName.value.trim()
-  if (!name) return 'C'
+  if (!name) return 'P'
   return name
     .split(/\s+/)
     .slice(0, 2)
@@ -131,131 +64,59 @@ const initials = computed<string>(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Balance + metrics + pool -- dashboard-derived
-//
-// These computed fields default to 0 / null via `?? 0` / `?? null` so the
-// template never needs a null guard on summary itself. The
-// all-or-nothing render policy guarantees they are not read until
-// summary is non-null, so the defaults never actually surface to the
-// user -- they exist to keep the type narrow.
+// Summary blocks
 // ---------------------------------------------------------------------------
 
-const passiveConfirmed = computed<number>(
-  () => dashboardStore.summary?.passive_balance.confirmed ?? 0,
-)
-const passiveFrozen = computed<number>(() => dashboardStore.summary?.passive_balance.frozen ?? 0)
+const summary = computed(() => dashboardStore.summary)
+
+const passiveConfirmed = computed<number>(() => summary.value?.passive_balance.confirmed ?? 0)
+const passiveFrozen = computed<number>(() => summary.value?.passive_balance.frozen ?? 0)
 const hasFrozen = computed<boolean>(() => passiveFrozen.value > 0)
 
-const totalRevenue = computed<number>(() => dashboardStore.summary?.total_revenue_cents ?? 0)
-const totalOptionsSold = computed<number>(() => dashboardStore.summary?.total_options_sold ?? 0)
-const productsCount = computed<number>(() => dashboardStore.summary?.products_count ?? 0)
+const grossReceipts = computed<number>(() => summary.value?.total_revenue_cents ?? 0)
+const partsSold = computed<number>(() => summary.value?.total_options_sold ?? 0)
+const productsCount = computed<number>(() => summary.value?.products_count ?? 0)
 
-// pool is `PoolEmbedResponse | null | undefined` on the wire; coerce
-// the undefined case to null so the template's v-if check is clean.
-const pool = computed<PoolEmbedResponse | null>(() => dashboardStore.summary?.pool ?? null)
+/** The project's pool: 15 percent of the gross receipts, zero until a sale. */
+const poolCents = computed<number>(() => Math.round((grossReceipts.value * POOL_PERCENT) / 100))
 
-// recent_transactions is required (non-optional) on the response
-// schema, but we still default to [] so the v-for is safe in the
-// (impossible) interim state where summary is non-null but the field
-// somehow isn't.
 const recentTransactions = computed<CompanyTransactionResponse[]>(
-  () => dashboardStore.summary?.recent_transactions ?? [],
+  () => summary.value?.recent_transactions ?? [],
 )
 
+const summaryFailed = computed<boolean>(
+  () => dashboardStore.error !== null && summary.value === null,
+)
+const summaryLoading = computed<boolean>(() => summary.value === null && !summaryFailed.value)
+
 // ---------------------------------------------------------------------------
-// Transaction row helpers (B3)
-//
-// Mirrors the investor-side TransactionsView icon + label + signed-
-// amount pattern. We deliberately reuse the `inv.transactions.type.*`
-// catalogue for typeLabel because the type strings themselves are
-// identical (purchase:completed, withdrawal:completed, etc.) -- the
-// row of a withdrawal looks the same to a company seeing money leave
-// as it does to an investor seeing money leave. B4 may rename to a
-// shared `tx.type.*` namespace; the tOrRaw fallback covers both
-// futures without breaking today.
+// Operations
 // ---------------------------------------------------------------------------
 
-/**
- * Pick a lucide icon for a transaction type. Match by prefix so any
- * future ":completed" / ":pending" / ":failed" suffix variant routes
- * to the same icon without an exhaustive allow-list.
- */
+/** An icon per operation group, matched by prefix. */
 function iconForType(type: string): Component {
   if (type.startsWith('purchase:')) return ShoppingBag
   if (type.startsWith('installment:')) return Repeat
   if (type.startsWith('withdrawal:')) return ArrowUpRight
-  if (type.startsWith('reversal:') || type.startsWith('refund:')) {
-    return RefreshCw
-  }
+  if (type.startsWith('reversal:') || type.startsWith('refund:')) return RefreshCw
   return CreditCard
 }
 
-/**
- * Translate the type token. Falls back to the bare token (e.g.
- * "purchase:completed") rather than the i18n dotted path so the
- * pre-B4 view is readable.
- */
+/** The project's own wording: a purchase by a buyer is a sale for the project. */
 function typeLabel(type: string): string {
-  return tOrRaw(t, `inv.transactions.type.${type}`, type)
+  return tOrRaw(t, `comp.operations.type.${type}`, tOrRaw(t, `inv.transactions.type.${type}`, type))
 }
 
-/**
- * CSS modifier class for amount colour. Positive = revenue (credit,
- * green), negative = withdrawal / refund (debit, red), zero = neutral.
- */
 function amountClass(amountCents: number): string {
   if (amountCents > 0) return 'dash__tx-amount--credit'
   if (amountCents < 0) return 'dash__tx-amount--debit'
   return ''
 }
 
-/**
- * Format a transaction timestamp. Short locale-aware date + time --
- * the recent feed is contextual (last 20), so a minute-precise
- * timestamp helps the operator scan it.
- */
-function formatTxDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return iso
-  }
-}
-
-// ---------------------------------------------------------------------------
-// View states (see RENDER POLICY in the file header)
-// ---------------------------------------------------------------------------
-
-const hasError = computed<boolean>(
-  () => profileStore.error !== null || dashboardStore.error !== null,
-)
-
-const initialLoading = computed<boolean>(() => {
-  // Errors take priority over loading -- otherwise an errored fetch
-  // that left its store ref null would loop in the loader forever.
-  if (hasError.value) return false
-  return profileStore.profile === null || dashboardStore.summary === null
-})
-
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-/**
- * Run both probes in parallel. Used by onMounted and by the Retry
- * button in the error state.
- *
- * loadIfMissing() is cache-first -- if the profile is already loaded
- * from a previous visit to this view (or to a F5.2 view that also
- * needs the profile), the second call is a no-op. refresh() always
- * re-fetches because balances / counters move with every purchase
- * and withdrawal.
- */
 async function loadAll(): Promise<void> {
   await Promise.all([profileStore.loadIfMissing(), dashboardStore.refresh()])
 }
@@ -267,53 +128,53 @@ onMounted(() => {
 
 <template>
   <div class="dash">
-    <!-- Initial loading -- both stores empty, no error yet -->
-    <div v-if="initialLoading" class="dash__center">
-      <CLoader :size="32" />
+    <!-- Page header -->
+    <div class="dash__header">
+      <h1 class="dash__title">
+        {{ t('comp.dashboard.title') }}
+      </h1>
+      <p class="dash__subtitle">
+        {{ t('comp.dashboard.subtitle') }}
+      </p>
     </div>
 
-    <!-- Error -- whole-screen, retry both stores -->
-    <div v-else-if="hasError" class="dash__center">
-      <CEmptyState :title="t('comp.dashboard.errorTitle')" />
+    <!-- Hero -- the project's identity (shown whenever the profile is read) -->
+    <div v-if="profileStore.profile" class="dash__hero">
+      <div class="dash__hero-logo">
+        <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="dash__hero-logo-img" />
+        <div v-else class="dash__hero-logo-fallback">
+          {{ initials }}
+        </div>
+      </div>
+      <div class="dash__hero-text">
+        <div class="dash__hero-name">
+          {{ companyName }}
+        </div>
+      </div>
+    </div>
+
+    <!-- The summary is loading -->
+    <div v-if="summaryLoading" class="dash__center">
+      <CLoader :size="28" />
+    </div>
+
+    <!-- The summary failed: only its blocks give way, with a retry in their place -->
+    <div v-else-if="summaryFailed" class="dash__failed">
+      <span>{{ t('comp.dashboard.errorTitle') }}</span>
       <CButton variant="outline" size="sm" @click="loadAll">
         {{ t('comp.dashboard.errorRetry') }}
       </CButton>
     </div>
 
-    <!-- Loaded -->
     <template v-else>
-      <!-- Page header -->
-      <div class="dash__header">
-        <h1 class="dash__title">
-          {{ t('comp.dashboard.title') }}
-        </h1>
-        <p class="dash__subtitle">
-          {{ t('comp.dashboard.subtitle') }}
-        </p>
-      </div>
-
-      <!-- Hero -- company identity (logo + name) -->
-      <div class="dash__hero">
-        <div class="dash__hero-logo">
-          <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="dash__hero-logo-img" />
-          <div v-else class="dash__hero-logo-fallback">
-            {{ initials }}
-          </div>
-        </div>
-        <div class="dash__hero-text">
-          <div class="dash__hero-name">
-            {{ companyName }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Balance card (passive ledger) -->
-      <div class="dash__balance">
+      <!-- Balance -> the balance screen -->
+      <RouterLink to="/company/balance" class="dash__balance dash__link">
         <div class="dash__balance-head">
           <span class="dash__balance-label">
             <Wallet :size="16" />
             {{ t('comp.dashboard.balance.title') }}
           </span>
+          <ChevronRight :size="16" />
         </div>
         <div class="dash__balance-value">
           {{ formatPrice(passiveConfirmed) }}
@@ -322,65 +183,70 @@ onMounted(() => {
           {{ t('comp.dashboard.balance.frozen') }}:
           {{ formatPrice(passiveFrozen) }}
         </div>
-      </div>
+      </RouterLink>
 
-      <!-- Pool widget (B3) -- hidden when staff hasn't created a pool -->
-      <div v-if="pool" class="dash__pool">
+      <!-- The project's pool: a share of the gross receipts, zero until a sale -->
+      <RouterLink to="/company/analytics" class="dash__pool dash__link">
         <div class="dash__pool-head">
           <span class="dash__pool-label">
             <Layers :size="16" />
             {{ t('comp.dashboard.pool.title') }}
           </span>
-          <span class="dash__pool-equity">
-            {{ pool.equity_percent }}%
-            {{ t('comp.dashboard.pool.equity') }}
-          </span>
+          <ChevronRight :size="16" />
         </div>
-        <CProgressBar :value="pool.consumed" :max="pool.total_options" />
-        <div class="dash__pool-stats">
-          <span>
-            {{ formatNumber(pool.consumed, locale) }}
-            /
-            {{ formatNumber(pool.total_options, locale) }}
-            {{ t('comp.dashboard.pool.consumed') }}
-          </span>
-          <span>
-            {{ formatNumber(pool.remaining, locale) }}
-            {{ t('comp.dashboard.pool.remaining') }}
-          </span>
+        <div class="dash__pool-value">
+          {{ formatPrice(poolCents) }}
         </div>
-      </div>
+        <p class="dash__pool-note">
+          {{ t('comp.dashboard.pool.note', { percent: POOL_PERCENT }) }}
+        </p>
+      </RouterLink>
 
-      <!-- Metrics row -- 3 stat tiles -->
+      <!-- Three figures, each a link to its screen -->
       <div class="dash__metrics">
-        <CStatCard :value="formatPrice(totalRevenue)" :label="t('comp.dashboard.metrics.revenue')">
-          <template #icon>
-            <TrendingUp :size="20" />
-          </template>
-        </CStatCard>
-        <CStatCard
-          :value="formatNumber(totalOptionsSold, locale)"
-          :label="t('comp.dashboard.metrics.optionsSold')"
-        >
-          <template #icon>
-            <Package :size="20" />
-          </template>
-        </CStatCard>
-        <CStatCard
-          :value="formatNumber(productsCount, locale)"
-          :label="t('comp.dashboard.metrics.products')"
-        >
-          <template #icon>
-            <Layers :size="20" />
-          </template>
-        </CStatCard>
+        <RouterLink to="/company/analytics" class="dash__link dash__link--tile">
+          <CStatCard
+            :value="formatPrice(grossReceipts)"
+            :label="t('comp.dashboard.metrics.revenue')"
+          >
+            <template #icon>
+              <TrendingUp :size="20" />
+            </template>
+          </CStatCard>
+        </RouterLink>
+        <RouterLink to="/company/analytics" class="dash__link dash__link--tile">
+          <CStatCard
+            :value="formatNumber(partsSold, locale)"
+            :label="t('comp.dashboard.metrics.optionsSold')"
+          >
+            <template #icon>
+              <Package :size="20" />
+            </template>
+          </CStatCard>
+        </RouterLink>
+        <RouterLink to="/company/products" class="dash__link dash__link--tile">
+          <CStatCard
+            :value="formatNumber(productsCount, locale)"
+            :label="t('comp.dashboard.metrics.products')"
+          >
+            <template #icon>
+              <Layers :size="20" />
+            </template>
+          </CStatCard>
+        </RouterLink>
       </div>
 
-      <!-- Recent transactions (B3) -- embedded list, no extra fetch -->
+      <!-- Recent operations, and the way to all of them -->
       <div class="dash__recent">
-        <h2 class="dash__recent-title">
-          {{ t('comp.dashboard.recent.title') }}
-        </h2>
+        <div class="dash__recent-head">
+          <h2 class="dash__recent-title">
+            {{ t('comp.dashboard.recent.title') }}
+          </h2>
+          <RouterLink to="/company/balance/transactions" class="dash__recent-all">
+            {{ t('comp.dashboard.recent.all') }}
+            <ChevronRight :size="14" />
+          </RouterLink>
+        </div>
 
         <p v-if="recentTransactions.length === 0" class="dash__recent-empty">
           {{ t('comp.dashboard.recent.empty') }}
@@ -401,7 +267,7 @@ onMounted(() => {
                 </span>
               </div>
               <div class="dash__tx-date">
-                {{ formatTxDate(tx.created_at) }}
+                {{ formatDateTime(tx.created_at, locale) }}
               </div>
             </div>
           </li>
@@ -665,6 +531,61 @@ onMounted(() => {
 .dash__tx-date {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
+}
+
+/* Blocks that are links */
+.dash__link {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+.dash__link:hover {
+  border-color: var(--primary);
+}
+.dash__link--tile {
+  display: block;
+  border-radius: var(--radius);
+}
+.dash__balance-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dash__pool-value {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dash__pool-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.dash__failed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border-default);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.dash__recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.dash__recent-all {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
 }
 
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every

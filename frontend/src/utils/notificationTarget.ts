@@ -21,13 +21,33 @@ export interface NotificationTargetInput {
   actionData?: { action: string; params?: Record<string, unknown> } | null
   /** The reader's identity-verification status. */
   kycStatus: string | null
-  /** The shell the reader is in. Only the investor shell has these screens. */
+  /** The shell the reader is in. The buyer's and the project's shells have these screens. */
   shell: string | undefined
 }
 
 function paramId(params: Record<string, unknown> | undefined): string | null {
   const id = params?.id
   return typeof id === 'string' && id.length > 0 ? id : null
+}
+
+// The project account's notices: a withdrawal leads to the balance, a sale to
+// the operations, a post or a roadmap change to the publications, a message to
+// support. A notice with no screen of its own leads nowhere.
+function companyTarget(
+  type: string,
+  actionData: NotificationTargetInput['actionData'],
+): RouteLocationRaw | null {
+  if (actionData?.action === 'post') return { name: 'company-posts' }
+  if (type.startsWith('withdrawal.')) return { name: 'company-balance' }
+  if (type.startsWith('purchase.') || type.startsWith('installment.')) {
+    return { name: 'company-transactions' }
+  }
+  if (type.startsWith('post.')) return { name: 'company-posts' }
+  if (type.startsWith('company.roadmap_')) return { name: 'company-roadmap' }
+  if (type.startsWith('company.attachment')) return { name: 'company-attachments' }
+  if (type.startsWith('company.')) return { name: 'company-audit' }
+  if (type.startsWith('msg.')) return { name: 'company-support' }
+  return null
 }
 
 export function notificationTarget(input: NotificationTargetInput): RouteLocationRaw | null {
@@ -37,6 +57,8 @@ export function notificationTarget(input: NotificationTargetInput): RouteLocatio
   if (type.startsWith('kyc.')) {
     return type === 'kyc.approved' ? null : '/verification'
   }
+
+  if (shell === 'company') return companyTarget(type, actionData)
 
   if (shell !== 'investor') return null
 

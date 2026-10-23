@@ -420,6 +420,17 @@ export const router = createRouter({
     },
 
     // -----------------------------------------------------------------
+    // The project account's first screen: the documents its role signs are
+    // accepted here before any other project screen opens (router/guards.ts).
+    // -----------------------------------------------------------------
+    {
+      path: '/company-welcome',
+      name: 'company-welcome',
+      component: () => import('@/views/company/CompanyWelcomeView.vue'),
+      meta: { roles: ['company'] },
+    },
+
+    // -----------------------------------------------------------------
     // Agent shell — agent only
     // Includes duplicated investor screens (market, portfolio,
     // products, purchase, installment) under AgentShell layout
@@ -624,35 +635,48 @@ export const router = createRouter({
           component: () => import('@/views/company/CompanyBalanceView.vue'),
         },
         {
+          // All operations of the project's balance: the buyer's operations
+          // screen, in the project's wording.
+          path: 'balance/transactions',
+          name: 'company-transactions',
+          component: () => import('@/views/investor/TransactionsView.vue'),
+        },
+        {
           path: 'settings',
           name: 'company-settings',
           component: () => import('@/views/company/CompanySettingsView.vue'),
         },
         {
-          // TASK-30 self-service: project-owned roadmap CRUD (§4).
-          // Reached from a row inside Settings, not a bottom tab --
-          // COMPANY_TABS already has 5 fixed slots. See
-          // CompanyRoadmapView.vue's header comment for the full
-          // placement rationale.
-          path: 'roadmap',
+          // The Publications tab: posts, the roadmap and documents, each a
+          // screen of its own under it.
+          path: 'publications',
+          name: 'company-publications',
+          component: () => import('@/views/company/CompanyPublicationsView.vue'),
+        },
+        {
+          path: 'publications/roadmap',
           name: 'company-roadmap',
           component: () => import('@/views/company/CompanyRoadmapView.vue'),
         },
         {
-          // TASK-30 self-service: project-owned attachment CRUD (§4).
-          // Same placement reasoning as 'roadmap' above -- see
-          // CompanyAttachmentsView.vue's header comment.
-          path: 'attachments',
+          path: 'publications/documents',
           name: 'company-attachments',
           component: () => import('@/views/company/CompanyAttachmentsView.vue'),
         },
         {
-          // TASK-30 self-service: project-owned post CRUD (§4, W4).
-          // Same placement reasoning as 'roadmap' / 'attachments' above --
-          // see CompanyPostsView.vue's header comment.
-          path: 'posts',
+          path: 'publications/posts',
           name: 'company-posts',
           component: () => import('@/views/company/CompanyPostsView.vue'),
+        },
+        { path: 'roadmap', redirect: '/company/publications/roadmap' },
+        { path: 'attachments', redirect: '/company/publications/documents' },
+        { path: 'posts', redirect: '/company/publications/posts' },
+        {
+          // The project's legal documents to read (Settings, Documents): the
+          // buyer's documents screen, listing the papers of the project role.
+          path: 'docs',
+          name: 'company-docs',
+          component: () => import('@/views/investor/InvestorDocsView.vue'),
         },
         {
           // Phase 6: the bell -- reached from CHeader's notifications

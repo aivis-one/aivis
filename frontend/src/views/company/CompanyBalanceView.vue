@@ -3,16 +3,19 @@
 // AIVIS.ONE Frontend -- CompanyBalanceView (Phase F5.2 B3 + B4)
 // =============================================================================
 //
-// Balance tab inside CompanyShell. Shows:
-//   1. Passive balance card (confirmed + frozen) sourced from
-//      companyDashboard store; refresh once if not yet loaded.
-//   2. "Request withdrawal" CTA -- opens a bottom sheet with an
-//      amount input, client-side validation, POST /withdrawals on
-//      submit; refreshes balance + withdrawals list on success.
-//   3. Withdrawal history (paginated, infinite scroll, status badges).
-//   4. Payout details preview (JSON) + "Edit details" CTA -- opens a
-//      bottom sheet with a JSON textarea; PUT /users/me/payout-details
-//      on submit; refetches preview on success.
+// The project's balance screen, opened from the balance in the top bar and from
+// the Home tab. Shows:
+//   1. The balance card (confirmed + on hold) from the companyDashboard store,
+//      the way to all operations, and the withdrawal rules in words.
+//   2. The active withdrawal request, when there is one, before anything else
+//      can be asked: a request in review is visible above the button.
+//   3. "Request withdrawal" -- a sheet asking for the network, the wallet and
+//      the amount; the network and wallet are saved as the payout details when
+//      they changed. The request goes to the Company's administrator.
+//   4. Withdrawal history (paginated, infinite scroll, status badges).
+//
+// The withdrawal is used only inside AIVIS and changes no rights of the holders
+// of parts.
 //
 // Withdrawal bounds (MIN/MAX) mirror the backend Sprint 6.3 config
 // constants. Hardcoded for now -- when backend surfaces them via
@@ -21,14 +24,17 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUpFromLine, ChevronRight, CreditCard, Pencil, Wallet } from 'lucide-vue-next'
+import { ArrowUpFromLine, CreditCard, ListChecks, Wallet } from 'lucide-vue-next'
 
-import { CBottomSheet, CButton, CEmptyState, CLoader, CInput, CTextarea } from '@/components/ui'
+import { useRouter } from 'vue-router'
+
+import { CBottomSheet, CButton, CEmptyState, CLoader, CInput, CSelect } from '@/components/ui'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
+import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDateTime, formatPrice, parseAmountToCents } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { WithdrawalResponse } from '@/api/types'
@@ -38,6 +44,7 @@ const MAX_WITHDRAWAL_CENTS = 10_000_000
 const PER_PAGE = 20
 
 const { t, locale } = useI18n()
+const router = useRouter()
 const dashboardStore = useCompanyDashboardStore()
 const { showToast } = useToast()
 
@@ -134,14 +141,23 @@ async function fetchPayoutDetails(): Promise<void> {
   }
 }
 
-const hasPayoutDetails = computed(() => {
-  const d = payoutDetails.value
-  return !!d && Object.keys(d).length > 0
-})
+const PAYOUT_NETWORKS = [
+  { value: 'USDT-TRC20', label: 'USDT (TRC20)' },
+  { value: 'USDT-ERC20', label: 'USDT (ERC20)' },
+  { value: 'USDT-BSC20', label: 'USDT (BSC20)' },
+]
 
-const payoutDetailsJson = computed(() =>
-  payoutDetails.value ? JSON.stringify(payoutDetails.value, null, 2) : '',
-)
+const WALLET_RE = /^\S{10,128}$/
+
+const savedNetwork = computed<string>(() => {
+  const v = payoutDetails.value?.network
+  return typeof v === 'string' ? v : ''
+})
+const savedWallet = computed<string>(() => {
+  const v = payoutDetails.value?.wallet
+  return typeof v === 'string' ? v : ''
+})
+const hasPayoutDetails = computed(() => savedNetwork.value !== '' && savedWallet.value !== '')
 
 // ---------------------------------------------------------------------------
 // Balance derived
@@ -194,6 +210,19 @@ function statusLabel(status: string): string {
   return tOrRaw(t, `comp.balance.withdrawals.status.${status}`, status)
 }
 
+// A request that is still in review or in payment: shown above the button.
+const ACTIVE_STATUSES = ['pending', 'confirmed', 'processing']
+const activeRequest = computed<WithdrawalResponse | null>(
+  () => withdrawals.value.find((w) => ACTIVE_STATUSES.includes(w.status)) ?? null,
+)
+
+function goOperations(): void {
+  void safeNavigate(
+    router.push({ name: 'company-transactions' }),
+    '[CompanyBalanceView] to operations',
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Withdraw form
 // ---------------------------------------------------------------------------
@@ -202,6 +231,8 @@ const withdrawSheetOpen = ref(false)
 const withdrawAmountInput = ref('')
 const withdrawSubmitting = ref(false)
 const withdrawError = ref('')
+const withdrawNetwork = ref('')
+const withdrawWallet = ref('')
 
 const parsedAmountCents = computed<number | null>(() =>
   parseAmountToCents(withdrawAmountInput.value),
@@ -216,17 +247,22 @@ const withdrawValidationKey = computed<string | null>(() => {
   return null
 })
 
+const walletValid = computed(() => WALLET_RE.test(withdrawWallet.value.trim()))
+
+const walletErrorKey = computed<string | null>(() => {
+  const w = withdrawWallet.value.trim()
+  if (w === '' || walletValid.value) return null
+  return 'comp.balance.withdrawals.form.errorWallet'
+})
+
 const canSubmitWithdraw = computed(() => {
   if (withdrawSubmitting.value) return false
-  if (!hasPayoutDetails.value) return false
+  if (withdrawNetwork.value === '' || !walletValid.value) return false
   if (parsedAmountCents.value === null) return false
   return withdrawValidationKey.value === null
 })
 
 const withdrawCtaState = computed(() => {
-  if (!hasPayoutDetails.value) {
-    return { disabled: true, hintKey: 'comp.balance.withdrawals.form.errorPayout' }
-  }
   if (passiveConfirmed.value < MIN_WITHDRAWAL_CENTS) {
     return { disabled: true, hintKey: 'comp.balance.withdrawals.form.errorInsuffCard' }
   }
@@ -237,6 +273,8 @@ function openWithdrawSheet(): void {
   if (withdrawCtaState.value.disabled) return
   withdrawAmountInput.value = ''
   withdrawError.value = ''
+  withdrawNetwork.value = savedNetwork.value
+  withdrawWallet.value = savedWallet.value
   withdrawSheetOpen.value = true
 }
 
@@ -251,6 +289,12 @@ async function submitWithdraw(): Promise<void> {
   withdrawSubmitting.value = true
   withdrawError.value = ''
   try {
+    const network = withdrawNetwork.value
+    const wallet = withdrawWallet.value.trim()
+    if (network !== savedNetwork.value || wallet !== savedWallet.value) {
+      await updatePayoutDetails({ network, wallet })
+      payoutDetails.value = { network, wallet }
+    }
     await createWithdrawal(cents)
     showToast(t('comp.balance.withdrawals.form.successToast'), 'success')
     closeWithdrawSheet()
@@ -258,6 +302,7 @@ async function submitWithdraw(): Promise<void> {
   } catch (err) {
     withdrawError.value =
       err instanceof Error && err.message ? err.message : t('comp.balance.withdrawals.form.error')
+    void fetchPayoutDetails()
   } finally {
     withdrawSubmitting.value = false
   }
@@ -267,100 +312,8 @@ watch(withdrawSheetOpen, (open) => {
   if (!open) {
     withdrawAmountInput.value = ''
     withdrawError.value = ''
-  }
-})
-
-// ---------------------------------------------------------------------------
-// Payout details form
-// ---------------------------------------------------------------------------
-
-const payoutSheetOpen = ref(false)
-const payoutEditInput = ref('')
-const payoutSubmitting = ref(false)
-const payoutError = ref('')
-
-const payoutValidation = computed<true | 'json' | 'object' | 'empty' | null>(() => {
-  const raw = payoutEditInput.value.trim()
-  if (!raw) return null
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return 'json'
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return 'object'
-  }
-  // An empty object would save as "{}" -> hasPayoutDetails reads false
-  // afterwards, leaving the withdraw gate stuck on "no payout details"
-  // despite a successful save (review §6, mirrors AgentSettings).
-  if (Object.keys(parsed as Record<string, unknown>).length === 0) {
-    return 'empty'
-  }
-  return true
-})
-
-const payoutValidationKey = computed<string | null>(() => {
-  const v = payoutValidation.value
-  if (v === 'json') return 'comp.balance.payout.form.errorJson'
-  if (v === 'object') return 'comp.balance.payout.form.errorObject'
-  if (v === 'empty') return 'comp.balance.payout.form.errorEmpty'
-  return null
-})
-
-const canSubmitPayout = computed(() => {
-  if (payoutSubmitting.value) return false
-  return payoutValidation.value === true
-})
-
-function openPayoutSheet(): void {
-  payoutEditInput.value = hasPayoutDetails.value ? JSON.stringify(payoutDetails.value, null, 2) : ''
-  payoutError.value = ''
-  payoutSheetOpen.value = true
-}
-
-function closePayoutSheet(): void {
-  payoutSheetOpen.value = false
-}
-
-async function submitPayout(): Promise<void> {
-  if (!canSubmitPayout.value) return
-  // canSubmitPayout === true guarantees payoutValidation === true (the
-  // input already parsed to a non-empty object), so this cannot throw --
-  // kept explicit rather than relying on that invariant silently (2.7).
-  let parsed: Record<string, unknown>
-  try {
-    parsed = JSON.parse(payoutEditInput.value) as Record<string, unknown>
-  } catch {
-    payoutError.value = t('comp.balance.payout.form.errorJson')
-    return
-  }
-  payoutSubmitting.value = true
-  payoutError.value = ''
-  try {
-    await updatePayoutDetails(parsed)
-    showToast(t('comp.balance.payout.form.successToast'), 'success')
-    // PUT replaces payout_details wholesale -> the submitted object IS
-    // the new server state. Write it locally instead of refetching: a
-    // failing refetch here would flip payoutErrored and replace the
-    // just-saved details with an error screen right after the success
-    // toast (review 2.4, mirrors AgentSettings).
-    payoutDetails.value = parsed
-    payoutLoaded.value = true
-    payoutErrored.value = false
-    closePayoutSheet()
-  } catch (err) {
-    payoutError.value =
-      err instanceof Error && err.message ? err.message : t('comp.balance.payout.form.error')
-  } finally {
-    payoutSubmitting.value = false
-  }
-}
-
-watch(payoutSheetOpen, (open) => {
-  if (!open) {
-    payoutEditInput.value = ''
-    payoutError.value = ''
+    withdrawNetwork.value = ''
+    withdrawWallet.value = ''
   }
 })
 
@@ -428,10 +381,41 @@ onMounted(() => {
             <ArrowUpFromLine :size="16" />
             {{ t('comp.balance.withdrawals.newButton') }}
           </CButton>
+          <CButton variant="outline" @click="goOperations">
+            <ListChecks :size="16" />
+            {{ t('comp.balance.operations') }}
+          </CButton>
           <span v-if="withdrawCtaState.hintKey" class="cbal__cta-hint">
             {{ t(withdrawCtaState.hintKey) }}
           </span>
         </div>
+        <p class="cbal__rule">
+          {{
+            t('comp.balance.rule', {
+              min: formatPrice(MIN_WITHDRAWAL_CENTS),
+              max: formatPrice(MAX_WITHDRAWAL_CENTS),
+            })
+          }}
+        </p>
+        <p class="cbal__rule">
+          {{ t('comp.balance.internalUse') }}
+        </p>
+      </section>
+
+      <!-- The active request, visible before another one is asked -->
+      <section v-if="activeRequest" class="cbal__card cbal__active">
+        <div class="cbal__active-head">
+          {{ t('comp.balance.active.title') }}
+        </div>
+        <div class="cbal__item-line">
+          <span class="cbal__item-amount">{{ formatPrice(activeRequest.amount_cents) }}</span>
+          <span class="cbal__badge" :class="`cbal__badge--${statusVariant(activeRequest.status)}`">
+            {{ statusLabel(activeRequest.status) }}
+          </span>
+        </div>
+        <p class="cbal__rule">
+          {{ t('comp.balance.active.note') }}
+        </p>
       </section>
 
       <!-- Withdrawal history -->
@@ -477,7 +461,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- Payout details -->
+      <!-- Payout details: saved by the withdrawal request -->
       <section class="cbal__section">
         <h2 class="cbal__section-title">
           {{ t('comp.balance.payout.title') }}
@@ -486,15 +470,16 @@ onMounted(() => {
         <p v-if="!hasPayoutDetails" class="cbal__empty">
           {{ t('comp.balance.payout.empty') }}
         </p>
-        <pre v-else class="cbal__json">{{ payoutDetailsJson }}</pre>
-
-        <div class="cbal__cta-row">
-          <CButton variant="outline" size="sm" @click="openPayoutSheet">
-            <Pencil :size="16" />
-            {{ t('comp.balance.payout.editButton') }}
-            <ChevronRight :size="16" />
-          </CButton>
-        </div>
+        <dl v-else class="cbal__payout">
+          <div>
+            <dt>{{ t('comp.balance.withdrawals.form.networkLabel') }}</dt>
+            <dd>{{ savedNetwork }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('comp.balance.withdrawals.form.walletLabel') }}</dt>
+            <dd>{{ savedWallet }}</dd>
+          </div>
+        </dl>
       </section>
     </template>
 
@@ -505,6 +490,32 @@ onMounted(() => {
       @close="closeWithdrawSheet"
     >
       <form class="cbal__form" @submit.prevent="submitWithdraw">
+        <CSelect
+          v-model="withdrawNetwork"
+          :label="t('comp.balance.withdrawals.form.networkLabel')"
+          :options="PAYOUT_NETWORKS"
+          :placeholder="t('comp.balance.withdrawals.form.networkPlaceholder')"
+          :disabled="withdrawSubmitting"
+        />
+
+        <label class="cbal__field">
+          <span class="cbal__field-label">
+            {{ t('comp.balance.withdrawals.form.walletLabel') }}
+          </span>
+          <CInput
+            v-model="withdrawWallet"
+            class="cbal__control"
+            size="compact"
+            autocomplete="off"
+            spellcheck="false"
+            :placeholder="t('comp.balance.withdrawals.form.walletPlaceholder')"
+            :disabled="withdrawSubmitting"
+          />
+        </label>
+        <p v-if="walletErrorKey" class="cbal__form-error cbal__form-error--soft">
+          {{ t(walletErrorKey) }}
+        </p>
+
         <label class="cbal__field">
           <span class="cbal__field-label">
             {{ t('comp.balance.withdrawals.form.amountLabel') }}
@@ -562,61 +573,6 @@ onMounted(() => {
             :loading="withdrawSubmitting"
           >
             {{ t('comp.balance.withdrawals.form.submit') }}
-          </CButton>
-        </div>
-      </form>
-    </CBottomSheet>
-
-    <!-- Payout sheet -->
-    <CBottomSheet
-      :open="payoutSheetOpen"
-      :title="t('comp.balance.payout.form.title')"
-      @close="closePayoutSheet"
-    >
-      <form class="cbal__form" @submit.prevent="submitPayout">
-        <label class="cbal__field">
-          <span class="cbal__field-label">
-            {{ t('comp.balance.payout.form.label') }}
-          </span>
-          <CTextarea
-            v-model="payoutEditInput"
-            class="cbal__control cbal__control--payout"
-            size="compact"
-            mono
-            :placeholder="t('comp.balance.payout.form.placeholder')"
-            :disabled="payoutSubmitting"
-            :rows="10"
-            spellcheck="false"
-          />
-          <span class="cbal__field-hint">
-            {{ t('comp.balance.payout.form.hint') }}
-          </span>
-        </label>
-
-        <p v-if="payoutValidationKey" class="cbal__form-error cbal__form-error--soft">
-          {{ t(payoutValidationKey) }}
-        </p>
-
-        <p v-if="payoutError" class="cbal__form-error">
-          {{ payoutError }}
-        </p>
-
-        <div class="cbal__form-actions">
-          <CButton
-            variant="outline"
-            type="button"
-            :disabled="payoutSubmitting"
-            @click="closePayoutSheet"
-          >
-            {{ t('comp.balance.payout.form.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
-            type="submit"
-            :disabled="!canSubmitPayout"
-            :loading="payoutSubmitting"
-          >
-            {{ t('comp.balance.payout.form.submit') }}
           </CButton>
         </div>
       </form>
@@ -912,5 +868,47 @@ onMounted(() => {
    leave dead space in its row. */
 .cbal__subtitle {
   max-width: var(--maxw-prose);
+}
+
+.cbal__rule {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.cbal__active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  border: 1px solid var(--warning);
+}
+.cbal__active-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.cbal__payout {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+.cbal__payout div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.cbal__payout dt {
+  color: var(--text-secondary);
+}
+.cbal__payout dd {
+  margin: 0;
+  color: var(--text-primary);
+  word-break: break-all;
+  text-align: right;
 }
 </style>

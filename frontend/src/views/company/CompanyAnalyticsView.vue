@@ -91,6 +91,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import { Download } from 'lucide-vue-next'
+
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { getCompanyAnalytics } from '@/api/company'
 import { formatNumber, formatPrice } from '@/utils/format'
@@ -144,7 +146,53 @@ const totalRevenue = computed<number>(() => analytics.value?.total_revenue_cents
 const revenueThisMonth = computed<number>(() => analytics.value?.revenue_this_month_cents ?? 0)
 const totalOptionsSold = computed<number>(() => analytics.value?.total_options_sold ?? 0)
 
-const salesByMonth = computed<SalesByMonthEntry[]>(() => analytics.value?.sales_by_month ?? [])
+// The period of the chart and of the export: the last 3, 6 or 12 months.
+type Period = 3 | 6 | 12
+const PERIODS: readonly Period[] = [3, 6, 12]
+const period = ref<Period>(12)
+
+/** "YYYY-MM" of the first month inside the chosen period (this month counts). */
+const periodStart = computed<string>(() => {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - (period.value - 1))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+})
+
+const salesByMonth = computed<SalesByMonthEntry[]>(() =>
+  (analytics.value?.sales_by_month ?? []).filter((m) => m.month >= periodStart.value),
+)
+
+function csvCell(value: string | number): string {
+  const text = String(value)
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+function usd(cents: number): string {
+  return (cents / 100).toFixed(2)
+}
+
+/** Saves the sales of the chosen period, by month and by product, as one CSV file. */
+function exportCsv(): void {
+  const lines: string[] = [
+    ['month', 'gross_receipts_usd', 'parts_sold'].join(','),
+    ...salesByMonth.value.map((m) => [m.month, usd(m.revenue_cents), m.options_sold].join(',')),
+    '',
+    ['product', 'gross_receipts_usd', 'parts_sold'].join(','),
+    ...(analytics.value?.sales_by_product ?? []).map((p) =>
+      [csvCell(p.product_name), usd(p.revenue_cents), p.options_sold].join(','),
+    ),
+  ]
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'sales.csv'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
 
 const hasChartData = computed<boolean>(() => salesByMonth.value.length > 0)
 
@@ -331,6 +379,27 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
           </div>
         </div>
       </section>
+
+      <!-- The period of the chart, and the export -->
+      <div class="canl__tools">
+        <div class="canl__periods" role="group" :aria-label="t('comp.analytics.period.label')">
+          <button
+            v-for="p in PERIODS"
+            :key="p"
+            type="button"
+            class="canl__period"
+            :class="{ 'canl__period--active': period === p }"
+            :aria-pressed="period === p"
+            @click="period = p"
+          >
+            {{ t('comp.analytics.period.months', { n: p }) }}
+          </button>
+        </div>
+        <CButton variant="outline" size="sm" @click="exportCsv">
+          <Download :size="16" />
+          {{ t('comp.analytics.export') }}
+        </CButton>
+      </div>
 
       <!-- Sales by month chart -->
       <section class="canl__chart-section">
@@ -648,5 +717,32 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
    leave dead space in its row. */
 .canl__subtitle {
   max-width: var(--maxw-prose);
+}
+.canl__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.canl__periods {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.canl__period {
+  min-height: var(--size-md);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.canl__period--active {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 </style>

@@ -45,6 +45,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import {
@@ -69,6 +70,9 @@ import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
+// The project account reads its own operations here too: the same list, with
+// its own wording (a sale, not a purchase) and its own tabs.
+const isCompany = useRoute().meta.shell === 'company'
 const store = useTransactionsStore()
 const { showToast } = useToast()
 // storeToRefs keeps hasMore reactive when destructured -- matches
@@ -88,12 +92,24 @@ interface Tab {
   filter: string | null
 }
 
-const TABS: readonly Tab[] = [
+const COMPANY_FILTER_TABS: readonly Tab[] = [
   { key: 'all', labelKey: 'inv.transactions.tabs.all', filter: null },
-  { key: 'deposits', labelKey: 'inv.transactions.tabs.deposits', filter: 'deposit:' },
-  { key: 'purchases', labelKey: 'inv.transactions.tabs.purchases', filter: 'purchase:' },
-  { key: 'installments', labelKey: 'inv.transactions.tabs.installments', filter: 'installment:' },
+  { key: 'sales', labelKey: 'comp.operations.tabs.sales', filter: 'purchase:' },
+  { key: 'withdrawals', labelKey: 'comp.operations.tabs.withdrawals', filter: 'withdrawal:' },
 ] as const
+
+const TABS: readonly Tab[] = isCompany
+  ? COMPANY_FILTER_TABS
+  : ([
+      { key: 'all', labelKey: 'inv.transactions.tabs.all', filter: null },
+      { key: 'deposits', labelKey: 'inv.transactions.tabs.deposits', filter: 'deposit:' },
+      { key: 'purchases', labelKey: 'inv.transactions.tabs.purchases', filter: 'purchase:' },
+      {
+        key: 'installments',
+        labelKey: 'inv.transactions.tabs.installments',
+        filter: 'installment:',
+      },
+    ] as const)
 
 const sentinelRef = ref<HTMLElement | null>(null)
 const selectedId = ref<string | null>(null)
@@ -117,7 +133,8 @@ function iconFor(type: string) {
 }
 
 function typeLabel(type: string): string {
-  return tOrRaw(t, `inv.transactions.type.${type}`, type)
+  const own = tOrRaw(t, `inv.transactions.type.${type}`, type)
+  return isCompany ? tOrRaw(t, `comp.operations.type.${type}`, own) : own
 }
 
 function amountClass(cents: number): string {
@@ -222,19 +239,13 @@ onMounted(() => {
       <div class="tv__header-row">
         <div class="tv__header-text">
           <h1 class="tv__title">
-            {{ t('inv.transactions.title') }}
+            {{ t(isCompany ? 'comp.operations.title' : 'inv.transactions.title') }}
           </h1>
           <p class="tv__subtitle">
-            {{ t('inv.transactions.subtitle') }}
+            {{ t(isCompany ? 'comp.operations.subtitle' : 'inv.transactions.subtitle') }}
           </p>
         </div>
-        <CButton
-          variant="outline"
-          size="sm"
-          inline
-          :loading="exporting"
-          @click="handleExport"
-        >
+        <CButton variant="outline" size="sm" inline :loading="exporting" @click="handleExport">
           <Download :size="14" />
           {{ t('inv.transactions.export.button') }}
         </CButton>

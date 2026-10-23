@@ -54,6 +54,7 @@ import {
   Pencil,
   Trash2,
   FileText,
+  Download,
   Upload,
 } from 'lucide-vue-next'
 import {
@@ -69,6 +70,8 @@ import {
 } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
+import { downloadAttachment } from '@/api/attachments'
+import { useCompanyProfileStore } from '@/stores/companyProfile'
 import {
   fetchOwnAttachments,
   createOwnAttachment,
@@ -81,6 +84,7 @@ import type { AttachmentUploadMetadata } from '@/api/company-attachments'
 import type { AttachmentPatchBody, AttachmentResponse } from '@/api/types'
 
 const { t } = useI18n()
+const profileStore = useCompanyProfileStore()
 const { showToast } = useToast()
 const router = useRouter()
 
@@ -90,12 +94,31 @@ const router = useRouter()
 // is only a UI hint that filters the OS file picker.
 const FILE_ACCEPT = '.pdf,.pptx,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.svg,.mp4,.webm,.txt,.md'
 
+// A document is kept in the two languages the cabinet's documents ship in. An
+// older file that carries another language keeps it until it is edited.
 const LANGUAGE_OPTIONS = [
   { value: 'en', label: 'EN' },
   { value: 'ru', label: 'RU' },
-  { value: 'de', label: 'DE' },
-  { value: 'ar', label: 'AR' },
 ]
+
+const languageOptions = computed(() => {
+  const current = draftLanguage.value
+  return LANGUAGE_OPTIONS.some((o) => o.value === current)
+    ? LANGUAGE_OPTIONS
+    : [...LANGUAGE_OPTIONS, { value: current, label: current.toUpperCase() }]
+})
+
+// Opening one's own file: the published ones are served by the same download
+// link a buyer gets. A file that is not published yet has no link to open.
+async function openFile(att: AttachmentResponse): Promise<void> {
+  const id = profileStore.profile?.id
+  if (!id) return
+  try {
+    await downloadAttachment(id, att.id)
+  } catch {
+    showToast(t('comp.attachments.downloadError'), 'error')
+  }
+}
 
 // Mirrors backend ATTACHMENT_CATEGORY_REGEX (companies/constants.py):
 // lowercase path-tree, '/'-separated, up to 5 levels.
@@ -123,6 +146,7 @@ async function reload(): Promise<void> {
 
 onMounted(() => {
   void reload()
+  void profileStore.loadIfMissing()
 })
 
 // Group by category, preserving the backend's per-category order (it
@@ -383,7 +407,7 @@ async function handleDelete(): Promise<void> {
 }
 
 function goBack(): void {
-  void router.push('/company/settings')
+  void router.push('/company/publications')
 }
 </script>
 
@@ -392,7 +416,7 @@ function goBack(): void {
     <div class="catt__header">
       <button type="button" class="catt__back" @click="goBack">
         <ArrowLeft :size="16" />
-        {{ t('comp.settings.title') }}
+        {{ t('comp.publications.title') }}
       </button>
       <h1 class="catt__page-title">
         {{ t('comp.attachments.title') }}
@@ -484,6 +508,15 @@ function goBack(): void {
 
               <div class="doc-item__actions">
                 <button
+                  v-if="att.is_published"
+                  :aria-label="t('comp.attachments.download')"
+                  :title="t('comp.attachments.download')"
+                  class="doc-item__action"
+                  @click="openFile(att)"
+                >
+                  <Download :size="16" />
+                </button>
+                <button
                   :aria-label="t('common.edit')"
                   class="doc-item__action"
                   @click="openEdit(att)"
@@ -535,7 +568,7 @@ function goBack(): void {
       <CSelect
         v-model="draftLanguage"
         :label="t('comp.attachments.fieldLanguage')"
-        :options="LANGUAGE_OPTIONS"
+        :options="languageOptions"
       />
 
       <CCheckbox v-model="draftIsPublished" :label="t('comp.attachments.fieldPublished')" />

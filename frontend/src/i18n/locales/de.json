@@ -151,8 +151,8 @@
       "home": "Start",
       "products": "Produkte",
       "analytics": "Analytik",
-      "balance": "Kontostand",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "publications": "Veröffentlichungen"
     },
     "staff": {
       "home": "Start",
@@ -1052,6 +1052,172 @@
       "unavailableText": "Der Agent-Integrator-Vertrag kann derzeit nicht angezeigt und daher nicht akzeptiert werden. Schreiben Sie an den Support.",
       "toSupport": "An den Support schreiben",
       "errorTitle": "Der Vertrag konnte nicht geprüft werden"
+    }
+  },
+  "comp": {
+    "header": {
+      "balance": "Kontostand"
+    },
+    "welcome": {
+      "title": "Willkommen im Projektkonto",
+      "intro": "Bevor Sie beginnen, akzeptieren Sie die Dokumente des Kabinetts. Lesen Sie jedes über seinen Link und setzen Sie den Haken.",
+      "read": "Lesen",
+      "accept": "Weiter",
+      "error": "Die Zustimmung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "errorTitle": "Die Dokumente konnten nicht geprüft werden"
+    },
+    "publications": {
+      "title": "Veröffentlichungen",
+      "subtitle": "Neuigkeiten, Fahrplan und Dokumente, die Käufer sehen",
+      "viewOnStore": "Im Store ansehen",
+      "posts": {
+        "title": "Beiträge",
+        "desc": "Neuigkeiten und Aktualisierungen auf der Projektseite"
+      },
+      "roadmap": {
+        "title": "Fahrplan",
+        "desc": "Meilensteine, Ereignisse und Ankündigungen"
+      },
+      "documents": {
+        "title": "Dokumente",
+        "desc": "Dateien und Bilder, die Käufer sehen"
+      },
+      "hint": "Das Projekt veröffentlicht Beiträge, Fahrplan und Dokumente selbst, ohne Freigabe."
+    },
+    "dashboard": {
+      "pool": {
+        "title": "Projekt-Pool",
+        "note": "Der Anteil des Projekts an den Bruttoeinnahmen aus dem Verkauf seines Produkts: {percent} % der Bruttoeinnahmen. Er bleibt null, bis das Produkt verkauft wird."
+      },
+      "metrics": {
+        "revenue": "Bruttoeinnahmen",
+        "optionsSold": "Verkaufte Anteile"
+      },
+      "recent": {
+        "all": "Alle Vorgänge"
+      }
+    },
+    "operations": {
+      "title": "Vorgänge",
+      "subtitle": "Verkäufe, Auszahlungen und weitere Bewegungen des Projektguthabens",
+      "tabs": {
+        "sales": "Verkäufe",
+        "withdrawals": "Auszahlungen"
+      },
+      "type": {
+        "purchase:completed": "Verkauf",
+        "purchase:reversed": "Verkauf storniert",
+        "purchase:gift": "Bonusanteile gewährt",
+        "installment:tranche_paid": "Rate erhalten"
+      }
+    },
+    "balance": {
+      "subtitle": "Das Projektguthaben und seine Auszahlungen",
+      "operations": "Alle Vorgänge",
+      "rule": "Eine Auszahlung beträgt mindestens {min} und höchstens {max}. Der Administrator prüft jeden Antrag.",
+      "internalUse": "Eine Auszahlung wird nur innerhalb von AIVIS verwendet und ändert keine Rechte der Anteilsinhaber.",
+      "active": {
+        "title": "Antrag in Prüfung",
+        "note": "Der Administrator prüft diesen Antrag. Der Status steht hier und im Verlauf."
+      },
+      "withdrawals": {
+        "form": {
+          "networkLabel": "Netzwerk",
+          "networkPlaceholder": "Netzwerk wählen",
+          "walletLabel": "Wallet-Adresse",
+          "walletPlaceholder": "Wallet-Adresse",
+          "errorWallet": "Geben Sie eine Wallet-Adresse ohne Leerzeichen ein"
+        }
+      },
+      "payout": {
+        "empty": "Noch keine Auszahlungsdaten; sie werden mit dem ersten Antrag gespeichert"
+      }
+    },
+    "settings": {
+      "subtitle": "Ihr Projekt",
+      "profile": {
+        "editSuccess": "Projektprofil aktualisiert",
+        "editError": "Das Projektprofil konnte nicht aktualisiert werden"
+      },
+      "person": {
+        "title": "Persönliche Daten",
+        "name": "Name",
+        "email": "E-Mail",
+        "language": "Sprache",
+        "notSet": "Nicht angegeben",
+        "editTitle": "Persönliche Daten bearbeiten",
+        "firstName": "Vorname",
+        "lastName": "Nachname",
+        "editSuccess": "Persönliche Daten aktualisiert",
+        "editError": "Persönliche Daten konnten nicht aktualisiert werden"
+      },
+      "parts": {
+        "title": "Anteile",
+        "price": "Preis eines Anteils",
+        "priceHint": "Der Preis eines Anteils ist der faire Wert des Projekts geteilt durch 1.000.000.000, für alle Projekte gleich. Er ändert sich nur durch eine Neubewertung des Projekts, nie durch manuelle Eingabe.",
+        "supply": "Anteile im Verkauf",
+        "supplyHint": "25 % der Anteile werden zum Verkauf angeboten. Es werden nie Anteile hinzugefügt."
+      },
+      "distribution": {
+        "title": "Verteilung der Anteile",
+        "rows": {
+          "sale": "Im Verkauf",
+          "index": "Projektindex",
+          "bonus": "Bonusfonds",
+          "reserve": "Reserve und Anteile des Unternehmens"
+        },
+        "hint": "Die Aufteilung ist festgelegt und kann im Projektkonto nicht geändert werden."
+      },
+      "docs": {
+        "title": "Dokumente",
+        "cta": "Rechtsdokumente lesen"
+      },
+      "actions": {
+        "deactivate": {
+          "errorActiveProducts": "Ein Projekt kann sein Konto nicht deaktivieren, solange ein Produkt im Verkauf ist. Blenden Sie das Produkt zuerst aus oder archivieren Sie es."
+        }
+      }
+    },
+    "products": {
+      "empty": {
+        "desc": "Wenden Sie sich an den Support, um Produkte zu Ihrem Projekt hinzuzufügen."
+      }
+    },
+    "posts": {
+      "preview": "Vorschau",
+      "previewNote": "So sieht ein Käufer den Beitrag. Es ist noch nichts veröffentlicht."
+    },
+    "attachments": {
+      "download": "Datei öffnen",
+      "downloadError": "Die Datei konnte nicht geöffnet werden"
+    },
+    "analytics": {
+      "metrics": {
+        "totalRevenue": "Bruttoeinnahmen",
+        "optionsSold": "Verkaufte Anteile"
+      },
+      "chart": {
+        "tooltipUnits": "{units} Anteile"
+      },
+      "byProduct": {
+        "units": "{n} Anteile"
+      },
+      "period": {
+        "label": "Zeitraum",
+        "months": "{n} Monate"
+      },
+      "export": "CSV exportieren"
+    },
+    "auditFeed": {
+      "field": {
+        "shares_per_option": "Anteile pro Einheit"
+      },
+      "event": {
+        "company": {
+          "attachment_hard_deleted": "Dokument gelöscht",
+          "supply_updated": "Angebot aktualisiert"
+        }
+      }
     }
   }
 }

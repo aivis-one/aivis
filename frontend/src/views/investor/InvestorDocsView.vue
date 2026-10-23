@@ -115,8 +115,17 @@ const BUYER_READ_TYPES: readonly string[] = [
 // integrator-agent agreement. One screen, the list extended by role.
 const AGENT_READ_TYPES: readonly string[] = [...BUYER_READ_TYPES, 'agent_integrator_agreement']
 
+// The project account reads the company's legal documents only: the cabinet
+// terms and the privacy policy. Its own agreements and the buyers' papers are
+// not listed here.
+const COMPANY_READ_TYPES: readonly string[] = ['cabinet_terms', 'privacy_policy']
+
 const READ_TYPES: readonly string[] =
-  authStore.role === 'agent' ? AGENT_READ_TYPES : BUYER_READ_TYPES
+  authStore.role === 'agent'
+    ? AGENT_READ_TYPES
+    : authStore.role === 'company'
+      ? COMPANY_READ_TYPES
+      : BUYER_READ_TYPES
 
 const documents = ref<DocumentResponse[]>([])
 // Ids of the documents the role must sign (from listDocuments()).

@@ -512,7 +512,7 @@ async function handleCoverRemove(): Promise<void> {
 }
 
 function goBack(): void {
-  void router.push('/company/settings')
+  void router.push('/company/publications')
 }
 </script>
 
@@ -522,7 +522,7 @@ function goBack(): void {
     <div class="croad__header">
       <button type="button" class="croad__back" @click="goBack">
         <ArrowLeft :size="16" />
-        {{ t('comp.settings.title') }}
+        {{ t('comp.publications.title') }}
       </button>
       <h1 class="croad__page-title">
         {{ t('comp.roadmap.title') }}

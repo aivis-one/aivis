@@ -13,9 +13,9 @@ describe('notificationTarget', () => {
   })
 
   it('the same deposit leads to the balance once the account is verified', () => {
-    expect(notificationTarget({ ...base, kycStatus: 'approved', type: 'deposit.confirmed' })).toEqual(
-      { name: 'investor-balance' },
-    )
+    expect(
+      notificationTarget({ ...base, kycStatus: 'approved', type: 'deposit.confirmed' }),
+    ).toEqual({ name: 'investor-balance' })
   })
 
   it('a rejected or withdrawn verification leads to the verification screen; an approval to none', () => {
@@ -59,5 +59,22 @@ describe('notificationTarget', () => {
   it('a type with no screen, or another role, leads nowhere', () => {
     expect(notificationTarget({ ...base, type: 'auth.password_reset' })).toBeNull()
     expect(notificationTarget({ ...base, shell: 'agent', type: 'purchase.completed' })).toBeNull()
+  })
+
+  it('a project account is led to the screen of its own event', () => {
+    const company = { ...base, shell: 'company' as string | undefined }
+    expect(notificationTarget({ ...company, type: 'withdrawal.completed' })).toEqual({
+      name: 'company-balance',
+    })
+    expect(notificationTarget({ ...company, type: 'purchase.completed' })).toEqual({
+      name: 'company-transactions',
+    })
+    expect(notificationTarget({ ...company, type: 'company.roadmap_item_updated' })).toEqual({
+      name: 'company-roadmap',
+    })
+    expect(notificationTarget({ ...company, type: 'msg.reply' })).toEqual({
+      name: 'company-support',
+    })
+    expect(notificationTarget({ ...company, type: 'deposit.confirmed' })).toBeNull()
   })
 })

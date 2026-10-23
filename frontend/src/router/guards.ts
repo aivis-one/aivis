@@ -37,6 +37,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useStaffPermissions, type StaffPermissionKey } from '@/composables/useStaffPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { useAgentAgreementStore } from '@/stores/agentAgreement'
+import { useCompanyTermsStore } from '@/stores/companyTerms'
 import { avatarActive } from '@/composables/avatarState'
 import type { Shell } from './helpers'
 
@@ -140,6 +141,9 @@ const SHARED_SCREENS: ReadonlySet<string> = new Set([
 /** The acceptance screen an integrator is held on until the agreement is accepted. */
 export const AGENT_WELCOME_ROUTE = 'agent-welcome'
 
+/** The acceptance screen a project account is held on until its documents are accepted. */
+export const COMPANY_WELCOME_ROUTE = 'company-welcome'
+
 /** The integrator-shell route for a buyer-shell route name, or null. */
 export function agentCounterpart(name: unknown): string | null {
   if (typeof name !== 'string' || !name.startsWith('investor-')) return null
@@ -235,6 +239,21 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
     } else if (status !== 'signed') {
       if (status === 'missing' && to.name === 'agent-support') return
       return { name: AGENT_WELCOME_ROUTE }
+    }
+  }
+
+  // --- The project account's documents ---
+  // At the first sign-in the project account accepts the documents its role
+  // signs; until then every project screen leads to the acceptance screen. A
+  // staff member operating as the account only looks and never accepts for it.
+  // When the state cannot be read the screens stay open (the server still
+  // refuses what needs an acceptance).
+  if (authStore.role === 'company' && !avatarActive.value) {
+    const status = await useCompanyTermsStore().ensure()
+    if (to.name === COMPANY_WELCOME_ROUTE) {
+      if (status === 'signed') return { name: 'company-dashboard' }
+    } else if (status === 'unsigned') {
+      return { name: COMPANY_WELCOME_ROUTE }
     }
   }
 

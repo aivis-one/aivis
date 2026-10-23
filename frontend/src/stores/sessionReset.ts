@@ -37,6 +37,7 @@
 
 import { useAgentStore } from '@/stores/agent'
 import { useAgentAgreementStore } from '@/stores/agentAgreement'
+import { useCompanyTermsStore } from '@/stores/companyTerms'
 import { useAttachmentsStore } from '@/stores/attachments'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyListStore } from '@/stores/companyList'
@@ -92,6 +93,7 @@ export function resetAllDataStores(): void {
   useCompanyDashboardStore().reset()
   useAgentStore().reset()
   useAgentAgreementStore().reset()
+  useCompanyTermsStore().reset()
   useSupportStore().reset()
   useNotificationsStore().reset()
 }

@@ -36,6 +36,7 @@
 // =============================================================================
 
 import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Copy } from 'lucide-vue-next'
 
@@ -88,8 +89,11 @@ const amountClass = computed<string>(() => {
   return ''
 })
 
+const isCompany = useRoute().meta.shell === 'company'
+
 function typeLabel(type: string): string {
-  return tOrRaw(t, `inv.transactions.type.${type}`, type)
+  const own = tOrRaw(t, `inv.transactions.type.${type}`, type)
+  return isCompany ? tOrRaw(t, `comp.operations.type.${type}`, own) : own
 }
 
 function keyLabel(key: string): string {

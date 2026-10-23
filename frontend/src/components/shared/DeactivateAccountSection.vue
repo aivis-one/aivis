@@ -63,6 +63,11 @@ function close(): void {
 
 function mapError(err: unknown): string {
   if (err instanceof ApiResponseError) {
+    // A project on sale cannot deactivate its account: hide or archive the
+    // product first. The server answers with a code, not a wording to rely on.
+    if (err.code === 'company_has_active_products') {
+      return t('comp.settings.actions.deactivate.errorActiveProducts')
+    }
     // Two different 403s can reach this flow: _require_current_password's
     // "Incorrect password" AND forbid_avatar("delete_account")'s
     // avatar-mode-blocked message -- match the backend's own exact,
