@@ -16,6 +16,7 @@
 #                                                              (TASK-39 item 6
 #                                                              dilution ruling)
 #   GET   /api/v1/staff/companies/{id}/price-history       -- price history (B3)
+#   GET   /api/v1/staff/companies/{id}/products            -- products in every status (read-only)
 #   POST  /api/v1/staff/companies/{id}/roadmap             -- add roadmap item
 #   PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update roadmap item
 #   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}  -- soft-delete item
@@ -109,6 +110,7 @@ from app.modules.companies.service import (
     create_roadmap_item,
     delete_roadmap_cover,
     delete_roadmap_item,
+    get_company,
     get_company_detail,
     list_companies,
     list_price_history,
@@ -120,6 +122,8 @@ from app.modules.companies.service import (
     update_supply,
     validate_roadmap_cover_mime_by_filename,
 )
+from app.modules.products.schemas import ProductListResponse, ProductResponse
+from app.modules.products.service import list_products
 from app.modules.staff.constants import is_admin
 from app.modules.staff.permissions import require_financial_operations
 from app.modules.users.models import User
@@ -380,6 +384,40 @@ async def list_price_history_endpoint(
     )
     return PriceHistoryListResponse(
         items=[PriceHistoryResponse.model_validate(r) for r in rows],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/{company_id}/products",
+    response_model=ProductListResponse,
+)
+async def list_company_products_endpoint(
+    company_id: UUID,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
+    staff: User = Depends(require_staff_permission("company_manage")),
+    session: AsyncSession = Depends(get_db_reader),
+) -> ProductListResponse:
+    """List one project's products in EVERY status (active, hidden, archived).
+
+    Read-only, newest first. The public product list shows active products
+    only, so a hidden product would vanish from the staff screen; this list
+    keeps it in view so it can be returned. Permission: company_manage, as
+    the other staff project reads. 404 when the company does not exist.
+    """
+    await get_company(company_id, session)
+    products, total = await list_products(
+        session,
+        active_only=False,
+        company_id=company_id,
+        page=page,
+        per_page=per_page,
+    )
+    return ProductListResponse(
+        items=[ProductResponse.model_validate(p) for p in products],
         total=total,
         page=page,
         per_page=per_page,

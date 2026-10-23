@@ -6,6 +6,7 @@
 #   CreatePurchaseRequest -- POST /api/v1/products/{id}/purchase
 #   StaffReversePurchaseRequest -- POST /staff/purchases/{id}/reverse (R-2.2)
 #   StaffGrantGiftRequest -- POST /staff/purchases/gifts
+#   (read) StaffPurchaseListResponse -- GET /staff/purchases
 #
 # RESPONSE SCHEMAS:
 #   PurchaseResponse      -- single purchase record
@@ -115,3 +116,32 @@ class PurchasePreviewResponse(BaseModel):
 
     bonus_units: int
     bonus_percent: float
+
+
+class StaffPurchaseItem(BaseModel):
+    """One row of the staff purchases list (read-only)."""
+
+    id: UUID
+    created_at: datetime
+    buyer_id: UUID
+    buyer_email: str | None
+    buyer_name: str | None
+    company_id: UUID
+    company_name: str
+    product_id: UUID
+    product_name: str
+    units: int
+    paid_cents: int
+    # paid | installment | gift | bonus
+    kind: str
+    legal_basis: str
+    status: str
+
+
+class StaffPurchaseListResponse(BaseModel):
+    """Paged staff list of purchases."""
+
+    items: list[StaffPurchaseItem]
+    total: int
+    page: int
+    per_page: int

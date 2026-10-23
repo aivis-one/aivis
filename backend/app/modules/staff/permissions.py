@@ -12,6 +12,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError
+from app.modules.staff.constants import is_admin
 from app.modules.staff.service import get_effective_permissions, get_staff_profile
 from app.modules.users.models import User
 
@@ -40,3 +41,20 @@ async def require_financial_operations(
 ) -> None:
     """Check that staff has financial_operations permission."""
     await require_permission(staff, "financial_operations", session)
+
+
+async def require_admin(
+    staff: User,
+    session: AsyncSession,
+) -> None:
+    """Check that staff holds every permission (the administrator mark).
+
+    Raises:
+        ForbiddenError: If the staff profile is missing or any permission
+            key is not True.
+    """
+    profile = await get_staff_profile(staff.id, session)
+    if not profile:
+        raise ForbiddenError("Staff profile not found")
+    if not is_admin(get_effective_permissions(profile)):
+        raise ForbiddenError("Admin access required")

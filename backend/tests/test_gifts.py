@@ -404,3 +404,25 @@ async def test_a_pending_gifts_certificate_is_not_emailed(
         headers=auth_headers(recipient["session_token"]),
     )
     assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_grant_needs_the_administrator_mark_but_cancel_does_not(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, admin_token = await create_admin_user(client, db_session)
+    _, product_id = await _setup(client, admin_token)
+    recipient = await register_user(client)
+
+    # Default staff hold financial_operations but not every permission.
+    _, staff_token = await create_staff_user(client, db_session)
+    refused = await _grant(client, staff_token, recipient["user"]["id"], product_id)
+    assert refused.status_code == 403, refused.text
+
+    granted = await _grant(client, admin_token, recipient["user"]["id"], product_id)
+    assert granted.status_code == 201, granted.text
+    cancelled = await client.post(
+        f"/api/v1/staff/purchases/gifts/{granted.json()['id']}/cancel",
+        headers=auth_headers(staff_token),
+    )
+    assert cancelled.status_code == 200, cancelled.text
