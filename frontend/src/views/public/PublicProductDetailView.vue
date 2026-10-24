@@ -7,11 +7,10 @@
 // investor-side /investor/products/:id. Differences with the auth
 // view:
 //
-//   1. NO `<CHeader>` inside the view. The shell carries the only
+//   1. NO header inside the view. The frame carries the only
 //      header for the public flow (single-header policy, Batch 3).
-//      An inline back-link "Back to company" sits above the hero so
-//      the deep-linked visitor has an explicit path into the company
-//      overview context.
+//      The header's back control leads to the company overview so the
+//      deep-linked visitor has an explicit path into that context.
 //
 //   2. Installment plans are READ-ONLY for the public visitor. The
 //      auth-flow renders each plan as a tappable card that deep-links
@@ -54,13 +53,14 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from '@/components/ui/icons'
 
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { useAuthStore } from '@/stores/auth'
 import { useAuthWall } from '@/composables/useAuthWall'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
-import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
+import { formatNumber, formatPrice } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 
@@ -90,6 +90,17 @@ const notFound = ref<boolean>(false)
 let fetchEpoch = 0
 
 const productId = computed<string>(() => route.params.id as string)
+
+// The frame's header carries the title and the way back: the product's name and
+// a link to its company (a deep-linked visitor has an explicit path into the
+// company overview). Called synchronously in setup.
+useScreenHeader({
+  title: () => product.value?.name,
+  back: () =>
+    product.value
+      ? { name: 'public-company-overview', params: { id: product.value.company_id } }
+      : undefined,
+})
 
 // ---------------------------------------------------------------------------
 // Fetch
@@ -142,9 +153,10 @@ watch(
 // Derived display state
 // ---------------------------------------------------------------------------
 
-const coverImage = computed<string | null>(() => {
+// The cover is the product's own picture, else the company's logo (K47 hero).
+const coverSrc = computed<string | null>(() => {
   const p = product.value
-  return p ? resolveCoverImage(p) : null
+  return p ? (p.cover_url ?? p.company_logo_url ?? null) : null
 })
 
 // available_packages is required on the backend schema (no `?? 0`
@@ -189,18 +201,6 @@ function onRetry(): void {
   void loadProduct(productId.value)
 }
 
-function goToCompany(): void {
-  const p = product.value
-  if (!p) return
-  void safeNavigate(
-    router.push({
-      name: 'public-company-overview',
-      params: { id: p.company_id },
-    }),
-    '[PublicProductDetailView] to company',
-  )
-}
-
 function onBuyClick(): void {
   const p = product.value
   if (!p) return
@@ -242,384 +242,129 @@ function onBuyClick(): void {
 <template>
   <div class="ppd">
     <!-- Loading -->
-    <div v-if="loading" class="ppd__center">
-      <CLoader :size="32" />
+    <div v-if="loading" class="ds-empty">
+      <CLoader />
     </div>
 
     <!-- 404 -->
-    <div v-else-if="notFound" class="ppd__center">
-      <CEmptyState
-        :title="t('public.productDetail.notFound.title')"
-        :description="t('public.productDetail.notFound.subtitle')"
-      />
-    </div>
+    <CEmptyState
+      v-else-if="notFound"
+      :title="t('public.productDetail.notFound.title')"
+      :description="t('public.productDetail.notFound.subtitle')"
+    />
 
     <!-- Generic error -->
-    <div v-else-if="errored" class="ppd__center">
-      <CEmptyState :title="t('public.productDetail.errorTitle')" />
-      <CButton variant="primary" @click="onRetry">
-        {{ t('public.productDetail.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('public.productDetail.errorTitle')">
+      <template #actions>
+        <CButton variant="primary" inline @click="onRetry">
+          {{ t('public.productDetail.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else-if="product">
-      <!-- Inline back-link to company overview. Unlike the public
-           CompanyOverview (where browser back covers the list -> overview
-           navigation), this view is typically reached via deep-link;
-           an explicit path to the company context is worth the row.
-           iter 2.7 batch B3: button shape extracted to CBackLink so the
-           public and auth flows share the same component. -->
-      <div class="ppd__back-row">
-        <CBackLink :label="t('public.productDetail.backLink')" @click="goToCompany" />
-      </div>
-
-      <!-- Hero with cover image (matches auth-flow ProductDetailView
-           proportions and gradient overlay). -->
-      <div
-        class="ppd__hero"
-        :class="{ 'ppd__hero--fallback': !coverImage }"
-        :style="{ backgroundImage: coverImage ?? 'none' }"
-      >
-        <Building v-if="!coverImage" :size="64" class="ppd__hero-icon" />
-        <div class="ppd__hero-content">
-          <div class="ppd__hero-company">
-            {{ product.company_name }}
-          </div>
-          <h1 class="ppd__hero-title">
+      <!-- Hero with the cover (K47): the company and the product name over the
+           photo, or the fallback tile with the icon when there is no photo. -->
+      <section class="ds-hero" aria-labelledby="ppd-hero-title">
+        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
+        <span v-else class="ds-hero__fallback"><Building /></span>
+        <div class="ds-hero__content">
+          <h2 id="ppd-hero-title" class="ds-hero__title">
             {{ product.name }}
-          </h1>
+          </h2>
+          <p class="ds-hero__meta">
+            {{ product.company_name }}
+          </p>
         </div>
+      </section>
+
+      <!-- Stats: pack price (primary) + packs available (K46) -->
+      <div class="ds-stats">
+        <CStatCard
+          :label="t('inv.product.pricePerPack')"
+          :value="formatPrice(product.price_per_pack_cents, product.currency)"
+          :sub="`${formatPrice(product.price_per_unit_cents, product.currency)} / ${t('inv.unit')}`"
+        />
+        <CStatCard
+          :label="t('inv.product.packsAvailability')"
+          :value="formatNumber(available, locale)"
+          :sub="t('inv.available')"
+        />
       </div>
 
-      <div class="ppd__body">
-        <!-- Stats: pack price (primary) + packs available -->
-        <div class="ppd__stats">
-          <div class="ppd__stat">
-            <div class="ppd__stat-label">
-              {{ t('inv.product.pricePerPack') }}
-            </div>
-            <div class="ppd__stat-value ppd__stat-value--price">
-              {{ formatPrice(product.price_per_pack_cents, product.currency) }}
-            </div>
-            <div class="ppd__stat-unit">
-              {{ formatPrice(product.price_per_unit_cents, product.currency) }}
-              / {{ t('inv.unit') }}
-            </div>
-          </div>
-          <div class="ppd__stat">
-            <div class="ppd__stat-label">
-              {{ t('inv.product.packsAvailability') }}
-            </div>
-            <div class="ppd__stat-value">
-              {{ formatNumber(available, locale) }}
-            </div>
-            <div class="ppd__stat-unit">
-              {{ t('inv.available') }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <section v-if="product.description" class="ppd__section">
-          <h2 class="ppd__section-title">
+      <!-- Description -->
+      <section v-if="product.description" class="ds-card ds-card--flat">
+        <div class="ds-card__head">
+          <h2 class="ds-card__title">
             {{ t('inv.product.description') }}
           </h2>
-          <p class="ppd__description">
-            {{ product.description }}
-          </p>
-        </section>
+        </div>
+        <p class="ds-card__body ppd__description">
+          {{ product.description }}
+        </p>
+      </section>
 
-        <!-- Installment plans: read-only list for public visitor.
-             Tappable cards in the auth-flow view deep-link into the
-             auth-only InstallmentView; here we list plans as marketing
-             proof and let the primary Buy CTA drive the funnel. -->
-        <section class="ppd__section">
-          <h2 class="ppd__section-title">
+      <!-- Installment plans: a read-only list for the public visitor (K23 rows
+           with no link). Tappable cards in the auth-flow view deep-link into the
+           auth-only InstallmentView; here the plans are marketing proof and the
+           primary Buy CTA drives the funnel. -->
+      <section class="ds-card ds-card--flat">
+        <div class="ds-card__head">
+          <h2 class="ds-card__title">
             {{ t('inv.product.installments') }}
           </h2>
-          <div v-if="product.installments.length === 0" class="ppd__empty">
-            {{ t('inv.product.installmentsEmpty') }}
-          </div>
-          <ul v-else class="ppd__plans">
-            <li v-for="plan in product.installments" :key="plan.id" class="ppd__plan">
-              <span class="ppd__plan-name">{{ plan.name }}</span>
-              <span v-if="getPlanBonus(plan) > 0" class="ppd__plan-bonus">
-                {{
-                  t('inv.product.installmentsBonus', {
-                    n: getPlanBonus(plan),
-                  })
-                }}
-              </span>
-            </li>
-          </ul>
-        </section>
-
-        <!-- Primary CTA. Visible for anonymous (Register to buy),
-             investor (Buy now), agent (Buy now). Hidden for staff /
-             company / other authenticated roles to avoid the silent
-             guard-rejection failure mode (R26 lesson). When sold out,
-             the button stays visible but disabled with a "Sold out"
-             label so the visitor knows the product exists. -->
-        <div v-if="canNavigateToPurchase" class="ppd__actions">
-          <CButton variant="primary" :disabled="isSoldOut" @click="onBuyClick">
-            <ShoppingCart :size="16" />
-            {{ buyLabel }}
-          </CButton>
         </div>
-      </div>
+        <p v-if="product.installments.length === 0" class="ds-card__body">
+          {{ t('inv.product.installmentsEmpty') }}
+        </p>
+        <ul v-else class="ds-rows">
+          <li v-for="plan in product.installments" :key="plan.id" class="ds-row">
+            <span class="ds-row__body">
+              <span class="ds-row__title">{{ plan.name }}</span>
+            </span>
+            <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
+              <CBadge
+                variant="success"
+                :text="t('inv.product.installmentsBonus', { n: getPlanBonus(plan) })"
+              />
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Primary CTA. Visible for anonymous (Register to buy),
+           investor (Buy now), agent (Buy now). Hidden for staff /
+           company / other authenticated roles to avoid the silent
+           guard-rejection failure mode (R26 lesson). When sold out,
+           the button stays visible but disabled with a "Sold out"
+           label so the visitor knows the product exists. -->
+      <CButton
+        v-if="canNavigateToPurchase"
+        variant="primary"
+        :disabled="isSoldOut"
+        @click="onBuyClick"
+      >
+        <ShoppingCart size="sm" />
+        {{ buyLabel }}
+      </CButton>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* The frame's main pads the screen; this column only lays its parts out with the
+   same gap the main uses. */
 .ppd {
-  display: flex;
-  flex-direction: column;
-}
-
-.ppd__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-  padding: var(--space-4);
-}
-
-/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
-   above the hero. Button shape lives in CBackLink (R32 STYLE-32-02);
-   this row only owns the margin. */
-.ppd__back-row {
-  display: flex;
-  margin: var(--space-4) var(--space-4) 0;
-}
-
-/* Hero with cover image -- proportions mirror auth-flow
-   ProductDetailView for visual consistency across flows. */
-.ppd__hero {
-  position: relative;
-  block-size: 220px;
-  background-color: var(--bg-subtle);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  color: var(--neutral-0);
-}
-
-.ppd__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
-  pointer-events: none;
-}
-
-.ppd__hero--fallback {
-  background-color: var(--bg-subtle);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-}
-
-.ppd__hero--fallback::after {
-  display: none;
-}
-
-.ppd__hero-icon {
-  position: relative;
-  z-index: 1;
-  color: var(--text-tertiary);
-  stroke-width: 2;
-}
-
-.ppd__hero-content {
-  position: relative;
-  z-index: 2;
-  padding: var(--space-4-lg);
-  inline-size: 100%;
-}
-
-.ppd__hero--fallback .ppd__hero-content {
-  text-align: center;
-  color: var(--text-primary);
-  padding: 0 var(--space-4-lg) var(--space-4-lg);
-}
-
-.ppd__hero-company {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.85;
-  margin-block-end: var(--space-1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.ppd__hero-title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.3;
-}
-
-.ppd__body {
-  padding: var(--space-4-lg);
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-5);
 }
 
-.ppd__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.ppd__stat {
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  text-align: center;
-}
-
-.ppd__stat-label {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-block-end: var(--space-2);
-}
-
-.ppd__stat-value {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.ppd__stat-value--price {
-  color: var(--primary);
-}
-
-.ppd__stat-unit {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.ppd__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.ppd__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
+/* The description keeps the visitor's own line breaks and is capped at the reading
+   measure (--maxw-prose is a ceiling: on a phone it does nothing). */
 .ppd__description {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: break-word;
-}
-
-.ppd__empty {
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-.ppd__plans {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Plan row is NON-interactive in the public flow. Auth-flow renders
-   tappable cards that deep-link into InstallmentView -- a route the
-   public visitor cannot enter. We strip the cursor / hover / focus
-   affordances to make the read-only intent obvious. */
-.ppd__plan {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-}
-
-.ppd__plan-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.ppd__plan-bonus {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--success);
-  white-space: nowrap;
-}
-
-.ppd__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding-block-start: var(--space-2);
-}
-
-@media (min-width: 480px) {
-  .ppd__actions {
-    flex-direction: row;
-  }
-  .ppd__actions > * {
-    flex: 1;
-  }
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .ppd__stats {
-    max-inline-size: calc(2 * var(--tile-max));
-  }
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.ppd__description {
   max-inline-size: var(--maxw-prose);
 }
 </style>

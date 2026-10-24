@@ -29,7 +29,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
-import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
+import { formatNumber, formatPrice } from '@/utils/format'
 import type { PublicProductResponse } from '@/api/types'
 
 // Backend doesn't yet emit `currency` on PublicProductResponse
@@ -47,29 +47,30 @@ defineEmits<{ click: [product: PublicProductResponse] }>()
 
 const { t, locale } = useI18n()
 
-const coverImage = computed(() => resolveCoverImage(props.product))
+// The cover is the product's own picture, else the company's logo; either covers
+// the media part of the card (K07).
+const coverSrc = computed(() => props.product.cover_url ?? props.product.company_logo_url ?? null)
 
 // F4.4: backend now guarantees this field is populated; no `?? 0`.
 const available = computed(() => props.product.available_packages)
 </script>
 
 <template>
-  <button type="button" class="product-card" @click="$emit('click', product)">
-    <div
-      class="product-card__img"
-      :class="{ 'product-card__img--fallback': !coverImage }"
-      :style="{ backgroundImage: coverImage ?? 'none' }"
-    >
-      <Building v-if="!coverImage" :size="48" class="product-card__icon" />
-      <span class="product-card__company">{{ product.company_name }}</span>
+  <article class="ds-card ds-card--media ds-card--interactive">
+    <div class="ds-card__media" :class="{ 'ds-card__media--fallback': !coverSrc }" data-size="sm">
+      <img v-if="coverSrc" :src="coverSrc" alt="" loading="lazy" />
+      <Building v-else />
+      <span class="ds-card__tag">{{ product.company_name }}</span>
     </div>
-    <div class="product-card__body">
-      <div class="product-card__name">
-        {{ product.name }}
-      </div>
-      <div v-if="product.description" class="product-card__desc">
+    <div class="ds-card__content">
+      <h3 class="ds-card__title">
+        <button type="button" class="ds-card__link" @click="$emit('click', product)">
+          {{ product.name }}
+        </button>
+      </h3>
+      <p v-if="product.description" class="ds-card__body product-card__desc">
         {{ product.description }}
-      </div>
+      </p>
       <div class="product-card__meta">
         <div class="product-card__price-block">
           <span class="product-card__price">
@@ -86,110 +87,25 @@ const available = computed(() => props.product.available_packages)
         </span>
       </div>
     </div>
-  </button>
+  </article>
 </template>
 
 <style scoped>
-.product-card {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    transform var(--dur-base) var(--ease-standard),
-    box-shadow var(--dur-base) var(--ease-standard);
-}
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-3);
-}
-
-.product-card__img {
-  block-size: var(--center-sm);
-  background-color: var(--bg-subtle);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  color: var(--neutral-0);
-}
-.product-card__img::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 40%, color-mix(in srgb, var(--neutral-950) 60%, transparent));
-  pointer-events: none;
-}
-.product-card__img--fallback {
-  background-color: var(--bg-subtle);
-}
-.product-card__img--fallback::after {
-  display: none;
-}
-
-.product-card__icon {
-  position: relative;
-  z-index: 1;
-  color: var(--text-tertiary);
-  stroke-width: 2;
-}
-
-.product-card__company {
-  position: absolute;
-  inset-block-start: var(--space-2);
-  inset-inline-start: var(--space-2);
-  z-index: 2;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--neutral-950) 45%, transparent);
-  color: var(--neutral-0);
-  max-inline-size: calc(100% - 16px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.product-card__body {
-  padding: var(--space-4);
-}
-
-.product-card__name {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block-end: var(--space-1);
-}
-
+/* The card, its cover, the chip on the photo and the title link are the system's
+   media card (K07). What is left is the description's clamp and the price block
+   under it: the system has no price line for a card (NEED), so its type is set
+   from tokens. */
 .product-card__desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-3);
-  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-inline-size: var(--maxw-prose);
 }
 
-/* F4.4 B7: meta is now a 2-column row where the left column is itself
-   a 2-line block (pack price + unit price reference). Right column
-   ("packs available") stays single-line. align-items shifted from
-   baseline to flex-start so the right column anchors to the top of
-   the price block, lining up with the bigger pack price. */
+/* Meta is a 2-column row: the left column is a 2-line block (the pack price and
+   the per-unit reference), the right one ("packs available") is one line anchored
+   to the top of the price block. */
 .product-card__meta {
   display: flex;
   justify-content: space-between;
@@ -215,9 +131,7 @@ const available = computed(() => props.product.available_packages)
   color: var(--text-secondary);
 }
 
-/* F4.4 B7: secondary line under the pack price -- the per-unit
-   reference. Quiet typography so it does not compete with the
-   primary pack price. */
+/* The per-unit reference under the pack price: quiet type. */
 .product-card__price-secondary {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
@@ -228,21 +142,5 @@ const available = computed(() => props.product.available_packages)
   color: var(--text-tertiary);
   text-align: end;
   white-space: nowrap;
-  /* Sprint 4.4: align with the top of the bigger pack price line above
-     the secondary reference. align-self trumps the magic-number
-     padding-top from the first B7 cut -- it tracks line-height changes
-     for free and survives any future font-size tweak on the price. */
-  align-self: flex-start;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.product-card__desc {
-  max-inline-size: var(--maxw-prose);
 }
 </style>
