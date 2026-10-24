@@ -2640,48 +2640,5 @@
   "purpose": "Dated milestones of a project, in order.",
   "usage": "Use it where the dates matter and an entry has a body; progress through a flow is the Stepper (K32). An entry that opens a post or a window takes the title as a button; an entry that has a body to read is the opening card.",
   "notes": ""
- },
- {
-  "id": "K55",
-  "name": "Text parts",
-  "status": "built",
-  "markup": "markup/text-parts.html",
-  "class_root": ".ds-section-title, .ds-note, .ds-amount, .ds-label",
-  "variants": {
-   "part": [
-    "section title (.ds-section-title)",
-    "note (.ds-note, .ds-note--xs)",
-    "amount (.ds-amount; data-size=\"sm\"; data-tone=\"success|danger\")",
-    "label (.ds-label; data-size=\"md\")"
-   ]
-  },
-  "sizes": [
-   "amount: --fs-2xl, or --fs-body with data-size=\"sm\"",
-   "label: --fs-xs, or --fs-sm with data-size=\"md\""
-  ],
-  "states": [
-   "rest"
-  ],
-  "tokens": [
-   "--danger",
-   "--font-body",
-   "--font-display",
-   "--font-mono",
-   "--fs-2xl",
-   "--fs-body",
-   "--fs-h4",
-   "--fs-sm",
-   "--fs-xs",
-   "--lh-snug",
-   "--lh-tight",
-   "--success",
-   "--text-primary",
-   "--text-secondary",
-   "--tracking-wide"
-  ],
-  "accessibility": "Plain text elements with no role of their own; the heading level of a section title fits the page. A toned amount repeats its sign in the text, so colour is never the only sign. --success is 6.30 on the surface, 5.91 on the page and 5.55 on the card ground by day, 9.15, 9.98 and 8.54 by night; --danger 7.86, 7.38 and 6.92 by day, 5.47, 5.96 and 5.10 by night. The label's --text-secondary stands on the surface, the page and the card ground. The label is CSS uppercase, so the text in the DOM keeps its case for assistive technology.",
-  "purpose": "The shared text parts of a screen: a section heading, a quiet note, a summary amount and a small uppercase caption.",
-  "usage": "Use the section title for the heading of a section, the note for a quiet line under a figure or a heading, the amount for the one headline figure of a sheet or a dialog (a row or a stat tile has its own figure), and the label for the caption over a group, a detail field or a type. They are parts, not components: none holds a control.",
-  "notes": "Section title and note were added in batch 5 without an entry here; this entry names all four."
  }
 ]

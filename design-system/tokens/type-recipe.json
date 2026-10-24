@@ -364,19 +364,19 @@
    "tokens": [
     "--font-mono",
     "--fs-2xl",
-    "--fs-body",
     "--lh-tight",
     "--text-primary",
     "--success",
     "--danger"
    ],
    "weight": 700,
-   "use": "the summary amount of a sheet or a dialog; data-size=sm takes --fs-body; data-tone=success|danger paints it"
+   "use": "the summary amount of a sheet or a dialog; data-size=sm takes the size of the text around it; data-tone=success|danger paints it"
   },
   "ds-label": {
    "role": "xs",
    "family": "body",
    "tokens": [
+    "--font-body",
     "--fs-xs",
     "--fs-sm",
     "--lh-snug",
