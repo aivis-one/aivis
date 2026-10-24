@@ -40,3 +40,14 @@
 
 <!-- K07 addition (batch 5): data-tone="success|danger" on .ds-card__delta paints a profit or a loss in the head of a card (not on the brand card). -->
 <article class="ds-card"><header class="ds-card__head"><h3 class="ds-card__title">Brenner Logistik GmbH</h3><p class="ds-card__delta" data-tone="success">+380.00</p></header><div class="ds-card__body">12 units held.</div></article>
+
+<!-- K07 additions (batch 5). The button form of the link: button.ds-card__link[type=button] in the title, for a card that opens something in place (drawn as the anchor form is).
+     The price line: p.ds-card__price > span.ds-card__price-figure (mono, tabular, --primary) + span.ds-card__price-unit, then p.ds-card__price-ref (the quiet reference line). The app writes the figure, the unit and the reference. -->
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img src="cover.jpg" alt=""><span class="ds-card__tag">Brenner Logistik GmbH</span></div>
+  <div class="ds-card__content">
+    <h3 class="ds-card__title"><button type="button" class="ds-card__link">Trade-in lounge, 40 seats</button></h3>
+    <p class="ds-card__price"><span class="ds-card__price-figure">1,250.00</span><span class="ds-card__price-unit">USDT per unit</span></p>
+    <p class="ds-card__price-ref">Minimum 4 units, about 5,000.00 in all</p>
+  </div>
+</article>

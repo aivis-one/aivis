@@ -2690,3 +2690,17 @@ button.ds-row__link { appearance: none; box-sizing: border-box; inline-size: 100
 .ds-input[type="datetime-local"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color-scheme: light; }
 [data-theme="dark"] .ds-input[type="datetime-local"] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-input[type="datetime-local"] { color-scheme: dark; } }
+
+/* ===== K07 Card, additions: the button form of the link and the price line ===== */
+/* the button form of the link: a card that opens something in place reads as the one that goes to a screen (the title's font and tracking, start alignment, the hit area stretched over the card, the focus outline round the card) */
+button.ds-card__link { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-align: start; cursor: pointer; }
+/* the price line: the figure in the mono face with its unit, and a quiet reference line under it */
+.ds-card__price { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(var(--space-1) / 2) var(--space-2); margin: 0; }
+.ds-card__price-figure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-tight); color: var(--primary); overflow-wrap: anywhere; }
+.ds-card__price-unit { font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-snug); color: var(--text-secondary); }
+.ds-card__price-ref { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+
+/* ===== K23 Row list, addition: the date leaf (the day over the month) as a lead; the same box stands in a card head as .ds-lead ===== */
+.ds-dateleaf { align-content: center; gap: 0; text-align: center; line-height: var(--lh-tight); }
+.ds-dateleaf__day { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); font-weight: 700; }
+.ds-dateleaf__month { font-size: var(--fs-xs); font-weight: 600; }

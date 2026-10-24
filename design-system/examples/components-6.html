@@ -78,7 +78,7 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </head>
 <body>
 <header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a></div></div></div>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -151,6 +151,45 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 <div class="ds-field"><label class="ds-field__label" for="dt-r">Starts (read-only)</label><input class="ds-input" id="dt-r" type="datetime-local" value="2026-11-14T18:30" readonly></div>
 </div></div>
 <figure class="phone-wrap"><iframe class="phone" title="Date and time field on a phone" data-src="components-6.html?fragment=r2b" height="700"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+</div></section>
+<section class="blk" id="r4"><div class="wrap"><h2>Card (K07) button form and price line, and the date leaf</h2>
+<p class="lead">A card whose title is a button, the price line (a mono figure, its unit and a quiet reference line), and the date leaf: the day over the month, a lead of a row or a card.</p>
+<div class="cols"><div class="stack" data-frag="r4a"><div class="padded desk"><h3>Card: button form and price line</h3>
+<div class="photo-row">
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img data-photo="grey" alt=""><span class="ds-card__tag">Brenner Logistik GmbH</span></div>
+  <div class="ds-card__content">
+    <h3 class="ds-card__title"><button type="button" class="ds-card__link">Trade-in lounge, 40 seats, opening in January</button></h3>
+    <p class="ds-card__price"><span class="ds-card__price-figure">1,250.00</span><span class="ds-card__price-unit">USDT per unit</span></p>
+    <p class="ds-card__price-ref">Minimum 4 units, about 5,000.00 in all</p>
+  </div>
+</article>
+<article class="ds-card ds-card--media ds-card--interactive sim-hover sim-focus">
+  <div class="ds-card__media ds-card__media--fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></div>
+  <div class="ds-card__content">
+    <h3 class="ds-card__title"><button type="button" class="ds-card__link">Hover and focus, the button form</button></h3>
+    <p class="ds-card__price"><span class="ds-card__price-figure">320.00</span><span class="ds-card__price-unit">USDT per unit</span></p>
+    <p class="ds-card__price-ref">Sold out until March</p>
+  </div>
+</article>
+<article class="ds-card ds-card--interactive">
+  <header class="ds-card__head"><h3 class="ds-card__title"><a class="ds-card__link" href="#company">The anchor form</a></h3></header>
+  <div class="ds-card__body">For comparison: the same look.</div>
+</article>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Card: button form and price line on a phone" data-src="components-6.html?fragment=r4a" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r4b"><div class="padded desk"><h3>Date leaf</h3>
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead ds-dateleaf"><span class="ds-dateleaf__day">24</span><span class="ds-dateleaf__month">Oct</span></span><span class="ds-row__body"><a class="ds-row__link" href="#event"><span class="ds-row__title">Meeting of the holders</span></a><span class="ds-row__meta">Saturday, 18:30, online</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><time class="ds-lead ds-dateleaf" data-tone="accent" datetime="2026-11-03"><span class="ds-dateleaf__day">3</span><span class="ds-dateleaf__month">Nov</span></time><span class="ds-row__body"><span class="ds-row__title">Payout day</span><span class="ds-row__meta">The tone tints the leaf</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead ds-dateleaf"><span class="ds-dateleaf__day">12</span><span class="ds-dateleaf__month">Дек</span></span><span class="ds-row__body"><span class="ds-row__title">Открытие</span><span class="ds-row__meta">The month in the page language</span></span></li>
+</ul>
+<article class="ds-card"><header class="ds-card__head"><h3 class="ds-card__title">Opening of the lounge</h3><time class="ds-lead ds-dateleaf" datetime="2026-01-12"><span class="ds-dateleaf__day">12</span><span class="ds-dateleaf__month">Jan</span></time></header><div class="ds-card__body">The leaf in a card head.</div></article>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Date leaf on a phone" data-src="components-6.html?fragment=r4b" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>

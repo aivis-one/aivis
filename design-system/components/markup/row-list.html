@@ -59,3 +59,10 @@
     <span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title" data-tone="danger">Deactivate the account</span></button></span>
   </li>
 </ul>
+
+<!-- K23 addition (batch 5): the date leaf. .ds-dateleaf on the lead box (.ds-row__lead, or span.ds-lead / time.ds-lead outside a row) holds the day (mono) over the abbreviated month; the tone of the lead applies.
+     The full date stands in the meta or in the datetime of a time element. -->
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead ds-dateleaf"><span class="ds-dateleaf__day">24</span><span class="ds-dateleaf__month">Oct</span></span><span class="ds-row__body"><a class="ds-row__link" href="/events/7"><span class="ds-row__title">Meeting of the holders</span></a><span class="ds-row__meta">Saturday 24 Oct 2026, 18:30, online</span></span></li>
+</ul>
+<time class="ds-lead ds-dateleaf" datetime="2026-11-03"><span class="ds-dateleaf__day">3</span><span class="ds-dateleaf__month">Nov</span></time>
