@@ -18,7 +18,7 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 1.3. A Part is not a share of profit, not a share or equity in the Company, not a right to acquire a share of the Company, not an option and not a fund. No profit is computed.
 
-1.4. A purchase of units in the index project "AIVIS Projects Index" is a purchase under this agreement and is governed also by the Index Rules, which say what a unit is. In that project the Parts are called units. What the Index Rules state of the index -- what a unit is and the income it gives, the number of units, the price of a unit, the bonus fund, the use of the money paid for units, and the buy-out and closing of a project in the index -- applies to that project in place of clauses 1.2, 2.4, 3.1, 3.3, 3.6, 6.1 to 6.3 and 6.5, of the first sentence of clause 5.8 and of the second and third sentences of clause 5.9.
+1.4. A purchase of units in the index project "AIVIS Projects Index" is a purchase under this agreement and is governed also by the Index Rules, which say what a unit is. In that project the Parts are called units. What the Index Rules state of the index -- what a unit is and the income it gives, the number of units, the price of a unit, the bonus fund, the use of the money paid for units, and the buy-out and closing of a project in the index -- applies to that project in place of clauses 1.2, 2.4, 3.1, 3.3, 3.6, 6.1 to 6.3 and 6.5, of the first sentence of clause 5.8 and of the second to fourth sentences of clause 5.9.
 
 ## 2. The register entry {#ba-h2}
 
@@ -32,21 +32,21 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 ## 3. The pool and the commission {#ba-h3}
 
-3.1. The holders of a project's Parts share a fixed pool of 15 percent of the project's gross receipts. It is the same 15 percent for every project and for every Part.
+3.1. The holders of a project's Parts share a fixed pool of 10 percent of the project's gross receipts. It is the same 10 percent for every project and for every Part.
 
 3.2. Gross receipts are all money received from customers for the project's product, before any deduction. The pool is counted only on the sales of the project's product. The money from selling Parts is never gross receipts.
 
-3.3. The Holder's share of the pool equals his Parts divided by 1,000,000,000, that is 15 percent of the project's gross receipts x his Parts / 1,000,000,000.
+3.3. The Holder's share of the pool equals his Parts divided by 1,000,000,000, that is 10 percent of the project's gross receipts x his Parts / 1,000,000,000.
 
-3.4. The Company's service commission is 10 percent of the pool, on top. The pool is therefore 16.67 percent of gross receipts (15 / 0.9): 1.67 percent goes to the Company and 15 percent to all Parts.
+3.4. The Company's service commission is 10 percent of the pool, on top. The pool is therefore 11.11 percent of gross receipts (10 / 0.9): 1.11 percent goes to the Company and 10 percent to all Parts.
 
-3.5. Example. Gross receipts of 100,000 for a quarter: the pool is 16,667, the Company's commission 1,667, all Parts 15,000, and 1 percent of the Parts 150.
+3.5. Example. Gross receipts of 100,000 for a quarter: the pool is 11,111, the Company's commission 1,111, all Parts 10,000, and 1 percent of the Parts 100.
 
 3.6. Until the project's product sells, the project's gross receipts, and so its pool, are zero.
 
 ## 4. Changes to the pool and the commission {#ba-h4}
 
-4.1. The pool may only be raised, from 15 percent up, and the commission may only be lowered, from 10 percent down, by the Company alone. Such a change applies to the Parts already sold.
+4.1. The pool may only be raised, from 10 percent up, and the commission may only be lowered, from 10 percent down, by the Company alone. Such a change applies to the Parts already sold. The Company announces every such change in the Cabinet, with its date, before it applies.
 
 4.2. Any other change to what this agreement promises about the pool, the commission and the payment calendar applies to Parts already sold only with the Holder's consent.
 
@@ -70,7 +70,7 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 5.8. The money from selling Parts goes to the budget of that project by its roadmap and business-financial model, less the selling cost. The Company has no sales department of its own; sales are made by agent-integrators, whose commissions are the selling cost, paid from the money for the Parts and disclosed to the Buyer before the purchase.
 
-5.9. The Company stays the one debtor of the Buyer whatever happens to a project's IP. The Company may sell a project's IP only after it has bought back the share of every Holder of that project, at a price not below the value of the share at the project's last revaluation (clause 6.2). The buy-out binds every Holder: on such a sale each share passes to the Company at that price, and the Holder is paid for it.
+5.9. The Company stays the one debtor of the Buyer whatever happens to a project's IP. The Company may sell a project's IP only after it has bought back the share of every Holder of that project, at a price not below the value of the share on the revaluation of the project made at the decision to sell. Every Holder is told in the Cabinet 30 days before the sale, and the price is paid to his account in the Cabinet at the end of that notice. The buy-out binds every Holder: on such a sale each share passes to the Company at that price, and the Holder is paid for it.
 
 ## 6. The price and bonus Parts {#ba-h6}
 
@@ -98,11 +98,13 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 7.6. Each monthly payment is taken from the Buyer's account in the Cabinet on its due date; a payment the account does not cover on that date is overdue. If the account covers it within 7 days of its due date, the instalment purchase continues. If it is not covered within those 7 days, the instalment purchase ends: the Parts of the months already paid stay the Buyer's, the booked Parts of the unpaid months go back to sale, and no penalty is charged.
 
+7.7. Each document that the Cabinet generates for the Buyer -- the purchase agreement, the agreement of each paid instalment month, the ownership certificate and the gift certificate -- carries the facsimile signature of the Company's director and the Company's seal. The Buyer agrees that such documents are signed by the Company.
+
 ## 8. Withdrawal within 14 days {#ba-h8}
 
 8.1. The Buyer may withdraw from the purchase within 14 days, by this agreement and through support only.
 
-8.2. On withdrawal the full price goes back to the Buyer's single account in the Cabinet, and the bonus Parts of that purchase are cancelled. On the Buyer's request, support refunds the account out by the means by which he paid, less the network fee for USDT.
+8.2. On withdrawal the full price goes back to the Buyer's single account in the Cabinet, and the bonus Parts of that purchase are cancelled. On the Buyer's request, support refunds the account out by the means by which he paid, less the network fee for USDT. The Buyer agrees to this refund to his account.
 
 ## 9. No partnership, no vote {#ba-h9}
 
@@ -124,7 +126,7 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 ## 12. Forum {#ba-h12}
 
-12.1. A dispute under this agreement goes to the state courts of Georgia in Tbilisi. The Buyer's protection as a consumer at his home is kept.
+12.1. A dispute under this agreement goes to the state courts of Georgia in Tbilisi, unless mandatory law where he lives gives him the right to go to another forum. The Buyer's protection as a consumer at his home is kept.
 
 12.2. The Buyer may sign a separate agreement for arbitration at GIAC after a dispute arises.
 

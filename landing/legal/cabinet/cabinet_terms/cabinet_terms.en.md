@@ -18,6 +18,8 @@
 
 2.3. Anyone may register, enter the Cabinet and look inside. Nothing is bought in the Cabinet before the verification described in clause 5.
 
+2.4. Each document that the Cabinet generates for you -- a purchase agreement, the agreement of each paid instalment month, the ownership certificate and the gift certificate -- carries the facsimile signature of the Company's director and the Company's seal. You agree that such documents are signed by the Company.
+
 ## 3. The seller {#ct-h3}
 
 3.1. The seller of everything offered in the Cabinet is the Company.
@@ -58,7 +60,7 @@
 
 7.3. A USDT deposit is accepted before verification; the verification fee may itself be paid in USDT. A purchase, an instalment, a payout of money and an application to become an agent-integrator need a passed verification.
 
-7.4. If you make a USDT deposit but do not pass verification, the Company refunds the deposit within 90 days, less the verification fee where that fee was taken from this deposit; the verification fee is not returned (clause 5.3). The refund goes to the sending address only, on the network by which the deposit came, and is made less the network fee. Money received from a person found on a sanctions list is not refunded: it is held as the law requires.
+7.4. If you make a USDT deposit but do not pass verification, the Company refunds the deposit within 90 days, less the verification fee where that fee was taken from this deposit; the verification fee is not returned (clause 5.3). The refund goes to the sending address only, on the network by which the deposit came, and is made less the network fee. Money received from a person found on any sanctions list the Company applies is not refunded in this way: it is frozen in the account, the Financial Monitoring Service of Georgia is notified, and nothing moves until it instructs; the freeze ends as clause 6.4 of the Company's AML and Screening Policy says.
 
 7.5. Bank details of the Company are given by support, under this agreement, only to a client whose verification is passed, at support's decision.
 

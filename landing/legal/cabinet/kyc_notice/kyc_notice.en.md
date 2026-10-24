@@ -50,7 +50,7 @@
 
 6.3. If a verification is rejected or withdrawn, a new verification is a new attempt and needs a new fee. Once you are approved, you pay nothing more for it.
 
-6.4. If you make a USDT deposit but do not pass verification, the Company refunds the deposit within 90 days, less the verification fee where that fee was taken from this deposit. The refund goes to the sending address only and is made less the network fee. Money received from a person found on a sanctions list is not refunded: it is held as the law requires.
+6.4. If you make a USDT deposit but do not pass verification, the Company refunds the deposit within 90 days, less the verification fee where that fee was taken from this deposit. The refund goes to the sending address only and is made less the network fee. Money received from a person found on any sanctions list the Company applies is not refunded in this way: it is frozen in the account, the Financial Monitoring Service of Georgia is notified, and nothing moves until it instructs; the freeze ends as clause 6.4 of the Company's AML and Screening Policy says.
 
 ## 7. Who sees your documents {#kyc-h7}
 

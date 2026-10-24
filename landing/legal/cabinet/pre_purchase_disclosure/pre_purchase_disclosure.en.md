@@ -14,13 +14,13 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 ## 2. The pool and the commission {#pp-h2}
 
-2.1. The holders of a project's parts share a fixed pool of 15 percent of its gross receipts. The Company's service commission is 10 percent of the pool, on top: the pool is 16.67 percent of gross receipts, of which 1.67 percent goes to the Company and 15 percent to all parts.
+2.1. The holders of a project's parts share a fixed pool of 10 percent of its gross receipts. The Company's service commission is 10 percent of the pool, on top: the pool is 11.11 percent of gross receipts, of which 1.11 percent goes to the Company and 10 percent to all parts.
 
-2.2. Your share is 15 percent of the project's gross receipts x your parts / 1,000,000,000.
+2.2. Your share is 10 percent of the project's gross receipts x your parts / 1,000,000,000.
 
-2.3. Example. Gross receipts of 100,000 for a quarter: the pool is 16,667, the Company's commission 1,667, all parts 15,000, and 1 percent of the parts 150.
+2.3. Example. Gross receipts of 100,000 for a quarter: the pool is 11,111, the Company's commission 1,111, all parts 10,000, and 1 percent of the parts 100.
 
-2.4. The pool may only be raised, from 15 percent up, and the commission may only be lowered, from 10 percent down, by the Company alone. Any other change applies to parts already sold only with the holder's consent.
+2.4. The pool may only be raised, from 10 percent up, and the commission may only be lowered, from 10 percent down, by the Company alone. The Company announces every such change in the Cabinet, with its date, before it applies. Any other change applies to parts already sold only with the holder's consent.
 
 ## 3. The risks {#pp-h3}
 
@@ -46,7 +46,7 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 6.1. The Company pays the holders itself, as the one debtor. It pays quarterly, and only after the 14 days of withdrawal. An amount under 10 USD is carried forward to the next quarter.
 
-6.2. The Company may sell a project's IP only after it has bought back every holder's share. The buy-out binds every holder, you included: your share then passes to the Company at a price not below its value at the project's last revaluation, and you are paid for it.
+6.2. The Company may sell a project's IP only after it has bought back every holder's share. Before the buy-out the project is revalued at the decision, and you are told in the Cabinet 30 days before the sale. The buy-out binds every holder, you included: your share then passes to the Company at a price not below its value on that fresh revaluation, and you are paid for it, to your account in the Cabinet, at the end of the notice.
 
 ## 7. The index {#pp-h7}
 
@@ -58,9 +58,9 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 8.1. Every buyer is treated as a consumer.
 
-8.2. You may withdraw within 14 days of the purchase, through support. A part joins the pool only when the money paid for it can no longer be recalled, that is after those 14 days.
+8.2. You may withdraw within 14 days of the purchase, through support. On withdrawal the full price goes back to your single account in the Cabinet, and the bonus parts of that purchase are cancelled; you agree to this refund to your account. On your request, support refunds the account out by the means by which you paid, less the network fee for USDT. A part joins the pool only when the money paid for it can no longer be recalled, that is after those 14 days.
 
-8.3. Disputes go to the state courts of Georgia in Tbilisi, and your protection as a consumer at your home is kept.
+8.3. Disputes go to the state courts of Georgia in Tbilisi, unless mandatory law where you live gives you the right to go to another forum, and your protection as a consumer at your home is kept.
 
 8.4. If you are unhappy with a purchase, an accrual or a payment, write to support in the Cabinet. If support does not settle it, write to the Company at its address at the top of this sheet.
 

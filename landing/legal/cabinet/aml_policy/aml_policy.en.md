@@ -58,7 +58,7 @@
 
 6.3. The Company may reverse a payment that was recorded in error or was not completed by the payment service; a mistake is corrected by a reversing entry.
 
-6.4. Money received from a person found on a sanctions list is held as the law requires and is not refunded.
+6.4. Money received from a person found on any sanctions list the Company applies (United Nations, United States, European Union, United Kingdom) is frozen in the account, and the Financial Monitoring Service of Georgia is notified. Nothing moves until it instructs. The freeze ends on its instruction or, where no Georgian duty stands behind the list, when the person leaves the list or the Company's counsel advises a release.
 
 ## 7. Records {#aml-h7}
 

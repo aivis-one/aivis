@@ -36,7 +36,7 @@ the company for which the Company's staff have opened an account in the Cabinet 
 
 ## 4. The pool and the money of the project {#ca-h4}
 
-4.1. The holders of the project's parts share a fixed pool of 15 percent of the project's gross receipts. Gross receipts are all money received from customers for the project's product, before any deduction. Until the project's product sells, its pool is zero.
+4.1. The holders of the project's parts share a fixed pool of 10 percent of the project's gross receipts. Gross receipts are all money received from customers for the project's product, before any deduction. Until the project's product sells, its pool is zero.
 
 4.2. The money from selling the project's parts goes to the project's budget by its roadmap and business-financial model, less the selling cost. It is never gross receipts.
 
