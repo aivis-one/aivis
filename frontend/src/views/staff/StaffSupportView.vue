@@ -304,9 +304,7 @@ onMounted(() => {
           <ul class="ds-rows">
             <li v-for="row in poolRows" :key="row.id" class="ds-row ssup__row">
               <span class="ds-row__body">
-                <!-- No stretched link here: the row carries the Claim control, which the
-                     link's stretched area would cover. The title opens the thread. -->
-                <button type="button" class="ssup__open" @click="openThread(row.id)">
+                <button type="button" class="ds-row__link" @click="openThread(row.id)">
                   <span class="ds-row__title">{{ clientName(row) }}</span>
                 </button>
                 <span class="ds-row__meta">
@@ -346,7 +344,7 @@ onMounted(() => {
           <ul class="ds-rows">
             <li v-for="row in mineRows" :key="row.id" class="ds-row ssup__row">
               <span class="ds-row__body">
-                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                <button type="button" class="ds-row__link" @click="openThread(row.id)">
                   <span class="ds-row__title">{{ clientName(row) }}</span>
                 </button>
                 <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
@@ -369,7 +367,7 @@ onMounted(() => {
           <ul class="ds-rows">
             <li v-for="row in foreignRows" :key="row.id" class="ds-row ssup__row">
               <span class="ds-row__body">
-                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                <button type="button" class="ds-row__link" @click="openThread(row.id)">
                   <span class="ds-row__title">{{ clientName(row) }}</span>
                 </button>
                 <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
@@ -588,12 +586,6 @@ onMounted(() => {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-}
-
-/* The row opens its conversation in place: a button holds the row's one link-part
-   (its title), and a button aligns its text to the start by hand. */
-.ssup__open {
-  text-align: start;
 }
 
 .ssup__panel-head {

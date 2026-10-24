@@ -218,7 +218,7 @@ onMounted(loadTemplates)
     <ul v-else class="ds-rows tpl-list">
       <li v-for="tpl in items" :key="tpl.id" class="ds-row">
         <span class="ds-row__body">
-          <button type="button" class="ds-row__link tpl-item" @click="openDetail(tpl)">
+          <button type="button" class="ds-row__link" @click="openDetail(tpl)">
             <span class="ds-row__title">{{ tpl.title }}</span>
           </button>
           <span class="ds-row__meta">
@@ -316,12 +316,6 @@ onMounted(loadTemplates)
   justify-content: center;
   min-block-size: var(--center-md);
   gap: var(--space-4);
-}
-
-/* The row opens the template in place: a button holds the row's one link-part
-   (the title), and a button aligns its text to the start by hand. */
-.tpl-item {
-  text-align: start;
 }
 
 .sct__detail-meta {

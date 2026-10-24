@@ -1368,12 +1368,6 @@ onMounted(loadUsers)
   gap: var(--space-4);
 }
 
-/* The row opens the person's card in place: a button holds the row's one link-part
-   (the name), and a button aligns its text to the start by hand. */
-.user-item {
-  text-align: start;
-}
-
 /* Detail modal */
 .detail__section,
 .detail__block {
