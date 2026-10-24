@@ -34,8 +34,8 @@ THE BUILT OUTPUT, `--built PATH [--expect ORIGIN ...]` (CI, after building
 with example.com origins): a built bundle and a rendered nginx.conf are
 scanned for the address forms only -- the bare lowercase rule does not apply,
 because the brand's accessible name (`aria-label`) is inside the bundle as a
-string and minified code has no lines to except. legal/ is skipped there for
-the same reason as in the source (EXCLUDED). Every `--expect` origin must be
+string and minified code has no lines to except. legal/ and faq/ are skipped
+there for the same reason as in the source (EXCLUDED). Every `--expect` origin must be
 found at least once: an empty or wrongly built tree must not pass for having
 nothing in it.
 
@@ -191,6 +191,7 @@ def scan_source(root: str) -> tuple[bool, list[str]]:
         brand.setdefault(path, []).append(allowed)
     seen_brand: set[str] = set()
 
+    skipped_ignored = 0
     for top in ROOTS:
         base = os.path.join(root, top)
         if not os.path.exists(base):
@@ -201,7 +202,10 @@ def scan_source(root: str) -> tuple[bool, list[str]]:
         candidates = [(path, _rel(root, path)) for path in _walk(base)]
         ignored = _ignored(root, [r for _p, r in candidates if not _excluded(r)])
         for path, rel in candidates:
-            if _excluded(rel) or rel in ignored:
+            if _excluded(rel):
+                continue
+            if rel in ignored:
+                skipped_ignored += 1
                 continue
             text = _read_text(path)
             if text is None:
@@ -227,7 +231,7 @@ def scan_source(root: str) -> tuple[bool, list[str]]:
         lines.append("allowed: %s in %s -- %s" % (allowed, path, reason))
     if bad:
         return False, bad + lines
-    lines.append("not scanned: files git ignores")
+    lines.append("not scanned: files git ignores (%d)" % skipped_ignored)
     lines.append("no deployment address in the product's code")
     return True, lines
 
@@ -242,7 +246,7 @@ def scan_built(path: str, expect: list[str]) -> tuple[bool, list[str]]:
         return False, ["%s: does not exist" % path]
     for file in _walk(path):
         rel = _rel(base, file)
-        if rel.startswith("legal/"):
+        if rel.startswith(("legal/", "faq/")):
             continue
         text = _read_text(file)
         if text is None:
@@ -257,7 +261,7 @@ def scan_built(path: str, expect: list[str]) -> tuple[bool, list[str]]:
         if count == 0:
             bad.append("%s: the expected origin %s is not in it -- not built "
                        "with the addresses it was given" % (path, origin))
-    lines = ["%s: %d files scanned (legal/ skipped)" % (path, scanned)]
+    lines = ["%s: %d files scanned (legal/, faq/ skipped)" % (path, scanned)]
     lines += ["  %s: %d occurrence(s)" % (o, c) for o, c in found.items()]
     if bad:
         return False, bad + lines
@@ -408,8 +412,9 @@ def selftest(root: str) -> list[str]:
 
     api = "https://api.example.com"
     bundle_ok = 'fetch("https://api.example.com/x");{"aria-label":"aivis.one"}'
-    built({"assets/i.js": bundle_ok, "legal/en/t.html": "hello@aivis.one"}, [api], True,
-          "a bundle on example.com with the brand name and legal texts")
+    built({"assets/i.js": bundle_ok, "legal/en/t.html": "hello@aivis.one",
+           "faq/en/agent.html": "hello@aivis.one, t.me/aivisonebot"}, [api], True,
+          "a bundle on example.com with the brand name, legal texts and FAQ pages")
     built({"assets/i.js": bundle_ok + 'u="https://api.aivis.one"'}, [api], False,
           "a bundle carrying the production API")
     built({"assets/i.js": 'fetch("https://api.other.org/x")'}, [api], False,
