@@ -70,7 +70,7 @@ async function chipsAt(path: string): Promise<string[]> {
   // The hub is a ROUTE component: it is mounted by the router view, as in the app.
   const wrapper = mount(RouterView, { global: { plugins: [router] } })
   await flushPromises()
-  return wrapper.findAll('.hub__chip').map((chip) => chip.text())
+  return wrapper.findAll('.ds-subnav__link').map((chip) => chip.text())
 }
 
 describe('the staff hub chips', () => {

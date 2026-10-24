@@ -137,7 +137,7 @@ describe('the staff Home', () => {
     const failed = cards.find((c) => c.text().includes('staff.home.queues.withdrawals'))!
     expect(failed.find('.ds-stat__value').text()).toBe('—')
     expect(failed.text()).toContain('staff.home.loadFailed')
-    expect(wrapper.find('.staff-dash__failed').exists()).toBe(true)
+    expect(wrapper.find('.ds-alert').exists()).toBe(true)
     wrapper.unmount()
   })
 })

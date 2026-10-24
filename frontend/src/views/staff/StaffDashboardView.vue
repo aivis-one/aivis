@@ -22,7 +22,9 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Users, ShieldAlert, CreditCard, UserCheck, Banknote, MessageCircle } from '@/components/ui/icons'
 import type { Component } from 'vue'
-import { CStatCard, CIconBox, CLoader, CButton, CBadge } from '@/components/ui'
+import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useStaffRights } from '@/composables/useStaffRights'
 import { useAuthStore } from '@/stores/auth'
@@ -45,13 +47,21 @@ const userName = computed(() => {
   return authStore.user?.email ?? t('staff.settings.noName')
 })
 
-const ICONS: Record<QueueKey, { icon: Component; variant: 'warning' | 'success' | 'accent' }> = {
-  kyc: { icon: ShieldAlert, variant: 'warning' },
-  topups: { icon: CreditCard, variant: 'success' },
-  withdrawals: { icon: Banknote, variant: 'success' },
-  agentApps: { icon: UserCheck, variant: 'accent' },
-  support: { icon: MessageCircle, variant: 'accent' },
+// The icon part of each queue's tile: an icon of the set in a lead box (K23) whose
+// tone is a second sign (the label says the same in words).
+const ICONS: Record<QueueKey, { icon: Component; tone: 'warning' | 'success' | 'accent' }> = {
+  kyc: { icon: ShieldAlert, tone: 'warning' },
+  topups: { icon: CreditCard, tone: 'success' },
+  withdrawals: { icon: Banknote, tone: 'success' },
+  agentApps: { icon: UserCheck, tone: 'accent' },
+  support: { icon: MessageCircle, tone: 'accent' },
 }
+
+// The frame's header carries the greeting: the member's name and the panel's name.
+useScreenHeader({
+  title: () => userName.value,
+  lead: () => t('staff.panel'),
+})
 
 /** The queues the member may work, in the Home's order. */
 const visibleQueues = computed<QueueSpec[]>(() => {
@@ -92,12 +102,7 @@ onMounted(reload)
 
 <template>
   <div class="staff-dash">
-    <!-- Greeting -->
-    <div class="staff-dash__greeting">
-      <span class="staff-dash__label">{{ t('staff.panel') }}</span>
-      <h2 class="staff-dash__name">
-        {{ userName }}
-      </h2>
+    <div>
       <CBadge
         variant="primary"
         :text="current().admin ? t('staff.settings.roleAdmin') : t('staff.settings.roleStaff')"
@@ -111,17 +116,17 @@ onMounted(reload)
 
     <template v-else>
       <!-- A failed read is said, once, with the way to read again -->
-      <div v-if="queues.anyFailed" class="staff-dash__failed" role="alert">
-        <p class="staff-dash__error">
-          {{ t('staff.home.someFailed') }}
-        </p>
-        <CButton variant="secondary" size="sm" @click="reload">
-          {{ t('common.retry') }}
-        </CButton>
-      </div>
+      <StaffAlert v-if="queues.anyFailed" tone="warning">
+        {{ t('staff.home.someFailed') }}
+        <template #actions>
+          <CButton variant="secondary" size="sm" inline @click="reload">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </StaffAlert>
 
-      <!-- One counter for every queue the member may work -->
-      <div class="stats-grid">
+      <!-- One counter for every queue the member may work (K46) -->
+      <div class="ds-stats">
         <CStatCard
           :value="queues.users.status === 'error' ? '—' : String(queues.users.count)"
           :label="t('staff.users.stat')"
@@ -129,9 +134,7 @@ onMounted(reload)
           @click="goUsers"
         >
           <template #icon>
-            <CIconBox variant="primary">
-              <Users :size="24" />
-            </CIconBox>
+            <span class="ds-lead"><Users /></span>
           </template>
         </CStatCard>
 
@@ -144,9 +147,9 @@ onMounted(reload)
           @click="go(q.path)"
         >
           <template #icon>
-            <CIconBox :variant="ICONS[q.key].variant">
-              <component :is="ICONS[q.key].icon" :size="24" />
-            </CIconBox>
+            <span class="ds-lead" :data-tone="ICONS[q.key].tone">
+              <component :is="ICONS[q.key].icon" />
+            </span>
           </template>
         </CStatCard>
       </div>
@@ -156,45 +159,8 @@ onMounted(reload)
 
 <style scoped>
 .staff-dash {
-  padding: var(--space-4);
-}
-
-.staff-dash__greeting {
-  margin-block-end: var(--space-4-lg);
-}
-
-.staff-dash__label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.staff-dash__name {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: var(--space-1) 0 var(--space-2);
-}
-
-.stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-  margin-block-end: var(--space-4);
-}
-
-.stats-grid .c-stat {
-  cursor: pointer;
-}
-
-.staff-dash__failed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--warning-subtle);
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-4);
+  gap: var(--space-4);
 }
 
 .staff-dash__center {
@@ -204,27 +170,5 @@ onMounted(reload)
   justify-content: center;
   min-block-size: var(--center-md);
   gap: var(--space-4);
-}
-
-.staff-dash__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .stats-grid {
-    max-inline-size: calc(2 * var(--tile-max));
-  }
 }
 </style>

@@ -19,8 +19,8 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Bell, FileText, LogOut } from '@/components/ui/icons'
-import { CAvatar, CBadge, CSelect } from '@/components/ui'
+import { Bell, ChevronRight, FileText, LogOut } from '@/components/ui/icons'
+import { CAvatar, CBadge, CButton, CSelect } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -73,15 +73,8 @@ async function changeLanguage(code: string): Promise<void> {
   }
 }
 
-// -- Navigation and sign-out --------------------------------------------------
-
-function goNotifications(): void {
-  void safeNavigate(router.push('/staff/notifications'), '[StaffSettingsView] to notifications')
-}
-
-function goDocuments(): void {
-  void safeNavigate(router.push('/staff/docs'), '[StaffSettingsView] to documents')
-}
+// -- Sign-out -----------------------------------------------------------------
+// The two destinations are links (K34 tiles) and need no handler here.
 
 const loggingOut = ref(false)
 async function handleLogout(): Promise<void> {
@@ -100,170 +93,108 @@ const version = __APP_VERSION__
 
 <template>
   <div class="staff-settings">
-    <!-- Profile card -->
+    <!-- Profile -->
     <div class="staff-settings__profile">
-      <CAvatar :name="userName" :size="72" />
+      <CAvatar :name="userName" :size="56" />
       <div class="staff-settings__name">
         {{ userName }}
       </div>
       <div class="staff-settings__email">
         {{ userEmail }}
       </div>
-      <div class="staff-settings__badges">
-        <CBadge variant="primary" :text="roleLine" />
-      </div>
+      <CBadge variant="primary" :text="roleLine" />
     </div>
 
     <!-- Language -->
-    <div class="staff-settings__section">
-      <div class="staff-settings__section-label">
-        {{ t('staff.settings.language') }}
-      </div>
-      <CSelect
-        :model-value="currentLanguage"
-        :options="languageOptions"
-        :label="t('staff.settings.language')"
-        :disabled="savingLanguage"
-        @update:model-value="changeLanguage"
-      />
-    </div>
+    <CSelect
+      :model-value="currentLanguage"
+      :options="languageOptions"
+      :label="t('staff.settings.language')"
+      :disabled="savingLanguage"
+      @update:model-value="changeLanguage"
+    />
 
     <!-- Account -->
-    <div class="staff-settings__section">
-      <div class="staff-settings__section-label">
+    <section class="staff-settings__section">
+      <h2 class="staff-settings__heading">
         {{ t('staff.settings.account') }}
-      </div>
+      </h2>
       <TwoFactorSection tPrefix="staff.settings.actions" />
       <ActiveSessionsSection tPrefix="staff.settings.actions" />
       <NotificationPreferencesSection tPrefix="staff.settings.actions" />
 
-      <button type="button" class="staff-settings__nav-item" @click="goNotifications">
-        <span class="staff-settings__nav-left">
-          <Bell :size="16" /> {{ t('staff.notifications.title') }}
-        </span>
-        <span class="staff-settings__nav-right">&rarr;</span>
-      </button>
+      <!-- The destinations (K34 nav tiles) -->
+      <div class="ds-navtiles">
+        <RouterLink class="ds-navtile" to="/staff/notifications">
+          <span class="ds-navtile__icon"><Bell /></span>
+          <span class="ds-navtile__text">
+            <span class="ds-navtile__title">{{ t('staff.notifications.title') }}</span>
+          </span>
+          <ChevronRight class="ds-navtile__go" />
+        </RouterLink>
+        <RouterLink class="ds-navtile" to="/staff/docs">
+          <span class="ds-navtile__icon"><FileText /></span>
+          <span class="ds-navtile__text">
+            <span class="ds-navtile__title">{{ t('staff.settings.documents') }}</span>
+          </span>
+          <ChevronRight class="ds-navtile__go" />
+        </RouterLink>
+      </div>
 
-      <button type="button" class="staff-settings__nav-item" @click="goDocuments">
-        <span class="staff-settings__nav-left">
-          <FileText :size="16" /> {{ t('staff.settings.documents') }}
-        </span>
-        <span class="staff-settings__nav-right">&rarr;</span>
-      </button>
+      <div>
+        <CButton variant="outline" inline :disabled="loggingOut" @click="handleLogout">
+          <LogOut size="sm" /> {{ t('staff.settings.logout') }}
+        </CButton>
+      </div>
+    </section>
 
-      <button
-        type="button"
-        class="staff-settings__nav-item staff-settings__nav-item--danger"
-        :disabled="loggingOut"
-        @click="handleLogout"
-      >
-        <span class="staff-settings__nav-left">
-          <LogOut :size="16" /> {{ t('staff.settings.logout') }}
-        </span>
-        <span class="staff-settings__nav-right">&rarr;</span>
-      </button>
-    </div>
-
-    <!-- About -->
-    <div class="staff-settings__section">
-      <div class="staff-settings__section-label">
+    <!-- About (K49) -->
+    <section class="staff-settings__section">
+      <h2 class="staff-settings__heading">
         {{ t('staff.settings.about') }}
-      </div>
-      <div class="staff-settings__info-row">
-        <span>{{ t('staff.settings.version') }}</span>
-        <span class="staff-settings__info-val">{{ version }}</span>
-      </div>
-    </div>
+      </h2>
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.settings.version') }}</dt>
+          <dd>{{ version }}</dd>
+        </div>
+      </dl>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .staff-settings {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
 }
 
 .staff-settings__profile {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
   text-align: center;
-  padding: var(--space-4-lg) 0;
-  margin-block-end: var(--space-4);
 }
 .staff-settings__name {
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-block-start: var(--space-3);
 }
 .staff-settings__email {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-block-start: var(--space-1);
-}
-.staff-settings__badges {
-  display: inline-flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-2);
 }
 
 .staff-settings__section {
-  border-block-start: thin solid var(--border-default);
-  padding-block-start: var(--space-4);
-  margin-block-start: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
 }
-.staff-settings__section-label {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin-block-end: var(--space-3);
-}
-
-.staff-settings__nav-item {
-  appearance: none;
-  background: none;
-  border: none;
+.staff-settings__heading {
   margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-  cursor: pointer;
-  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
   color: var(--text-primary);
-}
-.staff-settings__nav-item:hover {
-  opacity: 0.8;
-}
-.staff-settings__nav-item--danger {
-  color: var(--danger);
-  border-block-end: none;
-}
-.staff-settings__nav-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.staff-settings__nav-right {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.staff-settings__info-row {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-}
-.staff-settings__info-val {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
 }
 </style>

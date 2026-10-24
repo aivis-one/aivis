@@ -13,10 +13,17 @@ import { useI18n } from 'vue-i18n'
 import { Ghost, Ban } from '@/components/ui/icons'
 import { CButton } from '@/components/ui'
 import UserPicker from '@/components/staff/UserPicker.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useAvatar } from '@/composables/useAvatar'
 
 const { t } = useI18n()
 const { loading, startAvatarSession } = useAvatar()
+
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('staff.avatar.title'),
+  lead: () => t('staff.avatar.subtitle'),
+})
 
 const targetUserId = ref('')
 
@@ -37,123 +44,45 @@ async function handleStart(): Promise<void> {
 
 <template>
   <div class="staff-avatar">
-    <!-- Header banner -->
-    <div class="avatar-header">
-      <div class="avatar-header__title"><Ghost :size="20" /> {{ t('staff.avatar.title') }}</div>
-      <div class="avatar-header__sub">
-        {{ t('staff.avatar.subtitle') }}
-      </div>
-    </div>
-
     <!-- Start form -->
-    <div class="avatar-form">
-      <label class="avatar-form__label">{{ t('staff.avatar.enterUserId') }}</label>
-      <UserPicker v-model="targetUserId" />
+    <div class="staff-avatar__form">
+      <UserPicker v-model="targetUserId" :label="t('staff.avatar.enterUserId')" />
       <CButton
         variant="primary"
         size="sm"
+        inline
         :loading="loading"
         :disabled="!targetUserId.trim()"
-        style="margin-block-start: var(--space-3)"
         @click="handleStart"
       >
-        <Ghost :size="16" /> {{ t('staff.avatar.start') }}
+        <Ghost size="sm" /> {{ t('staff.avatar.start') }}
       </CButton>
     </div>
 
-    <!-- Restrictions -->
-    <div class="avatar-restrictions">
-      <div class="avatar-restrictions__title">
-        <Ban :size="16" /> {{ t('staff.avatar.restrictions') }}
-      </div>
-      <ul class="avatar-restrictions__list">
-        <li v-for="key in restrictions" :key="key" class="avatar-restrictions__item">
-          <Ban :size="16" class="avatar-restrictions__icon" />
-          {{ t(key) }}
+    <!-- Restrictions (K07 flat card holding K23 rows) -->
+    <section class="ds-card ds-card--flat">
+      <h2 class="ds-card__title">{{ t('staff.avatar.restrictions') }}</h2>
+      <ul class="ds-rows">
+        <li v-for="key in restrictions" :key="key" class="ds-row">
+          <span class="ds-row__lead" data-tone="danger"><Ban size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ t(key) }}</span>
+          </span>
         </li>
       </ul>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .staff-avatar {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
 }
 
-.avatar-header {
-  padding: var(--space-4-lg);
-  background: var(--accent);
-  color: var(--on-accent);
-  border-radius: var(--radius-lg);
-  margin-block-end: var(--space-4-lg);
-  text-align: center;
-}
-.avatar-header__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-.avatar-header__sub {
-  font-size: var(--fs-sm);
-  opacity: 0.9;
-  margin-block-start: var(--space-1);
-}
-
-.avatar-form {
-  margin-block-end: var(--space-5);
-}
-.avatar-form__label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-
-.avatar-restrictions {
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-}
-.avatar-restrictions__title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-block-end: var(--space-3);
-}
-.avatar-restrictions__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.avatar-restrictions__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.avatar-restrictions__icon {
-  color: var(--danger);
-  flex-shrink: 0;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.avatar-header__sub {
-  max-inline-size: var(--maxw-prose);
+.staff-avatar__form {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
 }
 </style>
