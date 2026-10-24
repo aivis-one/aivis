@@ -177,7 +177,7 @@ onMounted(loadProducts)
     </StaffAlert>
 
     <div v-if="productsLoading" class="gifts__center">
-      <CLoader :size="28" />
+      <CLoader />
     </div>
     <CEmptyState v-else-if="productsError" tone="danger" :title="t('common.error')">
       <template #actions>
@@ -262,11 +262,7 @@ onMounted(loadProducts)
     </section>
 
     <!-- Confirmation: a gift is given in the company's name -->
-    <CModal
-      :open="showConfirm"
-      :title="t('staff.gifts.confirmTitle')"
-      @close="showConfirm = false"
-    >
+    <CModal :open="showConfirm" :title="t('staff.gifts.confirmTitle')" @close="showConfirm = false">
       <p class="ds-dialog__text">
         {{ t('staff.gifts.confirmBody') }}
       </p>

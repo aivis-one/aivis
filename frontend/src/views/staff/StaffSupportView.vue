@@ -306,7 +306,9 @@ onMounted(() => {
           <ul class="ds-rows">
             <li v-for="row in poolRows" :key="row.id" class="ds-row ssup__row">
               <span class="ds-row__body">
-                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                <!-- No stretched link here: the row carries the Claim control, which the
+                     link's stretched area would cover. The title opens the thread. -->
+                <button type="button" class="ssup__open" @click="openThread(row.id)">
                   <span class="ds-row__title">{{ clientName(row) }}</span>
                 </button>
                 <span class="ds-row__meta">
@@ -514,7 +516,9 @@ onMounted(() => {
 
           <form v-if="isMine" class="ds-composer" @submit.prevent="handleSend">
             <div class="ds-field ds-composer__input">
-              <label class="ds-sr-only" for="ssup-message">{{ t('staff.support.placeholder') }}</label>
+              <label class="ds-sr-only" for="ssup-message">{{
+                t('staff.support.placeholder')
+              }}</label>
               <textarea
                 id="ssup-message"
                 v-model="composerText"

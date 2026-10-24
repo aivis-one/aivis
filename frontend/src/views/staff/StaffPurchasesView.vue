@@ -214,7 +214,7 @@ onMounted(() => {
 
     <CEmptyState v-else-if="!items.length" :title="t('staff.purchases.empty')">
       <template #icon>
-        <ShoppingBag :size="40" />
+        <ShoppingBag />
       </template>
     </CEmptyState>
 

@@ -84,7 +84,7 @@ onMounted(run)
     </StaffAlert>
 
     <div v-if="loading" class="recon__center">
-      <CLoader :size="32" />
+      <CLoader />
     </div>
 
     <CEmptyState v-else-if="errorText" tone="danger" :title="errorText">

@@ -20,7 +20,14 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Users, ShieldAlert, CreditCard, UserCheck, Banknote, MessageCircle } from '@/components/ui/icons'
+import {
+  Users,
+  ShieldAlert,
+  CreditCard,
+  UserCheck,
+  Banknote,
+  MessageCircle,
+} from '@/components/ui/icons'
 import type { Component } from 'vue'
 import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
 import StaffAlert from '@/components/staff/StaffAlert.vue'
@@ -111,7 +118,7 @@ onMounted(reload)
 
     <!-- Loading -->
     <div v-if="loading" class="staff-dash__center">
-      <CLoader :size="32" />
+      <CLoader />
     </div>
 
     <template v-else>

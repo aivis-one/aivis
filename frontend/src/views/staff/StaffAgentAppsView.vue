@@ -148,7 +148,7 @@ onMounted(loadQueue)
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.agentApps2.noQueue')">
       <template #icon>
-        <FileText :size="40" />
+        <FileText />
       </template>
     </CEmptyState>
 

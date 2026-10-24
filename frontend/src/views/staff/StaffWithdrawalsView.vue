@@ -203,7 +203,7 @@ onMounted(loadWithdrawals)
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.withdrawals.noWithdrawals')">
       <template #icon>
-        <Banknote :size="40" />
+        <Banknote />
       </template>
     </CEmptyState>
 
@@ -293,7 +293,13 @@ onMounted(loadWithdrawals)
         <CButton variant="outline" size="sm" inline @click="showConfirmModal = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="primary" size="sm" inline :loading="confirmLoading" @click="handleConfirm">
+        <CButton
+          variant="primary"
+          size="sm"
+          inline
+          :loading="confirmLoading"
+          @click="handleConfirm"
+        >
           {{ t('common.confirm') }}
         </CButton>
       </div>

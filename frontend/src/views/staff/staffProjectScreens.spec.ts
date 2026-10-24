@@ -240,8 +240,8 @@ describe('a project: the pool of parts for sale', () => {
     await flushPromises()
     await wrapper.find('button').trigger('click')
     await flushPromises()
-    const create = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
-      (b.textContent ?? '').includes('staff.platform.pool.create'),
+    const create = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find(
+      (b) => (b.textContent ?? '').includes('staff.platform.pool.create'),
     ) as HTMLButtonElement
     create.click()
     await flushPromises()
@@ -373,8 +373,8 @@ describe('a project: products', () => {
     await row.findAll('button')[1]!.trigger('click')
     await flushPromises()
     expect(updateStaffProductStatus).not.toHaveBeenCalled()
-    const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
-      (b.textContent ?? '').includes('staff.platform.products.archive'),
+    const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find(
+      (b) => (b.textContent ?? '').includes('staff.platform.products.archive'),
     ) as HTMLButtonElement
     confirm.click()
     await flushPromises()

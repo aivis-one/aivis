@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
       <!-- Empty -->
       <CEmptyState v-else-if="!items.length" :title="t('staff.payments.noPayments')">
         <template #icon>
-          <CreditCard :size="40" />
+          <CreditCard />
         </template>
       </CEmptyState>
 

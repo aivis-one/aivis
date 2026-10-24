@@ -879,11 +879,7 @@ onMounted(loadUsers)
         <li v-for="item in items" :key="item.id" class="ds-row">
           <CAvatar :name="fullName(item)" :size="32" />
           <span class="ds-row__body">
-            <button
-              type="button"
-              class="ds-row__link user-item"
-              @click="openDetail(item.id)"
-            >
+            <button type="button" class="ds-row__link user-item" @click="openDetail(item.id)">
               <span class="ds-row__title">{{ fullName(item) }}</span>
             </button>
             <span class="ds-row__meta">
@@ -914,7 +910,9 @@ onMounted(loadUsers)
         <dl class="ds-kv">
           <div class="ds-kv__row">
             <dt>{{ t('staff.userDetail.role') }}</dt>
-            <dd><CBadge :variant="roleVariant(detailUser.role)" :text="roleLabel(detailUser.role)" /></dd>
+            <dd>
+              <CBadge :variant="roleVariant(detailUser.role)" :text="roleLabel(detailUser.role)" />
+            </dd>
           </div>
           <div class="ds-kv__row">
             <dt>{{ t('staff.userDetail.status') }}</dt>
@@ -1094,11 +1092,7 @@ onMounted(loadUsers)
         <section v-if="detailUser.staff_profile && isAdmin" class="detail__section">
           <h3 class="detail__subtitle">
             {{ t('staff.userDetail.permissions') }}
-            <CBadge
-              v-if="isEveryRight"
-              variant="primary"
-              :text="t('staff.settings.roleAdmin')"
-            />
+            <CBadge v-if="isEveryRight" variant="primary" :text="t('staff.settings.roleAdmin')" />
             <CBadge
               v-if="!detailUser.staff_profile.is_active"
               variant="danger"
@@ -1108,7 +1102,11 @@ onMounted(loadUsers)
           <p class="detail__note">
             {{ t('staff.rights.presetHint') }}
           </p>
-          <div class="ds-chip-row perm-presets" role="group" :aria-label="t('staff.userDetail.permissions')">
+          <div
+            class="ds-chip-row perm-presets"
+            role="group"
+            :aria-label="t('staff.userDetail.permissions')"
+          >
             <button
               v-for="preset in PERMISSION_PRESETS"
               :key="preset.id"
@@ -1262,13 +1260,7 @@ onMounted(loadUsers)
         <CButton variant="outline" size="sm" inline @click="showUnblockModal = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton
-          variant="primary"
-          size="sm"
-          inline
-          :loading="actionLoading"
-          @click="handleUnblock"
-        >
+        <CButton variant="primary" size="sm" inline :loading="actionLoading" @click="handleUnblock">
           {{ t('common.confirm') }}
         </CButton>
       </div>

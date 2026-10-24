@@ -297,8 +297,8 @@ describe('gifts', () => {
     await flushPromises()
 
     // The confirmation: pressing the grant button in the modal sends it.
-    const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
-      (b.textContent ?? '').includes('staff.gifts.grant'),
+    const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find(
+      (b) => (b.textContent ?? '').includes('staff.gifts.grant'),
     ) as HTMLButtonElement
     confirm.click()
     await flushPromises()
