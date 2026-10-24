@@ -23,10 +23,10 @@
 // gated at 2+ chars -- a 1-char query against every user's email/name
 // is a table scan for a result list nobody can use anyway.
 
-import { ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, X } from '@/components/ui/icons'
-import { CInput, CLoader, CAvatar } from '@/components/ui'
+import { CAvatar } from '@/components/ui'
 import { fetchUsers } from '@/api/admin'
 import type { UserListItem } from '@/api/types'
 import { tOrRaw } from '@/utils/i18n'
@@ -40,6 +40,8 @@ const props = withDefaults(
     modelValue?: string
     /** Optional role filter passed straight through to fetchUsers (e.g. 'investor'). */
     roleFilter?: string
+    /** The field's visible label (K38 names its combobox by a visible label). */
+    label?: string
   }>(),
   { modelValue: '' },
 )
@@ -49,13 +51,48 @@ const emit = defineEmits<{
   select: [user: UserListItem | null]
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+const uid = useId()
+const inputId = `${uid}-input`
+const labelId = `${uid}-label`
+const listId = `${uid}-list`
+const hintId = `${uid}-hint`
+function optionId(i: number): string {
+  return `${uid}-option-${i}`
+}
 
 const query = ref('')
 const results = ref<UserListItem[]>([])
 const loading = ref(false)
 const searched = ref(false)
 const selectedUser = ref<UserListItem | null>(null)
+// The list is shown while there are results and it has not been dismissed (Escape
+// or a choice); typing opens it again. `active` is the option the arrow keys are on.
+const dismissed = ref(false)
+const active = ref(-1)
+
+const listOpen = computed(() => !dismissed.value && results.value.length > 0)
+const noResults = computed(
+  () =>
+    !loading.value &&
+    searched.value &&
+    !results.value.length &&
+    query.value.trim().length >= MIN_QUERY_LENGTH,
+)
+const activeId = computed(() =>
+  listOpen.value && active.value >= 0 ? optionId(active.value) : undefined,
+)
+// The polite status: the busy wait, the count of results (when the language file
+// has the line) or the empty answer.
+const statusText = computed(() => {
+  if (loading.value) return t('common.loading')
+  if (noResults.value) return t('staff.userPicker.noResults')
+  if (listOpen.value && te('staff.userPicker.count')) {
+    return t('staff.userPicker.count', { n: results.value.length })
+  }
+  return ''
+})
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -79,6 +116,8 @@ async function runSearch(): Promise<void> {
       per_page: RESULT_LIMIT,
     })
     results.value = resp.items
+    dismissed.value = false
+    active.value = -1
   } catch {
     results.value = []
   } finally {
@@ -92,11 +131,46 @@ watch(query, () => {
   debounceTimer = setTimeout(runSearch, SEARCH_DEBOUNCE_MS)
 })
 
+// The combobox keys (K38): Down opens and moves on, Up moves back, Home and End go
+// to the ends while the list is open, Enter chooses the active option, Escape
+// closes the list and, pressed again, empties the text. Focus stays in the input.
+function onKeydown(e: KeyboardEvent): void {
+  const n = results.value.length
+  if (e.key === 'ArrowDown' && n) {
+    e.preventDefault()
+    dismissed.value = false
+    active.value = (active.value + 1) % n
+  } else if (e.key === 'ArrowUp' && n) {
+    e.preventDefault()
+    dismissed.value = false
+    active.value = active.value <= 0 ? n - 1 : active.value - 1
+  } else if (e.key === 'Home' && listOpen.value) {
+    e.preventDefault()
+    active.value = 0
+  } else if (e.key === 'End' && listOpen.value) {
+    e.preventDefault()
+    active.value = n - 1
+  } else if (e.key === 'Enter' && listOpen.value && active.value >= 0) {
+    e.preventDefault()
+    const item = results.value[active.value]
+    if (item) selectUser(item)
+  } else if (e.key === 'Escape') {
+    if (listOpen.value) {
+      e.preventDefault()
+      dismissed.value = true
+    } else if (query.value) {
+      e.preventDefault()
+      query.value = ''
+    }
+  }
+}
+
 function selectUser(user: UserListItem): void {
   selectedUser.value = user
   query.value = ''
   results.value = []
   searched.value = false
+  active.value = -1
   emit('update:modelValue', user.id)
   emit('select', user)
 }
@@ -119,169 +193,88 @@ watch(
 </script>
 
 <template>
-  <div class="user-picker">
-    <!-- Selected chip -->
-    <div v-if="selectedUser" class="user-picker__chip">
-      <CAvatar :name="fullName(selectedUser)" :size="32" />
-      <div class="user-picker__chip-info">
-        <div class="user-picker__chip-name">{{ fullName(selectedUser) }}</div>
-        <div class="user-picker__chip-detail">
-          {{ selectedUser.email ?? '—' }} &bull;
-          {{ tOrRaw(t, `staff.roles.${selectedUser.role}`, selectedUser.role) }}
-        </div>
-      </div>
+  <div class="ds-field ds-combobox" :aria-busy="loading || undefined">
+    <label v-if="label" :id="labelId" class="ds-field__label" :for="inputId">{{ label }}</label>
+
+    <!-- Selected chip (K38: the chosen user with Clear) -->
+    <div v-if="selectedUser" class="ds-combobox__chip">
+      <span class="ds-combobox__chip-slot">
+        <CAvatar :name="fullName(selectedUser)" :size="32" />
+        <span class="ds-combobox__text">
+          <span class="ds-combobox__name">{{ fullName(selectedUser) }}</span>
+          <span class="ds-combobox__detail">
+            {{ selectedUser.email ?? '—' }} &bull;
+            {{ tOrRaw(t, `staff.roles.${selectedUser.role}`, selectedUser.role) }}
+          </span>
+        </span>
+      </span>
       <button
         type="button"
-        class="user-picker__chip-clear"
+        class="ds-combobox__clear"
         :aria-label="t('common.clear')"
         @click="clearSelection"
       >
-        <X :size="16" />
+        <X />
       </button>
     </div>
 
     <!-- Search box (hidden once a user is selected) -->
     <template v-else>
-      <CInput
-        v-model="query"
-        :placeholder="t('staff.userPicker.searchPlaceholder')"
-        autocomplete="off"
-      />
-
-      <div v-if="loading" class="user-picker__center">
-        <CLoader :size="20" />
+      <div class="ds-combobox__control">
+        <Search />
+        <input
+          :id="inputId"
+          v-model="query"
+          class="ds-input ds-combobox__input"
+          type="text"
+          role="combobox"
+          autocomplete="off"
+          aria-autocomplete="list"
+          :aria-expanded="listOpen ? 'true' : 'false'"
+          :aria-controls="listId"
+          :aria-activedescendant="activeId"
+          :aria-describedby="hintId"
+          :placeholder="t('staff.userPicker.searchPlaceholder')"
+          @keydown="onKeydown"
+        />
       </div>
 
-      <div v-else-if="results.length" class="user-picker__results">
-        <button
-          v-for="item in results"
+      <ul
+        v-if="listOpen"
+        :id="listId"
+        class="ds-combobox__list"
+        role="listbox"
+        :aria-labelledby="label ? labelId : undefined"
+      >
+        <li
+          v-for="(item, i) in results"
+          :id="optionId(i)"
           :key="item.id"
-          type="button"
-          class="user-picker__result"
+          class="ds-combobox__option"
+          role="option"
+          aria-selected="false"
+          :data-active="i === active ? 'true' : undefined"
+          @mousedown.prevent
           @click="selectUser(item)"
         >
           <CAvatar :name="fullName(item)" :size="32" />
-          <div class="user-picker__result-info">
-            <div class="user-picker__result-name">{{ fullName(item) }}</div>
-            <div class="user-picker__result-detail">
+          <span class="ds-combobox__text">
+            <span class="ds-combobox__name">{{ fullName(item) }}</span>
+            <span class="ds-combobox__detail">
               {{ item.email ?? '—' }} &bull; {{ tOrRaw(t, `staff.roles.${item.role}`, item.role) }}
-            </div>
-          </div>
-        </button>
-      </div>
+            </span>
+          </span>
+        </li>
+      </ul>
 
-      <p v-else-if="searched && query.trim().length >= MIN_QUERY_LENGTH" class="user-picker__hint">
+      <p v-else-if="noResults" class="ds-combobox__empty">
         {{ t('staff.userPicker.noResults') }}
       </p>
 
-      <p v-else class="user-picker__hint">
-        <Search :size="14" />
+      <p class="ds-sr-only ds-combobox__status" role="status">{{ statusText }}</p>
+      <p :id="hintId" class="ds-field__hint">
         {{ t('staff.userPicker.hint') }}
       </p>
     </template>
   </div>
 </template>
-
-<style scoped>
-.user-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.user-picker__chip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-}
-.user-picker__chip-info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.user-picker__chip-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.user-picker__chip-detail {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.user-picker__chip-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-sm);
-  block-size: var(--size-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-.user-picker__chip-clear:hover {
-  color: var(--text-primary);
-  background: var(--bg-page);
-}
-
-.user-picker__center {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-3);
-}
-
-.user-picker__results {
-  display: flex;
-  flex-direction: column;
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-.user-picker__result {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  border-block-end: thin solid var(--border-default);
-  background: var(--bg-page);
-  cursor: pointer;
-  text-align: start;
-  font: inherit;
-  color: inherit;
-}
-.user-picker__result:last-child {
-  border-block-end: none;
-}
-.user-picker__result:hover {
-  background: var(--bg-subtle);
-}
-.user-picker__result-info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.user-picker__result-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.user-picker__result-detail {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.user-picker__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0;
-  padding: var(--space-1) 0;
-}
-</style>
