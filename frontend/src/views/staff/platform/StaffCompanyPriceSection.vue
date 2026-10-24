@@ -227,8 +227,15 @@ onMounted(reload)
         <ul class="ds-rows price-history">
           <li v-for="row in history" :key="row.id" class="ds-row price-history__row">
             <span class="ds-row__body">
-              <span class="ds-row__title">{{ formatPrice(row.price_per_unit_cents) }}</span>
-              <span class="ds-row__meta">{{ formatDateTime(row.changed_at) }}</span>
+              <span
+                class="ds-row__title"
+                :aria-label="`${t('staff.platform.price.colPrice')} ${formatPrice(row.price_per_unit_cents)}`"
+                >{{ formatPrice(row.price_per_unit_cents) }}</span
+              >
+              <span class="ds-row__meta"
+                >{{ t('staff.platform.price.colChangedAt') }}
+                {{ formatDateTime(row.changed_at) }}</span
+              >
             </span>
           </li>
         </ul>
