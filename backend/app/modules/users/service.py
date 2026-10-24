@@ -380,6 +380,9 @@ async def attach_email_to_account(
             )
         raise
 
+    # Reload expired attrs (updated_at) after set_jsonb + flush.
+    await session.refresh(user)
+
     await sync_recipient(session, user)
     await record_audit(
         session=session,
