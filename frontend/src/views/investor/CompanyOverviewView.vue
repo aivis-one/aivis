@@ -6,11 +6,13 @@
 // Investor company profile screen. Sub-route under the Companies tab:
 // /investor/companies/:id and /agent/companies/:id (route names added
 // in batch 9). Renders:
-//   1. Hero -- cover + name + status chip + description
-//   2. Stats card -- 4 public metrics from PublicCompanyStatsResponse
+//   0. The frame's header (K25) with the company name and the back control
+//   1. Hero (K47) -- cover + name, then the description
+//   2. Stat tiles (K46) -- 4 public metrics from PublicCompanyStatsResponse
 //   3. Roadmap timeline -- batch 5 component, hidden when items empty
 //   4. Documents section -- batch 6 AttachmentsSection, self-hides when empty
-//   5. Sticky CTA -- "View products" to ProductsByCompanyView (batch 8 + 9)
+//   5. The frame's action strip (K25) -- "View products" to ProductsByCompanyView
+//      (batch 8 + 9)
 //
 // DATA SOURCE.
 //   Local state, not a store. Single round-trip via getCompany(id),
@@ -42,17 +44,12 @@
 //   The watch on route.params.id covers that case -- without it the
 //   user would see A's content frozen while B's id is in the URL.
 //
-// FLOATING CTA (iter 2.5 cta-fix2).
-//   The "View products" button is pinned to the viewport above the
-//   CTabBar via position:fixed -- always visible, regardless of scroll
-//   position or content length. The earlier sticky-bottom approach
-//   only engaged when content was tall enough to scroll, leaving the
-//   CTA hidden below the tab bar on short pages (the bug iter 2.5
-//   shipped with). The token --tab-bar-height (variables.css) is the
-//   anchor: when the bar's height changes, the CTA follows.
-//   .co__main carries enough bottom padding to clear the floating
-//   CTA + tab bar + safe-area inset so the last section never sits
-//   behind the button on scroll-end.
+// ACTION STRIP (K25).
+//   The "View products" button is the screen's one primary action, drawn by the
+//   frame's own piece (ShellAction, `.ds-shell__action`): the last element of the
+//   screen, kept above the tab bar on a phone (the bar height and the safe-area
+//   inset are the system's), in the flow from 880. The cabinet keeps no
+//   fixed-position strip, no z-index and no bar-height token of its own.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -60,14 +57,16 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 
-import { CBackLink, CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import ShellAction from '@/components/layout/ShellAction.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import AttachmentsSection from '@/components/shared/AttachmentsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import { formatNumber, resolveCoverImage } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import type { PublicCompanyDetailResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
@@ -95,17 +94,18 @@ const companiesListRouteName = computed<string>(() =>
 )
 
 // ---------------------------------------------------------------------------
-// Cover style
+// Cover
 // ---------------------------------------------------------------------------
 
-const coverImage = computed<string | null>(() => {
-  const co = data.value
-  if (!co) return null
-  // PublicCompanyDetailResponse carries `cover_url` directly; the
-  // company_logo_url shadow inside resolveCoverImage is also honoured
-  // as the natural second-stage fallback (a company without a hero
-  // cover but with a logo gets the logo instead of the icon).
-  return resolveCoverImage(co)
+const coverSrc = computed<string | null>(() => data.value?.cover_url ?? null)
+
+// The frame's header: the company name and the back control. Prefers
+// router.back() so the originating screen (most commonly CompanyListView)
+// restores scroll/state for free; falls back to the companies list when
+// there is no history (deep-link).
+useScreenHeader({
+  title: () => data.value?.name,
+  back: () => (window.history.state?.back ? true : { name: companiesListRouteName.value }),
 })
 
 // ---------------------------------------------------------------------------
@@ -210,20 +210,6 @@ function goToCompaniesList(): void {
   )
 }
 
-// iter 2.7 batch B2: inline back-link handler. Prefers router.back()
-// so the originating screen (most commonly CompanyListView) restores
-// scroll/state for free; falls back to push when no history (deep-link).
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(
-    router.push({ name: companiesListRouteName.value }),
-    '[CompanyOverviewView] back fallback to companies list',
-  )
-}
-
 function goToProducts(): void {
   void safeNavigate(
     router.push({
@@ -263,97 +249,83 @@ function onRoadmapPostClick(postId: string): void {
 <template>
   <div class="co">
     <!-- Initial loading -->
-    <div v-if="loading" class="co__center">
-      <CLoader :size="32" />
-    </div>
+    <CLoader v-if="loading" />
 
     <!-- 404: company doesn't exist or is non-active. -->
-    <div v-else-if="notFound" class="co__center">
-      <CEmptyState :title="t('inv.companyOverview.notFound')" />
-      <CButton variant="primary" @click="goToCompaniesList">
-        {{ t('inv.companyOverview.backToList') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="notFound" :title="t('inv.companyOverview.notFound')">
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="goToCompaniesList">
+          {{ t('inv.companyOverview.backToList') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Other error: 5xx, network. -->
-    <div v-else-if="errored" class="co__center">
-      <CEmptyState :title="t('inv.companyOverview.errorTitle')" />
-      <CButton variant="primary" @click="onRetry">
-        {{ t('inv.companyOverview.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.companyOverview.errorTitle')">
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="onRetry">
+          {{ t('inv.companyOverview.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else-if="data">
-      <!-- iter 2.7 batch B2: inline back-link replaces view-CHeader
-           (single-shell-header paradigm). Company name lives in the
-           hero <h1> below. B3: button shape extracted to CBackLink. -->
-      <div class="co__back-row">
-        <CBackLink :label="t('inv.companyOverview.backLink')" @click="goBack" />
-      </div>
-
-      <main class="co__main">
-        <!-- Hero -->
-        <section class="co__hero">
-          <div
-            class="co__hero-cover"
-            :class="{ 'co__hero-cover--fallback': !coverImage }"
-            :style="{ backgroundImage: coverImage ?? undefined }"
-          >
-            <Building v-if="!coverImage" :size="56" />
-          </div>
-          <div class="co__hero-body">
-            <h1 class="co__hero-name">
-              {{ data.name }}
-            </h1>
-            <p v-if="data.description" class="co__hero-description">
-              {{ data.description }}
-            </p>
-          </div>
-        </section>
-
-        <!-- Stats -->
-        <section class="co__stats">
-          <CStatCard
-            :value="poolTotalDisplay"
-            :label="t('inv.companyOverview.stats.poolTotalOptions')"
-          />
-          <CStatCard :value="soldDisplay" :label="t('inv.companyOverview.stats.optionsSold')" />
-          <CStatCard
-            :value="soldPercentDisplay"
-            :label="t('inv.companyOverview.stats.optionsSoldPercent')"
-          />
-          <CStatCard
-            :value="priceGrowthDisplay"
-            :label="t('inv.companyOverview.stats.priceGrowth90d')"
-            :change="priceGrowthDir ? priceGrowthDisplay : undefined"
-            :change-dir="priceGrowthDir"
-          />
-        </section>
-
-        <!-- Roadmap (hidden if empty per R1 §6.1) -->
-        <section v-if="hasRoadmap" class="co__section">
-          <h2 class="co__section-title">
-            {{ t('inv.companyOverview.sectionRoadmap') }}
+      <!-- Hero (K47): the cover and the company name, then the description -->
+      <section class="ds-hero" aria-labelledby="co-hero-name">
+        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
+        <span v-else class="ds-hero__fallback"><Building /></span>
+        <div class="ds-hero__content">
+          <h2 id="co-hero-name" class="ds-hero__title">
+            {{ data.name }}
           </h2>
-          <RoadmapTimeline
-            :items="data.roadmap ?? []"
-            @product-click="onRoadmapProductClick"
-            @external-click="onRoadmapExternalClick"
-            @post-click="onRoadmapPostClick"
-          />
-        </section>
+        </div>
+      </section>
+      <p v-if="data.description" class="co__description">
+        {{ data.description }}
+      </p>
 
-        <!-- Documents: self-hides when zero rows after fetch. -->
-        <AttachmentsSection :company-id="companyId" />
-      </main>
+      <!-- Stats (K46) -->
+      <section class="ds-stats">
+        <CStatCard
+          :value="poolTotalDisplay"
+          :label="t('inv.companyOverview.stats.poolTotalOptions')"
+        />
+        <CStatCard :value="soldDisplay" :label="t('inv.companyOverview.stats.optionsSold')" />
+        <CStatCard
+          :value="soldPercentDisplay"
+          :label="t('inv.companyOverview.stats.optionsSoldPercent')"
+        />
+        <CStatCard
+          :value="priceGrowthDisplay"
+          :label="t('inv.companyOverview.stats.priceGrowth90d')"
+          :change="priceGrowthDir ? priceGrowthDisplay : undefined"
+          :change-dir="priceGrowthDir"
+        />
+      </section>
 
-      <!-- Sticky CTA -->
-      <div class="co__cta">
-        <CButton variant="primary" @click="goToProducts">
+      <!-- Roadmap (hidden if empty per R1 §6.1) -->
+      <section v-if="hasRoadmap" class="co__section" aria-labelledby="co-roadmap">
+        <h2 id="co-roadmap" class="co__section-title">
+          {{ t('inv.companyOverview.sectionRoadmap') }}
+        </h2>
+        <RoadmapTimeline
+          :items="data.roadmap ?? []"
+          @product-click="onRoadmapProductClick"
+          @external-click="onRoadmapExternalClick"
+          @post-click="onRoadmapPostClick"
+        />
+      </section>
+
+      <!-- Documents: self-hides when zero rows after fetch. -->
+      <AttachmentsSection :company-id="companyId" />
+
+      <!-- The screen's one primary action (K25 action strip) -->
+      <ShellAction>
+        <CButton variant="primary" inline @click="goToProducts">
           {{ t('inv.companyOverview.cta.viewProducts') }}
         </CButton>
-      </div>
+      </ShellAction>
     </template>
   </div>
 </template>
@@ -362,184 +334,30 @@ function onRoadmapPostClick(postId: string): void {
 .co {
   display: flex;
   flex-direction: column;
-  /* No min-height: the view sits inside .shell__content (flex:1,
-     overflow-y:auto) which already takes the available viewport
-     space; an extra 100vh would push .co bottom past the viewport
-     and cause unnecessary scroll-room below content. */
+  gap: var(--space-5);
 }
 
-.co__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-  padding: var(--space-4);
-}
-
-/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
-   above the hero. Button shape lives in CBackLink; this row only
-   provides the margin so the link sits where the hero would have
-   started. */
-.co__back-row {
-  display: flex;
-  margin: var(--space-4) var(--space-4) 0;
-}
-
-.co__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-7);
-  padding: var(--space-4);
-  /* Bottom padding must clear two stacked layers above the content:
-     the floating .co__cta (--cta-bar-height, pinned via min-height
-     down in the .co__cta block) and the CTabBar (--tab-bar-height
-     + safe-area-inset-bottom). Without this, the last section sits
-     behind the CTA when the user scrolls to the end. The extra
-     --space-xl is breathing room so the last item doesn't visually
-     kiss the CTA shadow. */
-  padding-block-end: calc(
-    var(--space-7) + var(--cta-bar-height) + var(--tab-bar-height) +
-      env(safe-area-inset-bottom, 0px)
-  );
-}
-
-/* ---------- Hero ---------- */
-
-.co__hero {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.co__hero-cover {
-  inline-size: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-md);
-  background-size: cover;
-  background-position: center;
-  background-color: var(--bg-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
-}
-
-.co__hero-cover--fallback {
-  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
-}
-
-.co__hero-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-
-.co__hero-name {
+.co__description {
   margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.25;
-}
-
-.co__hero-description {
-  margin: 0;
+  max-inline-size: var(--maxw-prose);
   font-size: var(--fs-sm);
-  line-height: 1.5;
+  line-height: var(--lh-normal);
   color: var(--text-secondary);
   /* Full description on overview -- no clamp. */
   white-space: pre-line;
 }
 
-/* ---------- Stats grid ---------- */
-
-.co__stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-
-/* On tablet+ widen to 4 columns for a single-row layout. */
-@media (min-width: 640px) {
-  .co__stats {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* ---------- Generic section ---------- */
-
+/* A section heading inside the screen */
 .co__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
-
 .co__section-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-}
-
-/* ---------- Floating CTA ----------
-   Always visible, pinned above the CTabBar. position:fixed (not
-   sticky) keeps the button on screen regardless of scroll position
-   or content length -- sticky would only engage once the user
-   scrolled past the bottom of .co, which on short pages never
-   happens and left the CTA hidden below the tab bar (the bug that
-   spawned this rewrite).
-
-   Horizontal: --space-md from each edge matches .co__main's inline
-   padding, so the button aligns with the content column.
-
-   z-index: 100 puts the CTA on the same plane as CTabBar. They don't
-   overlap geometrically (CTA bottom == tab-bar top), but matching the
-   z-index protects against future transitions or modals that might
-   otherwise sneak between them. */
-.co__cta {
-  position: fixed;
-  inset-inline-start: var(--space-4);
-  inset-inline-end: var(--space-4);
-  inset-block-end: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-2));
-  /* min-height (not height) pins the visible strip to --cta-bar-height
-     so the token is the real source of truth that .co__main's
-     padding-bottom relies on. min-height (rather than height) keeps
-     room for the button to grow if the inner label wraps under an
-     extreme translation -- the layout above adapts via calc, the CTA
-     itself never crops content. */
-  min-block-size: var(--cta-bar-height);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  z-index: 100;
-  padding: var(--space-2);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-3);
-}
-
-.co__cta :deep(.c-button) {
-  inline-size: 100%;
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .co__stats {
-    max-inline-size: calc(2 * var(--tile-max));
-  }
 }
 </style>
