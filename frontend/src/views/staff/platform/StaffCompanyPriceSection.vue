@@ -234,11 +234,7 @@ onMounted(reload)
         </ul>
 
         <!-- Pagination (K17) -->
-        <CPager
-          :page="page"
-          :total-pages="totalPages"
-          @update:page="(n: number) => (page = n)"
-        />
+        <CPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
       </template>
     </section>
 

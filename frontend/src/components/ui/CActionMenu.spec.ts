@@ -70,10 +70,18 @@ describe('CActionMenu', () => {
 
   it('draws the icon-only trigger as a ghost icon button named by its label, with no chevron', () => {
     const w = mount(CActionMenu, {
-      props: { label: 'Actions for Agreement', items: ITEMS, iconKey: 'more', iconOnly: true, align: 'end' },
+      props: {
+        label: 'Actions for Agreement',
+        items: ITEMS,
+        iconKey: 'more',
+        iconOnly: true,
+        align: 'end',
+      },
     })
     const button = w.find('button.ds-menu__button')
-    expect(button.classes()).toEqual(expect.arrayContaining(['ds-button', 'ds-button--ghost', 'ds-button--icon']))
+    expect(button.classes()).toEqual(
+      expect.arrayContaining(['ds-button', 'ds-button--ghost', 'ds-button--icon']),
+    )
     expect(button.classes()).not.toContain('ds-button--secondary')
     expect(button.attributes('aria-label')).toBe('Actions for Agreement')
     expect(button.text()).toBe('')
