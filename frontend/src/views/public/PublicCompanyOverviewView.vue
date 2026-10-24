@@ -9,10 +9,11 @@
 // investor-side /investor/companies/:id. Differences with the
 // investor view:
 //
-//   1. NO `<CHeader>` inside the view. The shell carries the only
-//      header for the public flow. Investor-side renders its own
-//      view-scoped <CHeader> with title + back; we keep the surface
-//      clean for the marketing context.
+//   1. NO header of its own. The frame carries the only header for the
+//      public flow; the view hands it the company's name (useScreenHeader).
+//      The storefront has no back control: the browser's back covers the
+//      list -> overview step.
+//
 //   2. NO sticky CTA / `.co__cta`. Purchase action lives on
 //      PublicProductDetailView (iter 2.6 Batch 6), not here. The
 //      visitor scrolls through the overview, reads the pitch, taps
@@ -69,12 +70,13 @@ import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'
 import PublicProductsSection from '@/components/shared/PublicProductsSection.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
-import { formatNumber, resolveCoverImage } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import type { PublicCompanyDetailResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
@@ -89,14 +91,17 @@ const notFound = ref<boolean>(false)
 const companyId = computed<string>(() => route.params.id as string)
 
 // ---------------------------------------------------------------------------
-// Cover style
+// Cover and header
 // ---------------------------------------------------------------------------
 
-const coverImage = computed<string | null>(() => {
+// The cover is the company's own picture (the K47 hero); without one, the fallback tile.
+const coverSrc = computed<string | null>(() => {
   const co = data.value
-  if (!co) return null
-  return resolveCoverImage(co)
+  return co?.cover_url ?? null
 })
+
+// The frame's header carries the company's name as the title. Called in setup.
+useScreenHeader({ title: () => data.value?.name })
 
 // ---------------------------------------------------------------------------
 // Stats display
@@ -208,220 +213,122 @@ function onRoadmapPostClick(postId: string): void {
 <template>
   <div class="co">
     <!-- Initial loading -->
-    <div v-if="loading" class="co__center">
-      <CLoader :size="32" />
+    <div v-if="loading" class="ds-empty">
+      <CLoader />
     </div>
 
     <!-- 404: company doesn't exist or is non-active. -->
-    <div v-else-if="notFound" class="co__center">
-      <CEmptyState :title="t('public.companyOverview.notFound')" />
-    </div>
+    <CEmptyState v-else-if="notFound" :title="t('public.companyOverview.notFound')" />
 
     <!-- Other error: 5xx, network. -->
-    <div v-else-if="errored" class="co__center">
-      <CEmptyState :title="t('public.companyOverview.errorTitle')" />
-      <CButton variant="primary" @click="onRetry">
-        {{ t('public.companyOverview.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('public.companyOverview.errorTitle')">
+      <template #actions>
+        <CButton variant="primary" inline @click="onRetry">
+          {{ t('public.companyOverview.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else-if="data">
-      <main class="co__main">
-        <!-- Hero -->
-        <section class="co__hero">
-          <div
-            class="co__hero-cover"
-            :class="{ 'co__hero-cover--fallback': !coverImage }"
-            :style="{ backgroundImage: coverImage ?? undefined }"
-          >
-            <Building v-if="!coverImage" :size="56" />
-          </div>
-          <div class="co__hero-body">
-            <h1 class="co__hero-name">
-              {{ data.name }}
-            </h1>
-            <p v-if="data.description" class="co__hero-description">
-              {{ data.description }}
-            </p>
-          </div>
-        </section>
-
-        <!-- Stats -->
-        <section class="co__stats">
-          <CStatCard
-            :value="poolTotalDisplay"
-            :label="t('public.companyOverview.stats.poolTotalOptions')"
-          />
-          <CStatCard :value="soldDisplay" :label="t('public.companyOverview.stats.optionsSold')" />
-          <CStatCard
-            :value="soldPercentDisplay"
-            :label="t('public.companyOverview.stats.optionsSoldPercent')"
-          />
-          <CStatCard
-            :value="priceGrowthDisplay"
-            :label="t('public.companyOverview.stats.priceGrowth90d')"
-            :change="priceGrowthDir ? priceGrowthDisplay : undefined"
-            :change-dir="priceGrowthDir"
-          />
-        </section>
-
-        <!-- Roadmap (hidden if empty per R1 §6.1) -->
-        <section v-if="hasRoadmap" class="co__section">
-          <h2 class="co__section-title">
-            {{ t('public.companyOverview.sectionRoadmap') }}
+      <!-- Hero (K47): the cover with the company's name over it, or the fallback
+           tile with the icon when there is no cover. -->
+      <section class="ds-hero" aria-labelledby="co-hero-name">
+        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
+        <span v-else class="ds-hero__fallback"><Building /></span>
+        <div class="ds-hero__content">
+          <h2 id="co-hero-name" class="ds-hero__title">
+            {{ data.name }}
           </h2>
-          <RoadmapTimeline
-            :items="data.roadmap ?? []"
-            @product-click="onRoadmapProductClick"
-            @external-click="onRoadmapExternalClick"
-            @post-click="onRoadmapPostClick"
-          />
-        </section>
+        </div>
+      </section>
 
-        <!--
-          Public products teaser (iter 2.6 Batch 5, R1 §1.6.1).
-          Component self-hides when the company has no products after
-          a successful fetch -- no v-if guard here.
-        -->
-        <PublicProductsSection :company-id="companyId" />
+      <section v-if="data.description" class="ds-card ds-card--flat">
+        <p class="ds-card__body co__description">
+          {{ data.description }}
+        </p>
+      </section>
 
-        <!--
-          Public attachments section (iter 2.6 Batch 4, R2 §7.2).
-          Component self-hides when the list is empty after a successful
-          fetch -- no v-if guard here. The auth-flow CompanyOverviewView
-          uses the same self-hide contract for its AttachmentsSection.
-        -->
-        <PublicAttachmentsSection :company-id="companyId" />
+      <!-- Stats -->
+      <section class="ds-stats">
+        <CStatCard
+          :value="poolTotalDisplay"
+          :label="t('public.companyOverview.stats.poolTotalOptions')"
+        />
+        <CStatCard :value="soldDisplay" :label="t('public.companyOverview.stats.optionsSold')" />
+        <CStatCard
+          :value="soldPercentDisplay"
+          :label="t('public.companyOverview.stats.optionsSoldPercent')"
+        />
+        <CStatCard
+          :value="priceGrowthDisplay"
+          :label="t('public.companyOverview.stats.priceGrowth90d')"
+          :change="priceGrowthDir ? priceGrowthDisplay : undefined"
+          :change-dir="priceGrowthDir"
+        />
+      </section>
 
-        <!--
-          No sticky CTA -- purchase lives on product detail (Batch 6).
-        -->
-      </main>
+      <!-- Roadmap (hidden if empty per R1 §6.1) -->
+      <section v-if="hasRoadmap" class="co__section">
+        <h2 class="co__section-title">
+          {{ t('public.companyOverview.sectionRoadmap') }}
+        </h2>
+        <RoadmapTimeline
+          :items="data.roadmap ?? []"
+          @product-click="onRoadmapProductClick"
+          @external-click="onRoadmapExternalClick"
+          @post-click="onRoadmapPostClick"
+        />
+      </section>
+
+      <!--
+        Public products teaser (iter 2.6 Batch 5, R1 §1.6.1).
+        Component self-hides when the company has no products after
+        a successful fetch -- no v-if guard here.
+      -->
+      <PublicProductsSection :company-id="companyId" />
+
+      <!--
+        Public attachments section (iter 2.6 Batch 4, R2 §7.2).
+        Component self-hides when the list is empty after a successful
+        fetch -- no v-if guard here. The auth-flow CompanyOverviewView
+        uses the same self-hide contract for its AttachmentsSection.
+      -->
+      <PublicAttachmentsSection :company-id="companyId" />
+
+      <!--
+        No sticky CTA -- purchase lives on product detail (Batch 6).
+      -->
     </template>
   </div>
 </template>
 
 <style scoped>
+/* The frame's main pads the screen; this column lays its parts out with the same gap. */
 .co {
-  display: flex;
-  flex-direction: column;
-}
-
-.co__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-  padding: var(--space-4);
-}
-
-.co__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-7);
-  padding: var(--space-4);
-  /* No bottom padding for a sticky/floating CTA -- the public view
-     does not have one. The investor side reserves space for both
-     a floating .co__cta and the CTabBar; the public shell has neither,
-     so the natural bottom padding from .co__main's last child is
-     enough. */
-  padding-block-end: var(--space-7);
-}
-
-/* ---------- Hero ---------- */
-
-.co__hero {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.co__hero-cover {
-  inline-size: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-md);
-  background-size: cover;
-  background-position: center;
-  background-color: var(--bg-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
-}
-
-.co__hero-cover--fallback {
-  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
-}
-
-.co__hero-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-
-.co__hero-name {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.25;
-}
-
-.co__hero-description {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--text-secondary);
-  white-space: pre-line;
-}
-
-/* ---------- Stats grid ---------- */
-
-.co__stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
+  gap: var(--space-5);
 }
 
-@media (min-width: 640px) {
-  .co__stats {
-    grid-template-columns: repeat(4, 1fr);
-  }
+/* The company's description keeps the author's line breaks and is capped at the
+   reading measure (--maxw-prose is a ceiling: on a phone it does nothing). */
+.co__description {
+  white-space: pre-line;
+  max-inline-size: var(--maxw-prose);
 }
 
-/* ---------- Generic section ---------- */
-
+/* A section of the screen: its heading in the display face, then its content. */
 .co__section {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-4);
 }
 
 .co__section-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .co__stats {
-    max-inline-size: calc(2 * var(--tile-max));
-  }
 }
 </style>

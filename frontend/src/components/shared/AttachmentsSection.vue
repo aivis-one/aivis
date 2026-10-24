@@ -43,7 +43,7 @@
 //   raw items set contains 2+ distinct language codes -- a single-
 //   language company doesn't need a picker at all.
 //
-// MIME ICON MAPPING.
+// MIME ICON MAPPING (utils/mime).
 //   Minimal coarse-grained mapping by mime prefix / known type. Anything
 //   unmapped falls through to a generic File icon. Adding more icons
 //   later is a one-line tweak; no contract to break.
@@ -61,21 +61,14 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import {
-  Download,
-  File as FileIcon,
-  FileArchive,
-  FileSpreadsheet,
-  FileText,
-  Image as ImageIcon,
-  Video,
-} from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
+import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { downloadAttachment } from '@/api/attachments'
 import { useAttachmentsStore } from '@/stores/attachments'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
+import { mimeIcon } from '@/utils/mime'
 import type { AttachmentResponse } from '@/api/types'
 
 const props = defineProps<{
@@ -245,21 +238,6 @@ function titleCase(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Mime icon mapping
-// ---------------------------------------------------------------------------
-
-function mimeIcon(mime: string) {
-  if (mime.startsWith('image/')) return ImageIcon
-  if (mime.startsWith('video/')) return Video
-  if (mime === 'application/pdf') return FileText
-  if (mime.includes('spreadsheet') || mime === 'text/csv' || mime === 'application/vnd.ms-excel') {
-    return FileSpreadsheet
-  }
-  if (mime.includes('zip') || mime.includes('archive')) return FileArchive
-  return FileIcon
-}
-
-// ---------------------------------------------------------------------------
 // Lifecycle + actions
 // ---------------------------------------------------------------------------
 
@@ -289,16 +267,12 @@ async function onRetry(): Promise<void> {
   await store.setCompanyId(props.companyId)
 }
 
-async function onDownload(att: AttachmentResponse): Promise<void> {
-  try {
-    await downloadAttachment(props.companyId, att.id)
-  } catch {
-    // 401 / 403 / 404 / network all surface the same toast -- the user
-    // can't distinguish these and a retry path is opaque from this UI.
-    // A more nuanced taxonomy would belong in a downloads center, not
-    // here.
-    showToast(t('inv.companyOverview.documents.downloadError'), 'error')
-  }
+function onDownloadFailed(): void {
+  // 401 / 403 / 404 / network all surface the same toast -- the user
+  // can't distinguish these and a retry path is opaque from this UI.
+  // A more nuanced taxonomy would belong in a downloads center, not
+  // here.
+  showToast(t('inv.companyOverview.documents.downloadError'), 'error')
 }
 
 function formatBytes(bytes: number): string {
@@ -332,46 +306,39 @@ function formatBytes(bytes: number): string {
       />
     </header>
 
-    <div v-if="loading" class="ats__center">
+    <div v-if="loading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
-    <div v-else-if="errored" class="ats__center">
-      <CEmptyState :title="t('inv.companyOverview.documents.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="onRetry">
-        {{ t('inv.companyOverview.documents.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="errored"
+      tone="danger"
+      :title="t('inv.companyOverview.documents.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="onRetry">
+          {{ t('inv.companyOverview.documents.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <div v-else class="ats__groups">
       <section v-for="group in groupedItems" :key="group.l1" class="ats__group">
         <h3 class="ats__group-title">
           {{ pathLabel(group.l1) }}
         </h3>
-        <ul class="ats__list">
-          <li v-for="att in group.items" :key="att.id">
-            <button type="button" class="ats__item" @click="onDownload(att)">
-              <span class="ats__item-icon">
-                <component :is="mimeIcon(att.mime_type)" :size="20" />
-              </span>
-              <div class="ats__item-body">
-                <p class="ats__item-title">
-                  {{ att.title }}
-                </p>
-                <p v-if="att.description" class="ats__item-desc">
-                  {{ att.description }}
-                </p>
-                <p class="ats__item-meta">
-                  {{ att.original_filename }}
-                  ·
-                  {{ formatBytes(att.file_size_bytes) }}
-                </p>
-              </div>
-              <span class="ats__item-download" aria-hidden="true">
-                <Download :size="16" />
-              </span>
-            </button>
-          </li>
+        <ul class="ds-rows">
+          <DocumentRow
+            v-for="att in group.items"
+            :key="att.id"
+            :title="att.title"
+            :description="att.description"
+            :meta="`${att.original_filename} · ${formatBytes(att.file_size_bytes)}`"
+            :icon="mimeIcon(att.mime_type)"
+            :href="`/api/v1/companies/${companyId}/attachments/${att.id}/download`"
+            :download="() => downloadAttachment(companyId, att.id)"
+            @failed="onDownloadFailed"
+          />
         </ul>
       </section>
     </div>
@@ -380,8 +347,7 @@ function formatBytes(bytes: number): string {
 
 <style scoped>
 .ats {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-4);
 }
 
@@ -394,35 +360,25 @@ function formatBytes(bytes: number): string {
 
 .ats__title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
 }
 
+/* The select claims its own width; the title absorbs the rest. */
 .ats__filter {
-  /* The select claims minimum width; the title absorbs the rest. */
   flex-shrink: 0;
-  min-inline-size: 140px;
-}
-
-.ats__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-block-size: var(--center-sm);
 }
 
 .ats__groups {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-6);
 }
 
 .ats__group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
 }
 
@@ -432,114 +388,6 @@ function formatBytes(bytes: number): string {
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ats__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.ats__item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
-}
-
-.ats__item:hover {
-  background: var(--bg-subtle);
-  transform: translateY(-1px);
-}
-
-.ats__item:active {
-  transform: translateY(0);
-}
-
-.ats__item-icon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-xl);
-  block-size: var(--size-xl);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-}
-
-.ats__item-body {
-  flex: 1;
-  min-inline-size: 0; /* allow text truncation within flex */
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.ats__item-title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  /* Truncate long titles instead of pushing the download icon off. */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ats__item-desc {
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  color: var(--text-secondary);
-  /* 2-line clamp -- description is optional and may be long. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ats__item-meta {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ats__item-download {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.ats__item:hover .ats__item-download {
-  color: var(--primary);
+  letter-spacing: var(--tracking-wide);
 }
 </style>

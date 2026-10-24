@@ -51,9 +51,10 @@
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download } from '@/components/ui/icons'
+import { useRouter } from 'vue-router'
 
 import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
+import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { downloadPublicAttachment, listPublicAttachments } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { useToast } from '@/composables/useToast'
@@ -68,6 +69,7 @@ const props = defineProps<{
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
+const router = useRouter()
 const { notifyRateLimit } = usePublicErrorToast()
 
 // ---------------------------------------------------------------------------
@@ -272,26 +274,31 @@ async function onRetry(): Promise<void> {
   await fetchList(props.companyId)
 }
 
-async function onDownload(att: AttachmentResponse): Promise<void> {
-  try {
-    await downloadPublicAttachment(props.companyId, att.id)
-  } catch (err) {
-    // 429 has its own toast with Retry-After hint; for everything
-    // else (404 -- the row was un-published between list and click,
-    // 5xx, network) we show a generic toast so the user knows the
-    // tap actually failed.
-    if (!notifyRateLimit(err)) {
-      showToast(t('public.companyOverview.documents.downloadError'), 'error')
-    }
+function onDownloadFailed(err: unknown): void {
+  // 429 has its own toast with Retry-After hint; for everything
+  // else (404 -- the row was un-published between list and click,
+  // 5xx, network) we show a generic toast so the user knows the
+  // tap actually failed.
+  if (!notifyRateLimit(err)) {
+    showToast(t('public.companyOverview.documents.downloadError'), 'error')
   }
+}
+
+// The row's own address is the document's landing page; a click downloads the
+// file at once (K44), a middle click or a copied link opens the landing page.
+function attachmentHref(att: AttachmentResponse): string {
+  return router.resolve({
+    name: 'public-attachment-landing',
+    params: { id: props.companyId, attId: att.id },
+  }).href
 }
 </script>
 
 <template>
   <!--
     The section renders unless we know there are zero items after a
-    successful fetch. Loading + errored states stay visible so the
-    visitor has feedback.
+    successful fetch. Loading + errored states stay visible so the user
+    has feedback.
   -->
   <section v-if="shouldRender" class="ats">
     <header class="ats__head">
@@ -308,46 +315,39 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
       />
     </header>
 
-    <div v-if="loading" class="ats__center">
+    <div v-if="loading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
-    <div v-else-if="errored" class="ats__center">
-      <CEmptyState :title="t('public.companyOverview.documents.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="onRetry">
-        {{ t('public.companyOverview.documents.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="errored"
+      tone="danger"
+      :title="t('public.companyOverview.documents.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="onRetry">
+          {{ t('public.companyOverview.documents.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <div v-else class="ats__groups">
       <section v-for="group in groupedItems" :key="group.l1" class="ats__group">
         <h3 class="ats__group-title">
           {{ pathLabel(group.l1) }}
         </h3>
-        <ul class="ats__list">
-          <li v-for="att in group.items" :key="att.id">
-            <button type="button" class="ats__item" @click="onDownload(att)">
-              <span class="ats__item-icon">
-                <component :is="mimeIcon(att.mime_type)" :size="20" />
-              </span>
-              <div class="ats__item-body">
-                <p class="ats__item-title">
-                  {{ att.title }}
-                </p>
-                <p v-if="att.description" class="ats__item-desc">
-                  {{ att.description }}
-                </p>
-                <p class="ats__item-meta">
-                  {{ att.original_filename }}
-                  ·
-                  {{ formatBytes(att.file_size_bytes) }}
-                </p>
-              </div>
-              <span class="ats__item-download" aria-hidden="true">
-                <Download :size="16" />
-              </span>
-            </button>
-          </li>
+        <ul class="ds-rows">
+          <DocumentRow
+            v-for="att in group.items"
+            :key="att.id"
+            :title="att.title"
+            :description="att.description"
+            :meta="`${att.original_filename} · ${formatBytes(att.file_size_bytes)}`"
+            :icon="mimeIcon(att.mime_type)"
+            :href="attachmentHref(att)"
+            :download="() => downloadPublicAttachment(companyId, att.id)"
+            @failed="onDownloadFailed"
+          />
         </ul>
       </section>
     </div>
@@ -356,8 +356,7 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 <style scoped>
 .ats {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-4);
 }
 
@@ -370,34 +369,25 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
 
 .ats__title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
 }
 
+/* The select claims its own width; the title absorbs the rest. */
 .ats__filter {
   flex-shrink: 0;
-  min-inline-size: 140px;
-}
-
-.ats__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-block-size: var(--center-sm);
 }
 
 .ats__groups {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-6);
 }
 
 .ats__group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
 }
 
@@ -407,112 +397,6 @@ async function onDownload(att: AttachmentResponse): Promise<void> {
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.ats__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.ats__item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
-}
-
-.ats__item:hover {
-  background: var(--bg-subtle);
-  transform: translateY(-1px);
-}
-
-.ats__item:active {
-  transform: translateY(0);
-}
-
-.ats__item-icon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-xl);
-  block-size: var(--size-xl);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-}
-
-.ats__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.ats__item-title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ats__item-desc {
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ats__item-meta {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ats__item-download {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-}
-
-.ats__item:hover .ats__item-download {
-  color: var(--primary);
+  letter-spacing: var(--tracking-wide);
 }
 </style>

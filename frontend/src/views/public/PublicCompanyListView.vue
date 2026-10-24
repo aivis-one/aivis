@@ -42,12 +42,9 @@
 //   the case where the sentinel is already on-screen. See
 //   AIVIS-Frontend.md FP-16.
 //
-// NO HEADER COMPONENT.
-//   The shell carries the only <CHeader> for the page. The view's
-//   title / subtitle live below as ordinary <h1> / <p>, scrolling
-//   away with the content (same pattern as the investor-side
-//   CompanyListView -- its .cl__title / .cl__subtitle are inline, not
-//   stuck to the top).
+// NO HEADER OF ITS OWN.
+//   The frame carries the only header for the page; the view hands it the
+//   title and the line under it through useScreenHeader.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -56,7 +53,9 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { AlertTriangle } from '@/components/ui/icons'
+import { CButton, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import CompanyCard from '@/components/shared/CompanyCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -65,6 +64,12 @@ import type { PublicCompanyListResponse } from '@/api/types'
 type CompanyListItem = PublicCompanyListResponse['items'][number]
 
 const { t } = useI18n()
+
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('public.companyList.title'),
+  lead: () => t('public.companyList.subtitle'),
+})
 const router = useRouter()
 
 const store = useCompanyListStore()
@@ -111,37 +116,41 @@ async function retryLoadMore(): Promise<void> {
 
 <template>
   <div class="cl">
-    <header class="cl__header">
-      <h1 class="cl__title">
-        {{ t('public.companyList.title') }}
-      </h1>
-      <p class="cl__subtitle">
-        {{ t('public.companyList.subtitle') }}
-      </p>
-    </header>
-
-    <!-- Initial loading: full-page spinner. Only fires when there are
-         no items yet and no error -- a refresh on a non-empty list
-         doesn't blank the existing cards. -->
-    <div v-if="initialLoading" class="cl__center">
-      <CLoader :size="32" />
+    <!-- Initial loading: a placeholder grid of cards (K19). Only fires when there
+         are no items yet and no error -- a refresh on a non-empty list doesn't
+         blank the existing cards. -->
+    <div v-if="initialLoading" class="cl__grid" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div v-for="n in 3" :key="n" class="ds-card ds-card--media" aria-hidden="true">
+        <span class="ds-skeleton ds-skeleton--block" />
+        <div class="ds-card__content">
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
     </div>
 
-    <!-- First-page error: full-page empty state + Retry. -->
-    <div v-else-if="store.errored" class="cl__center">
-      <CEmptyState :title="t('public.companyList.errorTitle')" />
-      <CButton variant="primary" @click="retryFirstPage">
-        {{ t('public.companyList.errorRetry') }}
-      </CButton>
-    </div>
+    <!-- First-page error: the empty state with Retry. -->
+    <CEmptyState
+      v-else-if="store.errored"
+      tone="danger"
+      :title="t('public.companyList.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="primary" inline @click="retryFirstPage">
+          {{ t('public.companyList.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty (successful but zero companies). -->
-    <div v-else-if="isEmpty" class="cl__center">
-      <CEmptyState
-        :title="t('public.companyList.empty.title')"
-        :description="t('public.companyList.empty.subtitle')"
-      />
-    </div>
+    <CEmptyState
+      v-else-if="isEmpty"
+      :title="t('public.companyList.empty.title')"
+      :description="t('public.companyList.empty.subtitle')"
+    />
 
     <!-- List + sentinel + load-more error banner. -->
     <template v-else>
@@ -156,52 +165,26 @@ async function retryLoadMore(): Promise<void> {
 
       <div ref="sentinelRef" class="cl__sentinel" />
 
-      <div v-if="store.loadMoreErrored" class="cl__retry">
-        <span class="cl__retry-text">
-          {{ t('public.companyList.errorTitle') }}
-        </span>
-        <CButton variant="outline" size="sm" @click="retryLoadMore">
-          {{ t('public.companyList.errorRetry') }}
-        </CButton>
+      <div v-if="store.loadMoreErrored" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('public.companyList.errorTitle') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+              {{ t('public.companyList.errorRetry') }}
+            </CButton>
+          </div>
+        </div>
       </div>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* The frame's main pads the screen; this column lays its parts out with the same gap. */
 .cl {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-}
-
-.cl__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.cl__title {
-  margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.cl__subtitle {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.cl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
+  display: grid;
+  gap: var(--space-5);
 }
 
 .cl__grid {
@@ -212,39 +195,13 @@ async function retryLoadMore(): Promise<void> {
 
 @media (min-width: 640px) {
   .cl__grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--tile-max), 1fr));
   }
 }
 
+/* The scroll observer's mark: it needs a height to be seen entering the view. */
 .cl__sentinel {
   inline-size: 100%;
-  block-size: 1px;
-}
-
-.cl__retry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-}
-
-.cl__retry-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.cl__subtitle {
-  max-inline-size: var(--maxw-prose);
+  block-size: var(--space-1);
 }
 </style>

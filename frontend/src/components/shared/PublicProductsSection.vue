@@ -239,20 +239,23 @@ function onRetry(): void {
     </header>
 
     <!-- Initial loading -->
-    <div v-if="initialLoading" class="pps__center">
+    <div v-if="initialLoading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
     <!-- Error -->
-    <div v-else-if="hasError" class="pps__center">
-      <CEmptyState
-        :title="t('public.companyOverview.products.errorTitle')"
-        :description="productsStore.error ?? undefined"
-      />
-      <CButton variant="outline" size="sm" @click="onRetry">
-        {{ t('public.companyOverview.products.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="hasError"
+      tone="danger"
+      :title="t('public.companyOverview.products.errorTitle')"
+      :description="productsStore.error ?? undefined"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="onRetry">
+          {{ t('public.companyOverview.products.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Grid -->
     <template v-else>
@@ -289,18 +292,11 @@ function onRetry(): void {
 
 .pps__title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-}
-
-.pps__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-block-size: var(--center-sm);
 }
 
 .pps__grid {

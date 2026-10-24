@@ -57,12 +57,13 @@
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { safeNavigate } from '@/composables/safeNavigate'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Download, File as FileIcon } from '@/components/ui/icons'
+import { File as FileIcon } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { ApiResponseError } from '@/api/client'
 import { downloadPublicAttachment, listPublicAttachments } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
@@ -73,7 +74,6 @@ import type { AttachmentResponse } from '@/api/types'
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 const { showToast } = useToast()
 const { notifyRateLimit } = usePublicErrorToast()
 
@@ -81,6 +81,13 @@ const companyId = computed<string>(() => route.params.id as string)
 const attachmentId = computed<string>(() => route.params.attId as string)
 
 const attachment = ref<AttachmentResponse | null>(null)
+
+// The frame's header carries the document's title and the way back to the company
+// (the overview is the natural orientation point for a deep-linked visitor).
+useScreenHeader({
+  title: () => attachment.value?.title,
+  back: () => ({ name: 'public-company-overview', params: { id: companyId.value } }),
+})
 const loading = ref<boolean>(true)
 const errored = ref<boolean>(false)
 const notFound = ref<boolean>(false)
@@ -171,25 +178,15 @@ function onRetry(): void {
   void loadAttachment(companyId.value, attachmentId.value)
 }
 
-function goToCompany(): void {
-  void safeNavigate(
-    router.push({
-      name: 'public-company-overview',
-      params: { id: companyId.value },
-    }),
-    '[PublicAttachmentLandingView] to company',
-  )
-}
-
-async function onDownload(): Promise<void> {
+async function downloadFile(): Promise<void> {
   const att = attachment.value
   if (!att) return
-  try {
-    await downloadPublicAttachment(companyId.value, att.id)
-  } catch (err) {
-    if (!notifyRateLimit(err)) {
-      showToast(t('public.attachmentLanding.downloadError'), 'error')
-    }
+  await downloadPublicAttachment(companyId.value, att.id)
+}
+
+function onDownloadFailed(err: unknown): void {
+  if (!notifyRateLimit(err)) {
+    showToast(t('public.attachmentLanding.downloadError'), 'error')
   }
 }
 </script>
@@ -197,173 +194,50 @@ async function onDownload(): Promise<void> {
 <template>
   <div class="atl">
     <!-- Loading -->
-    <div v-if="loading" class="atl__center">
-      <CLoader :size="32" />
+    <div v-if="loading" class="ds-empty">
+      <CLoader />
     </div>
 
-    <!-- Not found: wrong id, or private / unpublished, or company inactive -->
-    <div v-else-if="notFound" class="atl__center">
-      <CEmptyState
-        :title="t('public.attachmentLanding.notFound.title')"
-        :description="t('public.attachmentLanding.notFound.subtitle')"
-      />
-      <CButton variant="primary" @click="goToCompany">
-        <ArrowLeft :size="16" />
-        {{ t('public.attachmentLanding.backLink') }}
-      </CButton>
-    </div>
+    <!-- Not found: wrong id, or private / unpublished, or company inactive. The
+         header's back control leads to the company. -->
+    <CEmptyState
+      v-else-if="notFound"
+      :title="t('public.attachmentLanding.notFound.title')"
+      :description="t('public.attachmentLanding.notFound.subtitle')"
+    />
 
     <!-- Generic error (429 / 5xx / network) -->
-    <div v-else-if="errored" class="atl__center">
-      <CEmptyState :title="t('public.attachmentLanding.errorTitle')" />
-      <CButton variant="primary" @click="onRetry">
-        {{ t('public.attachmentLanding.errorRetry') }}
-      </CButton>
-    </div>
-
-    <!-- Loaded -->
-    <main v-else-if="attachment" class="atl__main">
-      <button type="button" class="atl__back" @click="goToCompany">
-        <ArrowLeft :size="16" />
-        {{ t('public.attachmentLanding.backLink') }}
-      </button>
-
-      <section class="atl__hero">
-        <div class="atl__icon">
-          <component :is="heroIcon" :size="48" />
-        </div>
-        <h1 class="atl__title">
-          {{ attachment.title }}
-        </h1>
-        <p v-if="attachment.description" class="atl__description">
-          {{ attachment.description }}
-        </p>
-        <p class="atl__meta">{{ attachment.original_filename }} · {{ sizeDisplay }}</p>
-      </section>
-
-      <div class="atl__cta">
-        <CButton variant="primary" @click="onDownload">
-          <Download :size="16" />
-          {{ t('public.attachmentLanding.download') }}
+    <CEmptyState
+      v-else-if="errored"
+      tone="danger"
+      :title="t('public.attachmentLanding.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="primary" inline @click="onRetry">
+          {{ t('public.attachmentLanding.errorRetry') }}
         </CButton>
-      </div>
-    </main>
+      </template>
+    </CEmptyState>
+
+    <!-- Loaded: the document as a row with its download (K44) -->
+    <ul v-else-if="attachment" class="ds-rows">
+      <DocumentRow
+        :title="attachment.title"
+        :description="attachment.description"
+        :meta="`${attachment.original_filename} · ${sizeDisplay}`"
+        :icon="heroIcon"
+        :href="route.fullPath"
+        :download="downloadFile"
+        @failed="onDownloadFailed"
+      />
+    </ul>
   </div>
 </template>
 
 <style scoped>
+/* The frame's main pads the screen; this column lays its parts out with the same gap. */
 .atl {
-  display: flex;
-  flex-direction: column;
-}
-
-.atl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-  padding: var(--space-4);
-}
-
-.atl__main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-4);
-}
-
-.atl__back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-block: var(--space-2) var(--space-2);
-  padding-inline: var(--space-2) var(--space-3);
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-
-.atl__back:hover {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-}
-
-.atl__hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-lg);
-}
-
-.atl__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 96px;
-  block-size: 96px;
-  background: var(--bg-page);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-}
-
-.atl__title {
-  margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  text-align: center;
-  line-height: 1.3;
-  /* Long titles are allowed to wrap; no clamp -- the landing page
-     is the dedicated surface for THIS document, full title is fine. */
-}
-
-.atl__description {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--text-secondary);
-  text-align: center;
-  white-space: pre-line;
-  /* Same: full description on the landing page. */
-}
-
-.atl__meta {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-.atl__cta {
-  display: flex;
-  justify-content: center;
-}
-
-.atl__cta :deep(.c-button) {
-  min-inline-size: var(--center-md);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.atl__description {
-  max-inline-size: var(--maxw-prose);
+  display: grid;
+  gap: var(--space-5);
 }
 </style>
