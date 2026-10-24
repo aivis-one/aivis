@@ -1,42 +1,21 @@
 <script setup lang="ts">
-// Full-screen loading view displayed during auth initialization.
+// Full-screen loading view displayed during auth initialization, on the auth
+// shell (K33): the logo is the shell's, the screen is a title and the Loader (K20).
 
 import { useI18n } from 'vue-i18n'
-import AivisLogo from '@/components/ui/AivisLogo.vue'
+import AuthShell from '@/components/layout/AuthShell.vue'
 import CLoader from '@/components/ui/CLoader.vue'
 
 const { t } = useI18n()
 </script>
 
 <template>
-  <div class="loading-view">
-    <AivisLogo :height="64" />
-    <CLoader class="loading-spinner" />
-    <p class="loading-text">
+  <AuthShell>
+    <div class="ds-auth__icon">
+      <CLoader />
+    </div>
+    <h1 class="ds-auth__title">
       {{ t('common.loading') }}
-    </p>
-  </div>
+    </h1>
+  </AuthShell>
 </template>
-
-<style scoped>
-.loading-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  background: var(--bg-page);
-  gap: var(--space-4);
-}
-
-.loading-spinner {
-  margin-block-start: var(--space-5);
-}
-
-.loading-text {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-2);
-}
-</style>
