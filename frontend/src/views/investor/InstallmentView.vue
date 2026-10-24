@@ -27,6 +27,12 @@
 // user can pick a different plan from there (three cards in total,
 // no infinite list per product).
 //
+// The frame's header (K25) holds the product name and the back control (the same
+// step as Cancel); the product is the system's Hero (K47), its text on the
+// scrim; the plan choices are Row list rows (K23, each a real link that puts the
+// plan in the URL), the payment schedule the Schedule list (K32), the first
+// payment and the balance a Key-value list (K49).
+//
 // Error handling mirrors PurchaseView: narrow to ApiResponseError,
 // discriminate by the server's error code, map to toast + side-effect.
 //
@@ -59,8 +65,9 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, Calendar } from '@/components/ui/icons'
-import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
+import { AlertTriangle, Building, Calendar } from '@/components/ui/icons'
+import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
 import { createInstallmentPlan } from '@/api/installments'
@@ -72,7 +79,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
+import { formatNumber, formatPrice } from '@/utils/format'
 import {
   getPlanBonus,
   getTrancheUnits,
@@ -171,9 +178,10 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-const coverImage = computed<string | null>(() => {
-  return product.value ? resolveCoverImage(product.value) : null
-})
+// The cover is the product's own picture, else the company's logo.
+const coverSrc = computed<string | null>(
+  () => product.value?.cover_url ?? product.value?.company_logo_url ?? null,
+)
 
 // ---------------------------------------------------------------------------
 // Local helpers
@@ -228,20 +236,6 @@ async function load(): Promise<void> {
   } finally {
     loading.value = false
   }
-}
-
-function pickPlan(plan: InstallmentResponse): void {
-  selectedPlan.value = plan
-  // Keep the URL in sync for deep-linking / back button. Replace so
-  // we don't pile up history entries for each tap inside the selector.
-  void safeNavigate(
-    router.replace({
-      name: installmentRouteName(),
-      params: { id: productId.value },
-      query: { plan: plan.id },
-    }),
-    '[InstallmentView] URL-sync for plan selection',
-  )
 }
 
 async function confirm(): Promise<void> {
@@ -370,9 +364,10 @@ function backToMarket(): void {
   )
 }
 
-// If the user navigates inside the shell (e.g. tapping a different
-// plan card) without a full remount, re-resolve selectedPlan from
-// the updated query string. Keeps SELECT/CONFIRM modes in sync with
+// A plan choice is a link that REPLACES the URL (`?plan=`), so the history does
+// not pile up an entry for each tap inside the selector. If the user navigates
+// inside the shell (e.g. tapping a different plan) without a full remount,
+// re-resolve selectedPlan from the updated query string. Keeps SELECT/CONFIRM modes in sync with
 // deep-link state without requiring onMounted to run again.
 watch(queryPlanId, (qid) => {
   if (!product.value) return
@@ -383,198 +378,212 @@ watch(queryPlanId, (qid) => {
   }
 })
 
+// The frame's header: the product name, and the back control (the step Cancel takes).
+useScreenHeader({
+  title: () => product.value?.name,
+  back: () =>
+    window.history.state?.back
+      ? true
+      : {
+          name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
+          params: { id: productId.value },
+        },
+})
+
 onMounted(load)
 </script>
 
 <template>
   <div class="iv">
     <!-- Loading -->
-    <div v-if="loading" class="iv__center">
-      <CLoader :size="28" />
-    </div>
+    <CLoader v-if="loading" />
 
     <!-- Product load error -->
-    <template v-else-if="errored || !product">
-      <div class="iv__center">
-        <CEmptyState
-          :title="t('inv.installment.loadError.title')"
-          :description="t('inv.installment.loadError.desc')"
-        />
-        <CButton variant="outline" size="sm" @click="backToMarket">
+    <CEmptyState
+      v-else-if="errored || !product"
+      tone="danger"
+      :title="t('inv.installment.loadError.title')"
+      :description="t('inv.installment.loadError.desc')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="backToMarket">
           {{ t('inv.product.backToMarket') }}
         </CButton>
-      </div>
-    </template>
+      </template>
+    </CEmptyState>
 
     <!-- No installment plans configured on this product -->
-    <template v-else-if="noPlans">
-      <div class="iv__center">
-        <CEmptyState
-          :title="t('inv.installment.empty.title')"
-          :description="t('inv.installment.empty.desc')"
-        />
-        <CButton variant="outline" size="sm" @click="cancel">
+    <CEmptyState
+      v-else-if="noPlans"
+      :title="t('inv.installment.empty.title')"
+      :description="t('inv.installment.empty.desc')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="cancel">
           {{ t('inv.installment.backToProduct') }}
         </CButton>
-      </div>
-    </template>
+      </template>
+    </CEmptyState>
 
     <template v-else>
-      <!-- iter 2.7 batch B2: inline back-link replaces view-CHeader.
-           Reuses cancel() which is already history-aware (prefers
-           router.back(), falls back to product detail on deep-link).
-           B3: button shape extracted to CBackLink. -->
-      <div class="iv__back-row">
-        <CBackLink :label="t('inv.installment.backLink')" @click="cancel" />
-      </div>
-
-      <!-- Product hero -->
-      <div
-        class="iv__hero"
-        :class="{ 'iv__hero--fallback': !coverImage }"
-        :style="{ backgroundImage: coverImage ?? 'none' }"
-      >
-        <Building v-if="!coverImage" :size="48" class="iv__hero-icon" />
-        <div class="iv__hero-content">
-          <div class="iv__hero-company">
-            {{ product.company_name }}
-          </div>
-          <h1 class="iv__hero-title">
+      <!-- Product hero (K47): the company and the product name over the photo, or
+           the fallback tile with the icon when there is no photo. -->
+      <section class="ds-hero" data-size="sm" aria-labelledby="iv-hero-title">
+        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
+        <span v-else class="ds-hero__fallback"><Building /></span>
+        <div class="ds-hero__content">
+          <h2 id="iv-hero-title" class="ds-hero__title">
             {{ product.name }}
-          </h1>
+          </h2>
+          <p class="ds-hero__meta">
+            {{ product.company_name }}
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div class="iv__body">
-        <!-- SELECT mode: fallback for deep-links without ?plan= -->
-        <template v-if="mode === 'select'">
-          <section class="iv__card">
-            <h2 class="iv__card-title">
+      <!-- SELECT mode: fallback for deep-links without ?plan= -->
+      <template v-if="mode === 'select'">
+        <section class="ds-card" aria-labelledby="iv-select">
+          <header class="ds-card__head">
+            <h2 id="iv-select" class="ds-card__title">
               {{ t('inv.installment.selectTitle') }}
             </h2>
-            <p class="iv__hint">
-              {{ t('inv.installment.selectHint') }}
-            </p>
-            <ul class="iv__plans">
-              <li
-                v-for="plan in product.installments"
-                :key="plan.id"
-                class="iv__plan"
-                role="button"
-                tabindex="0"
-                @click="pickPlan(plan)"
-                @keydown.enter.prevent="pickPlan(plan)"
-                @keydown.space.prevent="pickPlan(plan)"
-              >
-                <span class="iv__plan-name">{{ plan.name }}</span>
-                <span v-if="getPlanBonus(plan) > 0" class="iv__plan-bonus">
-                  {{
-                    t('inv.product.installmentsBonus', {
-                      n: getPlanBonus(plan),
-                    })
-                  }}
+          </header>
+          <p class="ds-card__body">
+            {{ t('inv.installment.selectHint') }}
+          </p>
+          <ul class="ds-rows">
+            <li v-for="plan in product.installments" :key="plan.id" class="ds-row">
+              <span class="ds-row__body">
+                <RouterLink
+                  class="ds-row__link"
+                  replace
+                  :to="{
+                    name: installmentRouteName(),
+                    params: { id: productId },
+                    query: { plan: plan.id },
+                  }"
+                >
+                  <span class="ds-row__title">{{ plan.name }}</span>
+                </RouterLink>
+              </span>
+              <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
+                <span class="ds-badge ds-badge--success">
+                  {{ t('inv.product.installmentsBonus', { n: getPlanBonus(plan) }) }}
                 </span>
-              </li>
-            </ul>
-          </section>
+              </span>
+            </li>
+          </ul>
+        </section>
 
-          <div class="iv__actions">
-            <CButton variant="outline" @click="cancel">
-              {{ t('inv.installment.cancel') }}
-            </CButton>
-          </div>
-        </template>
+        <div class="iv__actions">
+          <CButton variant="outline" @click="cancel">
+            {{ t('inv.installment.cancel') }}
+          </CButton>
+        </div>
+      </template>
 
-        <!-- CONFIRM mode: selected plan, schedule, balance, CTAs -->
-        <template v-else-if="selectedPlan && planConfig">
-          <!-- Chosen plan summary -->
-          <section class="iv__card">
-            <h2 class="iv__card-title">
+      <!-- CONFIRM mode: selected plan, schedule, balance, CTAs -->
+      <template v-else-if="selectedPlan && planConfig">
+        <!-- Chosen plan summary -->
+        <section class="ds-card" aria-labelledby="iv-plan">
+          <header class="ds-card__head">
+            <h2 id="iv-plan" class="ds-card__title">
               {{ t('inv.installment.planTitle') }}
             </h2>
-            <div class="iv__plan iv__plan--selected">
-              <span class="iv__plan-name">{{ selectedPlan.name }}</span>
-              <span v-if="planConfig.bonus_units > 0" class="iv__plan-bonus">
-                {{
-                  t('inv.product.installmentsBonus', {
-                    n: planConfig.bonus_units,
-                  })
-                }}
+          </header>
+          <ul class="ds-rows">
+            <li class="ds-row">
+              <span class="ds-row__body">
+                <span class="ds-row__title">{{ selectedPlan.name }}</span>
               </span>
-            </div>
-          </section>
+              <span v-if="planConfig.bonus_units > 0" class="ds-row__trail">
+                <span class="ds-badge ds-badge--success">
+                  {{ t('inv.product.installmentsBonus', { n: planConfig.bonus_units }) }}
+                </span>
+              </span>
+            </li>
+          </ul>
+        </section>
 
-          <!-- Payment schedule -->
-          <section class="iv__card">
-            <h2 class="iv__card-title">
+        <!-- Payment schedule (K32) -->
+        <section class="ds-card" aria-labelledby="iv-tranches">
+          <header class="ds-card__head">
+            <h2 id="iv-tranches" class="ds-card__title">
               {{ t('inv.installment.tranches') }}
             </h2>
-            <ul class="iv__tranches">
-              <li v-for="(tr, i) in planConfig.tranches" :key="i" class="iv__tranche">
-                <span class="iv__tranche-num">
+          </header>
+          <ol class="ds-schedule" aria-labelledby="iv-tranches">
+            <li v-for="(tr, i) in planConfig.tranches" :key="i" class="ds-schedule__item">
+              <div class="ds-schedule__head">
+                <span class="ds-schedule__num">
                   {{ t('inv.installment.tranche', { n: i + 1 }) }}
                 </span>
-                <span class="iv__tranche-amount">
-                  {{ formatPrice(tr.amount_cents, product.currency) }}
-                </span>
-                <span class="iv__tranche-units">
-                  {{ formatNumber(unitsForTranche(i), locale) }}
-                  {{ t('inv.unit') }}
-                </span>
-              </li>
-            </ul>
-            <p class="iv__note">
-              {{ t('inv.installment.scheduleNote') }}
-            </p>
-          </section>
+              </div>
+              <dl class="ds-schedule__stats">
+                <div class="ds-schedule__stat">
+                  <dt>{{ t('inv.installmentPlans.detail.schedule.amount') }}</dt>
+                  <dd>{{ formatPrice(tr.amount_cents, product.currency) }}</dd>
+                </div>
+                <div class="ds-schedule__stat">
+                  <dt>{{ t('inv.installmentPlans.detail.schedule.units') }}</dt>
+                  <dd>{{ formatNumber(unitsForTranche(i), locale) }} {{ t('inv.unit') }}</dd>
+                </div>
+              </dl>
+            </li>
+          </ol>
+          <p class="ds-card__body">
+            {{ t('inv.installment.scheduleNote') }}
+          </p>
+        </section>
 
-          <!-- First payment + spendable balance -->
-          <section class="iv__card">
-            <div class="iv__row">
-              <span class="iv__row-label">
-                {{ t('inv.installment.firstPayment') }}
-              </span>
-              <span class="iv__row-value iv__row-value--accent">
-                {{ formatPrice(firstTrancheCents, product.currency) }}
-              </span>
+        <!-- First payment + spendable balance -->
+        <section class="ds-card">
+          <dl class="ds-kv">
+            <div class="ds-kv__row">
+              <dt>{{ t('inv.installment.firstPayment') }}</dt>
+              <dd>{{ formatPrice(firstTrancheCents, product.currency) }}</dd>
             </div>
-            <div class="iv__row">
-              <span class="iv__row-label">
-                {{ t('inv.installment.yourBalance') }}
-              </span>
-              <span class="iv__row-value" :class="{ 'iv__row-value--warn': insufficientBalance }">
+            <div class="ds-kv__row">
+              <dt>{{ t('inv.installment.yourBalance') }}</dt>
+              <dd :class="{ iv__warn: insufficientBalance }">
                 {{ formatPrice(balanceCents, product.currency) }}
-              </span>
+              </dd>
             </div>
-            <template v-if="insufficientBalance">
-              <p class="iv__balance-hint">
+          </dl>
+          <div v-if="insufficientBalance" class="ds-alert ds-alert--danger" role="alert">
+            <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+            <div class="ds-alert__content">
+              <p class="ds-alert__text">
                 {{
                   t('inv.installment.shortfall', {
                     amount: formatPrice(shortfallCents, product.currency),
                   })
                 }}
               </p>
-              <CButton variant="outline" size="sm" @click="toTopUp">
-                {{ t('inv.installment.topUp') }}
-              </CButton>
-            </template>
-          </section>
-
-          <!-- The disclosure, short, and the one tick of the buyer agreement -->
-          <PurchaseTerms v-model="accepted" />
-
-          <!-- Actions -->
-          <div class="iv__actions">
-            <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
-              <Calendar :size="16" />
-              {{ t('inv.installment.pay') }}
-            </CButton>
-            <CButton variant="outline" :disabled="submitting" @click="cancel">
-              {{ t('inv.installment.cancel') }}
-            </CButton>
+              <div class="ds-alert__actions">
+                <CButton variant="outline" size="sm" inline @click="toTopUp">
+                  {{ t('inv.installment.topUp') }}
+                </CButton>
+              </div>
+            </div>
           </div>
-        </template>
-      </div>
+        </section>
+
+        <!-- The disclosure, short, and the one tick of the buyer agreement -->
+        <PurchaseTerms v-model="accepted" />
+
+        <!-- Actions -->
+        <div class="iv__actions">
+          <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
+            <Calendar size="sm" />
+            {{ t('inv.installment.pay') }}
+          </CButton>
+          <CButton variant="outline" :disabled="submitting" @click="cancel">
+            {{ t('inv.installment.cancel') }}
+          </CButton>
+        </div>
+      </template>
     </template>
   </div>
 </template>
@@ -583,251 +592,11 @@ onMounted(load)
 .iv {
   display: flex;
   flex-direction: column;
-}
-
-.iv__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: calc(100vh - 120px);
-  min-block-size: calc(100dvh - 120px);
-  padding: var(--space-5);
-}
-
-/* iter 2.7 batch B3 -- positioning wrapper for the inline back-link
-   above the hero. Button shape lives in CBackLink. */
-.iv__back-row {
-  display: flex;
-  margin: var(--space-4) var(--space-4) 0;
-}
-
-/* Hero with cover */
-.iv__hero {
-  position: relative;
-  block-size: 160px;
-  background-color: var(--bg-subtle);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  color: var(--neutral-0);
-}
-.iv__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
-  pointer-events: none;
-}
-.iv__hero--fallback {
-  background-color: var(--bg-subtle);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-.iv__hero--fallback::after {
-  display: none;
-}
-.iv__hero-icon {
-  position: relative;
-  z-index: 1;
-  color: var(--text-tertiary);
-  stroke-width: 2;
-}
-.iv__hero-content {
-  position: relative;
-  z-index: 2;
-  padding: var(--space-4) var(--space-4-lg);
-  inline-size: 100%;
-}
-.iv__hero--fallback .iv__hero-content {
-  text-align: center;
-  color: var(--text-primary);
-  padding: 0 var(--space-4-lg) var(--space-4);
-}
-.iv__hero-company {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.85;
-  margin-block-end: var(--space-1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.iv__hero-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-/* Body */
-.iv__body {
-  padding: var(--space-4-lg);
-  display: flex;
-  flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Card container */
-.iv__card {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-}
-.iv__card-title {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  margin: 0 0 var(--space-3);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.iv__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: -4px 0 var(--space-3);
-  line-height: 1.4;
-}
-.iv__note {
-  margin: var(--space-3) 0 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  line-height: 1.4;
-}
-
-/* Plans list (SELECT mode) */
-.iv__plans {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.iv__plan {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  user-select: none;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background-color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-instant) var(--ease-standard);
-}
-.iv__plan:hover {
-  border-color: var(--primary);
-}
-.iv__plan:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-  border-color: var(--primary);
-}
-.iv__plan:active {
-  transform: scale(0.99);
-}
-
-/* Selected-plan card in CONFIRM mode: same layout, no tap affordance. */
-.iv__plan--selected {
-  cursor: default;
-  user-select: auto;
-  border-color: var(--primary);
-}
-.iv__plan--selected:hover {
-  border-color: var(--primary);
-}
-.iv__plan--selected:active {
-  transform: none;
-}
-
-.iv__plan-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.iv__plan-bonus {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--success);
-  white-space: nowrap;
-}
-
-/* Tranche rows */
-.iv__tranches {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.iv__tranche {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.iv__tranche:last-child {
-  border-block-end: none;
-}
-.iv__tranche-num {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-.iv__tranche-amount {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  text-align: end;
-}
-.iv__tranche-units {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-align: end;
-  white-space: nowrap;
-}
-
-/* Row (label + value) for balance / first-payment */
-.iv__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-}
-.iv__row-label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.iv__row-value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.iv__row-value--accent {
-  font-size: var(--fs-h4);
-  color: var(--primary);
-}
-.iv__row-value--warn {
-  color: var(--danger);
-}
-.iv__balance-hint {
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
+/* The balance that does not cover the first payment */
+.iv__warn {
   color: var(--danger);
 }
 
@@ -836,20 +605,5 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-block-start: var(--space-2);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.iv__hint {
-  max-inline-size: var(--maxw-prose);
-}
-.iv__note {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

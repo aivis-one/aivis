@@ -24,6 +24,10 @@
 //      service's own kyc_required refusal (what an agent meets) opens the
 //      same prompt from here.
 //
+// The frame's header (K25) holds the product name and the back control (the same
+// step as Cancel); the product is the Hero (K47), its text on the scrim; the order
+// summary and the balance are Key-value lists (K49) in Cards (K07).
+//
 // BEFORE PAYING. The screen shows the pre-purchase disclosure short, with its
 // full text by link, and ONE tick that accepts the buyer agreement. The
 // button ("Pay") stays shut until the tick is set; pressing it records the
@@ -70,8 +74,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, ShoppingCart } from '@/components/ui/icons'
-import { CBackLink, CButton, CLoader, CEmptyState } from '@/components/ui'
+import { AlertTriangle, Building, ShoppingCart } from '@/components/ui/icons'
+import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { ApiResponseError } from '@/api/client'
 import { acceptDocumentByType } from '@/api/documents'
@@ -83,7 +88,7 @@ import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import { formatNumber, formatPrice, resolveCoverImage } from '@/utils/format'
+import { formatNumber, formatPrice } from '@/utils/format'
 import type { PublicProductDetailResponse } from '@/api/types'
 
 // Backend currency is not emitted on Public* yet (TD-F03). Same
@@ -157,9 +162,10 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-const coverImage = computed<string | null>(() => {
-  return product.value ? resolveCoverImage(product.value) : null
-})
+// The cover is the product's own picture, else the company's logo.
+const coverSrc = computed<string | null>(
+  () => product.value?.cover_url ?? product.value?.company_logo_url ?? null,
+)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -320,131 +326,126 @@ function backToMarket(): void {
   )
 }
 
+// The frame's header: the product name, and the back control (the step Cancel takes).
+useScreenHeader({
+  title: () => product.value?.name,
+  back: () =>
+    router.options.history.state.back
+      ? true
+      : {
+          name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
+          params: { id: productId.value },
+        },
+})
+
 onMounted(load)
 </script>
 
 <template>
   <div class="pv">
-    <!-- iter 2.7 batch B2: <CHeader> removed (single-shell-header
-         paradigm). The product name lives in the hero <h1> below.
-         The screen has its own back control; cancel() is history-aware. -->
-    <div v-if="!loading && product" class="pv__back-row">
-      <CBackLink :label="t('inv.purchase.backLink')" @click="cancel" />
-    </div>
+    <CLoader v-if="loading" />
 
-    <div v-if="loading" class="pv__center">
-      <CLoader />
-    </div>
-
-    <template v-else-if="errored || !product">
-      <div class="pv__center">
-        <CEmptyState
-          :title="t('inv.purchase.loadError.title')"
-          :description="t('inv.purchase.loadError.desc')"
-        />
-        <CButton variant="outline" @click="backToMarket">
+    <CEmptyState
+      v-else-if="errored || !product"
+      tone="danger"
+      :title="t('inv.purchase.loadError.title')"
+      :description="t('inv.purchase.loadError.desc')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="backToMarket">
           {{ t('inv.product.backToMarket') }}
         </CButton>
-      </div>
-    </template>
+      </template>
+    </CEmptyState>
 
     <template v-else>
-      <!-- Product hero -->
-      <div
-        class="pv__hero"
-        :class="{ 'pv__hero--fallback': !coverImage }"
-        :style="{ backgroundImage: coverImage ?? 'none' }"
-      >
-        <Building v-if="!coverImage" :size="48" class="pv__hero-icon" />
-        <div class="pv__hero-content">
-          <div class="pv__hero-company">
-            {{ product.company_name }}
-          </div>
-          <h1 class="pv__hero-title">
+      <!-- Product hero (K47): the company and the product name over the photo, or
+           the fallback tile with the icon when there is no photo. -->
+      <section class="ds-hero" data-size="sm" aria-labelledby="pv-hero-title">
+        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
+        <span v-else class="ds-hero__fallback"><Building /></span>
+        <div class="ds-hero__content">
+          <h2 id="pv-hero-title" class="ds-hero__title">
             {{ product.name }}
-          </h1>
+          </h2>
+          <p class="ds-hero__meta">
+            {{ product.company_name }}
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div class="pv__body">
-        <!-- Order summary -->
-        <section class="pv__card">
-          <h2 class="pv__card-title">
+      <!-- Order summary (K49) -->
+      <section class="ds-card" aria-labelledby="pv-summary">
+        <header class="ds-card__head">
+          <h2 id="pv-summary" class="ds-card__title">
             {{ t('inv.purchase.orderSummary') }}
           </h2>
-
-          <div class="pv__row">
-            <span class="pv__row-label">
-              {{ t('inv.purchase.packageSize') }}
-            </span>
-            <span class="pv__row-value">
-              {{ formatNumber(product.package_size, locale) }}
-              {{ t('inv.unit') }}
-            </span>
+        </header>
+        <dl class="ds-kv">
+          <div class="ds-kv__row">
+            <dt>{{ t('inv.purchase.packageSize') }}</dt>
+            <dd>{{ formatNumber(product.package_size, locale) }} {{ t('inv.unit') }}</dd>
           </div>
-
-          <div class="pv__row">
-            <span class="pv__row-label">
-              {{ t('inv.purchase.pricePerPack') }}
-            </span>
-            <span class="pv__row-value">
-              {{ formatPrice(product.price_per_pack_cents, product.currency) }}
-            </span>
+          <div class="ds-kv__row">
+            <dt>{{ t('inv.purchase.pricePerPack') }}</dt>
+            <dd>{{ formatPrice(product.price_per_pack_cents, product.currency) }}</dd>
           </div>
-
-          <div v-if="bonusPreview && bonusPreview.bonus_units > 0" class="pv__row">
-            <span class="pv__row-label">
-              {{ t('inv.purchase.bonusParts') }}
-            </span>
-            <span class="pv__row-value">
-              +{{ formatNumber(bonusPreview.bonus_units, locale) }}
-              ({{ formatNumber(bonusPreview.bonus_percent, locale) }}%)
-            </span>
+          <div v-if="bonusPreview && bonusPreview.bonus_units > 0" class="ds-kv__row">
+            <dt>{{ t('inv.purchase.bonusParts') }}</dt>
+            <dd>
+              +{{ formatNumber(bonusPreview.bonus_units, locale) }} ({{
+                formatNumber(bonusPreview.bonus_percent, locale)
+              }}%)
+            </dd>
           </div>
-
-          <div class="pv__row pv__row--total">
-            <span class="pv__row-label">{{ t('inv.purchase.total') }}</span>
-            <span class="pv__row-value pv__row-value--total">
-              {{ formatPrice(totalCents, product.currency) }}
-            </span>
+          <div class="ds-kv__row ds-kv__row--total">
+            <dt>{{ t('inv.purchase.total') }}</dt>
+            <dd>{{ formatPrice(totalCents, product.currency) }}</dd>
           </div>
-        </section>
+        </dl>
+      </section>
 
-        <!-- Balance -->
-        <section class="pv__card">
-          <h2 class="pv__card-title">
-            {{ t('inv.purchase.yourBalance') }}
-          </h2>
-          <div class="pv__balance" :class="{ 'pv__balance--warn': insufficientBalance }">
-            {{ formatPrice(balanceCents, product.currency) }}
+      <!-- Balance -->
+      <section class="ds-card">
+        <dl class="ds-kv">
+          <div class="ds-kv__row">
+            <dt>{{ t('inv.purchase.yourBalance') }}</dt>
+            <dd :class="{ pv__warn: insufficientBalance }">
+              {{ formatPrice(balanceCents, product.currency) }}
+            </dd>
           </div>
-          <template v-if="insufficientBalance">
-            <p class="pv__balance-hint">
+        </dl>
+        <div v-if="insufficientBalance" class="ds-alert ds-alert--danger" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">
               {{
                 t('inv.purchase.shortfall', {
                   amount: formatPrice(shortfallCents, product.currency),
                 })
               }}
             </p>
-            <CButton variant="outline" size="sm" @click="toTopUp">
-              {{ t('inv.purchase.topUp') }}
-            </CButton>
-          </template>
-        </section>
-
-        <!-- The disclosure, short, and the one tick of the buyer agreement -->
-        <PurchaseTerms v-model="accepted" />
-
-        <!-- Actions -->
-        <div class="pv__actions">
-          <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
-            <ShoppingCart :size="16" />
-            {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.pay') }}
-          </CButton>
-          <CButton variant="outline" :disabled="submitting" @click="cancel">
-            {{ t('inv.purchase.cancel') }}
-          </CButton>
+            <div class="ds-alert__actions">
+              <CButton variant="outline" size="sm" inline @click="toTopUp">
+                {{ t('inv.purchase.topUp') }}
+              </CButton>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <!-- The disclosure, short, and the one tick of the buyer agreement -->
+      <PurchaseTerms v-model="accepted" />
+
+      <!-- Actions -->
+      <div class="pv__actions">
+        <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
+          <ShoppingCart size="sm" />
+          {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.pay') }}
+        </CButton>
+        <CButton variant="outline" :disabled="submitting" @click="cancel">
+          {{ t('inv.purchase.cancel') }}
+        </CButton>
       </div>
     </template>
   </div>
@@ -454,146 +455,11 @@ onMounted(load)
 .pv {
   display: flex;
   flex-direction: column;
-}
-
-.pv__back-row {
-  padding: var(--space-3) var(--space-4) 0;
-}
-
-.pv__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: calc(100vh - 120px);
-  min-block-size: calc(100dvh - 120px);
-  padding: var(--space-5);
-}
-
-/* Hero with cover */
-.pv__hero {
-  position: relative;
-  block-size: 160px;
-  background-color: var(--bg-subtle);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  color: var(--neutral-0);
-}
-.pv__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 30%, color-mix(in srgb, var(--neutral-950) 75%, transparent));
-  pointer-events: none;
-}
-.pv__hero--fallback {
-  background-color: var(--bg-subtle);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-.pv__hero--fallback::after {
-  display: none;
-}
-.pv__hero-icon {
-  position: relative;
-  z-index: 1;
-  color: var(--text-tertiary);
-  stroke-width: 2;
-}
-.pv__hero-content {
-  position: relative;
-  z-index: 2;
-  padding: var(--space-4) var(--space-4-lg);
-  inline-size: 100%;
-}
-.pv__hero--fallback .pv__hero-content {
-  text-align: center;
-  color: var(--text-primary);
-  padding: 0 var(--space-4-lg) var(--space-4);
-}
-.pv__hero-company {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.85;
-  margin-block-end: var(--space-1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.pv__hero-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.pv__body {
-  padding: var(--space-4-lg);
-  display: flex;
-  flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Generic card */
-.pv__card {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-}
-.pv__card-title {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  margin: 0 0 var(--space-3);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* Rows inside summary */
-.pv__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-}
-.pv__row--total {
-  margin-block-start: var(--space-2);
-  padding-block-start: var(--space-3);
-  border-block-start: thin solid var(--border-default);
-}
-.pv__row-label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.pv__row-value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.pv__row-value--total {
-  font-size: var(--fs-lg);
-  color: var(--primary);
-}
-
-/* Balance */
-.pv__balance {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.pv__balance--warn {
-  color: var(--danger);
-}
-.pv__balance-hint {
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
+/* The balance that does not cover the order */
+.pv__warn {
   color: var(--danger);
 }
 
@@ -602,6 +468,5 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-block-start: var(--space-2);
 }
 </style>
