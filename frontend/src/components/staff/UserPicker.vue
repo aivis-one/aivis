@@ -51,7 +51,7 @@ const emit = defineEmits<{
   select: [user: UserListItem | null]
 }>()
 
-const { t, te } = useI18n()
+const { t } = useI18n()
 
 const uid = useId()
 const inputId = `${uid}-input`
@@ -83,12 +83,11 @@ const noResults = computed(
 const activeId = computed(() =>
   listOpen.value && active.value >= 0 ? optionId(active.value) : undefined,
 )
-// The polite status: the busy wait, the count of results (when the language file
-// has the line) or the empty answer.
+// The polite status: the busy wait, the count of results or the empty answer.
 const statusText = computed(() => {
   if (loading.value) return t('common.loading')
   if (noResults.value) return t('staff.userPicker.noResults')
-  if (listOpen.value && te('staff.userPicker.count')) {
+  if (listOpen.value) {
     return t('staff.userPicker.count', { n: results.value.length })
   }
   return ''

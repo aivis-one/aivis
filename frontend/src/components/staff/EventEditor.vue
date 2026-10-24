@@ -389,9 +389,8 @@ onMounted(loadEvents)
         :rows="4"
       />
 
-      <!-- datetime-local: no UI-kit date picker exists, so CInput carries the
-           native type through. It also pairs label and control by id, which the
-           hand-rolled markup could only approximate with aria-label. -->
+      <!-- The date-and-time field of the system's date picker (K29): CInput carries
+           the native type through and pairs label and control by id. -->
       <CInput
         v-model="form.starts_at"
         :label="t('staff.platform.event.fieldStartsAt')"
