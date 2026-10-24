@@ -25,7 +25,7 @@ header.top p { color: var(--text-secondary); margin-block: var(--space-2) 0; max
 .toolbar a:hover { text-decoration: underline; }
 .toolbar a:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 section.blk { scroll-margin-block-start: 4rem; padding-block: var(--space-7); border-block-end: thin solid var(--border-subtle); }
-section.blk h2 { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
+section.blk h2:not([class]) { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
 section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--space-2); }
 .lead { color: var(--text-secondary); max-inline-size: var(--maxw-prose); margin-block: 0 var(--space-4); }
 .note { color: var(--text-secondary); font-size: var(--fs-sm); max-inline-size: var(--maxw-prose); margin-block: var(--space-3) 0; }
