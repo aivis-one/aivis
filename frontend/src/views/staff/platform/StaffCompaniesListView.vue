@@ -28,15 +28,24 @@
 // =============================================================================
 
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { tOrRaw } from '@/utils/i18n'
-import { Building2, Check } from '@/components/ui/icons'
-import { CBadge, CLoader, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
+import {
+  AlertTriangle,
+  Building2,
+  Check,
+  ChevronRight,
+  Plus,
+  UserPlus,
+} from '@/components/ui/icons'
+import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { useAvatar } from '@/composables/useAvatar'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { ApiResponseError } from '@/api/client'
 import { fetchStaffCompanies, assignCompany, createCompany } from '@/api/staff-companies'
 import UserPicker from '@/components/staff/UserPicker.vue'
@@ -44,7 +53,6 @@ import type { CompanyResponse, UserListItem } from '@/api/types'
 
 const { t } = useI18n()
 const { showToast } = useToast()
-const router = useRouter()
 const { canDo } = useStaffPermissions()
 const { startAvatarSession } = useAvatar()
 
@@ -58,12 +66,35 @@ const canManageCompanies = computed<boolean>(() => canManage.value && canFinanci
 
 const items = ref<CompanyResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const statusFilter = ref<'' | 'active' | 'hidden' | 'archived'>('')
 const search = ref('')
 const loading = ref(true)
 const error = ref(false)
+
+// The frame's header carries the section's title and its two actions (FP-23: the
+// Create and Assign actions both need project_manage + financial_operations).
+useScreenHeader({
+  title: () => t('staff.platform.companies.title'),
+  actions: () =>
+    canManageCompanies.value
+      ? [
+          {
+            id: 'create',
+            label: t('staff.platform.companies.create.cta'),
+            icon: Plus,
+            onClick: openCreate,
+          },
+          {
+            id: 'assign',
+            label: t('staff.platform.companies.assign.cta'),
+            icon: UserPlus,
+            onClick: openAssign,
+          },
+        ]
+      : [],
+})
 
 // Debounce handle for the search box.
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -104,13 +135,6 @@ async function loadCompanies(): Promise<void> {
 function setStatusFilter(s: '' | 'active' | 'hidden' | 'archived'): void {
   statusFilter.value = s
   page.value = 1
-}
-
-function openCompany(id: string): void {
-  void safeNavigate(
-    router.push(`/staff/platform/projects/${id}`),
-    `[StaffCompaniesListView] to company ${id}`,
-  )
 }
 
 // Status chip + page changes reload immediately.
@@ -506,23 +530,8 @@ async function handleCreate(): Promise<void> {
 
 <template>
   <div class="scl">
-    <div class="scl__header">
-      <h2 class="scl__title">
-        {{ t('staff.platform.companies.title') }}
-      </h2>
-      <!-- FP-23: Create/Assign CTAs both require project_manage + financial_operations. -->
-      <div v-if="canManageCompanies" class="scl__header-actions">
-        <CButton variant="primary" size="sm" @click="openCreate">
-          {{ t('staff.platform.companies.create.cta') }}
-        </CButton>
-        <CButton variant="outline" size="sm" @click="openAssign">
-          {{ t('staff.platform.companies.assign.cta') }}
-        </CButton>
-      </div>
-    </div>
-
     <!-- Status filter chips -->
-    <div class="scl__filters">
+    <div class="ds-chip-row" role="group" :aria-label="t('staff.platform.companies.title')">
       <button
         class="ds-chip"
         :aria-pressed="!statusFilter"
@@ -556,76 +565,71 @@ async function handleCreate(): Promise<void> {
     />
 
     <!-- Loading -->
-    <div v-if="loading" class="scl__center">
-      <CLoader :size="32" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="scl__center">
-      <CButton variant="secondary" size="sm" @click="loadCompanies">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadCompanies">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.platform.companies.empty')">
       <template #icon>
-        <Building2 :size="40" />
+        <Building2 />
       </template>
     </CEmptyState>
 
-    <!-- List -->
+    <!-- List (K23 rows: a row opens the project) -->
     <template v-else>
-      <div class="company-list">
-        <button
-          v-for="c in items"
-          :key="c.id"
-          type="button"
-          class="company-item"
-          @click="openCompany(c.id)"
-        >
-          <div class="company-item__info">
-            <div class="company-item__name">
-              {{ c.name }}
-            </div>
-            <div class="company-item__detail">
+      <ul class="ds-rows company-list">
+        <li v-for="c in items" :key="c.id" class="ds-row">
+          <span class="ds-row__lead"><Building2 size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="`/staff/platform/projects/${c.id}`">
+              <span class="ds-row__title">{{ c.name }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">
               {{ formatPrice(c.price_per_unit_cents) }} &bull;
               {{ t('staff.platform.companies.supply', { n: c.total_supply }) }}
-            </div>
-          </div>
-          <CBadge
-            :variant="statusVariant(c.status)"
-            :text="tOrRaw(t, `staff.platform.companies.filter.${c.status}`, c.status)"
-          />
-        </button>
-      </div>
+            </span>
+          </span>
+          <span class="ds-row__trail">
+            <CBadge
+              :variant="statusVariant(c.status)"
+              :text="tOrRaw(t, `staff.platform.companies.filter.${c.status}`, c.status)"
+            />
+            <ChevronRight size="sm" />
+          </span>
+        </li>
+      </ul>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="scl__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
-          &larr;
-        </CButton>
-        <span class="scl__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
-          &rarr;
-        </CButton>
-      </div>
+      <!-- Pagination (K17) -->
+      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
 
     <!-- Assign modal (W0) -->
-    <CModal :open="showAssign" @close="closeAssign">
-      <h3 class="scl__modal-title">
-        {{ t('staff.platform.companies.assign.title') }}
-      </h3>
-      <p class="scl__modal-hint">
+    <CModal
+      :open="showAssign"
+      :title="t('staff.platform.companies.assign.title')"
+      @close="closeAssign"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.companies.assign.hint') }}
       </p>
 
-      <div class="scl__field">
-        <label class="scl__field-label">{{ t('staff.platform.companies.assign.fieldUser') }}</label>
-        <UserPicker v-model="assignUserId" @select="onUserSelected" />
-        <p v-if="assignSelectedUser?.role === 'company'" class="scl__field-error">
-          {{ t('staff.platform.companies.assign.alreadyCompanyError') }}
+      <div>
+        <UserPicker
+          v-model="assignUserId"
+          :label="t('staff.platform.companies.assign.fieldUser')"
+          @select="onUserSelected"
+        />
+        <p v-if="assignSelectedUser?.role === 'company'" class="ds-field__error">
+          <AlertTriangle size="sm" />
+          <span>{{ t('staff.platform.companies.assign.alreadyCompanyError') }}</span>
         </p>
       </div>
 
@@ -689,13 +693,14 @@ async function handleCreate(): Promise<void> {
         "
       />
 
-      <div class="scl__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeAssign">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeAssign">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="assigning"
           :disabled="!canSubmitAssign"
           @click="handleAssign"
@@ -706,11 +711,12 @@ async function handleCreate(): Promise<void> {
     </CModal>
 
     <!-- Create modal (2026-08-30, `№199`) -->
-    <CModal :open="showCreate" @close="closeCreate">
-      <h3 class="scl__modal-title">
-        {{ t('staff.platform.companies.create.title') }}
-      </h3>
-      <p class="scl__modal-hint">
+    <CModal
+      :open="showCreate"
+      :title="t('staff.platform.companies.create.title')"
+      @close="closeCreate"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.companies.create.hint') }}
       </p>
 
@@ -729,7 +735,7 @@ async function handleCreate(): Promise<void> {
           maxlength="128"
           :label="t('staff.platform.companies.create.fieldPassword')"
         />
-        <CButton variant="outline" size="sm" @click="createPassword = generatePassword()">
+        <CButton variant="outline" size="sm" inline @click="createPassword = generatePassword()">
           {{ t('staff.platform.companies.create.generatePassword') }}
         </CButton>
       </div>
@@ -794,13 +800,14 @@ async function handleCreate(): Promise<void> {
         "
       />
 
-      <div class="scl__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeCreate">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeCreate">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="creating"
           :disabled="!canSubmitCreate"
           @click="handleCreate"
@@ -814,136 +821,17 @@ async function handleCreate(): Promise<void> {
 
 <style scoped>
 .scl {
-  padding: var(--space-4);
-}
-.scl__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: var(--space-3);
-  margin-block-end: var(--space-3);
-}
-.scl__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
+  align-content: start;
 }
 
-/* Assign modal (W0) */
-.scl__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.scl__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.scl__field {
-  margin-block-end: var(--space-4);
-}
-.scl__field-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-.scl__field-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  margin: var(--space-2) 0 0;
-}
 .scl__password-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-.scl__header-actions {
-  display: flex;
+  display: grid;
+  justify-items: start;
   gap: var(--space-2);
 }
-.scl__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
-}
-
-.scl__filters {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  margin-block-end: var(--space-3);
-  padding-block-end: var(--space-1);
-}
-
-.scl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-
-.company-list {
-  display: flex;
-  flex-direction: column;
-}
-.company-item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.company-item:hover {
-  background: var(--bg-subtle);
-}
-.company-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.company-item__name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.company-item__detail {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.scl__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.scl__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
+.scl__password-row > :first-child {
+  justify-self: stretch;
 }
 </style>

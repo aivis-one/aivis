@@ -16,29 +16,16 @@
 import { useI18n } from 'vue-i18n'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import PostListEditor from '@/components/staff/PostListEditor.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 
 const { t } = useI18n()
 const { canDo } = useStaffPermissions()
 const canManageContent = canDo('content_manage')
+
+// The frame's header carries the section's title.
+useScreenHeader({ title: () => t('staff.platform.news.title') })
 </script>
 
 <template>
-  <div class="staff-news">
-    <h2 class="staff-news__title">
-      {{ t('staff.platform.news.title') }}
-    </h2>
-    <PostListEditor :can-edit="canManageContent" />
-  </div>
+  <PostListEditor :can-edit="canManageContent" />
 </template>
-
-<style scoped>
-.staff-news {
-  padding: var(--space-4);
-}
-.staff-news__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-</style>

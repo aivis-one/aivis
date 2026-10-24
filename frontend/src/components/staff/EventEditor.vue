@@ -25,16 +25,10 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, Pencil, Trash2, Check } from '@/components/ui/icons'
-import {
-  CBadge,
-  CLoader,
-  CButton,
-  CEmptyState,
-  CModal,
-  CInput,
-  CTextarea,
-  CCheckbox,
-} from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CModal, CInput, CTextarea, CCheckbox } from '@/components/ui'
+import StaffListSkeleton from './StaffListSkeleton.vue'
+import StaffPager from './StaffPager.vue'
+import { useUrlPage } from './useUrlPage'
 import { useToast } from '@/composables/useToast'
 import {
   fetchStaffEvents,
@@ -55,7 +49,7 @@ const { showToast } = useToast()
 // -- List state --
 const items = ref<EventResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
@@ -275,7 +269,7 @@ onMounted(loadEvents)
   <div class="evd">
     <!-- Filter chips + create CTA -->
     <div class="evd__toolbar">
-      <div class="evd__filters">
+      <div class="ds-chip-row" role="group" :aria-label="t('staff.platform.events.title')">
         <button
           class="ds-chip"
           :aria-pressed="upcomingFilter === ''"
@@ -304,93 +298,85 @@ onMounted(loadEvents)
           <span>{{ t('staff.platform.event.filterPast') }}</span>
         </button>
       </div>
-      <CButton v-if="canEdit" variant="primary" size="sm" @click="openCreate">
-        <Plus :size="16" />
+      <CButton v-if="canEdit" variant="primary" size="sm" inline @click="openCreate">
+        <Plus size="sm" />
         {{ t('staff.platform.event.createCta') }}
       </CButton>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="evd__center">
-      <CLoader :size="32" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="evd__center">
-      <CButton variant="secondary" size="sm" @click="loadEvents">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadEvents">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.platform.event.empty')" />
 
-    <!-- List -->
+    <!-- List (K23 rows) -->
     <template v-else>
-      <div class="event-list">
-        <div v-for="ev in items" :key="ev.id" class="event-item">
-          <div class="event-item__info">
-            <div class="event-item__top">
-              <CBadge
-                :variant="ev.is_published ? 'success' : 'neutral'"
-                :text="
-                  ev.is_published
-                    ? t('staff.platform.event.published')
-                    : t('staff.platform.event.draft')
-                "
-              />
-            </div>
-            <div class="event-item__title">
-              {{ ev.title }}
-            </div>
-            <div class="event-item__date">
+      <ul class="ds-rows event-list">
+        <li v-for="ev in items" :key="ev.id" class="ds-row event-item">
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ ev.title }}</span>
+            <span class="ds-row__meta">
               {{ formatDateTime(ev.starts_at) }}
-            </div>
-            <div v-if="ev.location" class="event-item__loc">
-              {{ ev.location }}
-            </div>
-          </div>
-          <div v-if="canEdit" class="event-item__actions">
-            <button
-              :aria-label="t('common.edit')"
-              class="event-item__icon-btn"
-              @click="openEdit(ev)"
-            >
-              <Pencil :size="16" />
-            </button>
-            <button
-              :aria-label="t('common.delete')"
-              class="event-item__icon-btn event-item__icon-btn--danger"
-              @click="openDelete(ev)"
-            >
-              <Trash2 :size="16" />
-            </button>
-          </div>
-        </div>
-      </div>
+              <template v-if="ev.location">&bull; {{ ev.location }}</template>
+            </span>
+          </span>
+          <span class="ds-row__trail">
+            <CBadge
+              :variant="ev.is_published ? 'success' : 'neutral'"
+              :text="
+                ev.is_published
+                  ? t('staff.platform.event.published')
+                  : t('staff.platform.event.draft')
+              "
+            />
+            <template v-if="canEdit">
+              <button
+                type="button"
+                class="ds-button ds-button--ghost ds-button--icon"
+                data-size="sm"
+                :aria-label="t('common.edit')"
+                @click="openEdit(ev)"
+              >
+                <Pencil />
+              </button>
+              <button
+                type="button"
+                class="ds-button ds-button--danger ds-button--icon"
+                data-size="sm"
+                :aria-label="t('common.delete')"
+                @click="openDelete(ev)"
+              >
+                <Trash2 />
+              </button>
+            </template>
+          </span>
+        </li>
+      </ul>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="evd__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
-          &larr;
-        </CButton>
-        <span class="evd__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
-          &rarr;
-        </CButton>
-      </div>
+      <!-- Pagination (K17) -->
+      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
 
     <!-- Editor modal -->
-    <CModal :open="showEditor" @close="showEditor = false">
-      <h3 class="evd__modal-title">
-        {{
-          editId === null
-            ? t('staff.platform.event.createTitle')
-            : t('staff.platform.event.editTitle')
-        }}
-      </h3>
-
+    <CModal
+      :open="showEditor"
+      :title="
+        editId === null
+          ? t('staff.platform.event.createTitle')
+          : t('staff.platform.event.editTitle')
+      "
+      @close="showEditor = false"
+    >
       <CInput
         v-model="form.title"
         :label="t('staff.platform.event.fieldTitle')"
@@ -438,17 +424,16 @@ onMounted(loadEvents)
         :placeholder="t('staff.platform.event.fieldCoverPlaceholder')"
       />
 
-      <div class="evd__toggles">
-        <CCheckbox v-model="form.is_published" :label="t('staff.platform.event.isPublished')" />
-      </div>
+      <CCheckbox v-model="form.is_published" :label="t('staff.platform.event.isPublished')" />
 
-      <div class="evd__modal-actions">
-        <CButton variant="outline" size="sm" @click="showEditor = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showEditor = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
@@ -459,21 +444,22 @@ onMounted(loadEvents)
     </CModal>
 
     <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="evd__modal-title">
-        {{ t('staff.platform.event.deleteTitle') }}
-      </h3>
-      <p class="evd__modal-text">
+    <CModal
+      :open="!!deleteTarget"
+      :title="t('staff.platform.event.deleteTitle')"
+      @close="deleteTarget = null"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.event.deleteConfirm') }}
       </p>
-      <p v-if="deleteTarget" class="evd__modal-target">
+      <p v-if="deleteTarget" class="evd__target">
         {{ deleteTarget.title }}
       </p>
-      <div class="evd__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
+        <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
           {{ t('common.delete') }}
         </CButton>
       </div>
@@ -483,138 +469,22 @@ onMounted(loadEvents)
 
 <style scoped>
 .evd {
-  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .evd__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-block-end: var(--space-3);
-}
-.evd__filters {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-block-end: var(--space-1);
 }
 
-.evd__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-
-.event-list {
-  display: flex;
-  flex-direction: column;
-}
-.event-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.event-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.event-item__top {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-block-end: var(--space-2);
-}
-.event-item__title {
-  font-size: var(--fs-sm);
+.evd__target {
+  margin: 0;
   font-weight: 600;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.event-item__date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin-block-start: var(--space-1);
-}
-.event-item__loc {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-.event-item__actions {
-  display: flex;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-.event-item__icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-.event-item__icon-btn:hover {
-  background: var(--bg-subtle);
-}
-.event-item__icon-btn--danger:hover {
-  color: var(--danger);
-}
-
-.evd__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.evd__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.evd__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-.evd__modal-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-2);
-}
-.evd__modal-target {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-.evd__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
-}
-
-.evd__toggles {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-block-end: var(--space-2);
 }
 </style>

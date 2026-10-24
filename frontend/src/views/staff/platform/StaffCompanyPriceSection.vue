@@ -35,7 +35,10 @@
 import { ref, onMounted, computed, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import { CButton, CEmptyState, CModal, CInput, CStatCard } from '@/components/ui'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { fetchStaffCompanyPriceHistory, updateStaffCompanyPrice } from '@/api/staff-companies'
@@ -78,7 +81,7 @@ watch(
 // History table.
 const history = ref<PriceHistoryResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
@@ -187,69 +190,61 @@ onMounted(reload)
 
 <template>
   <div class="scpr">
-    <!-- Current price + edit CTA -->
+    <!-- Current price (K46) + edit CTA -->
     <div class="scpr__current">
-      <div class="scpr__current-info">
-        <span class="scpr__current-label">{{ t('staff.platform.price.current') }}</span>
-        <span class="scpr__current-value">
-          {{ currentPriceCents !== null ? formatPrice(currentPriceCents) : '—' }}
-        </span>
-      </div>
-      <CButton v-if="canEdit" variant="primary" size="sm" @click="openEdit">
+      <CStatCard
+        :label="t('staff.platform.price.current')"
+        :value="currentPriceCents !== null ? formatPrice(currentPriceCents) : '—'"
+      />
+      <CButton v-if="canEdit" variant="primary" size="sm" inline @click="openEdit">
         {{ t('staff.platform.price.editCta') }}
       </CButton>
     </div>
 
     <!-- History -->
-    <h3 class="scpr__history-title">
-      {{ t('staff.platform.price.historyTitle') }}
-    </h3>
-    <p class="scpr__history-caption">
-      {{ t('staff.platform.price.historyCaption') }}
-    </p>
+    <section class="scpr__history">
+      <h2 class="scpr__history-title">
+        {{ t('staff.platform.price.historyTitle') }}
+      </h2>
+      <p class="scpr__history-caption">
+        {{ t('staff.platform.price.historyCaption') }}
+      </p>
 
-    <div v-if="loading" class="scpr__center">
-      <CLoader :size="28" />
-    </div>
+      <StaffListSkeleton v-if="loading" />
 
-    <div v-else-if="error" class="scpr__center">
-      <CButton variant="secondary" size="sm" @click="loadHistory">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+      <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+        <template #actions>
+          <CButton variant="secondary" size="sm" inline @click="loadHistory">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
-    <CEmptyState v-else-if="!history.length" :title="t('staff.platform.price.historyEmpty')" />
+      <CEmptyState v-else-if="!history.length" :title="t('staff.platform.price.historyEmpty')" />
 
-    <template v-else>
-      <div class="price-history">
-        <div class="price-history__head">
-          <span class="price-history__col-price">{{ t('staff.platform.price.colPrice') }}</span>
-          <span class="price-history__col-date">{{ t('staff.platform.price.colChangedAt') }}</span>
-        </div>
-        <div v-for="row in history" :key="row.id" class="price-history__row">
-          <span class="price-history__col-price">{{ formatPrice(row.price_per_unit_cents) }}</span>
-          <span class="price-history__col-date">{{ formatDateTime(row.changed_at) }}</span>
-        </div>
-      </div>
+      <template v-else>
+        <!-- Two columns, so rows (K23): the price, and when it was set -->
+        <ul class="ds-rows price-history">
+          <li v-for="row in history" :key="row.id" class="ds-row price-history__row">
+            <span class="ds-row__body">
+              <span class="ds-row__title">{{ formatPrice(row.price_per_unit_cents) }}</span>
+              <span class="ds-row__meta">{{ formatDateTime(row.changed_at) }}</span>
+            </span>
+          </li>
+        </ul>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="scpr__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
-          &larr;
-        </CButton>
-        <span class="scpr__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
-          &rarr;
-        </CButton>
-      </div>
-    </template>
+        <!-- Pagination (K17) -->
+        <StaffPager
+          :page="page"
+          :total-pages="totalPages"
+          @update:page="(n: number) => (page = n)"
+        />
+      </template>
+    </section>
 
     <!-- Edit modal -->
-    <CModal :open="showEdit" @close="showEdit = false">
-      <h3 class="scpr__modal-title">
-        {{ t('staff.platform.price.editTitle') }}
-      </h3>
-      <p class="scpr__modal-hint">
+    <CModal :open="showEdit" :title="t('staff.platform.price.editTitle')" @close="showEdit = false">
+      <p class="ds-dialog__text">
         {{ t('staff.platform.price.editHint') }}
       </p>
       <CInput
@@ -258,13 +253,14 @@ onMounted(reload)
         :label="t('staff.platform.price.fieldPrice')"
         :placeholder="t('staff.platform.price.fieldPricePlaceholder')"
       />
-      <div class="scpr__modal-actions">
-        <CButton variant="outline" size="sm" @click="showEdit = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showEdit = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
@@ -278,115 +274,36 @@ onMounted(reload)
 
 <style scoped>
 .scpr {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
 }
 
 .scpr__current {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-4-lg);
+  gap: var(--space-3);
 }
-.scpr__current-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+
+.scpr__history {
+  display: grid;
+  gap: var(--space-3);
 }
-.scpr__current-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.scpr__current-value {
-  font-size: var(--fs-h3);
+
+.scpr__history-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .scpr__history-caption {
-  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
-  font-size: var(--fs-xs);
+  margin: 0;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
-}
-
-.scpr__history-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-
-.scpr__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-4);
-}
-
-.price-history {
-  display: flex;
-  flex-direction: column;
-}
-.price-history__head {
-  display: flex;
-  padding: var(--space-2) 0;
-  border-block-end: calc(var(--border-input-width) * 2) solid var(--border-default);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.price-history__row {
-  display: flex;
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-}
-.price-history__col-price {
-  flex: 0 0 40%;
-  font-weight: 600;
-}
-.price-history__col-date {
-  flex: 1;
-  color: var(--text-secondary);
-}
-
-.scpr__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.scpr__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.scpr__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.scpr__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.scpr__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
 }
 </style>

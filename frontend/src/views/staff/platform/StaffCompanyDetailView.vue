@@ -4,16 +4,15 @@
 // =============================================================================
 //
 // Detail shell for a single project under the Staff Platform tab.
-// Renders an inline page-header (back-link + project name h1, per
-// FP-19 + FP-20) and a horizontal scrollable tab strip for the
+// The frame's header carries the project's name and the way back to the list
+// (the screen header API); the screen draws the sub-navigation across the
 // per-project sections (R1 §4.3 + R2 §6):
 //
 //   profile / price / pool / products / roadmap / audit / posts / documents / templates
 //
-// Each tab maps to a nested child route; selected section renders
-// in the inner <router-view>. Mobile-first horizontal-scroll over
-// sidebar -- iPhone viewport 380px is too narrow for a vertical
-// sidebar, confirmed in iter 2.6c review.
+// Each link maps to a nested child route; the selected section renders in the
+// inner <router-view>. A strip that scrolls sideways beats a vertical sidebar
+// on a phone (confirmed in iter 2.6c review).
 //
 // iter 2.7 Block C: the header now fetches the real company via
 //   fetchStaffCompany (staff detail endpoint, any status) and shows
@@ -22,18 +21,16 @@
 //   and navigation never block on the name. Per-section content is
 //   filled by the section components rendered in <router-view>.
 //
-// FP-21 goBack. History-aware: prefers router.back() so the
-// originating screen (StaffCompaniesListView most commonly) keeps
-// scroll state for free; falls back to the companies list when no
-// prior history (deep-link).
+// The way back is a link to the projects list (the frame's back control).
 // =============================================================================
 
 import { computed, ref, onMounted, watch, provide } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { CBackLink } from '@/components/ui'
-import { safeNavigate } from '@/composables/safeNavigate'
+import SubNav from '@/components/layout/SubNav.vue'
+import type { SubNavItem } from '@/components/layout/SubNav.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { fetchStaffCompany } from '@/api/staff-companies'
 import type { CompanyDetailResponse } from '@/api/types'
@@ -41,7 +38,6 @@ import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 
 // The company id from the route params. Read reactively so a
 // future ":id" change (unlikely in MVP, but free) re-resolves
@@ -117,29 +113,9 @@ const sections = computed(() =>
   ),
 )
 
-const activeId = computed<string>(() => {
-  const match = allSections.value.find((s) => route.path.startsWith(s.path))
-  return match?.id ?? 'profile'
-})
-
-function goSection(path: string): void {
-  if (route.path === path) return
-  void safeNavigate(router.push(path), `[StaffCompanyDetailView] to ${path}`)
-}
-
-// FP-21 history-aware back: prefer router.back() so the originating
-// list (with its scroll/filter state) restores for free; fall back
-// to an explicit push only on deep-link entry.
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(
-    router.push({ name: 'staff-platform-companies' }),
-    '[StaffCompanyDetailView] back fallback to companies list',
-  )
-}
+const subNavItems = computed<SubNavItem[]>(() =>
+  sections.value.map((s) => ({ id: s.id, to: s.path, label: t(s.labelKey) })),
+)
 
 // Company name fetch (iter 2.7 Block C). The detail endpoint returns
 // any-status companies, so a hidden / archived company still resolves
@@ -158,6 +134,13 @@ const placeholderTitle = computed<string>(() => {
 })
 
 const headerTitle = computed<string>(() => company.value?.name ?? placeholderTitle.value)
+
+// The frame's header: the project's name (the placeholder while it loads) and the
+// back control to the projects list.
+useScreenHeader({
+  title: () => headerTitle.value,
+  back: { name: 'staff-platform-companies' },
+})
 
 async function loadCompany(): Promise<void> {
   const id = companyId.value
@@ -201,119 +184,19 @@ onMounted(loadCompany)
 
 <template>
   <div class="scd">
-    <!-- Inline page-header: back-link + company name h1.
-         FP-19 (single CHeader; StaffShell owns the only one).
-         FP-20 (CBackLink shared component).
-         FP-21 (goBack history-aware with deep-link fallback). -->
-    <div class="scd__page-header">
-      <CBackLink :label="t('staff.platform.company.backLink')" @click="goBack" />
-      <h1 class="scd__page-title">
-        {{ headerTitle }}
-      </h1>
-    </div>
-
-    <!-- Horizontal scrollable tab strip across the project's sections. -->
-    <nav class="scd__tabs" :aria-label="t('staff.platform.company.sectionsLabel')">
-      <button
-        v-for="s in sections"
-        :key="s.id"
-        type="button"
-        class="scd__tab"
-        :class="{ 'scd__tab--active': activeId === s.id }"
-        @click="goSection(s.path)"
-      >
-        {{ t(s.labelKey) }}
-      </button>
-    </nav>
+    <!-- The sections across the project (the frame's sub-navigation, K25): links, the
+         current one marked by the router. On a phone the strip scrolls sideways. -->
+    <SubNav :label="t('staff.platform.company.sectionsLabel')" :items="subNavItems" />
 
     <!-- Selected section content. -->
-    <div class="scd__content">
-      <RouterView />
-    </div>
+    <RouterView />
   </div>
 </template>
 
 <style scoped>
 .scd {
-  display: flex;
-  flex-direction: column;
-  min-block-size: 100%;
-}
-
-/* Inline page-header block (iter 2.7 batch B2 pattern):
-   padding owns spacing, CBackLink and h1 stack vertically. */
-.scd__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-}
-.scd__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-  line-height: 1.3;
-}
-
-/* Horizontal scrollable tab strip. Mobile-first: at 380px iPhone
-   viewport six labels won't fit; user swipes horizontally. */
-.scd__tabs {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding: 0 var(--space-4) var(--space-3);
-  border-block-end: thin solid var(--border-default);
-  position: sticky;
-  inset-block-start: 0;
-  z-index: 9;
-  background: var(--bg-page);
-}
-.scd__tabs::-webkit-scrollbar {
-  display: none;
-}
-.scd__tabs {
-  scrollbar-width: none;
-}
-
-.scd__tab {
-  /* A5: 39px tall until 2026-08-25, five short of the 44px floor. The
-     centred ::after overlay this codebase uses elsewhere CANNOT work here:
-     .scd__tabs is overflow-x: auto, CSS cannot clip one axis only, so
-     overflow-y computes to auto and the container clips the overlay. The
-     tab IS the control and has no adjacent text to displace, so the box
-     grows instead -- the pattern .filter-chip already uses. Measured by
-     HIT TEST (elementFromPoint), which is what showed the overlay failing
-     exactly one probe: the vertical one. */
-  min-block-size: var(--tap-min);
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard);
-}
-
-.scd__tab:hover {
-  background: var(--bg-subtle);
-}
-.scd__tab--active {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: var(--primary);
-}
-
-.scd__content {
-  flex: 1;
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
 }
 </style>

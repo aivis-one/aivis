@@ -32,7 +32,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CLoader, CButton, CEmptyState, CBadge } from '@/components/ui'
+import { CButton, CEmptyState, CBadge } from '@/components/ui'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { fetchCompanyAuditFeed } from '@/api/staff-audit'
 import type { CompanyAuditEntryResponse } from '@/api/types'
 
@@ -46,7 +49,7 @@ const companyId = computed<string>(() => {
 
 const entries = ref<CompanyAuditEntryResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
@@ -95,123 +98,70 @@ onMounted(loadFeed)
 
 <template>
   <div class="scau">
-    <h3 class="scau__title">
+    <h2 class="scau__title">
       {{ t('staff.platform.audit.title') }}
-    </h3>
+    </h2>
 
-    <div v-if="loading" class="scau__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
-    <div v-else-if="error" class="scau__center">
-      <CButton variant="secondary" size="sm" @click="loadFeed">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadFeed">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <CEmptyState v-else-if="!entries.length" :title="t('staff.platform.audit.empty')" />
 
     <template v-else>
-      <ul class="audit-feed">
-        <li v-for="entry in entries" :key="entry.id" class="audit-feed__row">
-          <div class="audit-feed__head">
-            <span class="audit-feed__event">{{ entry.event }}</span>
-            <!-- FP-25 self-hide: only staff-on-behalf writes carry performed_by. -->
-            <CBadge
-              v-if="entry.performed_by"
-              variant="neutral"
-              :text="t('staff.platform.audit.viaAvatar')"
-            />
-            <span class="audit-feed__date">{{ formatDateTime(entry.created_at) }}</span>
-          </div>
-          <pre class="audit-feed__data">{{ formatData(entry.data) }}</pre>
+      <!-- The feed (K23 rows): the event, its time, and the event's data as read-only text -->
+      <ul class="ds-rows audit-feed">
+        <li v-for="entry in entries" :key="entry.id" class="ds-row audit-feed__row">
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ entry.event }}</span>
+            <span class="ds-row__meta">{{ formatDateTime(entry.created_at) }}</span>
+            <pre class="audit-feed__data">{{ formatData(entry.data) }}</pre>
+          </span>
+          <!-- FP-25 self-hide: only staff-on-behalf writes carry performed_by. -->
+          <span v-if="entry.performed_by" class="ds-row__trail">
+            <CBadge variant="neutral" :text="t('staff.platform.audit.viaAvatar')" />
+          </span>
         </li>
       </ul>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="scau__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="page--">
-          &larr;
-        </CButton>
-        <span class="scau__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="page++">
-          &rarr;
-        </CButton>
-      </div>
+      <!-- Pagination (K17) -->
+      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
   </div>
 </template>
 
 <style scoped>
 .scau {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .scau__title {
-  font-size: var(--fs-sm);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
 }
 
-.scau__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-4);
-}
-
-.audit-feed {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.audit-feed__row {
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.audit-feed__head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-block-end: var(--space-1);
-}
-.audit-feed__event {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.audit-feed__date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin-inline-start: auto;
-}
+/* The event's data is a free-form blob shown verbatim: a mono block (D11). */
 .audit-feed__data {
   margin: 0;
   padding: var(--space-2);
-  background: var(--bg-subtle);
+  background: var(--bg-inset);
   border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
   overflow-x: auto;
-}
-
-.scau__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.scau__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
 }
 </style>

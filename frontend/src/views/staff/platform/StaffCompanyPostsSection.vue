@@ -36,13 +36,5 @@ const fixedOwner = computed<{ type: 'company'; id: string }>(() => ({
 </script>
 
 <template>
-  <div class="scps">
-    <PostListEditor :fixed-owner="fixedOwner" :can-edit="canManageContent" />
-  </div>
+  <PostListEditor :fixed-owner="fixedOwner" :can-edit="canManageContent" />
 </template>
-
-<style scoped>
-.scps {
-  padding: var(--space-4);
-}
-</style>

@@ -27,12 +27,10 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import {
-  fetchVerificationMode,
-  saveVerificationMode,
-} from '@/api/kyc'
+import { fetchVerificationMode, saveVerificationMode } from '@/api/kyc'
 import { useToast } from '@/composables/useToast'
-import { CButton } from '@/components/ui'
+import { CButton, CLoader } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -81,33 +79,39 @@ onMounted(load)
 
 <template>
   <div class="verification">
-    <h3 class="verification__title">
-      {{ t('staff.platform.verification.title') }}
-    </h3>
     <p class="verification__text">
       {{ t('staff.platform.verification.description') }}
     </p>
 
-    <div v-if="loading" class="verification__text">{{ t('common.loading') }}</div>
+    <div v-if="loading" class="verification__center">
+      <CLoader />
+    </div>
 
     <template v-else>
-      <label class="verification__option">
-        <input v-model="selectedMode" type="radio" value="manual" />
-        <span>{{ t('staff.platform.verification.manual') }}</span>
-      </label>
-      <label class="verification__option">
-        <input v-model="selectedMode" type="radio" value="automatic" />
-        <span>{{ t('staff.platform.verification.automatic') }}</span>
-      </label>
+      <!-- The mode (K05: a fieldset with a legend, one radio per mode) -->
+      <fieldset class="ds-fieldset">
+        <legend class="ds-fieldset__legend">{{ t('staff.platform.verification.title') }}</legend>
+        <label class="ds-radio">
+          <input v-model="selectedMode" class="ds-radio__input" type="radio" value="manual" />
+          <span class="ds-radio__dot" aria-hidden="true"></span>
+          <span>{{ t('staff.platform.verification.manual') }}</span>
+        </label>
+        <label class="ds-radio">
+          <input v-model="selectedMode" class="ds-radio__input" type="radio" value="automatic" />
+          <span class="ds-radio__dot" aria-hidden="true"></span>
+          <span>{{ t('staff.platform.verification.automatic') }}</span>
+        </label>
+      </fieldset>
 
-      <p class="verification__notice">
+      <StaffAlert tone="warning">
         {{ t('staff.platform.verification.notice') }}
-      </p>
+      </StaffAlert>
 
-      <div class="verification__actions">
+      <div>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :disabled="saving || selectedMode === storedMode"
           @click="save"
         >
@@ -120,31 +124,20 @@ onMounted(load)
 
 <style scoped>
 .verification {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.verification__center {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  justify-content: center;
 }
 
-.verification__title {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-
-.verification__text,
-.verification__notice {
-  color: var(--text-secondary);
+.verification__text {
+  margin: 0;
   font-size: var(--fs-sm);
-}
-
-.verification__option {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.verification__actions {
-  display: flex;
-  gap: var(--space-2);
+  color: var(--text-secondary);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

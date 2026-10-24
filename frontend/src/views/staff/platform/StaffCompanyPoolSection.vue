@@ -22,7 +22,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CBadge, CButton, CLoader, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import { createStaffCompanyPool, fetchStaffCompanyPool } from '@/api/staff-companies'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -109,65 +109,75 @@ onMounted(load)
 <template>
   <div class="scpool">
     <div v-if="loading" class="scpool__center">
-      <CLoader :size="28" />
+      <CLoader />
     </div>
 
-    <div v-else-if="error" class="scpool__center">
-      <p class="scpool__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="load">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <template v-else-if="pool">
       <p class="scpool__hint">{{ t('staff.platform.pool.hint') }}</p>
-      <div class="scpool__row">
-        <span class="scpool__label">{{ t('staff.platform.pool.status') }}</span>
-        <CBadge
-          :variant="pool.status === 'active' ? 'success' : 'neutral'"
-          :text="pool.status === 'active' ? t('staff.platform.pool.active') : pool.status"
-        />
-      </div>
-      <div class="scpool__row">
-        <span class="scpool__label">{{ t('staff.platform.pool.share') }}</span>
-        <span class="scpool__value">{{ pool.equity_percent }}%</span>
-      </div>
-      <div class="scpool__row">
-        <span class="scpool__label">{{ t('staff.platform.pool.total') }}</span>
-        <span class="scpool__value">{{ formatNumber(pool.total_options, locale) }}</span>
-      </div>
-      <div class="scpool__row">
-        <span class="scpool__label">{{ t('staff.platform.pool.sold') }}</span>
-        <span class="scpool__value">{{ formatNumber(pool.consumed, locale) }}</span>
-      </div>
-      <div class="scpool__row">
-        <span class="scpool__label">{{ t('staff.platform.pool.left') }}</span>
-        <span class="scpool__value">{{ formatNumber(pool.remaining, locale) }}</span>
-      </div>
-      <p class="scpool__note">{{ t('staff.platform.pool.fixedNote') }}</p>
+      <!-- The pool's facts (K49) -->
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.pool.status') }}</dt>
+          <dd>
+            <CBadge
+              :variant="pool.status === 'active' ? 'success' : 'neutral'"
+              :text="pool.status === 'active' ? t('staff.platform.pool.active') : pool.status"
+            />
+          </dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.pool.share') }}</dt>
+          <dd>{{ pool.equity_percent }}%</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.pool.total') }}</dt>
+          <dd>{{ formatNumber(pool.total_options, locale) }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.pool.sold') }}</dt>
+          <dd>{{ formatNumber(pool.consumed, locale) }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.pool.left') }}</dt>
+          <dd>{{ formatNumber(pool.remaining, locale) }}</dd>
+        </div>
+      </dl>
+      <p class="scpool__hint">{{ t('staff.platform.pool.fixedNote') }}</p>
     </template>
 
     <template v-else>
       <p class="scpool__hint">{{ t('staff.platform.pool.none') }}</p>
-      <CButton v-if="canCreate" variant="primary" size="sm" @click="openCreate">
-        {{ t('staff.platform.pool.create') }}
-      </CButton>
+      <div v-if="canCreate">
+        <CButton variant="primary" size="sm" inline @click="openCreate">
+          {{ t('staff.platform.pool.create') }}
+        </CButton>
+      </div>
     </template>
 
-    <CModal :open="showCreate" @close="showCreate = false">
-      <h3 class="scpool__modal-title">
-        {{ t('staff.platform.pool.createTitle') }}
-      </h3>
-      <p class="scpool__modal-text">
+    <CModal
+      :open="showCreate"
+      :title="t('staff.platform.pool.createTitle')"
+      @close="showCreate = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.pool.createHint') }}
       </p>
-      <div class="scpool__modal-actions">
-        <CButton variant="outline" size="sm" @click="showCreate = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showCreate = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="saving"
           @click="handleCreate"
@@ -181,7 +191,9 @@ onMounted(load)
 
 <style scoped>
 .scpool {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .scpool__center {
@@ -193,61 +205,10 @@ onMounted(load)
   gap: var(--space-3);
 }
 
-.scpool__error {
+.scpool__hint {
   margin: 0;
   font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
-.scpool__hint,
-.scpool__note {
-  margin: 0 0 var(--space-4);
-  font-size: var(--fs-xs);
   color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
-}
-
-.scpool__note {
-  margin: var(--space-4) 0 0;
-  color: var(--text-tertiary);
-}
-
-.scpool__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-
-.scpool__label {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.scpool__value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.scpool__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-
-.scpool__modal-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-3);
-  max-inline-size: var(--maxw-prose);
-}
-
-.scpool__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
 }
 </style>
