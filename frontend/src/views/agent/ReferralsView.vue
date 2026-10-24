@@ -47,7 +47,8 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState } from '@/components/ui'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useAgentStore } from '@/stores/agent'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
@@ -101,13 +102,7 @@ onMounted(() => {
 
 <template>
   <!-- Loading (first load only) -->
-  <div
-    v-if="agentStore.downlineLoading && agentStore.downline === null"
-    class="ds-empty"
-    aria-busy="true"
-  >
-    <CLoader :size="24" />
-  </div>
+  <CListSkeleton v-if="agentStore.downlineLoading && agentStore.downline === null" />
 
   <!-- Error -->
   <CEmptyState
@@ -133,7 +128,7 @@ onMounted(() => {
   <template v-else>
     <!-- Investors (self-hiding when empty) -->
     <section v-if="investors.length > 0" class="ref__section" aria-labelledby="ref-investors">
-      <h2 id="ref-investors" class="ref__section-title">
+      <h2 id="ref-investors" class="ds-section-title">
         {{ t('agent.referrals.investors.title') }}
       </h2>
       <article v-for="inv in investors" :key="inv.user_id" class="ds-card" data-size="sm">
@@ -159,7 +154,7 @@ onMounted(() => {
 
     <!-- Sub-agents (self-hiding when empty) -->
     <section v-if="subAgents.length > 0" class="ref__section" aria-labelledby="ref-subagents">
-      <h2 id="ref-subagents" class="ref__section-title">
+      <h2 id="ref-subagents" class="ds-section-title">
         {{ t('agent.referrals.subAgents.title') }}
       </h2>
       <article v-for="sa in subAgents" :key="sa.user_id" class="ds-card" data-size="sm">
@@ -199,13 +194,5 @@ onMounted(() => {
 .ref__section {
   display: grid;
   gap: var(--space-3);
-}
-.ref__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 </style>

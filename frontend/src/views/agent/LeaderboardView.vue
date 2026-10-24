@@ -120,7 +120,7 @@ onMounted(() => {
 
   <!-- Ranked list -->
   <template v-else-if="agentStore.leaderboard !== null">
-    <p v-if="periodStart" class="lb__period">
+    <p v-if="periodStart" class="ds-note ds-note--xs">
       {{ periodCaption }}
     </p>
 
@@ -138,12 +138,3 @@ onMounted(() => {
     </ul>
   </template>
 </template>
-
-<style scoped>
-/* The period caption over the list: a quiet line. */
-.lb__period {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-</style>

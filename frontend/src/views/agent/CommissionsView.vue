@@ -41,8 +41,8 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Coins, ShieldAlert } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState } from '@/components/ui'
+import { Coins } from '@/components/ui/icons'
+import { CAlert, CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import type { CommissionEntry } from '@/api/types'
@@ -210,15 +210,8 @@ onMounted(() => {
       </CButton>
     </div>
 
-    <div
-      v-if="agentStore.commissionsError && agentStore.commissions.length > 0"
-      class="ds-alert ds-alert--danger"
-      role="alert"
-    >
-      <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
-      <div class="ds-alert__content">
-        <p class="ds-alert__text">{{ t('agent.commissions.loadMoreError') }}</p>
-      </div>
-    </div>
+    <CAlert v-if="agentStore.commissionsError && agentStore.commissions.length > 0" tone="danger">
+      {{ t('agent.commissions.loadMoreError') }}
+    </CAlert>
   </template>
 </template>

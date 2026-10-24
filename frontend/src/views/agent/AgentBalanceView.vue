@@ -40,10 +40,9 @@ import {
   ChevronDown,
   CreditCard,
   ListChecks,
-  ShieldAlert,
 } from '@/components/ui/icons'
 
-import { CBadge, CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CAlert, CBadge, CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
@@ -372,7 +371,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+  <div v-if="initialLoading" aria-busy="true">
     <CLoader />
   </div>
 
@@ -440,7 +439,7 @@ onMounted(() => {
 
     <!-- Withdrawal history -->
     <section class="abal__section" aria-labelledby="abal-history">
-      <h2 id="abal-history" class="abal__section-title">
+      <h2 id="abal-history" class="ds-section-title">
         {{ t('agent.balance.withdrawals.title') }}
       </h2>
 
@@ -470,21 +469,17 @@ onMounted(() => {
         <CLoader v-if="withdrawalsLoading" :size="24" />
       </div>
 
-      <div
+      <CAlert
         v-if="withdrawals.length > 0 && withdrawalsLoadMoreErrored && !withdrawalsLoading"
-        class="ds-alert ds-alert--danger"
-        role="alert"
+        tone="danger"
       >
-        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
-        <div class="ds-alert__content">
-          <p class="ds-alert__text">{{ t('agent.balance.withdrawals.loadMoreError') }}</p>
-          <div class="ds-alert__actions">
-            <CButton variant="outline" size="sm" inline @click="retryLoadMoreWithdrawals">
-              {{ t('common.retry') }}
-            </CButton>
-          </div>
-        </div>
-      </div>
+        {{ t('agent.balance.withdrawals.loadMoreError') }}
+        <template #actions>
+          <CButton variant="outline" size="sm" inline @click="retryLoadMoreWithdrawals">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CAlert>
     </section>
   </template>
 
@@ -501,15 +496,12 @@ onMounted(() => {
       :aria-busy="withdrawSubmitting || undefined"
       @submit.prevent="submitWithdraw"
     >
-      <div v-if="withdrawError" class="ds-alert ds-alert--danger" role="alert">
-        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
-        <div class="ds-alert__content">
-          <p class="ds-alert__text">{{ withdrawError }}</p>
-        </div>
-      </div>
+      <CAlert v-if="withdrawError" tone="danger">{{ withdrawError }}</CAlert>
 
       <fieldset class="ds-payout__group" :disabled="withdrawSubmitting">
-        <legend class="ds-sr-only">{{ t('agent.balance.withdrawals.form.title') }}</legend>
+        <legend class="ds-payout__legend">
+          {{ t('agent.balance.withdrawals.form.groupPayee') }}
+        </legend>
         <div class="ds-payout__grid">
           <div class="ds-field">
             <label class="ds-field__label" :for="networkId">
@@ -548,7 +540,14 @@ onMounted(() => {
               <span>{{ t(walletErrorKey) }}</span>
             </p>
           </div>
+        </div>
+      </fieldset>
 
+      <fieldset class="ds-payout__group" :disabled="withdrawSubmitting">
+        <legend class="ds-payout__legend">
+          {{ t('agent.balance.withdrawals.form.groupAmount') }}
+        </legend>
+        <div class="ds-payout__grid">
           <div class="ds-field ds-payout__wide">
             <label class="ds-field__label" :for="amountId">
               {{ t('agent.balance.withdrawals.form.amountLabel') }}
@@ -620,14 +619,6 @@ onMounted(() => {
 .abal__section {
   display: grid;
   gap: var(--space-3);
-}
-.abal__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 
 /* The load-more sentinel the scroll observer watches. */

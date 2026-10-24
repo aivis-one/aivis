@@ -12,7 +12,7 @@
 // THE LINK. An integrator has exactly one link, issued by the platform once,
 // after the agent-integrator agreement is accepted (useAgentLink; the
 // acceptance screen comes before the cabinet). The link has a Share menu, "Copy
-// link" and "Share" (the system menu of the phone; on a device without one it
+// link" and "Share via..." (the system menu of the phone; on a device without one it
 // copies). There is no "create link" button and no list of links.
 //
 // DATA. Each source is an independent probe of the agent store and the shared
@@ -59,7 +59,7 @@ useScreenHeader({
 // The link's two share acts, as the system's Action menu (K26).
 const shareItems = computed<ActionMenuItem[]>(() => [
   { value: 'copy', label: t('agent.link.copy'), icon: Link },
-  { value: 'share', label: t('agent.link.share'), icon: Share2 },
+  { value: 'share', label: t('agent.link.shareVia'), icon: Share2 },
 ])
 
 function onShareSelect(value: string): void {
@@ -78,7 +78,7 @@ onMounted(() => {
 
 <template>
   <!-- The link -->
-  <div v-if="agreement === 'loading'" class="ds-empty" aria-busy="true">
+  <div v-if="agreement === 'loading'" aria-busy="true">
     <CLoader :size="24" />
   </div>
 
