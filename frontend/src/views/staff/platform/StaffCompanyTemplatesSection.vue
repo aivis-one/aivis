@@ -216,7 +216,7 @@ onMounted(loadTemplates)
 
     <!-- List (K23 rows; a row opens the template's source in place) -->
     <ul v-else class="ds-rows tpl-list">
-      <li v-for="tpl in items" :key="tpl.id" class="ds-row tpl-row">
+      <li v-for="tpl in items" :key="tpl.id" class="ds-row">
         <span class="ds-row__body">
           <button type="button" class="ds-row__link tpl-item" @click="openDetail(tpl)">
             <span class="ds-row__title">{{ tpl.title }}</span>
@@ -226,7 +226,7 @@ onMounted(loadTemplates)
             &bull; {{ tpl.language.toUpperCase() }} &bull; v{{ tpl.version }}
           </span>
         </span>
-        <span class="ds-row__trail tpl-row__trail">
+        <span class="ds-row__trail">
           <CBadge
             :variant="statusVariant(tpl.status)"
             :text="tOrRaw(t, `staff.platform.templates.status.${tpl.status}`, tpl.status)"
@@ -366,20 +366,5 @@ onMounted(loadTemplates)
   max-block-size: var(--center-lg);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
-   text keeps a floor of its own width (the system's trail does not shrink). */
-.tpl-row {
-  flex-wrap: wrap;
-}
-.tpl-row .ds-row__body {
-  flex: 1 1 var(--center-sm);
-}
-.tpl-row__trail {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-inline-start: auto;
 }
 </style>

@@ -876,7 +876,7 @@ onMounted(loadUsers)
     <!-- List (K23 rows; a row opens the person's card in place) -->
     <template v-else>
       <ul class="ds-rows user-list">
-        <li v-for="item in items" :key="item.id" class="ds-row user-row">
+        <li v-for="item in items" :key="item.id" class="ds-row">
           <CAvatar :name="fullName(item)" :size="32" />
           <span class="ds-row__body">
             <button type="button" class="ds-row__link user-item" @click="openDetail(item.id)">
@@ -886,7 +886,7 @@ onMounted(loadUsers)
               {{ roleLabel(item.role) }} &bull; {{ item.email ?? '—' }}
             </span>
           </span>
-          <span class="ds-row__trail user-row__trail">
+          <span class="ds-row__trail">
             <CBadge :variant="kycVariant(item.kyc_status)" :text="kycLabel(item.kyc_status)" />
             <CBadge v-if="!item.is_active" variant="danger" :text="t('staff.userDetail.blocked')" />
           </span>
@@ -1404,20 +1404,5 @@ onMounted(loadUsers)
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
-}
-
-/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
-   text keeps a floor of its own width (the system's trail does not shrink). */
-.user-row {
-  flex-wrap: wrap;
-}
-.user-row .ds-row__body {
-  flex: 1 1 var(--center-sm);
-}
-.user-row__trail {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-inline-start: auto;
 }
 </style>

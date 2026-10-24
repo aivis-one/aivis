@@ -231,7 +231,7 @@ onMounted(() => {
             &bull; {{ formatPrice(row.paid_cents, 'USD') }}
           </span>
         </span>
-        <span class="ds-row__trail purch__trail">
+        <span class="ds-row__trail">
           <span class="purch__kind">{{ kindLabel(row.kind) }}</span>
           <CBadge :variant="statusVariant(row.status)" :text="statusLabel(row.status)" />
           <button
@@ -280,20 +280,5 @@ onMounted(() => {
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
-   text keeps a floor of its own width (the system's trail does not shrink). */
-.purch__row {
-  flex-wrap: wrap;
-}
-.purch__row .ds-row__body {
-  flex: 1 1 var(--center-sm);
-}
-.purch__trail {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-inline-start: auto;
 }
 </style>

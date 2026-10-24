@@ -270,7 +270,7 @@ onMounted(load)
             }}
           </span>
         </span>
-        <span class="ds-row__trail scprod__actions">
+        <span class="ds-row__trail">
           <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
           <button
             v-for="to in movesOf(p)"
@@ -387,20 +387,5 @@ onMounted(load)
 
 .scprod__toolbar {
   display: flex;
-}
-
-/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
-   text keeps a floor of its own width (the system's trail does not shrink). */
-.scprod__item {
-  flex-wrap: wrap;
-}
-.scprod__item .ds-row__body {
-  flex: 1 1 var(--center-sm);
-}
-.scprod__actions {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-inline-start: auto;
 }
 </style>

@@ -341,12 +341,12 @@ onMounted(loadPosts)
     <!-- List (K23 rows) -->
     <template v-else>
       <ul class="ds-rows post-list">
-        <li v-for="post in items" :key="post.id" class="ds-row post-item">
+        <li v-for="post in items" :key="post.id" class="ds-row">
           <span class="ds-row__body">
             <span class="ds-row__title">{{ post.title }}</span>
             <span class="ds-row__meta">{{ formatDate(post.created_at) }}</span>
           </span>
-          <span class="ds-row__trail post-item__trail">
+          <span class="ds-row__trail">
             <CBadge :variant="ownerBadgeVariant(post.owner_type)" :text="post.owner_type" />
             <CBadge
               v-if="post.is_banner"
@@ -514,20 +514,5 @@ onMounted(loadPosts)
   margin: 0;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
-   text keeps a floor of its own width (the system's trail does not shrink). */
-.post-item {
-  flex-wrap: wrap;
-}
-.post-item .ds-row__body {
-  flex: 1 1 var(--center-sm);
-}
-.post-item__trail {
-  flex: 0 1 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-inline-start: auto;
 }
 </style>
