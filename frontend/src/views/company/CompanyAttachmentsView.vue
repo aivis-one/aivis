@@ -68,9 +68,9 @@ import {
   CCheckbox,
 } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import ActionMenu from '@/views/company/ActionMenu.vue'
-import type { ActionMenuItem } from '@/views/company/ActionMenu.vue'
-import FileField from '@/views/company/FileField.vue'
+import CActionMenu from '@/components/ui/CActionMenu.vue'
+import type { ActionMenuItem } from '@/components/ui/CActionMenu.vue'
+import CFileField from '@/components/ui/CFileField.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { downloadAttachment } from '@/api/attachments'
@@ -199,7 +199,7 @@ const isEditing = computed<boolean>(() => editingId.value !== null)
 
 // File picked for a NEW attachment (required on create). Replacing the
 // file of an EXISTING attachment is a separate control (the second
-// FileField) since the backend treats it as a distinct endpoint that
+// CFileField) since the backend treats it as a distinct endpoint that
 // leaves metadata untouched.
 const selectedFile = ref<File | null>(null)
 
@@ -512,7 +512,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
               </span>
             </div>
 
-            <ActionMenu
+            <CActionMenu
               :label="att.title"
               icon-key="more"
               icon-only
@@ -584,7 +584,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
     <CCheckbox v-model="draftIsPublic" :label="t('comp.attachments.fieldPublic')" />
 
     <!-- The file: chosen for a new attachment, replaced at once on an existing one (K30) -->
-    <FileField
+    <CFileField
       v-if="!isEditing"
       :file="selectedFile"
       :label="t('comp.attachments.fieldFile')"
@@ -594,7 +594,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
       @select="(file) => (selectedFile = file)"
       @remove="selectedFile = null"
     />
-    <FileField
+    <CFileField
       v-else
       :label="t('comp.attachments.fieldReplaceFile')"
       :button-label="t('comp.attachments.chooseFile')"

@@ -26,9 +26,9 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, Pencil, Trash2, Check } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CModal, CInput, CTextarea, CCheckbox } from '@/components/ui'
-import StaffListSkeleton from './StaffListSkeleton.vue'
-import StaffPager from './StaffPager.vue'
-import { useUrlPage } from './useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import {
   fetchStaffEvents,
@@ -305,7 +305,7 @@ onMounted(loadEvents)
     </div>
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -364,7 +364,7 @@ onMounted(loadEvents)
       </ul>
 
       <!-- Pagination (K17) -->
-      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
+      <CPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
 
     <!-- Editor modal -->

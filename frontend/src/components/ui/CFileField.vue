@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// FileField -- the design system's File input (K30), for one file
+// CFileField -- the design system's File input (K30), for one file
 // =============================================================================
 //
 // `.ds-field.ds-file`: a visible label, the button (a real input type=file inside
@@ -55,12 +55,21 @@ function formatBytes(bytes: number): string {
 }
 
 const itemName = computed<string>(() => props.file?.name ?? props.current ?? '')
-const itemMeta = computed<string>(() =>
-  props.file ? formatBytes(props.file.size) : (props.currentMeta ?? ''),
-)
 const itemState = computed<'selected' | 'uploading' | 'done'>(() => {
   if (props.busy) return 'uploading'
   return props.file ? 'selected' : 'done'
+})
+// The item's second line: its size, then its state in words (K30: every item state
+// is shown) -- ready to upload when picked, uploaded when stored.
+const itemMeta = computed<string>(() => {
+  const size = props.file ? formatBytes(props.file.size) : (props.currentMeta ?? '')
+  const word =
+    itemState.value === 'selected'
+      ? t('common.file.ready')
+      : itemState.value === 'done'
+        ? t('common.file.uploaded')
+        : ''
+  return [size, word].filter(Boolean).join(' · ')
 })
 
 function onChange(e: Event): void {
@@ -109,7 +118,7 @@ function onRemove(): void {
             v-if="removable"
             type="button"
             class="ds-file__remove"
-            :aria-label="`${t('common.clear')} ${itemName}`"
+            :aria-label="t('common.file.remove', { name: itemName })"
             :disabled="busy"
             @click="onRemove"
           >

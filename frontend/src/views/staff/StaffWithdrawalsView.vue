@@ -15,10 +15,10 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Banknote, Check } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import { payoutLines } from '@/utils/payoutDetails'
@@ -160,9 +160,9 @@ onMounted(loadWithdrawals)
 <template>
   <div class="staff-wd">
     <!-- Hint -->
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.withdrawals.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <!-- Status filters (K13) -->
     <div class="ds-chip-row" role="group" :aria-label="t('staff.withdrawals.title')">
@@ -189,7 +189,7 @@ onMounted(loadWithdrawals)
     </div>
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -261,7 +261,7 @@ onMounted(loadWithdrawals)
       </ul>
 
       <!-- Pagination (K17) -->
-      <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+      <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
     </template>
 
     <!-- Confirm modal -->

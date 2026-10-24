@@ -70,7 +70,7 @@ import {
   X,
 } from '@/components/ui/icons'
 import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CSelect } from '@/components/ui'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { ApiResponseError } from '@/api/client'
@@ -660,7 +660,7 @@ onMounted(() => {
 <template>
   <div class="scr">
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="errored" tone="danger" :title="t('common.error')">

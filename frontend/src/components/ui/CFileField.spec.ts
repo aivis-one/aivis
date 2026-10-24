@@ -4,24 +4,30 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
-import FileField from './FileField.vue'
+import CFileField from './CFileField.vue'
 
 function makeI18n() {
   return createI18n({
     legacy: false,
     locale: 'en',
-    messages: { en: { common: { clear: 'Clear' } } },
+    messages: {
+      en: {
+        common: {
+          file: { ready: 'Ready to upload', uploaded: 'Uploaded', remove: 'Remove {name}' },
+        },
+      },
+    },
   })
 }
 
 function mountField(props: Record<string, unknown> = {}) {
-  return mount(FileField, {
+  return mount(CFileField, {
     props: { label: 'Cover', buttonLabel: 'Choose file', ...props },
     global: { plugins: [makeI18n()] },
   })
 }
 
-describe('FileField', () => {
+describe('CFileField', () => {
   it('draws the label, the button around a real file input and no item without a file', () => {
     const w = mountField({ accept: 'image/png', hint: 'PNG, up to 10 MB' })
     expect(w.find('.ds-field__label').text()).toBe('Cover')
@@ -41,22 +47,24 @@ describe('FileField', () => {
     expect(w.emitted('select')).toEqual([[file]])
   })
 
-  it('shows a picked file as a selected item and a stored one as done, uploading while busy', async () => {
+  it('shows a picked file as a selected item and a stored one as done, each with its state in words, uploading while busy', async () => {
     const file = new File(['abc'], 'a.pdf', { type: 'application/pdf' })
     const picked = mountField({ file })
     expect(picked.find('li.ds-file__item').attributes('data-state')).toBe('selected')
     expect(picked.find('.ds-file__name').text()).toBe('a.pdf')
+    expect(picked.find('.ds-file__meta').text()).toBe('3 B · Ready to upload')
     const stored = mountField({ current: 'b.pdf', currentMeta: '2 KB' })
     expect(stored.find('li.ds-file__item').attributes('data-state')).toBe('done')
-    expect(stored.find('.ds-file__meta').text()).toBe('2 KB')
+    expect(stored.find('.ds-file__meta').text()).toBe('2 KB · Uploaded')
     await stored.setProps({ busy: true })
     expect(stored.find('li.ds-file__item').attributes('data-state')).toBe('uploading')
+    expect(stored.find('.ds-file__meta').text()).toBe('2 KB')
   })
 
   it('names its remove button after the file and emits remove', async () => {
     const w = mountField({ current: 'b.pdf', removable: true })
     const remove = w.find('button.ds-file__remove')
-    expect(remove.attributes('aria-label')).toBe('Clear b.pdf')
+    expect(remove.attributes('aria-label')).toBe('Remove b.pdf')
     await remove.trigger('click')
     expect(w.emitted('remove')).toHaveLength(1)
   })

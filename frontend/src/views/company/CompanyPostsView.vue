@@ -55,9 +55,9 @@ import { useI18n } from 'vue-i18n'
 import { Eye, Pencil, Trash2, Newspaper, Plus, X, Check } from '@/components/ui/icons'
 import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CCheckbox } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchOwnPosts, createOwnPost, updateOwnPost, deleteOwnPost } from '@/api/company-posts'
@@ -416,7 +416,7 @@ async function handleDelete(): Promise<void> {
   </div>
 
   <!-- Loading -->
-  <StaffListSkeleton v-if="loading" />
+  <CListSkeleton v-if="loading" />
 
   <!-- Error -->
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.posts.errorTitle')">
@@ -475,7 +475,7 @@ async function handleDelete(): Promise<void> {
     </ul>
 
     <!-- Pagination (K17: a page is an address, ?page=n) -->
-    <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+    <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
   </template>
 
   <!-- Create / edit modal -->

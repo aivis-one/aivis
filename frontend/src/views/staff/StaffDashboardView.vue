@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/icons'
 import type { Component } from 'vue'
 import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
+import CAlert from '@/components/ui/CAlert.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useStaffRights } from '@/composables/useStaffRights'
@@ -123,14 +123,14 @@ onMounted(reload)
 
     <template v-else>
       <!-- A failed read is said, once, with the way to read again -->
-      <StaffAlert v-if="queues.anyFailed" tone="warning">
+      <CAlert v-if="queues.anyFailed" tone="warning">
         {{ t('staff.home.someFailed') }}
         <template #actions>
           <CButton variant="secondary" size="sm" inline @click="reload">
             {{ t('common.retry') }}
           </CButton>
         </template>
-      </StaffAlert>
+      </CAlert>
 
       <!-- One counter for every queue the member may work (K46) -->
       <div class="ds-stats">

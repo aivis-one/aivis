@@ -33,9 +33,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CButton, CEmptyState, CBadge } from '@/components/ui'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { fetchCompanyAuditFeed } from '@/api/staff-audit'
 import type { CompanyAuditEntryResponse } from '@/api/types'
 
@@ -102,7 +102,7 @@ onMounted(loadFeed)
       {{ t('staff.platform.audit.title') }}
     </h2>
 
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
       <template #actions>
@@ -131,7 +131,7 @@ onMounted(loadFeed)
       </ul>
 
       <!-- Pagination (K17) -->
-      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
+      <CPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
   </div>
 </template>

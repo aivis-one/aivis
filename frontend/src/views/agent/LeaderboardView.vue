@@ -32,7 +32,7 @@ import { useI18n } from 'vue-i18n'
 
 import { CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useAgentStore } from '@/stores/agent'
 import { formatDate, formatPrice } from '@/utils/format'
 
@@ -96,7 +96,7 @@ onMounted(() => {
 
 <template>
   <!-- Loading -->
-  <StaffListSkeleton v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null" />
+  <CListSkeleton v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null" />
 
   <!-- Error -->
   <CEmptyState

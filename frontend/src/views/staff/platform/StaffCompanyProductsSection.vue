@@ -24,10 +24,10 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Package } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { ApiResponseError } from '@/api/client'
 import {
   allowedProductStatuses,
@@ -228,9 +228,9 @@ onMounted(load)
 
 <template>
   <div class="scprod">
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.platform.products.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <div v-if="canCreate" class="scprod__toolbar">
       <CButton variant="primary" size="sm" inline @click="openCreate">
@@ -238,7 +238,7 @@ onMounted(load)
       </CButton>
     </div>
 
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
       <template #actions>
@@ -297,7 +297,7 @@ onMounted(load)
     </ul>
 
     <!-- Pagination (K17) -->
-    <StaffPager
+    <CPager
       v-if="!loading && !error"
       :page="page"
       :total-pages="totalPages"

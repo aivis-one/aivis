@@ -20,7 +20,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
+import CAlert from '@/components/ui/CAlert.vue'
 import { ApiResponseError } from '@/api/client'
 import { fetchConsistency } from '@/api/admin'
 import { tOrRaw } from '@/utils/i18n'
@@ -79,9 +79,9 @@ onMounted(run)
 
 <template>
   <div class="recon">
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.reconciliation.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <div v-if="loading" class="recon__center">
       <CLoader />

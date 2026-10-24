@@ -57,7 +57,7 @@ import { useI18n } from 'vue-i18n'
 import { History, ShieldAlert } from '@/components/ui/icons'
 import { CEmptyState, CLoader, CButton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { fetchOwnAuditFeed } from '@/api/company-audit'
 import { formatDateTime } from '@/utils/format'
@@ -189,7 +189,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial load spinner -->
-  <StaffListSkeleton v-if="loading && items.length === 0" />
+  <CListSkeleton v-if="loading && items.length === 0" />
 
   <!-- Error (first load failed) -->
   <CEmptyState

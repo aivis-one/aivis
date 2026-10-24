@@ -30,7 +30,7 @@ import { useI18n } from 'vue-i18n'
 import { fetchVerificationMode, saveVerificationMode } from '@/api/kyc'
 import { useToast } from '@/composables/useToast'
 import { CButton, CLoader } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
+import CAlert from '@/components/ui/CAlert.vue'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -103,9 +103,9 @@ onMounted(load)
         </label>
       </fieldset>
 
-      <StaffAlert tone="warning">
+      <CAlert tone="warning">
         {{ t('staff.platform.verification.notice') }}
-      </StaffAlert>
+      </CAlert>
 
       <div>
         <CButton

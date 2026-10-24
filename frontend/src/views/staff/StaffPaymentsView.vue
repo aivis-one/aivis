@@ -23,10 +23,10 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CreditCard, Check } from '@/components/ui/icons'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchPayments, reversePayment } from '@/api/admin'
@@ -197,9 +197,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="staff-pay">
     <!-- Hint -->
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.payments.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <!-- The queue of top-ups in their hour -->
     <section class="staff-pay__section pay-queue" :aria-label="t('staff.payments.queue.title')">
@@ -210,14 +210,14 @@ onBeforeUnmount(() => {
       <div v-if="queueLoading" class="staff-pay__center staff-pay__center--short">
         <CLoader :size="24" />
       </div>
-      <StaffAlert v-else-if="queueError" tone="danger">
+      <CAlert v-else-if="queueError" tone="danger">
         {{ t('staff.payments.queue.error') }}
         <template #actions>
           <CButton variant="secondary" size="sm" inline @click="loadQueue">
             {{ t('common.retry') }}
           </CButton>
         </template>
-      </StaffAlert>
+      </CAlert>
       <p v-else-if="!queue.length" class="staff-pay__note">
         {{ t('staff.payments.queue.empty') }}
       </p>
@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Loading -->
-      <StaffListSkeleton v-if="loading" />
+      <CListSkeleton v-if="loading" />
 
       <!-- Error -->
       <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
         </ul>
 
         <!-- Pagination (K17) -->
-        <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+        <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
       </template>
     </section>
 

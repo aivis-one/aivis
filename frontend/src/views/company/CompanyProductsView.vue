@@ -23,7 +23,7 @@ import { useI18n } from 'vue-i18n'
 import { Info, Package } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { listMyProducts } from '@/api/products'
 import type { OwnProductResponse } from '@/api/products'
 import { formatPrice } from '@/utils/format'
@@ -90,7 +90,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <StaffListSkeleton v-if="loading && items.length === 0" />
+  <CListSkeleton v-if="loading && items.length === 0" />
 
   <CEmptyState
     v-else-if="error !== null"

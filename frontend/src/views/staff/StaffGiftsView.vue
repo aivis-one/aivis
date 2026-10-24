@@ -27,7 +27,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Gift } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CSelect } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
+import CAlert from '@/components/ui/CAlert.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { ApiResponseError } from '@/api/client'
 import { cancelGift, grantGift } from '@/api/admin'
@@ -169,12 +169,12 @@ onMounted(loadProducts)
 
 <template>
   <div class="gifts">
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.gifts.hint') }}
-    </StaffAlert>
-    <StaffAlert tone="warning">
+    </CAlert>
+    <CAlert tone="warning">
       {{ t('staff.gifts.limit') }}
-    </StaffAlert>
+    </CAlert>
 
     <div v-if="productsLoading" class="gifts__center">
       <CLoader />

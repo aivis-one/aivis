@@ -39,9 +39,9 @@ import {
   UserPlus,
 } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -565,7 +565,7 @@ async function handleCreate(): Promise<void> {
     />
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -608,7 +608,7 @@ async function handleCreate(): Promise<void> {
       </ul>
 
       <!-- Pagination (K17) -->
-      <StaffPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
+      <CPager :page="page" :total-pages="totalPages" @update:page="(n: number) => (page = n)" />
     </template>
 
     <!-- Assign modal (W0) -->

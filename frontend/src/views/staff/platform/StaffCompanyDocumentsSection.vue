@@ -42,7 +42,7 @@ import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, Trash2, FileText, Pencil, Upload } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
 import AttachmentFormModal from '@/components/staff/AttachmentFormModal.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { formatBytes } from '@/utils/format'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -206,7 +206,7 @@ onMounted(loadAttachments)
 <template>
   <div class="scd">
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">

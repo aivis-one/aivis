@@ -67,9 +67,9 @@ import {
   CInput,
   CCheckbox,
 } from '@/components/ui'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { tOrRaw } from '@/utils/i18n'
 import {
   PERMISSION_CARD_KEYS,
@@ -859,7 +859,7 @@ onMounted(loadUsers)
     </div>
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -894,7 +894,7 @@ onMounted(loadUsers)
       </ul>
 
       <!-- Pagination (K17) -->
-      <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+      <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
     </template>
 
     <!-- Detail modal -->

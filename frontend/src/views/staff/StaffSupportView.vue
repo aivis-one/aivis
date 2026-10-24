@@ -83,8 +83,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
 import { CBackLink, CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
@@ -270,11 +270,11 @@ onMounted(() => {
   <div class="ssup">
     <!-- ============================== QUEUE ============================== -->
     <template v-if="openThreadId === null">
-      <StaffAlert tone="info">
+      <CAlert tone="info">
         {{ t('staff.support.hint') }}
-      </StaffAlert>
+      </CAlert>
 
-      <StaffListSkeleton v-if="support.queueLoading && !support.queueLoaded" />
+      <CListSkeleton v-if="support.queueLoading && !support.queueLoaded" />
 
       <CEmptyState
         v-else-if="support.queueError"
@@ -315,13 +315,13 @@ onMounted(() => {
                     &bull; {{ new Date(row.last_message_at).toLocaleString() }}
                   </template>
                 </span>
-                <StaffAlert v-if="support.claimErrors[row.id]" tone="danger">
+                <CAlert v-if="support.claimErrors[row.id]" tone="danger">
                   {{
                     support.claimErrors[row.id]?.status === 409
                       ? t('staff.support.claimConflict')
                       : errorMessage(support.claimErrors[row.id])
                   }}
-                </StaffAlert>
+                </CAlert>
               </span>
               <span class="ds-row__trail">
                 <CButton
@@ -432,9 +432,9 @@ onMounted(() => {
             {{ t('staff.support.statusClose') }}
           </CButton>
         </div>
-        <StaffAlert v-if="support.statusErrors[selectedThread.id]" tone="danger">
+        <CAlert v-if="support.statusErrors[selectedThread.id]" tone="danger">
           {{ errorMessage(support.statusErrors[selectedThread.id]) }}
-        </StaffAlert>
+        </CAlert>
 
         <div v-if="isPool" class="ssup__actions">
           <p class="ssup__note">{{ t('staff.support.readOnlyHint') }}</p>
@@ -449,17 +449,17 @@ onMounted(() => {
             {{ t('staff.support.claim') }}
           </CButton>
         </div>
-        <StaffAlert v-if="isPool && support.claimErrors[selectedThread.id]" tone="danger">
+        <CAlert v-if="isPool && support.claimErrors[selectedThread.id]" tone="danger">
           {{
             support.claimErrors[selectedThread.id]?.status === 409
               ? t('staff.support.claimConflict')
               : errorMessage(support.claimErrors[selectedThread.id])
           }}
-        </StaffAlert>
+        </CAlert>
 
-        <StaffAlert v-if="isForeign" tone="info">
+        <CAlert v-if="isForeign" tone="info">
           {{ t('staff.support.foreignHint') }}
-        </StaffAlert>
+        </CAlert>
 
         <!-- The feed and the composer (K51) -->
         <section class="ds-thread ssup__thread" :aria-label="clientName(selectedThread)">

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ActionMenu from './ActionMenu.vue'
+import CActionMenu from './CActionMenu.vue'
 
 const ITEMS = [
   { value: 'download', label: 'Download' },
@@ -13,13 +13,13 @@ const ITEMS = [
 ]
 
 function mountMenu() {
-  return mount(ActionMenu, {
+  return mount(CActionMenu, {
     props: { label: 'Actions', items: ITEMS },
     attachTo: document.body,
   })
 }
 
-describe('ActionMenu', () => {
+describe('CActionMenu', () => {
   it('is a menu button that names its list and starts closed', () => {
     const w = mountMenu()
     const button = w.find('button.ds-menu__button')
@@ -66,6 +66,19 @@ describe('ActionMenu', () => {
     expect(w.find('button.ds-menu__button').attributes('aria-expanded')).toBe('false')
     expect(document.activeElement).toBe(w.find('button.ds-menu__button').element)
     w.unmount()
+  })
+
+  it('draws the icon-only trigger as a ghost icon button named by its label, with no chevron', () => {
+    const w = mount(CActionMenu, {
+      props: { label: 'Actions for Agreement', items: ITEMS, iconKey: 'more', iconOnly: true, align: 'end' },
+    })
+    const button = w.find('button.ds-menu__button')
+    expect(button.classes()).toEqual(expect.arrayContaining(['ds-button', 'ds-button--ghost', 'ds-button--icon']))
+    expect(button.classes()).not.toContain('ds-button--secondary')
+    expect(button.attributes('aria-label')).toBe('Actions for Agreement')
+    expect(button.text()).toBe('')
+    expect(button.findAll('svg')).toHaveLength(1)
+    expect(w.find('.ds-menu').attributes('data-align')).toBe('end')
   })
 
   it('does not emit for a disabled item', async () => {

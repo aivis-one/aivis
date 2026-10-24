@@ -30,8 +30,8 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { tOrRaw } from '@/utils/i18n'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { fetchStaffCompanyTemplates, fetchStaffCompanyTemplate } from '@/api/staff-companies'
 import type { TemplateResponse, TemplateDetailResponse } from '@/api/types'
 
@@ -200,7 +200,7 @@ onMounted(loadTemplates)
     </div>
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -250,9 +250,9 @@ onMounted(loadTemplates)
         <CLoader :size="24" />
       </div>
 
-      <StaffAlert v-else-if="detailError" tone="danger">
+      <CAlert v-else-if="detailError" tone="danger">
         {{ t('staff.platform.templates.detailError') }}
-      </StaffAlert>
+      </CAlert>
 
       <template v-else-if="detail">
         <div class="sct__detail-meta">

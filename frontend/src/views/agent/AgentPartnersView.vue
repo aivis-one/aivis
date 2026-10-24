@@ -26,8 +26,8 @@ import { ChevronRight, Coins, Link, Share2, Trophy, Users, Wallet } from '@/comp
 
 import { CEmptyState, CIconBox, CLoader, CStatCard } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import ActionMenu from '@/views/company/ActionMenu.vue'
-import type { ActionMenuItem } from '@/views/company/ActionMenu.vue'
+import CActionMenu from '@/components/ui/CActionMenu.vue'
+import type { ActionMenuItem } from '@/components/ui/CActionMenu.vue'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -85,7 +85,7 @@ onMounted(() => {
   <section v-else-if="link" class="ds-card" aria-labelledby="partners-link-title">
     <header class="ds-card__head">
       <h2 id="partners-link-title" class="ds-card__title">{{ t('agent.partners.linkTitle') }}</h2>
-      <ActionMenu
+      <CActionMenu
         :label="t('agent.link.share')"
         :icon="Share2"
         :items="shareItems"

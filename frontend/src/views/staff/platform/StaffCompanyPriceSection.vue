@@ -36,9 +36,9 @@ import { ref, onMounted, computed, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CButton, CEmptyState, CModal, CInput, CStatCard } from '@/components/ui'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { fetchStaffCompanyPriceHistory, updateStaffCompanyPrice } from '@/api/staff-companies'
@@ -210,7 +210,7 @@ onMounted(reload)
         {{ t('staff.platform.price.historyCaption') }}
       </p>
 
-      <StaffListSkeleton v-if="loading" />
+      <CListSkeleton v-if="loading" />
 
       <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
         <template #actions>
@@ -234,7 +234,7 @@ onMounted(reload)
         </ul>
 
         <!-- Pagination (K17) -->
-        <StaffPager
+        <CPager
           :page="page"
           :total-pages="totalPages"
           @update:page="(n: number) => (page = n)"

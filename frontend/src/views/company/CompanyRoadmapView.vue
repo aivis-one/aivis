@@ -52,7 +52,7 @@ import {
   CSelect,
 } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import FileField from '@/views/company/FileField.vue'
+import CFileField from '@/components/ui/CFileField.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import {
@@ -698,7 +698,7 @@ async function handleCoverRemove(): Promise<void> {
     />
 
     <!-- The cover image (K30), added to a saved item -->
-    <FileField
+    <CFileField
       v-if="isEditing"
       :label="t('comp.roadmap.cover.label')"
       :button-label="

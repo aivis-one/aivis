@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The wait for a staff list, on the design system's Skeleton (K19): rows of the
+// The wait for a list, on the design system's Skeleton (K19): rows of the
 // shape of the real rows (a disc, two lines), hidden from assistive technology,
 // with one status text for it. The region that will hold the list is busy while
 // these stand. A short wait elsewhere on the screen keeps the Loader (K20).

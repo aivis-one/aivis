@@ -13,10 +13,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText, Check, X } from '@/components/ui/icons'
 import { CAvatar, CBadge, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import {
@@ -129,12 +129,12 @@ onMounted(loadQueue)
 <template>
   <div class="staff-apps">
     <!-- Hint -->
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.agentApps2.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <!-- Loading -->
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -196,7 +196,7 @@ onMounted(loadQueue)
     </ul>
 
     <!-- Pagination (K17) -->
-    <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+    <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
 
     <!-- Reject modal -->
     <CModal

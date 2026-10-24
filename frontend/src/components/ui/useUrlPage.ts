@@ -1,5 +1,5 @@
 // =============================================================================
-// The page of a staff list, carried in the address (the Pager, K17)
+// The page of a list, carried in the address (the Pager, K17)
 // =============================================================================
 //
 // A page is an address: the pager's links name `?page=n`, and a list opened on

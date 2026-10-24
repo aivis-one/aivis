@@ -44,7 +44,7 @@ import { useI18n } from 'vue-i18n'
 import { Coins, ShieldAlert } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import type { CommissionEntry } from '@/api/types'
 import { useAgentStore } from '@/stores/agent'
 import { tOrRaw } from '@/utils/i18n'
@@ -160,7 +160,7 @@ onMounted(() => {
 
 <template>
   <!-- Loading (first page) -->
-  <StaffListSkeleton v-if="agentStore.commissionsLoading && agentStore.commissions.length === 0" />
+  <CListSkeleton v-if="agentStore.commissionsLoading && agentStore.commissions.length === 0" />
 
   <!-- Error -->
   <CEmptyState

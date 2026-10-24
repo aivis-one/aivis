@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The pager of a staff list, on the design system's Pager (K17): the first page,
+// The pager of a list, on the design system's Pager (K17): the first page,
 // the last, the current one and its neighbours, with a gap between. Each page is a
 // link naming `?page=n` (the address `useUrlPage` reads); a plain click moves the
 // list in place and emits `update:page`, so the list keeps its filters and its
@@ -13,20 +13,14 @@ import { PAGE_KEY, searchForPage } from './useUrlPage'
 const props = defineProps<{ page: number; totalPages: number }>()
 const emit = defineEmits<{ 'update:page': [page: number] }>()
 
-const { t, te } = useI18n()
+const { t } = useI18n()
 
-// The wording of the pager's names: the keys the pager needs are common.pager.*;
-// until they are in the language files the previous and next names are the common
-// Back and Next, and the landmark and the numbers carry no extra name.
-const navLabel = computed(() => (te('common.pager.label') ? t('common.pager.label') : undefined))
-const prevLabel = computed(() =>
-  te('common.pager.prev') ? t('common.pager.prev') : t('common.back'),
-)
-const nextLabel = computed(() =>
-  te('common.pager.next') ? t('common.pager.next') : t('common.next'),
-)
-function pageLabel(n: number): string | undefined {
-  return te('common.pager.page') ? t('common.pager.page', { n }) : undefined
+// The pager's names (K17): the landmark, the two ends and every page number.
+const navLabel = computed(() => t('common.pager.label'))
+const prevLabel = computed(() => t('common.pager.prev'))
+const nextLabel = computed(() => t('common.pager.next'))
+function pageLabel(n: number): string {
+  return t('common.pager.page', { n })
 }
 
 type Item = { kind: 'page'; n: number } | { kind: 'gap'; key: string }

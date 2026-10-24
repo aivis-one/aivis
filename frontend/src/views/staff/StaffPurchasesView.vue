@@ -22,11 +22,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShoppingBag } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CSelect } from '@/components/ui'
-import StaffAlert from '@/components/staff/StaffAlert.vue'
-import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
-import StaffPager from '@/components/staff/StaffPager.vue'
+import CAlert from '@/components/ui/CAlert.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
+import CPager from '@/components/ui/CPager.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
-import { useUrlPage } from '@/components/staff/useUrlPage'
+import { useUrlPage } from '@/components/ui/useUrlPage'
 import { ApiResponseError } from '@/api/client'
 import { cancelGift, fetchStaffPurchases } from '@/api/admin'
 import { listProducts } from '@/api/products'
@@ -177,9 +177,9 @@ onMounted(() => {
 
 <template>
   <div class="purch">
-    <StaffAlert tone="info">
+    <CAlert tone="info">
       {{ t('staff.purchases.hint') }}
-    </StaffAlert>
+    </CAlert>
 
     <div class="purch__filters">
       <CSelect
@@ -202,7 +202,7 @@ onMounted(() => {
       />
     </div>
 
-    <StaffListSkeleton v-if="loading" />
+    <CListSkeleton v-if="loading" />
 
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
       <template #actions>
@@ -249,7 +249,7 @@ onMounted(() => {
     </ul>
 
     <!-- Pagination (K17) -->
-    <StaffPager
+    <CPager
       v-if="!loading && !error"
       :page="page"
       :total-pages="totalPages"

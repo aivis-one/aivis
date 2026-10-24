@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// ActionMenu -- the design system's Action menu (K26), the menu button pattern
+// CActionMenu -- the design system's Action menu (K26), the menu button pattern
 // =============================================================================
 //
 // A Button (`aria-haspopup="menu"`, `aria-expanded`, `aria-controls`) that opens a
@@ -10,6 +10,9 @@
 // wrap, Home and End go to the ends, a typed letter moves to the next item that
 // starts with it, Escape closes and returns the focus to the button, Tab closes,
 // a click outside closes. An item with `disabled` stays in the list and is skipped.
+// The icon-only trigger, for the acts of a row, is a ghost icon button with no
+// chevron, named by `label` (an aria-label that names the object, such as
+// "Actions for <title>"); it stands at the end of a row's trail with `align="end"`.
 // =============================================================================
 
 import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
@@ -134,8 +137,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
       :id="buttonId"
       ref="button"
       type="button"
-      class="ds-button ds-button--secondary ds-menu__button"
-      :class="{ 'ds-button--icon': iconOnly }"
+      class="ds-button ds-menu__button"
+      :class="iconOnly ? 'ds-button--ghost ds-button--icon' : 'ds-button--secondary'"
       data-size="sm"
       aria-haspopup="menu"
       :aria-expanded="open"

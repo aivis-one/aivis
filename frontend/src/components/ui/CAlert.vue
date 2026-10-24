@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// A message the staff member must see in context, on the design system's Alert
+// A message the reader must see in context, on the design system's Alert
 // (K09): a disc with the severity's icon, an optional title, the text (the default
 // slot) and an optional actions slot (a Retry). Info and success are announced as
 // a status, warning and danger as an alert.
