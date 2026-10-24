@@ -39,6 +39,10 @@
   white-space: nowrap;
   border: 0;
 }
+/* the text parts of a screen (not components): a section heading at the h4 role and a quiet small line; tokens only, the roles of tokens/type-recipe.json */
+.ds-section-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); }
+.ds-note { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ds-note--xs { font-size: var(--fs-xs); }
 
 /* ===== K01 Button ===== */
 .ds-button {
@@ -2179,8 +2183,8 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 /* ===== K26 Action menu (the menu button pattern) ===== */
 .ds-menu { position: relative; display: inline-flex; }
 .ds-menu__button[aria-expanded="true"] { background: var(--bg-subtle); border-color: var(--border-input-hover); }
-.ds-menu__button .ds-icon:last-child { transition: rotate var(--dur-fast) var(--ease-standard); }
-.ds-menu__button[aria-expanded="true"] .ds-icon:last-child { rotate: 180deg; }
+.ds-menu__button:not(.ds-button--icon) .ds-icon:last-child { transition: rotate var(--dur-fast) var(--ease-standard); }
+.ds-menu__button[aria-expanded="true"]:not(.ds-button--icon) .ds-icon:last-child { rotate: 180deg; }
 .ds-menu__list {
   position: absolute;
   z-index: var(--z-menu);
@@ -2648,3 +2652,102 @@ details.ds-timeline__card[open] > summary .ds-timeline__chev { rotate: 180deg; }
   .ds-menu__item, .ds-menu__button .ds-icon:last-child, .ds-barchart__bar { transition: none; }
   .ds-docrow[data-state="downloading"] .ds-docrow__state .ds-icon { animation: none; }
 }
+
+/* =====================================================================================================
+   Batch 5 additions: the pieces the cabinets' screens need that the first four batches lack.
+   Same rules as batch 1: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
+   ===================================================================================================== */
+
+/* ===== K23 Row list, additions: the button form of the link, the controls of the trail, the narrow row, the thumbnail, the tone of a figure and a title ===== */
+/* the button form of the link: a row that opens a window or does an act in place reads as the one that goes to a screen (start alignment, the whole width, the hit area stretched over the row, the focus outline round the row) */
+button.ds-row__link { appearance: none; box-sizing: border-box; inline-size: 100%; margin: 0; padding: 0; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; }
+/* a control in the trail (a button, a link, a menu) is its own target and stands above the stretched link; the rest of the trail still opens the row */
+.ds-row__trail :is(a, button, input, select, textarea, summary, label) { position: relative; }
+/* a narrow row: the body keeps a measure of --center-sm and the trail drops under the text, to the end edge, instead of squeezing it */
+.ds-row { flex-wrap: wrap; }
+.ds-row__body { flex: 1 1 var(--center-sm); }
+.ds-row__trail { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; margin-inline-start: auto; }
+/* the thumbnail: a square image in the lead slot of a row or at the start of a reorder item (K39); the fallback holds an icon */
+.ds-thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  inline-size: var(--size-xl);
+  block-size: var(--size-xl);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--icon-secondary);
+}
+.ds-thumb[data-size="lg"] { inline-size: var(--size-4xl); block-size: var(--size-4xl); }
+.ds-thumb > img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+/* the tone of a figure or a title: the sign and the words say the same; --success and --danger stand on the surface, the page and the card ground in both themes (4.5 or better) */
+:is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="success"] { color: var(--success); }
+:is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="danger"] { color: var(--danger); }
+
+/* ===== K39 Reorder list, addition: the trailing actions of an item (icon buttons of the item's own acts; a thumbnail may stand before the body) ===== */
+.ds-reorder__trail { display: flex; align-items: center; gap: var(--space-1); flex: none; }
+
+/* ===== K29 Date picker, addition: the date-and-time field is drawn the same way ===== */
+.ds-input[type="datetime-local"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color-scheme: light; }
+[data-theme="dark"] .ds-input[type="datetime-local"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-input[type="datetime-local"] { color-scheme: dark; } }
+
+/* ===== K07 Card, additions: the button form of the link and the price line ===== */
+/* the button form of the link: a card that opens something in place reads as the one that goes to a screen (the title's font and tracking, start alignment, the hit area stretched over the card, the focus outline round the card) */
+button.ds-card__link { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-align: start; cursor: pointer; }
+/* the price line: the figure in the mono face with its unit, and a quiet reference line under it */
+.ds-card__price { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(var(--space-1) / 2) var(--space-2); margin: 0; }
+.ds-card__price-figure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-tight); color: var(--primary); overflow-wrap: anywhere; }
+.ds-card__price-unit { font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-snug); color: var(--text-secondary); }
+.ds-card__price-ref { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); }
+
+/* ===== K23 Row list, addition: the date leaf (the day over the month) as a lead; the same box stands in a card head as .ds-lead ===== */
+.ds-dateleaf { align-content: center; gap: 0; text-align: center; line-height: var(--lh-tight); }
+.ds-dateleaf__day { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); font-weight: 700; }
+.ds-dateleaf__month { font-size: var(--fs-xs); font-weight: 600; }
+
+/* ===== K52 Dialog, additions: a bulleted list and a two-column list of codes in the body ===== */
+.ds-dialog__list { margin: 0; padding-inline-start: var(--space-5); }
+.ds-dialog__list > li + li { margin-block-start: var(--space-1); }
+.ds-dialog__codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; direction: ltr; }
+.ds-dialog__codes > li {
+  box-sizing: border-box;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* ===== K54 Timeline, addition: the entry's title as a button (an entry that opens something that is not an address) ===== */
+button.ds-timeline__title { appearance: none; flex: 0 1 auto; margin: 0; margin-inline-end: auto; padding: 0; border: 0; background: none; color: inherit; font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); letter-spacing: inherit; text-align: start; cursor: pointer; }
+button.ds-timeline__title:hover { color: var(--primary); }
+button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-xs); }
+
+/* ===== K20 Loader, addition: centred, for a section or a page, with its status text under the ring ===== */
+.ds-loader--centered { display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; inline-size: 100%; gap: var(--space-3); padding-block: var(--space-7); text-align: center; }
+.ds-loader--centered[data-extent="page"] { min-block-size: var(--center-lg); }
+
+/* ===== K46 Stat tile, addition: a pending figure while the value loads (the skeleton's bar where the figure stands) ===== */
+.ds-stat__pending { inline-size: calc(var(--size-4xl) * 1.5); max-inline-size: 100%; block-size: calc(var(--fs-lg) * var(--lh-tight)); }
+
+/* ===== Phone (the 480 width) and touch, batch 5 ===== */
+@media (max-width: 480px) {
+  button.ds-timeline__title { min-block-size: var(--touch-min); }
+}
+
+/* ===== K44 Document row, addition: a file the app fetches by its own handler (the button form of the row link); the pointer says the file is on its way ===== */
+.ds-docrow[data-state="downloading"] .ds-row__link { cursor: progress; }
+
+/* ===== K26 Action menu, addition: the icon-only trigger draws its icon at the medium icon size (the three dots of the more icon are too light at the small one) ===== */
+.ds-menu__button.ds-button--icon .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
