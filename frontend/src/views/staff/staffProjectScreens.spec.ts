@@ -299,7 +299,11 @@ describe('a project: products', () => {
   }
 
   /** Open a product row's Action menu and pick the item with this text. */
-  async function pick(wrapper: ReturnType<typeof mount>, name: string, item: string): Promise<void> {
+  async function pick(
+    wrapper: ReturnType<typeof mount>,
+    name: string,
+    item: string,
+  ): Promise<void> {
     const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes(name))!
     await row.find('.ds-menu__button').trigger('click')
     await row
