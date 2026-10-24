@@ -6,8 +6,8 @@
 //
 // Per-company investor position detail. Sub-route under the portfolio
 // tree: /investor/portfolio/:id and /agent/portfolio/:id. Not a
-// top-level tab -- renders CHeader with a back button that pops the
-// history entry (matching the InvestorDepositView pattern).
+// top-level tab -- the frame's header (K25, `useScreenHeader`) holds the company
+// name as the title and a back control that pops the history entry.
 //
 // DATA.
 //   usePortfolioStore (B1-post): setCompanyId(id) kicks a first-page
@@ -19,16 +19,19 @@
 //   the previous company's data.
 //
 // LAYOUT.
-//   Top: CHeader with company name as title + back button.
+//   Top: the frame's header with the company name as title + back control.
 //   Body, scrollable:
-//     1. Aggregate block -- two-column stat grid (total units / avg
-//        price / invested / current value / purchased / gifted).
+//     1. Aggregate block -- the brand card (K07): the current value and a
+//        two-column grid of facts (total units / avg price / invested /
+//        purchased / gifted).
 //     1a. Ownership certificate action -- one button that opens the
 //         AgreementSheet (mode='ownership') for the company-level
 //         ownership document (iter 2.5 R2 §5.5 batch 7).
-//     2. Purchase list -- one row per PurchaseItemResponse with a
-//        single view button labelled by legal_basis (Purchase agreement
-//        / Gift certificate / Installment subcontract).
+//     2. Purchase list -- one Booking card (KN1) per PurchaseItemResponse: the
+//        kind and its badge, the booked date, the units and the amount paid
+//        (a gift has none; the price of a part is never shown, decided by the
+//        owner, 2026-10-23), and one view button labelled by legal_basis
+//        (Purchase agreement / Gift certificate / Installment subcontract).
 //     3. Infinite scroll sentinel at the bottom.
 //     4. loadMore error banner + Retry when currentLoadMoreErrored.
 //
@@ -69,8 +72,16 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
-import { CalendarClock, FileSignature, FileText, Gift, ShoppingCart } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import {
+  AlertTriangle,
+  CalendarClock,
+  FileSignature,
+  FileText,
+  Gift,
+  ShoppingCart,
+} from '@/components/ui/icons'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -194,10 +205,16 @@ const headerTitle = computed<string>(() => {
   return currentDetail.value?.company_name ?? t('inv.companyPosition.title')
 })
 
+// The frame's header: the company name and the back control. Prefer the
+// history step so the PortfolioView scroll/state restore for free; a
+// deep-link into this view goes to the portfolio.
+useScreenHeader({
+  title: headerTitle,
+  back: () => (window.history.state?.back ? true : { name: portfolioRouteName.value }),
+})
+
 function goBack(): void {
-  // Prefer router.back() so the PortfolioView scroll/state restore
-  // for free. Fall back to explicit push when there's no prior
-  // history (deep-link into this view).
+  // The not-found state's own button: same rule as the header's back control.
   if (window.history.state?.back) {
     router.back()
     return
@@ -215,12 +232,6 @@ function goBack(): void {
 function legalBasisLabel(basis: string): string {
   // server-driven enum -> tOrRaw per FP-15
   return tOrRaw(t, `inv.companyPosition.purchases.legalBasis.${basis}`, basis)
-}
-
-function legalBasisClass(basis: string): string {
-  if (basis === 'gift') return 'cp__item-icon--gift'
-  if (basis === 'installment_tranche') return 'cp__item-icon--installment'
-  return 'cp__item-icon--sale'
 }
 
 /**
@@ -265,6 +276,12 @@ function formatDate(iso: string): string {
   }
 }
 
+function basisIcon(basis: string) {
+  if (basis === 'gift') return Gift
+  if (basis === 'installment_tranche') return CalendarClock
+  return ShoppingCart
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -297,173 +314,173 @@ onUnmounted(() => {
 <template>
   <div class="cp">
     <!-- Initial load -->
-    <div v-if="currentLoading && currentDetail === null && !currentErrored" class="cp__center">
-      <CLoader :size="28" />
-    </div>
+    <CLoader v-if="currentLoading && currentDetail === null && !currentErrored" />
 
     <!-- Error (covers both backend failure and 404 no-position) -->
-    <div v-else-if="currentErrored" class="cp__center">
-      <CEmptyState
-        :title="t('inv.companyPosition.notFound.title')"
-        :description="t('inv.companyPosition.notFound.description')"
-      />
-      <CButton variant="outline" size="sm" @click="goBack">
-        {{ t('common.back') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="currentErrored"
+      tone="danger"
+      :title="t('inv.companyPosition.notFound.title')"
+      :description="t('inv.companyPosition.notFound.description')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="goBack">
+          {{ t('common.back') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else-if="currentDetail">
-      <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
-           Company name (resolved by headerTitle) goes here as the <h1>;
-           back-link reuses the existing history-aware goBack(). B3:
-           button shape extracted to CBackLink; .cp__page-header padding
-           already handles spacing so no extra wrapper is needed. -->
-      <div class="cp__page-header">
-        <CBackLink :label="t('inv.companyPosition.backLink')" @click="goBack" />
-        <h1 class="cp__page-title">
-          {{ headerTitle }}
-        </h1>
-      </div>
-
-      <div class="cp__body">
-        <!-- Aggregate -->
-        <section class="cp__aggregate">
-          <div class="cp__agg-value">
-            {{ formatPrice(currentDetail.current_value_cents) }}
+      <!-- Aggregate: the brand card (K07); a figure on it takes --on-primary -->
+      <section class="ds-card ds-card--brand">
+        <p class="ds-card__figure">
+          {{ formatPrice(currentDetail.current_value_cents) }}
+        </p>
+        <div class="cp__agg-grid">
+          <div>
+            <p class="ds-card__label">
+              {{ t('inv.companyPosition.aggregate.totalUnits') }}
+            </p>
+            <p class="ds-card__delta">
+              {{ formatNumber(currentDetail.total_units, locale) }}
+            </p>
           </div>
-          <div class="cp__agg-grid">
-            <div class="cp__agg-stat">
-              <div class="cp__agg-label">
-                {{ t('inv.companyPosition.aggregate.totalUnits') }}
-              </div>
-              <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.total_units, locale) }}
-              </div>
-            </div>
-            <div class="cp__agg-stat">
-              <div class="cp__agg-label">
-                {{ t('inv.companyPosition.aggregate.avgPrice') }}
-              </div>
-              <div class="cp__agg-val">
-                {{ formatPrice(currentDetail.avg_price_cents) }}
-              </div>
-            </div>
-            <div class="cp__agg-stat">
-              <div class="cp__agg-label">
-                {{ t('inv.companyPosition.aggregate.invested') }}
-              </div>
-              <div class="cp__agg-val">
-                {{ formatPrice(currentDetail.total_paid_cents) }}
-              </div>
-            </div>
-            <div class="cp__agg-stat">
-              <div class="cp__agg-label">
-                {{ t('inv.companyPosition.aggregate.saleUnits') }}
-              </div>
-              <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.sale_units, locale) }}
-              </div>
-            </div>
-            <div v-if="currentDetail.gift_units > 0" class="cp__agg-stat">
-              <div class="cp__agg-label">
-                {{ t('inv.companyPosition.aggregate.giftUnits') }}
-              </div>
-              <div class="cp__agg-val">
-                {{ formatNumber(currentDetail.gift_units, locale) }}
-              </div>
-            </div>
+          <div>
+            <p class="ds-card__label">
+              {{ t('inv.companyPosition.aggregate.avgPrice') }}
+            </p>
+            <p class="ds-card__delta">
+              {{ formatPrice(currentDetail.avg_price_cents) }}
+            </p>
           </div>
-
-          <!--
-            Ownership certificate action (iter 2.5 R2 §5.5 batch 7).
-            Lives inside the aggregate section because the document is
-            scoped to the (caller, company) pair -- it's a position-
-            level summary, not a per-purchase artifact.
-
-            Email-me is intentionally absent here -- AgreementSheet
-            carries its own email action inside the preview UI, so
-            duplicating it as a row-level button would be redundant.
-          -->
-          <div class="cp__ownership-actions">
-            <CButton variant="outline" size="sm" @click="openOwnership">
-              <FileSignature :size="16" />
-              {{ t('inv.companyPosition.ownership.viewCertificate') }}
-            </CButton>
+          <div>
+            <p class="ds-card__label">
+              {{ t('inv.companyPosition.aggregate.invested') }}
+            </p>
+            <p class="ds-card__delta">
+              {{ formatPrice(currentDetail.total_paid_cents) }}
+            </p>
           </div>
-        </section>
-
-        <!-- Purchases -->
-        <section class="cp__purchases">
-          <h2 class="cp__section-title">
-            {{ t('inv.companyPosition.purchases.title') }}
-          </h2>
-
-          <!-- Empty (happens only when total > 0 but current page
-               somehow arrived empty -- a race edge, not the normal
-               case. Keep a graceful message rather than a dead
-               silence.) -->
-          <div
-            v-if="currentPurchases.length === 0 && !currentLoading"
-            class="cp__center cp__center--small"
-          >
-            <CEmptyState :title="t('inv.companyPosition.purchases.empty')" />
+          <div>
+            <p class="ds-card__label">
+              {{ t('inv.companyPosition.aggregate.saleUnits') }}
+            </p>
+            <p class="ds-card__delta">
+              {{ formatNumber(currentDetail.sale_units, locale) }}
+            </p>
           </div>
+          <div v-if="currentDetail.gift_units > 0">
+            <p class="ds-card__label">
+              {{ t('inv.companyPosition.aggregate.giftUnits') }}
+            </p>
+            <p class="ds-card__delta">
+              {{ formatNumber(currentDetail.gift_units, locale) }}
+            </p>
+          </div>
+        </div>
 
-          <ul v-else class="cp__list">
-            <li v-for="p in currentPurchases" :key="p.id" class="cp__item">
-              <div class="cp__item-icon" :class="legalBasisClass(p.legal_basis)">
-                <Gift v-if="p.legal_basis === 'gift'" :size="16" />
-                <CalendarClock v-else-if="p.legal_basis === 'installment_tranche'" :size="16" />
-                <ShoppingCart v-else :size="16" />
-              </div>
-              <div class="cp__item-body">
-                <div class="cp__item-line">
-                  <span class="cp__item-kind">
-                    {{ legalBasisLabel(p.legal_basis) }}
-                  </span>
-                  <span class="cp__item-date">
-                    {{ formatDate(p.created_at) }}
-                  </span>
-                </div>
-                <div class="cp__item-stats">
-                  <span class="cp__item-stat">
-                    {{ formatNumber(p.units, locale) }}
-                    {{ t('inv.companyPosition.purchases.units') }}
-                  </span>
-                  <span v-if="p.legal_basis !== 'gift'" class="cp__item-stat">
-                    {{ formatPrice(p.paid_cents) }}
-                  </span>
-                </div>
-              </div>
-              <div class="cp__item-actions">
-                <CButton variant="outline" size="sm" @click="openCertificate(p)">
-                  <FileText :size="16" />
+        <!--
+          Ownership certificate action (iter 2.5 R2 §5.5 batch 7).
+          Lives inside the aggregate card because the document is
+          scoped to the (caller, company) pair -- it's a position-
+          level summary, not a per-purchase artifact.
+
+          Email-me is intentionally absent here -- AgreementSheet
+          carries its own email action inside the preview UI, so
+          duplicating it as a row-level button would be redundant.
+        -->
+        <footer class="ds-card__foot">
+          <CButton variant="outline" size="sm" inline @click="openOwnership">
+            <FileSignature size="sm" />
+            {{ t('inv.companyPosition.ownership.viewCertificate') }}
+          </CButton>
+        </footer>
+      </section>
+
+      <!-- Purchases -->
+      <section class="cp__purchases" aria-labelledby="cp-purchases">
+        <h2 id="cp-purchases" class="cp__section-title">
+          {{ t('inv.companyPosition.purchases.title') }}
+        </h2>
+
+        <!-- Empty (happens only when total > 0 but current page
+             somehow arrived empty -- a race edge, not the normal
+             case. Keep a graceful message rather than a dead
+             silence.) -->
+        <CEmptyState
+          v-if="currentPurchases.length === 0 && !currentLoading"
+          :title="t('inv.companyPosition.purchases.empty')"
+        />
+
+        <ul v-else class="cp__list">
+          <li v-for="p in currentPurchases" :key="p.id">
+            <!-- One purchase: the Booking card (KN1) -->
+            <article class="ds-card ds-booking" :aria-labelledby="`cp-purchase-${p.id}`">
+              <header class="ds-booking__head">
+                <span class="ds-booking__icon" aria-hidden="true">
+                  <component :is="basisIcon(p.legal_basis)" size="sm" />
+                </span>
+                <h3 :id="`cp-purchase-${p.id}`" class="ds-booking__title">
                   {{ viewLabelForLegalBasis(p.legal_basis) }}
-                </CButton>
-              </div>
-            </li>
-          </ul>
+                </h3>
+                <span class="ds-badge ds-badge--info">{{ legalBasisLabel(p.legal_basis) }}</span>
+              </header>
+              <dl class="ds-booking__facts">
+                <div>
+                  <dt>{{ t('inv.installmentPlans.list.item.created') }}</dt>
+                  <dd>{{ formatDate(p.created_at) }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('inv.companyPosition.purchases.units') }}</dt>
+                  <dd>{{ formatNumber(p.units, locale) }}</dd>
+                </div>
+                <div v-if="p.legal_basis !== 'gift'">
+                  <dt>{{ t('inv.companyPosition.purchases.paid') }}</dt>
+                  <dd>{{ formatPrice(p.paid_cents) }}</dd>
+                </div>
+              </dl>
+              <ul class="ds-booking__docs">
+                <li class="ds-row ds-docrow">
+                  <span class="ds-row__lead"><FileText size="sm" /></span>
+                  <span class="ds-row__body">
+                    <button
+                      type="button"
+                      class="ds-button ds-button--ghost"
+                      data-size="sm"
+                      @click="openCertificate(p)"
+                    >
+                      {{ viewLabelForLegalBasis(p.legal_basis) }}
+                    </button>
+                  </span>
+                </li>
+              </ul>
+            </article>
+          </li>
+        </ul>
 
-          <!-- Infinite scroll sentinel (only when we have items) -->
-          <div v-if="currentPurchases.length > 0" ref="sentinelRef" class="cp__sentinel">
-            <CLoader v-if="currentLoading" :size="20" />
-          </div>
+        <!-- Infinite scroll sentinel (only when we have items) -->
+        <div v-if="currentPurchases.length > 0" ref="sentinelRef" class="cp__sentinel">
+          <CLoader v-if="currentLoading" :size="20" />
+        </div>
 
-          <!-- loadMore error banner (FP-16 retry-storm brake) -->
-          <div
-            v-if="currentPurchases.length > 0 && currentLoadMoreErrored && !currentLoading"
-            class="cp__loadmore-error"
-          >
-            <span class="cp__loadmore-error-text">
-              {{ t('inv.companyPosition.errorTitle') }}
-            </span>
-            <CButton variant="outline" size="sm" @click="retryLoadMore">
-              {{ t('common.retry') }}
-            </CButton>
+        <!-- loadMore error banner (FP-16 retry-storm brake) -->
+        <div
+          v-if="currentPurchases.length > 0 && currentLoadMoreErrored && !currentLoading"
+          class="ds-alert ds-alert--danger"
+          role="alert"
+        >
+          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ t('inv.companyPosition.errorTitle') }}</p>
+            <div class="ds-alert__actions">
+              <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+                {{ t('common.retry') }}
+              </CButton>
+            </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </template>
 
     <!--
@@ -509,96 +526,28 @@ onUnmounted(() => {
 .cp {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-.cp__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: var(--space-4);
-  min-block-size: var(--center-md);
-  padding: var(--space-5);
-}
-.cp__center--small {
-  min-block-size: var(--center-sm);
-  padding: var(--space-3);
 }
 
-/* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
-   the previous view-CHeader. No hero on this view, so the title lives
-   inside a header block at the top of the loaded branch. */
-.cp__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4) var(--space-2);
-}
-.cp__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.cp__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: 0 var(--space-4);
-}
-
-/* Aggregate block */
-.cp__aggregate {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  margin-block-start: var(--space-3);
-}
-
-/* A6: `.cp__aggregate` is the azure gradient carrying --on-primary, but a
-   CButton keeps its own variant colours -- `outline` paints --text-secondary
-   text on a --border-default border, both tuned against --bg-page. Measured on
-   the gradient: 1.02 in dark, 1.15 in light. --on-primary gives 5.85 / 8.48.
-   Third instance of one shape: a semantic colour placed on a coloured panel.
-   Scoped to this hero so the variant is unchanged everywhere else. */
-.cp__aggregate .ds-button--secondary {
-  color: var(--on-primary);
-  border-color: currentColor;
-}
-.cp__agg-value {
-  font-size: var(--fs-3xl);
-  font-weight: 700;
-  line-height: 1.1;
-}
+/* Aggregate facts: two columns, as before */
 .cp__agg-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-3) var(--space-4);
 }
-.cp__agg-label {
-  font-size: var(--fs-xs);
-  opacity: 0.85;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin-block-end: var(--space-1);
-}
-.cp__agg-val {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-}
 
 /* Purchases list */
+.cp__purchases {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 .cp__section-title {
-  font-size: var(--fs-sm);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: var(--space-2) 0 var(--space-3);
 }
 
 .cp__list {
@@ -607,121 +556,21 @@ onUnmounted(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.cp__item {
-  display: flex;
-  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-}
-
-.cp__item-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.cp__item-icon--sale {
-  background: var(--primary-subtle);
-  color: var(--primary);
-}
-.cp__item-icon--gift {
-  background: var(--success-subtle);
-  color: var(--success);
-}
-.cp__item-icon--installment {
-  background: var(--warning-subtle);
-  color: var(--warning);
-}
-
-.cp__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.cp__item-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-}
-.cp__item-kind {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.cp__item-date {
-  color: var(--text-tertiary);
-  font-size: var(--fs-xs);
-}
-.cp__item-stats {
-  display: flex;
-  gap: var(--space-3);
-  color: var(--text-secondary);
-  font-size: var(--fs-xs);
-}
-
-.cp__item-actions {
-  flex-shrink: 0;
-}
-
-/*
- * Ownership-certificate action (iter 2.5 batch 7).
- *
- * Sits inside .cp__aggregate beneath the agg-grid. Single button --
- * email-me lives inside the AgreementSheet preview, not here.
- */
-.cp__ownership-actions {
-  display: flex;
-  margin-block-start: var(--space-4);
 }
 
 /* Sentinel */
 .cp__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
 }
 
-/* loadMore error banner */
-.cp__loadmore-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-block-start: var(--space-3);
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--danger-subtle);
-  color: var(--danger);
-  font-size: var(--fs-xs);
-}
-.cp__loadmore-error-text {
-  flex: 1;
-  min-inline-size: 0;
-}
-
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
+   width, so on a desktop it stretches its contents to fill. Past a point the
+   extra room should be whitespace, not wider furniture. The COLUMN COUNT IS
+   DELIBERATELY UNCHANGED; only the ceiling is added. Mobile-first, so this is
+   a min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .cp__agg-grid {
     max-inline-size: calc(2 * var(--tile-max));

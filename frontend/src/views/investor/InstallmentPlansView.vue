@@ -35,8 +35,11 @@
 // guard shared between fetchFirstPage/loadMore, and
 // composables/usePagination's useInfiniteScroll on a bottom sentinel.
 //
+// The title and the line under it are the frame's header (K25); the plans are
+// the system's Row list (K23), each row one link on its title.
+//
 // LOADING / ERROR / EMPTY TAXONOMY (matches PortfolioView /
-// NotificationsInboxView): first-load spinner while items.length === 0
+// NotificationsInboxView): first-load skeleton while items.length === 0
 // and no error yet; error state (CEmptyState + retry) when the first
 // load failed; empty state (CEmptyState + CTA to the companies
 // catalogue) when the load succeeded with zero plans. Populated state
@@ -47,8 +50,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CalendarClock, CreditCard } from '@/components/ui/icons'
+import { AlertTriangle, CalendarClock, CreditCard } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
@@ -62,6 +66,11 @@ const PER_PAGE = 20
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+
+useScreenHeader({
+  title: () => t('inv.installmentPlans.list.title'),
+  lead: () => t('inv.installmentPlans.list.subtitle'),
+})
 
 const items = ref<InstallmentPlanResponse[]>([])
 const total = ref(0)
@@ -94,7 +103,9 @@ const isEmpty = computed(
 // Status presentation
 // ---------------------------------------------------------------------------
 
-function planStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'primary' | 'neutral' {
+function planStatusVariant(
+  status: string,
+): 'success' | 'warning' | 'danger' | 'primary' | 'neutral' {
   if (status === 'completed') return 'success'
   if (status === 'defaulted') return 'danger'
   if (status === 'cancelled') return 'neutral'
@@ -122,13 +133,6 @@ const detailRouteName = computed<string>(() =>
 const companiesRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-companies' : 'investor-companies',
 )
-
-function openPlan(plan: InstallmentPlanResponse): void {
-  void safeNavigate(
-    router.push({ name: detailRouteName.value, params: { id: plan.id } }),
-    '[InstallmentPlansView] to plan detail',
-  )
-}
 
 function goCompanies(): void {
   void safeNavigate(
@@ -201,85 +205,85 @@ onMounted(() => {
 
 <template>
   <div class="ipl">
-    <div class="ipl__header">
-      <h1 class="ipl__title">
-        {{ t('inv.installmentPlans.list.title') }}
-      </h1>
-      <p class="ipl__subtitle">
-        {{ t('inv.installmentPlans.list.subtitle') }}
-      </p>
-    </div>
-
-    <!-- Initial load spinner -->
-    <div v-if="loading && items.length === 0" class="ipl__center">
-      <CLoader :size="28" />
-    </div>
+    <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
+    <section v-if="loading && items.length === 0" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" />
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
+    </section>
 
     <!-- Error (first load failed) -->
-    <div v-else-if="errored && items.length === 0" class="ipl__center">
-      <CEmptyState :title="t('inv.installmentPlans.list.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="fetchFirstPage">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="errored && items.length === 0"
+      tone="danger"
+      :title="t('inv.installmentPlans.list.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="fetchFirstPage">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
-    <div v-else-if="isEmpty" class="ipl__center">
-      <CEmptyState
-        :title="t('inv.installmentPlans.list.empty.title')"
-        :description="t('inv.installmentPlans.list.empty.description')"
-      >
-        <template #icon>
-          <CreditCard :size="32" />
-        </template>
-      </CEmptyState>
-      <CButton variant="primary" size="sm" @click="goCompanies">
-        {{ t('inv.installmentPlans.list.empty.cta') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="isEmpty"
+      :title="t('inv.installmentPlans.list.empty.title')"
+      :description="t('inv.installmentPlans.list.empty.description')"
+    >
+      <template #icon>
+        <CreditCard />
+      </template>
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="goCompanies">
+          {{ t('inv.installmentPlans.list.empty.cta') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Populated -->
     <template v-else>
-      <ul class="ipl__list">
-        <li v-for="plan in items" :key="plan.id">
-          <button
-            type="button"
-            class="ipl__item"
-            :class="{ 'ipl__item--danger': plan.status === 'defaulted' }"
-            @click="openPlan(plan)"
+      <ul class="ds-rows">
+        <li v-for="plan in items" :key="plan.id" class="ds-row">
+          <!-- A defaulted plan is unmistakable: the lead is toned, the badge says it in words. -->
+          <span
+            class="ds-row__lead"
+            :data-tone="plan.status === 'defaulted' ? 'danger' : undefined"
           >
-            <div class="ipl__item-head">
-              <span class="ipl__item-label">
+            <CalendarClock size="sm" />
+          </span>
+          <span class="ds-row__body">
+            <RouterLink
+              class="ds-row__link"
+              :to="{ name: detailRouteName, params: { id: plan.id } }"
+            >
+              <span class="ds-row__title">
                 {{ t('inv.installmentPlans.list.item.label', { id: shortId(plan.id) }) }}
               </span>
-              <CBadge :variant="planStatusVariant(plan.status)" :text="planStatusLabel(plan.status)" />
-            </div>
-            <div class="ipl__item-stats">
-              <div class="ipl__item-stat">
-                <div class="ipl__item-stat-label">
-                  {{ t('inv.installmentPlans.list.item.totalPrice') }}
-                </div>
-                <div class="ipl__item-stat-value">
-                  {{ formatPrice(plan.total_price_cents) }}
-                </div>
-              </div>
-              <div class="ipl__item-stat">
-                <div class="ipl__item-stat-label">
-                  {{ t('inv.installmentPlans.list.item.units') }}
-                </div>
-                <div class="ipl__item-stat-value">
-                  {{ formatNumber(plan.total_units, locale) }}
-                </div>
-              </div>
-            </div>
-            <div class="ipl__item-foot">
-              <CalendarClock :size="14" class="ipl__item-foot-icon" />
-              <span>
-                {{ t('inv.installmentPlans.list.item.created') }}
-                {{ formatDateTime(plan.created_at, locale) }}
-              </span>
-            </div>
-          </button>
+            </RouterLink>
+            <span class="ds-row__meta">
+              {{ t('inv.installmentPlans.list.item.units') }}:
+              {{ formatNumber(plan.total_units, locale) }}
+            </span>
+            <span class="ds-row__meta">
+              {{ t('inv.installmentPlans.list.item.created') }}
+              {{ formatDateTime(plan.created_at, locale) }}
+            </span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value">{{ formatPrice(plan.total_price_cents) }}</span>
+            <CBadge
+              :variant="planStatusVariant(plan.status)"
+              :text="planStatusLabel(plan.status)"
+            />
+          </span>
         </li>
       </ul>
 
@@ -288,11 +292,16 @@ onMounted(() => {
         <CLoader v-if="loading" :size="20" />
       </div>
 
-      <div v-if="loadMoreErrored && !loading" class="ipl__loadmore-error">
-        <span>{{ t('inv.installmentPlans.list.loadMoreError') }}</span>
-        <CButton variant="outline" size="sm" @click="retryLoadMore">
-          {{ t('common.retry') }}
-        </CButton>
+      <div v-if="loadMoreErrored && !loading" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('inv.installmentPlans.list.loadMoreError') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+              {{ t('common.retry') }}
+            </CButton>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -300,145 +309,14 @@ onMounted(() => {
 
 <style scoped>
 .ipl {
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.ipl__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.ipl__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.ipl__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  max-inline-size: var(--maxw-prose);
-}
-
-.ipl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
-  padding: var(--space-5);
-}
-
-.ipl__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.ipl__item {
-  appearance: none;
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  margin: 0;
-  padding: var(--space-4);
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  transition: border-color var(--dur-fast);
-}
-.ipl__item:hover {
-  border-color: var(--primary);
-}
-.ipl__item:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-/* Defaulted plans must be unmistakable in the list, not just via the
-   badge colour -- a tinted surface + accent border reads at a glance
-   even before the badge text is parsed. */
-.ipl__item--danger {
-  background: var(--danger-subtle);
-  border-color: var(--danger);
-}
-.ipl__item--danger:hover {
-  border-color: var(--danger);
-}
-
-.ipl__item-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.ipl__item-label {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.ipl__item-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
-}
-.ipl__item-stat-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin-block-end: var(--space-1);
-}
-.ipl__item-stat-value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.ipl__item-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.ipl__item-foot-icon {
-  flex-shrink: 0;
 }
 
 .ipl__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
-}
-
-.ipl__loadmore-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  margin-block-start: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-subtle);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-align: center;
 }
 </style>
