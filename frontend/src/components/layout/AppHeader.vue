@@ -60,7 +60,10 @@ const title = computed(() => header.value.title ?? tabTitle.value ?? t('app.name
 // leading slot does; where a screen sets a back control the control has the slot.
 const navless = computed(() => !tabsFor(route.meta.shell))
 const markSrc = `${import.meta.env.BASE_URL}aivis-mark.svg`
-const homeRoute = computed(() => getRoleDashboard(authStore.role))
+// A visitor with no role has the storefront's list of projects as the start.
+const homeRoute = computed(() =>
+  authStore.role ? getRoleDashboard(authStore.role) : '/public/companies',
+)
 const homeLabel = computed(() => `${t('app.name')}, ${t('tab.home')}`)
 
 // ---------------------------------------------------------------------------
