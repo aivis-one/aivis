@@ -11,7 +11,7 @@
 //
 // THE LINK. An integrator has exactly one link, issued by the platform once,
 // after the agent-integrator agreement is accepted (useAgentLink; the
-// acceptance screen comes before the cabinet). The link has two buttons, "Copy
+// acceptance screen comes before the cabinet). The link has a Share menu, "Copy
 // link" and "Share" (the system menu of the phone; on a device without one it
 // copies). There is no "create link" button and no list of links.
 //
@@ -21,18 +21,18 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Coins, Copy, Share2, Trophy, Users, Wallet } from '@/components/ui/icons'
+import { ChevronRight, Coins, Link, Share2, Trophy, Users, Wallet } from '@/components/ui/icons'
 
-import { CButton, CLoader } from '@/components/ui'
+import { CEmptyState, CIconBox, CLoader, CStatCard } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import ActionMenu from '@/views/company/ActionMenu.vue'
+import type { ActionMenuItem } from '@/views/company/ActionMenu.vue'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { useDashboardStore } from '@/stores/dashboard'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatNumber, formatPrice } from '@/utils/format'
 
-const router = useRouter()
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
 const dashboardStore = useDashboardStore()
@@ -50,8 +50,21 @@ const rankText = computed<string>(() =>
     : `#${agentStore.myRank}`,
 )
 
-function go(name: string): void {
-  void safeNavigate(router.push({ name }), `[AgentPartnersView] to ${name}`)
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('agent.partners.title'),
+  lead: () => t('agent.partners.subtitle'),
+})
+
+// The link's two share acts, as the system's Action menu (K26).
+const shareItems = computed<ActionMenuItem[]>(() => [
+  { value: 'copy', label: t('agent.link.copy'), icon: Link },
+  { value: 'share', label: t('agent.link.share'), icon: Share2 },
+])
+
+function onShareSelect(value: string): void {
+  if (value === 'copy') void copy()
+  else if (value === 'share') void share()
 }
 
 onMounted(() => {
@@ -64,291 +77,102 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="partners">
-    <div class="partners__header">
-      <h1 class="partners__title">
-        {{ t('agent.partners.title') }}
-      </h1>
-      <p class="partners__subtitle">
-        {{ t('agent.partners.subtitle') }}
-      </p>
-    </div>
-
-    <!-- The link -->
-    <div v-if="agreement === 'loading'" class="partners__center">
-      <CLoader :size="24" />
-    </div>
-
-    <section v-else-if="link" class="partners__link">
-      <h2 class="partners__link-title">
-        {{ t('agent.partners.linkTitle') }}
-      </h2>
-      <div class="partners__url">
-        <span class="partners__code">{{ link.code }}</span>
-        <span class="partners__address">{{ shareUrl() }}</span>
-      </div>
-      <div class="partners__buttons">
-        <CButton variant="primary" @click="copy()">
-          <Copy :size="16" />
-          {{ t('agent.link.copy') }}
-        </CButton>
-        <CButton variant="outline" @click="share()">
-          <Share2 :size="16" />
-          {{ t('agent.link.share') }}
-        </CButton>
-      </div>
-      <div class="partners__counters">
-        <div class="partners__counter">
-          <span class="partners__counter-value">{{ formatNumber(link.click_count, locale) }}</span>
-          <span class="partners__counter-label">{{ t('agent.partners.clicks') }}</span>
-        </div>
-        <div class="partners__counter">
-          <span class="partners__counter-value">
-            {{ formatNumber(link.registration_count, locale) }}
-          </span>
-          <span class="partners__counter-label">{{ t('agent.partners.registrations') }}</span>
-        </div>
-        <div class="partners__counter">
-          <span class="partners__counter-value">
-            {{ formatNumber(link.purchase_count, locale) }}
-          </span>
-          <span class="partners__counter-label">{{ t('agent.partners.purchases') }}</span>
-        </div>
-      </div>
-    </section>
-
-    <p v-else class="partners__empty">
-      {{ t('agent.partners.linkError') }}
-    </p>
-
-    <!-- The sections that lie inside the tab -->
-    <ul class="partners__rows">
-      <li>
-        <button type="button" class="partners__row" @click="go('agent-referrals')">
-          <Users :size="20" class="partners__row-icon" />
-          <span class="partners__row-body">
-            <span class="partners__row-title">{{ t('agent.partners.network') }}</span>
-            <span class="partners__row-sub">
-              {{ t('agent.partners.networkSub', { n: registrations }) }}
-            </span>
-          </span>
-          <ChevronRight :size="16" />
-        </button>
-      </li>
-      <li>
-        <button type="button" class="partners__row" @click="go('agent-commissions')">
-          <Coins :size="20" class="partners__row-icon" />
-          <span class="partners__row-body">
-            <span class="partners__row-title">{{ t('agent.partners.commissions') }}</span>
-            <span class="partners__row-sub">
-              {{
-                t('agent.partners.commissionsSub', {
-                  amount: agentStore.commissionSummaryError
-                    ? '—'
-                    : formatPrice(agentStore.monthCommissionCents),
-                })
-              }}
-            </span>
-          </span>
-          <ChevronRight :size="16" />
-        </button>
-      </li>
-      <li>
-        <button type="button" class="partners__row" @click="go('agent-leaderboard')">
-          <Trophy :size="20" class="partners__row-icon" />
-          <span class="partners__row-body">
-            <span class="partners__row-title">{{ t('agent.partners.rating') }}</span>
-            <span class="partners__row-sub">
-              {{ t('agent.partners.ratingSub', { rank: rankText }) }}
-            </span>
-          </span>
-          <ChevronRight :size="16" />
-        </button>
-      </li>
-      <li>
-        <button type="button" class="partners__row" @click="go('agent-balance')">
-          <Wallet :size="20" class="partners__row-icon" />
-          <span class="partners__row-body">
-            <span class="partners__row-title">{{ t('agent.partners.balance') }}</span>
-            <span class="partners__row-sub">
-              {{
-                t('agent.partners.balanceSub', {
-                  amount: dashboardStore.error
-                    ? '—'
-                    : formatPrice(dashboardStore.passiveBalance.confirmed),
-                })
-              }}
-            </span>
-          </span>
-          <ChevronRight :size="16" />
-        </button>
-      </li>
-    </ul>
+  <!-- The link -->
+  <div v-if="agreement === 'loading'" class="ds-empty" aria-busy="true">
+    <CLoader :size="24" />
   </div>
+
+  <section v-else-if="link" class="ds-card" aria-labelledby="partners-link-title">
+    <header class="ds-card__head">
+      <h2 id="partners-link-title" class="ds-card__title">{{ t('agent.partners.linkTitle') }}</h2>
+      <ActionMenu
+        :label="t('agent.link.share')"
+        :icon="Share2"
+        :items="shareItems"
+        align="end"
+        @select="onShareSelect"
+      />
+    </header>
+    <p class="ds-card__figure">{{ link.code }}</p>
+    <p class="ds-card__body partners__address">{{ shareUrl() }}</p>
+    <div class="ds-stats">
+      <CStatCard
+        :label="t('agent.partners.clicks')"
+        :value="formatNumber(link.click_count, locale)"
+      />
+      <CStatCard
+        :label="t('agent.partners.registrations')"
+        :value="formatNumber(link.registration_count, locale)"
+      />
+      <CStatCard
+        :label="t('agent.partners.purchases')"
+        :value="formatNumber(link.purchase_count, locale)"
+      />
+    </div>
+  </section>
+
+  <CEmptyState v-else framed :description="t('agent.partners.linkError')" />
+
+  <!-- The sections that lie inside the tab -->
+  <nav class="ds-navtiles" :aria-label="t('agent.partners.title')">
+    <RouterLink class="ds-navtile" :to="{ name: 'agent-referrals' }">
+      <CIconBox><Users /></CIconBox>
+      <span class="ds-navtile__text">
+        <span class="ds-navtile__title">{{ t('agent.partners.network') }}</span>
+        <span class="ds-navtile__desc">
+          {{ t('agent.partners.networkSub', { n: registrations }) }}
+        </span>
+      </span>
+      <ChevronRight class="ds-navtile__go" size="sm" />
+    </RouterLink>
+    <RouterLink class="ds-navtile" :to="{ name: 'agent-commissions' }">
+      <CIconBox><Coins /></CIconBox>
+      <span class="ds-navtile__text">
+        <span class="ds-navtile__title">{{ t('agent.partners.commissions') }}</span>
+        <span class="ds-navtile__desc">
+          {{
+            t('agent.partners.commissionsSub', {
+              amount: agentStore.commissionSummaryError
+                ? '—'
+                : formatPrice(agentStore.monthCommissionCents),
+            })
+          }}
+        </span>
+      </span>
+      <ChevronRight class="ds-navtile__go" size="sm" />
+    </RouterLink>
+    <RouterLink class="ds-navtile" :to="{ name: 'agent-leaderboard' }">
+      <CIconBox><Trophy /></CIconBox>
+      <span class="ds-navtile__text">
+        <span class="ds-navtile__title">{{ t('agent.partners.rating') }}</span>
+        <span class="ds-navtile__desc">
+          {{ t('agent.partners.ratingSub', { rank: rankText }) }}
+        </span>
+      </span>
+      <ChevronRight class="ds-navtile__go" size="sm" />
+    </RouterLink>
+    <RouterLink class="ds-navtile" :to="{ name: 'agent-balance' }">
+      <CIconBox><Wallet /></CIconBox>
+      <span class="ds-navtile__text">
+        <span class="ds-navtile__title">{{ t('agent.partners.balance') }}</span>
+        <span class="ds-navtile__desc">
+          {{
+            t('agent.partners.balanceSub', {
+              amount: dashboardStore.error
+                ? '—'
+                : formatPrice(dashboardStore.passiveBalance.confirmed),
+            })
+          }}
+        </span>
+      </span>
+      <ChevronRight class="ds-navtile__go" size="sm" />
+    </RouterLink>
+  </nav>
 </template>
 
 <style scoped>
-.partners {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  padding-block-end: var(--space-5);
-}
-
-.partners__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.partners__title {
-  margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.partners__subtitle {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
-}
-
-.partners__center {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-4);
-}
-
-.partners__link {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-}
-
-.partners__link-title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.partners__url {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.partners__code {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
+/* The link's address wraps anywhere, as a long token does. */
 .partners__address {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
   overflow-wrap: anywhere;
-}
-
-.partners__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.partners__counters {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-}
-
-.partners__counter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.partners__counter-value {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-}
-
-.partners__counter-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.partners__empty {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.partners__rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.partners__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  min-block-size: var(--size-2xl);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-
-.partners__row:active {
-  background: var(--bg-surface);
-}
-
-.partners__row-icon {
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.partners__row-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.partners__row-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-
-.partners__row-sub {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-@media (min-width: 880px) {
-  .partners__link,
-  .partners__rows {
-    max-inline-size: calc(3 * var(--tile-max));
-  }
 }
 </style>

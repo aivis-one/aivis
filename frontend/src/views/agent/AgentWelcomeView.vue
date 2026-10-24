@@ -21,9 +21,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Coins, Link2, Users, Wallet } from '@/components/ui/icons'
 
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import { CButton, CCheckbox, CLoader } from '@/components/ui'
+import AuthShell from '@/components/layout/AuthShell.vue'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { useAgentLink } from '@/composables/useAgentLink'
@@ -69,82 +68,83 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="welcome">
-    <div class="welcome__bar">
-      <AivisLogo :height="28" :show-text="false" />
-      <CAppControls />
+  <AuthShell>
+    <div v-if="checking" class="ds-empty" aria-busy="true">
+      <CLoader :size="28" />
     </div>
 
-    <div class="welcome__card">
-      <div v-if="checking" class="welcome__center">
-        <CLoader :size="28" />
-      </div>
+    <!-- The agreement document is not published: nothing can be accepted -->
+    <template v-else-if="status === 'missing'">
+      <h1 class="ds-auth__title">
+        {{ t('agent.welcome.unavailableTitle') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('agent.welcome.unavailableText') }}
+      </p>
+      <CButton variant="primary" @click="toSupport">
+        {{ t('agent.welcome.toSupport') }}
+      </CButton>
+    </template>
 
-      <!-- The agreement document is not published: nothing can be accepted -->
-      <template v-else-if="status === 'missing'">
-        <h1 class="welcome__title">
-          {{ t('agent.welcome.unavailableTitle') }}
-        </h1>
-        <p class="welcome__text">
-          {{ t('agent.welcome.unavailableText') }}
-        </p>
-        <CButton variant="primary" @click="toSupport">
-          {{ t('agent.welcome.toSupport') }}
+    <!-- The state could not be read -->
+    <template v-else-if="status === 'error'">
+      <h1 class="ds-auth__title">
+        {{ t('agent.welcome.errorTitle') }}
+      </h1>
+      <CButton variant="outline" @click="check">
+        {{ t('common.retry') }}
+      </CButton>
+    </template>
+
+    <template v-else>
+      <h1 class="ds-auth__title">
+        {{ t('agent.welcome.title') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('agent.welcome.intro') }}
+      </p>
+      <ul class="ds-rows">
+        <li class="ds-row">
+          <span class="ds-row__lead"><Link2 size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ t('agent.welcome.possLink') }}</span>
+          </span>
+        </li>
+        <li class="ds-row">
+          <span class="ds-row__lead"><Users size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ t('agent.welcome.possPartners') }}</span>
+          </span>
+        </li>
+        <li class="ds-row">
+          <span class="ds-row__lead"><Coins size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ t('agent.welcome.possCommission') }}</span>
+          </span>
+        </li>
+        <li class="ds-row">
+          <span class="ds-row__lead"><Wallet size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ t('agent.welcome.possWithdrawal') }}</span>
+          </span>
+        </li>
+      </ul>
+
+      <form class="ds-auth__form" @submit.prevent="onAccept">
+        <CButton variant="link" type="button" @click="reading = true">
+          {{ t('agent.welcome.readAgreement') }}
         </CButton>
-      </template>
-
-      <!-- The state could not be read -->
-      <template v-else-if="status === 'error'">
-        <h1 class="welcome__title">
-          {{ t('agent.welcome.errorTitle') }}
-        </h1>
-        <CButton variant="outline" @click="check">
-          {{ t('common.retry') }}
-        </CButton>
-      </template>
-
-      <template v-else>
-        <h1 class="welcome__title">
-          {{ t('agent.welcome.title') }}
-        </h1>
-        <p class="welcome__text">
-          {{ t('agent.welcome.intro') }}
-        </p>
-        <ul class="welcome__list">
-          <li>
-            <Link2 :size="18" class="welcome__icon" />
-            <span>{{ t('agent.welcome.possLink') }}</span>
-          </li>
-          <li>
-            <Users :size="18" class="welcome__icon" />
-            <span>{{ t('agent.welcome.possPartners') }}</span>
-          </li>
-          <li>
-            <Coins :size="18" class="welcome__icon" />
-            <span>{{ t('agent.welcome.possCommission') }}</span>
-          </li>
-          <li>
-            <Wallet :size="18" class="welcome__icon" />
-            <span>{{ t('agent.welcome.possWithdrawal') }}</span>
-          </li>
-        </ul>
-
-        <p class="welcome__read">
-          <a href="#agreement" @click.prevent="reading = true">{{
-            t('agent.welcome.readAgreement')
-          }}</a>
-        </p>
 
         <CCheckbox v-model="ticked" :label="t('agent.welcome.tick')" />
 
-        <CButton variant="primary" :disabled="!ticked" :loading="accepting" @click="onAccept">
+        <CButton variant="primary" type="submit" :disabled="!ticked" :loading="accepting">
           {{ t('agent.welcome.accept') }}
         </CButton>
-      </template>
+      </form>
+    </template>
 
-      <div class="welcome__logout">
-        <AuthLogoutLink />
-      </div>
+    <div class="ds-auth__foot">
+      <AuthLogoutLink />
     </div>
 
     <LegalDocModal
@@ -154,99 +154,5 @@ onMounted(() => {
       type="agent_integrator_agreement"
       @close="reading = false"
     />
-  </div>
+  </AuthShell>
 </template>
-
-<style scoped>
-.welcome {
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-page);
-}
-
-.welcome__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-}
-
-.welcome__card {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-prose, 560px);
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.welcome__center {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6, 32px) 0;
-}
-
-.welcome__title {
-  margin: 0;
-  font-size: var(--fs-h3, 1.375rem);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.welcome__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.welcome__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.welcome__list li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.welcome__icon {
-  flex-shrink: 0;
-  margin-block-start: 1px;
-  color: var(--primary);
-}
-
-.welcome__read {
-  margin: 0;
-  font-size: var(--fs-sm);
-}
-
-.welcome__read a {
-  color: var(--primary);
-}
-
-.welcome__logout {
-  display: flex;
-  justify-content: center;
-  padding-block-start: var(--space-2);
-}
-
-/* On a tablet and a desktop the card gets more room above it. */
-@media (min-width: 880px) {
-  .welcome__card {
-    padding-block-start: var(--space-6, 32px);
-  }
-}
-</style>

@@ -29,8 +29,8 @@
 //   NO masking of its own.
 //
 // FP notes:
-//   FP-19 -- the shell owns the header; this view renders an inline
-//            page-header (h1 + subtitle), no header component here.
+//   FP-19 -- the frame owns the header (useScreenHeader);
+//            no header component here.
 //   FP-20 -- /agent/referrals is a SUB-ROUTE (not in AGENT_TABS), so a
 //            CBackLink is mandatory. goBack is history-aware and falls
 //            through to Partners on a cold deep-link.
@@ -45,15 +45,13 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useAgentStore } from '@/stores/agent'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
 
-const router = useRouter()
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
 
@@ -79,20 +77,14 @@ const isEmpty = computed(
 // Navigation
 // ---------------------------------------------------------------------------
 
-function goBack(): void {
-  // History-aware: return to wherever the user came from (Partners
-  // in the wired flow). On a cold deep-link there is no back entry --
-  // fall through to Partners. router.back() is neither push nor replace,
-  // so it does not need safeNavigate; the fallback push does (FP-18).
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(
-    router.push({ name: 'agent-partners' }),
-    '[ReferralsView] back fallback to agent-partners',
-  )
-}
+// The frame's header carries the title, the line under it and the way back:
+// history-aware (Partners in the wired flow), a cold deep-link falls through to
+// Partners (FP-20).
+useScreenHeader({
+  title: () => t('agent.referrals.title'),
+  lead: () => t('agent.referrals.subtitle'),
+  back: () => (window.history.state?.back ? true : { name: 'agent-partners' }),
+})
 
 function retry(): void {
   void agentStore.fetchDownline()
@@ -108,286 +100,112 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ref">
-    <!-- Page header (FP-19: shell owns CHeader; FP-20: sub-route back-link) -->
-    <div class="ref__page-header">
-      <CBackLink :label="t('agent.referrals.backLink')" @click="goBack" />
-      <h1 class="ref__title">
-        {{ t('agent.referrals.title') }}
-      </h1>
-      <p class="ref__subtitle">
-        {{ t('agent.referrals.subtitle') }}
-      </p>
-    </div>
+  <!-- Loading (first load only) -->
+  <div
+    v-if="agentStore.downlineLoading && agentStore.downline === null"
+    class="ds-empty"
+    aria-busy="true"
+  >
+    <CLoader :size="24" />
+  </div>
 
-    <!-- Loading (first load only) -->
-    <div v-if="agentStore.downlineLoading && agentStore.downline === null" class="ref__center">
-      <CLoader :size="24" />
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="agentStore.downlineError && agentStore.downline === null" class="ref__center">
-      <CEmptyState :title="t('agent.referrals.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="retry">
+  <!-- Error -->
+  <CEmptyState
+    v-else-if="agentStore.downlineError && agentStore.downline === null"
+    tone="danger"
+    :title="t('agent.referrals.errorTitle')"
+  >
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="retry">
         {{ t('common.retry') }}
       </CButton>
-    </div>
-
-    <!-- FP-25: whole-screen empty (both collections empty) -->
-    <div v-else-if="isEmpty" class="ref__center">
-      <CEmptyState
-        :title="t('agent.referrals.empty.title')"
-        :description="t('agent.referrals.empty.desc')"
-      />
-    </div>
-
-    <!-- Loaded -->
-    <template v-else>
-      <!-- Investors (self-hiding when empty) -->
-      <section v-if="investors.length > 0" class="ref__section">
-        <h2 class="ref__section-title">
-          {{ t('agent.referrals.investors.title') }}
-        </h2>
-        <ul class="ref__list">
-          <li v-for="inv in investors" :key="inv.user_id" class="ref__card">
-            <div class="ref__card-head">
-              <span class="ref__card-name">{{ inv.display_name }}</span>
-              <span class="ref__level" :class="`ref__level--l${inv.level}`">
-                {{ t('agent.referrals.level', { n: inv.level }) }}
-              </span>
-            </div>
-            <div class="ref__card-foot">
-              <div class="ref__metric">
-                <span class="ref__metric-value">
-                  {{ formatPrice(inv.purchase_volume_cents) }}
-                </span>
-                <span class="ref__metric-label">
-                  {{ t('agent.referrals.investors.volume') }}
-                </span>
-              </div>
-              <div class="ref__joined">
-                {{ t('agent.referrals.joined') }}
-                {{ formatDate(inv.registered_at, locale) }}
-              </div>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Sub-agents (self-hiding when empty) -->
-      <section v-if="subAgents.length > 0" class="ref__section">
-        <h2 class="ref__section-title">
-          {{ t('agent.referrals.subAgents.title') }}
-        </h2>
-        <ul class="ref__list">
-          <li v-for="sa in subAgents" :key="sa.user_id" class="ref__card">
-            <div class="ref__card-head">
-              <span class="ref__card-name">{{ sa.display_name }}</span>
-              <span class="ref__level" :class="`ref__level--l${sa.level}`">
-                {{ t('agent.referrals.level', { n: sa.level }) }}
-              </span>
-            </div>
-
-            <!-- Three honest, never-summed metrics (decisions #4 / #8) -->
-            <div class="ref__card-counters">
-              <div class="ref__metric">
-                <span class="ref__metric-value">
-                  {{ formatNumber(sa.recruited_investor_count, locale) }}
-                </span>
-                <span class="ref__metric-label">
-                  {{ t('agent.referrals.subAgents.recruited') }}
-                </span>
-              </div>
-              <div class="ref__metric">
-                <span class="ref__metric-value">
-                  {{ formatPrice(sa.direct_volume_cents) }}
-                </span>
-                <span class="ref__metric-label">
-                  {{ t('agent.referrals.subAgents.directVolume') }}
-                </span>
-              </div>
-              <div class="ref__metric">
-                <span class="ref__metric-value">
-                  {{ formatPrice(sa.own_purchase_volume_cents) }}
-                </span>
-                <span class="ref__metric-label">
-                  {{ t('agent.referrals.subAgents.ownVolume') }}
-                </span>
-              </div>
-            </div>
-
-            <div class="ref__joined">
-              {{ t('agent.referrals.joined') }}
-              {{ formatDate(sa.registered_at, locale) }}
-            </div>
-          </li>
-        </ul>
-      </section>
     </template>
-  </div>
+  </CEmptyState>
+
+  <!-- FP-25: whole-screen empty (both collections empty) -->
+  <CEmptyState
+    v-else-if="isEmpty"
+    :title="t('agent.referrals.empty.title')"
+    :description="t('agent.referrals.empty.desc')"
+  />
+
+  <!-- Loaded -->
+  <template v-else>
+    <!-- Investors (self-hiding when empty) -->
+    <section v-if="investors.length > 0" class="ref__section" aria-labelledby="ref-investors">
+      <h2 id="ref-investors" class="ref__section-title">
+        {{ t('agent.referrals.investors.title') }}
+      </h2>
+      <article v-for="inv in investors" :key="inv.user_id" class="ds-card" data-size="sm">
+        <header class="ds-card__head">
+          <h3 class="ds-card__title">{{ inv.display_name }}</h3>
+          <CBadge
+            :variant="inv.level === 1 ? 'primary' : 'neutral'"
+            :text="t('agent.referrals.level', { n: inv.level })"
+          />
+        </header>
+        <dl class="ds-kv">
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.investors.volume') }}</dt>
+            <dd>{{ formatPrice(inv.purchase_volume_cents) }}</dd>
+          </div>
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.joined') }}</dt>
+            <dd>{{ formatDate(inv.registered_at, locale) }}</dd>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <!-- Sub-agents (self-hiding when empty) -->
+    <section v-if="subAgents.length > 0" class="ref__section" aria-labelledby="ref-subagents">
+      <h2 id="ref-subagents" class="ref__section-title">
+        {{ t('agent.referrals.subAgents.title') }}
+      </h2>
+      <article v-for="sa in subAgents" :key="sa.user_id" class="ds-card" data-size="sm">
+        <header class="ds-card__head">
+          <h3 class="ds-card__title">{{ sa.display_name }}</h3>
+          <CBadge
+            :variant="sa.level === 1 ? 'primary' : 'neutral'"
+            :text="t('agent.referrals.level', { n: sa.level })"
+          />
+        </header>
+        <!-- Three honest, never-summed metrics (decisions #4 / #8) -->
+        <dl class="ds-kv">
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.subAgents.recruited') }}</dt>
+            <dd>{{ formatNumber(sa.recruited_investor_count, locale) }}</dd>
+          </div>
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.subAgents.directVolume') }}</dt>
+            <dd>{{ formatPrice(sa.direct_volume_cents) }}</dd>
+          </div>
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.subAgents.ownVolume') }}</dt>
+            <dd>{{ formatPrice(sa.own_purchase_volume_cents) }}</dd>
+          </div>
+          <div class="ds-kv__row">
+            <dt>{{ t('agent.referrals.joined') }}</dt>
+            <dd>{{ formatDate(sa.registered_at, locale) }}</dd>
+          </div>
+        </dl>
+      </article>
+    </section>
+  </template>
 </template>
 
 <style scoped>
-.ref {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.ref__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.ref__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: var(--space-2) 0 0;
-}
-
-.ref__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.ref__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) 0;
-}
-
-/* -- Section -- */
-
-.ref__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-
-.ref__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-/* -- Card -- */
-
-.ref__card {
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.ref__card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.ref__card-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ref__level {
-  flex-shrink: 0;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-}
-
-.ref__level--l1 {
-  color: var(--primary);
-}
-
-.ref__level--l2 {
-  color: var(--text-secondary);
-}
-
-.ref__level--l3 {
-  color: var(--text-tertiary);
-}
-
-.ref__card-foot {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.ref__card-counters {
+/* A section: its heading over its cards, on the frame's rhythm. */
+.ref__section {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
-
-.ref__metric {
-  display: flex;
-  flex-direction: column;
-}
-
-.ref__metric-value {
-  font-size: var(--fs-sm);
+.ref__section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-}
-
-.ref__metric-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.ref__joined {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .ref__card-counters {
-    max-inline-size: calc(3 * var(--tile-max));
-  }
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.ref__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

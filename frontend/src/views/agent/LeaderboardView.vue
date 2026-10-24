@@ -15,7 +15,7 @@
 //   error path.
 //
 // FP notes:
-//   FP-19 -- shell owns the header; inline lb__page-header h1, no
+//   FP-19 -- the frame owns the header (useScreenHeader), no
 //            header component here.
 //   FP-20 -- /agent/leaderboard is a SUB-ROUTE (not in AGENT_TABS), so
 //            a CBackLink is mandatory; goBack is history-aware with a
@@ -28,15 +28,13 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useAgentStore } from '@/stores/agent'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatPrice } from '@/utils/format'
 
-const router = useRouter()
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
 
@@ -73,19 +71,14 @@ const periodCaption = computed(() =>
 // Navigation
 // ---------------------------------------------------------------------------
 
-function goBack(): void {
-  // History-aware (Partners in the wired flow); cold deep-link falls
-  // through to Partners. router.back() is neither push nor replace, so
-  // it does not need safeNavigate; the fallback push does (FP-18).
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(
-    router.push({ name: 'agent-partners' }),
-    '[LeaderboardView] back fallback to agent-partners',
-  )
-}
+// The frame's header carries the title, the line under it and the way back:
+// history-aware (Partners in the wired flow), a cold deep-link falls through to
+// Partners (FP-20).
+useScreenHeader({
+  title: () => t('agent.leaderboard.title'),
+  lead: () => t('agent.leaderboard.subtitle'),
+  back: () => (window.history.state?.back ? true : { name: 'agent-partners' }),
+})
 
 function retry(): void {
   void agentStore.fetchLeaderboard()
@@ -101,190 +94,61 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="lb">
-    <!-- Page header (FP-19: shell owns the header; FP-20: sub-route back-link) -->
-    <div class="lb__page-header">
-      <CBackLink :label="t('agent.leaderboard.backLink')" @click="goBack" />
-      <h1 class="lb__title">
-        {{ t('agent.leaderboard.title') }}
-      </h1>
-      <p class="lb__subtitle">
-        {{ t('agent.leaderboard.subtitle') }}
-      </p>
-    </div>
+  <!-- Loading -->
+  <div
+    v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null"
+    class="ds-empty"
+    aria-busy="true"
+  >
+    <CLoader :size="24" />
+  </div>
 
-    <!-- Loading -->
-    <div v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null" class="lb__center">
-      <CLoader :size="24" />
-    </div>
-
-    <!-- Error -->
-    <div
-      v-else-if="agentStore.leaderboardError && agentStore.leaderboard === null"
-      class="lb__center"
-    >
-      <CEmptyState :title="t('agent.leaderboard.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="retry">
+  <!-- Error -->
+  <CEmptyState
+    v-else-if="agentStore.leaderboardError && agentStore.leaderboard === null"
+    tone="danger"
+    :title="t('agent.leaderboard.errorTitle')"
+  >
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="retry">
         {{ t('common.retry') }}
       </CButton>
-    </div>
-
-    <!-- Empty: no snapshot yet (not an error) -->
-    <div v-else-if="isEmpty" class="lb__center">
-      <CEmptyState
-        :title="t('agent.leaderboard.empty.title')"
-        :description="t('agent.leaderboard.empty.desc')"
-      />
-    </div>
-
-    <!-- Ranked list -->
-    <template v-else-if="agentStore.leaderboard !== null">
-      <p v-if="periodStart" class="lb__period">
-        {{ periodCaption }}
-      </p>
-
-      <ul class="lb__list">
-        <li
-          v-for="entry in entries"
-          :key="entry.agent_id"
-          class="lb__row"
-          :class="{ 'lb__row--me': entry.is_me }"
-        >
-          <span class="lb__rank">#{{ entry.rank }}</span>
-          <span class="lb__name">
-            <span class="lb__nametext">{{ entry.agent_name }}</span>
-            <span v-if="entry.is_me" class="lb__you">
-              {{ t('agent.leaderboard.you') }}
-            </span>
-          </span>
-          <span class="lb__volume">{{ formatPrice(entry.volume_cents) }}</span>
-        </li>
-      </ul>
     </template>
-  </div>
+  </CEmptyState>
+
+  <!-- Empty: no snapshot yet (not an error) -->
+  <CEmptyState
+    v-else-if="isEmpty"
+    :title="t('agent.leaderboard.empty.title')"
+    :description="t('agent.leaderboard.empty.desc')"
+  />
+
+  <!-- Ranked list -->
+  <template v-else-if="agentStore.leaderboard !== null">
+    <p v-if="periodStart" class="lb__period">
+      {{ periodCaption }}
+    </p>
+
+    <ul class="ds-rows">
+      <li v-for="entry in entries" :key="entry.agent_id" class="ds-row">
+        <span class="ds-row__lead">#{{ entry.rank }}</span>
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ entry.agent_name }}</span>
+        </span>
+        <span class="ds-row__trail">
+          <CBadge v-if="entry.is_me" variant="primary" :text="t('agent.leaderboard.you')" />
+          <span class="ds-row__value">{{ formatPrice(entry.volume_cents) }}</span>
+        </span>
+      </li>
+    </ul>
+  </template>
 </template>
 
 <style scoped>
-.lb {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.lb__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.lb__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: var(--space-2) 0 0;
-}
-
-.lb__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.lb__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) 0;
-}
-
+/* The period caption over the list: a quiet line. */
 .lb__period {
+  margin: 0;
   font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0;
-}
-
-/* -- Ranked list -- */
-
-.lb__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.lb__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-
-.lb__row--me {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
-}
-
-.lb__rank {
-  font-size: var(--fs-sm);
-  font-weight: 700;
   color: var(--text-secondary);
-  min-inline-size: var(--size-lg);
-}
-
-.lb__name {
-  flex: 1;
-  min-inline-size: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* The ellipsis belongs to the NAME TEXT, not to the flex container. On the
-   container it was inert (text-overflow acts on inline content in a block,
-   not on a flex container's anonymous text item) and its overflow:hidden ate
-   the adjacent flex-shrink:0 badge instead of trimming the name. */
-.lb__nametext {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lb__you {
-  flex-shrink: 0;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--primary);
-  color: var(--on-primary);
-}
-
-.lb__volume {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  flex-shrink: 0;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.lb__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

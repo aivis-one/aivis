@@ -20,7 +20,7 @@
 //   4. Withdrawal history (paginated, infinite scroll, status badges).
 //
 // FP notes:
-//   FP-19 -- shell owns the header; inline abal__header h1. A back-link to
+//   FP-19 -- the frame owns the header (useScreenHeader); a back target to
 //            Partners: the balance lies inside that tab.
 //   FP-18 -- navigation goes through safeNavigate.
 //   FP-15 -- withdrawal status rendered via tOrRaw.
@@ -30,26 +30,20 @@
 // CompanyBalanceView).
 // =============================================================================
 
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  ChevronDown,
   CreditCard,
   ListChecks,
-  Wallet,
+  ShieldAlert,
 } from '@/components/ui/icons'
 
-import {
-  CBackLink,
-  CBottomSheet,
-  CButton,
-  CEmptyState,
-  CLoader,
-  CInput,
-  CSelect,
-} from '@/components/ui'
+import { CBadge, CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
 import { useDashboardStore } from '@/stores/dashboard'
@@ -68,6 +62,13 @@ const router = useRouter()
 const { t, locale } = useI18n()
 const dashboardStore = useDashboardStore()
 const { showToast } = useToast()
+
+// The frame's header carries the title, the line under it and the way back to Partners.
+useScreenHeader({
+  title: () => t('agent.balance.title'),
+  lead: () => t('agent.balance.subtitle'),
+  back: { name: 'agent-partners' },
+})
 
 // ---------------------------------------------------------------------------
 // Withdrawals list (epoch-guarded; mirrors CompanyBalanceView)
@@ -251,6 +252,12 @@ const withdrawError = ref('')
 const withdrawNetwork = ref('')
 const withdrawWallet = ref('')
 
+// The ids that tie the withdrawal form's labels, hints and messages to their fields.
+const formId = useId()
+const networkId = `${formId}-network`
+const walletId = `${formId}-wallet`
+const amountId = `${formId}-amount`
+
 const parsedAmountCents = computed<number | null>(() =>
   parseAmountToCents(withdrawAmountInput.value),
 )
@@ -295,10 +302,6 @@ function goDeposit(): void {
 
 function goOperations(): void {
   void safeNavigate(router.push({ name: 'agent-transactions' }), '[AgentBalanceView] to operations')
-}
-
-function goBack(): void {
-  void safeNavigate(router.push({ name: 'agent-partners' }), '[AgentBalanceView] back to partners')
 }
 
 function openWithdrawSheet(): void {
@@ -367,492 +370,269 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="abal">
-    <!-- Header (FP-19: shell owns the header; the balance lies inside Partners) -->
-    <div class="abal__header">
-      <CBackLink :label="t('agent.balance.backLink')" @click="goBack" />
-      <h1 class="abal__title">
-        {{ t('agent.balance.title') }}
-      </h1>
-      <p class="abal__subtitle">
-        {{ t('agent.balance.subtitle') }}
-      </p>
-    </div>
+  <!-- Initial loading -->
+  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+    <CLoader :size="28" />
+  </div>
 
-    <!-- Initial loading -->
-    <div v-if="initialLoading" class="abal__center">
-      <CLoader :size="28" />
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="hasError" class="abal__center">
-      <CEmptyState :title="t('agent.balance.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="loadAll">
+  <!-- Error -->
+  <CEmptyState v-else-if="hasError" tone="danger" :title="t('agent.balance.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="loadAll">
         {{ t('agent.balance.errorRetry') }}
       </CButton>
-    </div>
-
-    <!-- Loaded -->
-    <template v-else>
-      <!-- The commission, the withdrawal account: withdrawn on request; All operations -->
-      <section class="abal__card abal__balance">
-        <div class="abal__balance-head">
-          <Wallet :size="16" />
-          <span>{{ t('agent.balance.card.title') }}</span>
-        </div>
-        <div class="abal__balance-value">
-          {{ formatPrice(passiveConfirmed) }}
-        </div>
-        <div v-if="hasFrozen" class="abal__balance-frozen">
-          {{ t('agent.balance.card.frozen') }}: {{ formatPrice(passiveFrozen) }}
-        </div>
-        <div class="abal__cta-row">
-          <CButton variant="primary" :disabled="!canWithdraw" @click="openWithdrawSheet">
-            <ArrowUpFromLine :size="16" />
-            {{ t('agent.balance.withdrawals.newButton') }}
-          </CButton>
-          <CButton variant="outline" @click="goOperations">
-            <ListChecks :size="16" />
-            {{ t('agent.balance.account.operations') }}
-          </CButton>
-          <span v-if="!canWithdraw" class="abal__cta-hint">
-            {{ t('agent.balance.withdrawals.lowBalance') }}
-          </span>
-        </div>
-        <p class="abal__rule">
-          {{ t('agent.balance.withdrawals.rule', { min: formatPrice(MIN_WITHDRAWAL_CENTS) }) }}
-        </p>
-      </section>
-
-      <!-- The buyer account: topped up, spent on parts of AIVIS only -->
-      <section class="abal__card abal__balance">
-        <div class="abal__balance-head">
-          <Wallet :size="16" />
-          <span>{{ t('agent.balance.account.title') }}</span>
-        </div>
-        <div class="abal__balance-value">
-          {{ formatPrice(accountConfirmed) }}
-        </div>
-        <div v-if="accountFrozen > 0" class="abal__balance-frozen">
-          {{ t('agent.balance.account.frozen') }}: {{ formatPrice(accountFrozen) }}
-        </div>
-        <p class="abal__rule">
-          {{ t('agent.balance.account.hint') }}
-        </p>
-        <div class="abal__cta-row">
-          <CButton variant="primary" @click="goDeposit">
-            <ArrowDownToLine :size="16" />
-            {{ t('agent.balance.account.deposit') }}
-          </CButton>
-        </div>
-      </section>
-
-      <!-- Withdrawal history -->
-      <section class="abal__section">
-        <h2 class="abal__section-title">
-          {{ t('agent.balance.withdrawals.title') }}
-        </h2>
-
-        <p v-if="withdrawals.length === 0 && !withdrawalsLoading" class="abal__empty">
-          {{ t('agent.balance.withdrawals.empty') }}
-        </p>
-
-        <ul v-else class="abal__list">
-          <li v-for="w in withdrawals" :key="w.id" class="abal__item">
-            <div class="abal__item-icon">
-              <CreditCard :size="16" />
-            </div>
-            <div class="abal__item-body">
-              <div class="abal__item-line">
-                <span class="abal__item-amount">
-                  {{ formatPrice(w.amount_cents) }}
-                </span>
-                <span class="ds-badge" :class="`ds-badge--${statusVariant(w.status)}`">
-                  {{ statusLabel(w.status) }}
-                </span>
-              </div>
-              <div class="abal__item-line abal__item-line--sub">
-                <span class="abal__item-date">{{ formatDateTime(w.created_at, locale) }}</span>
-                <span
-                  v-if="w.rejection_reason"
-                  class="abal__item-reason"
-                  :title="w.rejection_reason"
-                >
-                  {{ w.rejection_reason }}
-                </span>
-              </div>
-            </div>
-          </li>
-        </ul>
-
-        <div v-if="withdrawals.length > 0" ref="sentinelRef" class="abal__sentinel">
-          <CLoader v-if="withdrawalsLoading" :size="20" />
-        </div>
-
-        <div
-          v-if="withdrawals.length > 0 && withdrawalsLoadMoreErrored && !withdrawalsLoading"
-          class="abal__loadmore-error"
-        >
-          <span>{{ t('agent.balance.withdrawals.loadMoreError') }}</span>
-          <CButton variant="outline" size="sm" @click="retryLoadMoreWithdrawals">
-            {{ t('common.retry') }}
-          </CButton>
-        </div>
-      </section>
     </template>
+  </CEmptyState>
 
-    <!-- Withdraw sheet -->
-    <CBottomSheet
-      :open="withdrawSheetOpen"
-      :title="t('agent.balance.withdrawals.form.title')"
-      @close="closeWithdrawSheet"
-    >
-      <form class="abal__form" @submit.prevent="submitWithdraw">
-        <CSelect
-          v-model="withdrawNetwork"
-          :label="t('agent.balance.withdrawals.form.networkLabel')"
-          :options="PAYOUT_NETWORKS"
-          :placeholder="t('agent.balance.withdrawals.form.networkPlaceholder')"
-          :disabled="withdrawSubmitting"
+  <!-- Loaded -->
+  <template v-else>
+    <!-- The commission, the withdrawal account: withdrawn on request; All operations -->
+    <section class="ds-card" aria-labelledby="abal-commission">
+      <header class="ds-card__head">
+        <h2 id="abal-commission" class="ds-card__title">{{ t('agent.balance.card.title') }}</h2>
+      </header>
+      <p class="ds-card__figure">{{ formatPrice(passiveConfirmed) }}</p>
+      <div v-if="hasFrozen">
+        <CBadge
+          variant="warning"
+          :text="`${t('agent.balance.card.frozen')}: ${formatPrice(passiveFrozen)}`"
         />
+      </div>
+      <p class="ds-card__body">
+        {{ t('agent.balance.withdrawals.rule', { min: formatPrice(MIN_WITHDRAWAL_CENTS) }) }}
+        <template v-if="!canWithdraw">
+          {{ t('agent.balance.withdrawals.lowBalance') }}
+        </template>
+      </p>
+      <footer class="ds-card__foot">
+        <CButton variant="primary" inline :disabled="!canWithdraw" @click="openWithdrawSheet">
+          <ArrowUpFromLine size="sm" />
+          {{ t('agent.balance.withdrawals.newButton') }}
+        </CButton>
+        <CButton variant="outline" inline @click="goOperations">
+          <ListChecks size="sm" />
+          {{ t('agent.balance.account.operations') }}
+        </CButton>
+      </footer>
+    </section>
 
-        <label class="abal__field">
-          <span class="abal__field-label">
-            {{ t('agent.balance.withdrawals.form.walletLabel') }}
+    <!-- The buyer account: topped up, spent on parts of AIVIS only -->
+    <section class="ds-card" aria-labelledby="abal-account">
+      <header class="ds-card__head">
+        <h2 id="abal-account" class="ds-card__title">{{ t('agent.balance.account.title') }}</h2>
+      </header>
+      <p class="ds-card__figure">{{ formatPrice(accountConfirmed) }}</p>
+      <div v-if="accountFrozen > 0">
+        <CBadge
+          variant="warning"
+          :text="`${t('agent.balance.account.frozen')}: ${formatPrice(accountFrozen)}`"
+        />
+      </div>
+      <p class="ds-card__body">{{ t('agent.balance.account.hint') }}</p>
+      <footer class="ds-card__foot">
+        <CButton variant="primary" inline @click="goDeposit">
+          <ArrowDownToLine size="sm" />
+          {{ t('agent.balance.account.deposit') }}
+        </CButton>
+      </footer>
+    </section>
+
+    <!-- Withdrawal history -->
+    <section class="abal__section" aria-labelledby="abal-history">
+      <h2 id="abal-history" class="abal__section-title">
+        {{ t('agent.balance.withdrawals.title') }}
+      </h2>
+
+      <CEmptyState
+        v-if="withdrawals.length === 0 && !withdrawalsLoading"
+        framed
+        :description="t('agent.balance.withdrawals.empty')"
+      />
+
+      <ul v-else class="ds-rows">
+        <li v-for="w in withdrawals" :key="w.id" class="ds-row">
+          <span class="ds-row__lead"><CreditCard size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ formatPrice(w.amount_cents) }}</span>
+            <span class="ds-row__meta">
+              {{ formatDateTime(w.created_at, locale) }}
+              <template v-if="w.rejection_reason"> · {{ w.rejection_reason }}</template>
+            </span>
           </span>
-          <CInput
-            v-model="withdrawWallet"
-            class="abal__control"
-            size="compact"
-            autocomplete="off"
-            spellcheck="false"
-            :placeholder="t('agent.balance.withdrawals.form.walletPlaceholder')"
-            :disabled="withdrawSubmitting"
-          />
-        </label>
-        <p v-if="walletErrorKey" class="abal__form-error abal__form-error--soft">
-          {{ t(walletErrorKey) }}
-        </p>
-
-        <label class="abal__field">
-          <span class="abal__field-label">
-            {{ t('agent.balance.withdrawals.form.amountLabel') }}
+          <span class="ds-row__trail">
+            <CBadge :variant="statusVariant(w.status)" :text="statusLabel(w.status)" />
           </span>
-          <CInput
-            v-model="withdrawAmountInput"
-            class="abal__control"
-            size="compact"
-            type="number"
-            inputmode="decimal"
-            step="0.01"
-            min="0"
-            :placeholder="t('agent.balance.withdrawals.form.amountPlaceholder')"
-            :disabled="withdrawSubmitting"
-          />
-          <span class="abal__field-hint">
-            {{
-              t('agent.balance.withdrawals.form.amountHint', {
-                min: formatPrice(MIN_WITHDRAWAL_CENTS),
-                max: formatPrice(MAX_WITHDRAWAL_CENTS),
-                available: formatPrice(passiveConfirmed),
-              })
-            }}
-          </span>
-        </label>
+        </li>
+      </ul>
 
-        <p v-if="withdrawValidationKey" class="abal__form-error abal__form-error--soft">
-          {{
-            t(withdrawValidationKey, {
-              min: formatPrice(MIN_WITHDRAWAL_CENTS),
-              max: formatPrice(MAX_WITHDRAWAL_CENTS),
-              available: formatPrice(passiveConfirmed),
-            })
-          }}
-        </p>
+      <div v-if="withdrawals.length > 0" ref="sentinelRef" class="abal__sentinel">
+        <CLoader v-if="withdrawalsLoading" :size="20" />
+      </div>
 
-        <p v-if="withdrawError" class="abal__form-error">
-          {{ withdrawError }}
-        </p>
-
-        <div class="abal__form-actions">
-          <CButton
-            variant="outline"
-            type="button"
-            :disabled="withdrawSubmitting"
-            @click="closeWithdrawSheet"
-          >
-            {{ t('agent.balance.withdrawals.form.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
-            type="submit"
-            :disabled="!canSubmitWithdraw"
-            :loading="withdrawSubmitting"
-          >
-            {{ t('agent.balance.withdrawals.form.submit') }}
-          </CButton>
+      <div
+        v-if="withdrawals.length > 0 && withdrawalsLoadMoreErrored && !withdrawalsLoading"
+        class="ds-alert ds-alert--danger"
+        role="alert"
+      >
+        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('agent.balance.withdrawals.loadMoreError') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="retryLoadMoreWithdrawals">
+              {{ t('common.retry') }}
+            </CButton>
+          </div>
         </div>
-      </form>
-    </CBottomSheet>
-  </div>
+      </div>
+    </section>
+  </template>
+
+  <!-- Withdraw sheet: the structured payout form (K35) -->
+  <CBottomSheet
+    :open="withdrawSheetOpen"
+    :title="t('agent.balance.withdrawals.form.title')"
+    @close="closeWithdrawSheet"
+  >
+    <form
+      class="ds-payout"
+      novalidate
+      :aria-label="t('agent.balance.withdrawals.form.title')"
+      :aria-busy="withdrawSubmitting || undefined"
+      @submit.prevent="submitWithdraw"
+    >
+      <div v-if="withdrawError" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ withdrawError }}</p>
+        </div>
+      </div>
+
+      <fieldset class="ds-payout__group" :disabled="withdrawSubmitting">
+        <legend class="ds-sr-only">{{ t('agent.balance.withdrawals.form.title') }}</legend>
+        <div class="ds-payout__grid">
+          <div class="ds-field">
+            <label class="ds-field__label" :for="networkId">
+              {{ t('agent.balance.withdrawals.form.networkLabel') }}
+            </label>
+            <div class="ds-select">
+              <select :id="networkId" v-model="withdrawNetwork" class="ds-input">
+                <option value="" disabled>
+                  {{ t('agent.balance.withdrawals.form.networkPlaceholder') }}
+                </option>
+                <option v-for="opt in PAYOUT_NETWORKS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+              <ChevronDown size="sm" />
+            </div>
+          </div>
+
+          <div class="ds-field">
+            <label class="ds-field__label" :for="walletId">
+              {{ t('agent.balance.withdrawals.form.walletLabel') }}
+            </label>
+            <input
+              :id="walletId"
+              v-model="withdrawWallet"
+              class="ds-input ds-input--num"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              :placeholder="t('agent.balance.withdrawals.form.walletPlaceholder')"
+              :aria-invalid="walletErrorKey ? 'true' : undefined"
+              :aria-describedby="walletErrorKey ? `${walletId}-error` : undefined"
+            />
+            <p v-if="walletErrorKey" :id="`${walletId}-error`" class="ds-field__error">
+              <AlertTriangle size="sm" />
+              <span>{{ t(walletErrorKey) }}</span>
+            </p>
+          </div>
+
+          <div class="ds-field ds-payout__wide">
+            <label class="ds-field__label" :for="amountId">
+              {{ t('agent.balance.withdrawals.form.amountLabel') }}
+            </label>
+            <input
+              :id="amountId"
+              v-model="withdrawAmountInput"
+              class="ds-input ds-input--num"
+              type="number"
+              inputmode="decimal"
+              step="0.01"
+              min="0"
+              :placeholder="t('agent.balance.withdrawals.form.amountPlaceholder')"
+              :aria-invalid="withdrawValidationKey ? 'true' : undefined"
+              :aria-describedby="
+                withdrawValidationKey ? `${amountId}-hint ${amountId}-error` : `${amountId}-hint`
+              "
+            />
+            <p :id="`${amountId}-hint`" class="ds-field__hint">
+              {{
+                t('agent.balance.withdrawals.form.amountHint', {
+                  min: formatPrice(MIN_WITHDRAWAL_CENTS),
+                  max: formatPrice(MAX_WITHDRAWAL_CENTS),
+                  available: formatPrice(passiveConfirmed),
+                })
+              }}
+            </p>
+            <p v-if="withdrawValidationKey" :id="`${amountId}-error`" class="ds-field__error">
+              <AlertTriangle size="sm" />
+              <span>
+                {{
+                  t(withdrawValidationKey, {
+                    min: formatPrice(MIN_WITHDRAWAL_CENTS),
+                    max: formatPrice(MAX_WITHDRAWAL_CENTS),
+                    available: formatPrice(passiveConfirmed),
+                  })
+                }}
+              </span>
+            </p>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="ds-payout__actions">
+        <CButton
+          variant="primary"
+          type="submit"
+          inline
+          :disabled="!canSubmitWithdraw"
+          :loading="withdrawSubmitting"
+        >
+          {{ t('agent.balance.withdrawals.form.submit') }}
+        </CButton>
+        <CButton
+          variant="link"
+          type="button"
+          :disabled="withdrawSubmitting"
+          @click="closeWithdrawSheet"
+        >
+          {{ t('agent.balance.withdrawals.form.cancel') }}
+        </CButton>
+      </div>
+    </form>
+  </CBottomSheet>
 </template>
 
 <style scoped>
-.abal {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-4);
-  gap: var(--space-4);
-  padding-block-end: var(--space-5);
-}
-
-.abal__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.abal__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.abal__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.abal__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 240px);
-  min-block-size: calc(100dvh - 240px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-.abal__card {
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-
-.abal__balance {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.abal__balance-head {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.abal__balance-value {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.1;
-}
-.abal__balance-frozen {
-  font-size: var(--fs-xs);
-  color: var(--warning);
-}
-
-.abal__cta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-3);
-  flex-wrap: wrap;
-}
-.abal__rule {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.abal__cta-hint {
-  font-size: var(--fs-xs);
-  font-style: italic;
-  color: var(--text-tertiary);
-}
-
+/* The history: a heading over its rows, on the frame's rhythm. */
 .abal__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  gap: var(--space-3);
 }
 .abal__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: var(--space-1) 0 0;
-}
-
-.abal__empty {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
   margin: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin dashed var(--border-default);
-  text-align: center;
-}
-
-.abal__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.abal__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-.abal__item-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.abal__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.abal__item-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.abal__item-line--sub {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.abal__item-amount {
-  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
 }
-.abal__item-date {
-  white-space: nowrap;
-}
-.abal__item-reason {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--danger);
-  font-style: italic;
-  text-align: end;
-  max-inline-size: 60%;
-}
 
+/* The load-more sentinel the scroll observer watches. */
 .abal__sentinel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4) 0 0;
+  display: grid;
+  place-items: center;
   min-block-size: var(--size-md);
-}
-
-.abal__loadmore-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  margin-block-start: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-surface);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.abal__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-.abal__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-/* See CompanyBalanceView: the flex gap is the field's rhythm. */
-.abal__control {
-  margin-block-end: 0;
-}
-.abal__field-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.abal__field-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  line-height: 1.4;
-}
-
-.abal__form-error {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  color: var(--danger);
-}
-.abal__form-error--soft {
-  background: transparent;
-  border: thin solid var(--warning);
-  color: var(--warning);
-}
-
-.abal__form-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  margin-block-start: var(--space-1);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.abal__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

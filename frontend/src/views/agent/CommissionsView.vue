@@ -23,7 +23,7 @@
 //   is no place here to silently fold a reversed entry into a total.
 //
 // FP notes:
-//   FP-19 -- shell owns the header; inline comm__header h1, no header
+//   FP-19 -- the frame owns the header (useScreenHeader), no header
 //            component here.
 //   FP-25 -- self-hiding empty state, no scaffolding.
 //   FP-15 -- type / status / period_type rendered via tOrRaw.
@@ -39,22 +39,25 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { Coins, ShieldAlert } from '@/components/ui/icons'
+import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import type { CommissionEntry } from '@/api/types'
 import { useAgentStore } from '@/stores/agent'
 import { tOrRaw } from '@/utils/i18n'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatPrice } from '@/utils/format'
 
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
-const router = useRouter()
 
-function goBack(): void {
-  void safeNavigate(router.push({ name: 'agent-partners' }), '[CommissionsView] back to partners')
-}
+// The frame's header carries the title, the line under it and the way back to Partners.
+useScreenHeader({
+  title: () => t('agent.commissions.title'),
+  lead: () => t('agent.commissions.subtitle'),
+  back: { name: 'agent-partners' },
+})
 
 // ---------------------------------------------------------------------------
 // Derived
@@ -102,6 +105,37 @@ function statusVariant(status: string): 'success' | 'warning' | 'danger' | 'neut
   return 'neutral'
 }
 
+// The row's title says from whom (a commission) or for which period (a volume
+// bonus); its meta line gathers the type, the product, the references, the level
+// (or the rank) and the date.
+function entryTitle(entry: CommissionEntry): string {
+  if (entry.type === 'commission') {
+    return t('agent.commissions.from', { name: entry.investor_name || '—' })
+  }
+  if (entry.type === 'volume_bonus') return periodLabel(entry.period_type) || typeLabel(entry.type)
+  return typeLabel(entry.type)
+}
+
+function entryMeta(entry: CommissionEntry): string {
+  const parts: string[] = [typeLabel(entry.type)]
+  if (entry.type === 'commission') {
+    if (entry.product_name) {
+      parts.push(t('agent.commissions.forProduct', { product: entry.product_name }))
+    }
+    if (entry.investor_short_id) {
+      parts.push(t('agent.commissions.partnerId', { id: entry.investor_short_id }))
+    }
+    if (entry.purchase_short_id) {
+      parts.push(t('agent.commissions.purchaseRef', { id: entry.purchase_short_id }))
+    }
+    if (entry.level != null) parts.push(levelLabel(entry.level))
+  } else if (entry.type === 'volume_bonus' && entry.rank != null) {
+    parts.push(`${t('agent.commissions.bonus.rankLabel')} #${entry.rank}`)
+  }
+  parts.push(formatDate(entry.created_at, locale.value))
+  return parts.join(' · ')
+}
+
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
@@ -124,291 +158,72 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="comm">
-    <!-- Screen title (FP-19: shell owns the header, view owns the h1) -->
-    <div class="comm__header">
-      <CBackLink :label="t('agent.commissions.backLink')" @click="goBack" />
-      <h1 class="comm__title">
-        {{ t('agent.commissions.title') }}
-      </h1>
-      <p class="comm__subtitle">
-        {{ t('agent.commissions.subtitle') }}
-      </p>
-    </div>
+  <!-- Loading (first page) -->
+  <div
+    v-if="agentStore.commissionsLoading && agentStore.commissions.length === 0"
+    class="ds-empty"
+    aria-busy="true"
+  >
+    <CLoader :size="24" />
+  </div>
 
-    <!-- Loading (first page) -->
-    <div
-      v-if="agentStore.commissionsLoading && agentStore.commissions.length === 0"
-      class="comm__center"
-    >
-      <CLoader :size="24" />
-    </div>
-
-    <!-- Error -->
-    <div
-      v-else-if="agentStore.commissionsError && agentStore.commissions.length === 0"
-      class="comm__center"
-    >
-      <CEmptyState :title="t('agent.commissions.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="retry">
+  <!-- Error -->
+  <CEmptyState
+    v-else-if="agentStore.commissionsError && agentStore.commissions.length === 0"
+    tone="danger"
+    :title="t('agent.commissions.errorTitle')"
+  >
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="retry">
         {{ t('common.retry') }}
+      </CButton>
+    </template>
+  </CEmptyState>
+
+  <!-- FP-25: self-hiding empty state -->
+  <CEmptyState
+    v-else-if="commissionsEmpty"
+    :title="t('agent.commissions.empty.title')"
+    :description="t('agent.commissions.empty.desc')"
+  />
+
+  <!-- List -->
+  <template v-else>
+    <ul class="ds-rows">
+      <li v-for="entry in agentStore.commissions" :key="entry.id" class="ds-row">
+        <span class="ds-row__lead"><Coins size="sm" /></span>
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ entryTitle(entry) }}</span>
+          <span class="ds-row__meta">{{ entryMeta(entry) }}</span>
+        </span>
+        <span class="ds-row__trail">
+          <span class="ds-row__value">{{ formatPrice(entry.amount_cents) }}</span>
+          <CBadge :variant="statusVariant(entry.status)" :text="statusLabel(entry.status)" />
+        </span>
+      </li>
+    </ul>
+
+    <div v-if="agentStore.hasMoreCommissions && !commissionsEmpty">
+      <CButton
+        variant="secondary"
+        inline
+        :loading="agentStore.commissionsLoading"
+        :disabled="agentStore.commissionsLoading"
+        @click="loadMore"
+      >
+        {{ t('agent.commissions.loadMore') }}
       </CButton>
     </div>
 
-    <!-- FP-25: self-hiding empty state -->
-    <div v-else-if="commissionsEmpty" class="comm__center">
-      <CEmptyState
-        :title="t('agent.commissions.empty.title')"
-        :description="t('agent.commissions.empty.desc')"
-      />
-    </div>
-
-    <!-- List -->
-    <template v-else>
-      <ul class="comm__list">
-        <li v-for="entry in agentStore.commissions" :key="entry.id" class="comm__card">
-          <div class="comm__row">
-            <span class="comm__type">{{ typeLabel(entry.type) }}</span>
-            <span class="comm__amount">
-              {{ formatPrice(entry.amount_cents) }}
-            </span>
-          </div>
-
-          <div class="comm__row comm__row--meta">
-            <div class="comm__detail">
-              <!-- commission: who / what / level -->
-              <template v-if="entry.type === 'commission'">
-                <span class="comm__detail-main">
-                  {{ t('agent.commissions.from', { name: entry.investor_name || '—' }) }}
-                </span>
-                <span class="comm__detail-sub">
-                  <span v-if="entry.product_name">
-                    {{ t('agent.commissions.forProduct', { product: entry.product_name }) }}
-                  </span>
-                  <span v-if="entry.investor_short_id">
-                    {{ t('agent.commissions.partnerId', { id: entry.investor_short_id }) }}
-                  </span>
-                  <span v-if="entry.purchase_short_id">
-                    {{ t('agent.commissions.purchaseRef', { id: entry.purchase_short_id }) }}
-                  </span>
-                  <span v-if="entry.level != null" class="comm__level">
-                    {{ levelLabel(entry.level) }}
-                  </span>
-                </span>
-              </template>
-              <!-- volume_bonus: period / rank -->
-              <template v-else-if="entry.type === 'volume_bonus'">
-                <span class="comm__detail-main">
-                  {{ periodLabel(entry.period_type) }}
-                </span>
-                <span v-if="entry.rank != null" class="comm__detail-sub">
-                  {{ t('agent.commissions.bonus.rankLabel') }}
-                  #{{ entry.rank }}
-                </span>
-              </template>
-            </div>
-
-            <div class="comm__meta-right">
-              <span class="comm__status" :class="`comm__status--${statusVariant(entry.status)}`">
-                {{ statusLabel(entry.status) }}
-              </span>
-              <span class="comm__date">{{ formatDate(entry.created_at, locale) }}</span>
-            </div>
-          </div>
-        </li>
-      </ul>
-
-      <div v-if="agentStore.hasMoreCommissions && !commissionsEmpty" class="comm__more">
-        <CButton
-          variant="secondary"
-          :loading="agentStore.commissionsLoading"
-          :disabled="agentStore.commissionsLoading"
-          @click="loadMore"
-        >
-          {{ t('agent.commissions.loadMore') }}
-        </CButton>
+    <div
+      v-if="agentStore.commissionsError && agentStore.commissions.length > 0"
+      class="ds-alert ds-alert--danger"
+      role="alert"
+    >
+      <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ t('agent.commissions.loadMoreError') }}</p>
       </div>
-
-      <p
-        v-if="agentStore.commissionsError && agentStore.commissions.length > 0"
-        class="comm__loadmore-error"
-      >
-        {{ t('agent.commissions.loadMoreError') }}
-      </p>
-    </template>
-  </div>
+    </div>
+  </template>
 </template>
-
-<style scoped>
-.comm {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.comm__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.comm__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.comm__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.comm__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) 0;
-}
-
-.comm__loadmore-error {
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-/* -- List -- */
-
-.comm__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.comm__card {
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.comm__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.comm__row--meta {
-  align-items: flex-end;
-}
-
-.comm__type {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.comm__amount {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.comm__detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-
-.comm__detail-main {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.comm__detail-sub {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.comm__level {
-  font-weight: 700;
-  color: var(--text-secondary);
-}
-
-.comm__meta-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-.comm__status {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-}
-
-.comm__status--success {
-  color: var(--success);
-}
-
-.comm__status--warning {
-  color: var(--warning);
-}
-
-.comm__status--danger {
-  color: var(--danger);
-  background: var(--danger-subtle);
-}
-
-.comm__status--neutral {
-  color: var(--text-tertiary);
-}
-
-.comm__date {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.comm__more {
-  display: flex;
-  justify-content: center;
-  margin-block-start: var(--space-3);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.comm__subtitle {
-  max-inline-size: var(--maxw-prose);
-}
-</style>
