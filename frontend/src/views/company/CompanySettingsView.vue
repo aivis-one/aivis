@@ -49,7 +49,19 @@ import {
   Video,
 } from '@/components/ui/icons'
 
-import { CButton, CEmptyState, CInput, CLoader, CModal, CSelect, CTextarea } from '@/components/ui'
+import {
+  CAvatar,
+  CBadge,
+  CButton,
+  CEmptyState,
+  CIconBox,
+  CInput,
+  CLoader,
+  CModal,
+  CSelect,
+  CTextarea,
+} from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -75,6 +87,12 @@ const profileStore = useCompanyProfileStore()
 const dashboardStore = useCompanyDashboardStore()
 const { showToast } = useToast()
 
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('comp.settings.title'),
+  lead: () => t('comp.settings.subtitle'),
+})
+
 // ---------------------------------------------------------------------------
 // Derived view state
 // ---------------------------------------------------------------------------
@@ -95,21 +113,6 @@ const hasError = computed<boolean>(() => profileStore.error !== null)
 const companyName = computed<string>(() => profile.value?.name ?? '')
 const logoUrl = computed<string | null>(() => profile.value?.logo_url ?? null)
 
-/**
- * Initials fallback when logo_url is null. Same rule as the dashboard
- * hero: first letter of up to two whitespace chunks ("Test Company"
- * -> "TC"), uppercase, falls back to "C" on empty name.
- */
-const initials = computed<string>(() => {
-  const name = companyName.value.trim()
-  if (!name) return 'C'
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-})
-
 const status = computed<string>(() => profile.value?.status ?? '')
 const statusLabel = computed<string>(() =>
   // FP-15: server-driven enum -> tOrRaw with raw fallback so a future
@@ -117,10 +120,10 @@ const statusLabel = computed<string>(() =>
   // the dotted i18n path.
   tOrRaw(t, `comp.settings.status.${status.value}`, status.value),
 )
-const statusBadgeClass = computed<string>(() => {
-  if (status.value === 'active') return 'cset__status--success'
-  if (status.value === 'hidden') return 'cset__status--warning'
-  return 'cset__status--neutral'
+const statusVariant = computed<'success' | 'warning' | 'neutral'>(() => {
+  if (status.value === 'active') return 'success'
+  if (status.value === 'hidden') return 'warning'
+  return 'neutral'
 })
 
 // ---------------------------------------------------------------------------
@@ -356,7 +359,7 @@ function openEditPerson(): void {
 }
 
 const canSubmitPerson = computed<boolean>(
-  () => (draftFirstName.value.trim().length > 0) === (draftLastName.value.trim().length > 0),
+  () => draftFirstName.value.trim().length > 0 === draftLastName.value.trim().length > 0,
 )
 
 async function handleSavePerson(): Promise<void> {
@@ -468,676 +471,375 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="cset">
-    <!-- Inline page header -->
-    <div class="cset__header">
-      <h1 class="cset__page-title">
-        {{ t('comp.settings.title') }}
-      </h1>
-      <p class="cset__page-subtitle">
-        {{ t('comp.settings.subtitle') }}
-      </p>
-    </div>
+  <!-- Initial loading -->
+  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+    <CLoader />
+  </div>
 
-    <!-- Initial loading -->
-    <div v-if="initialLoading" class="cset__center">
-      <CLoader :size="28" />
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="hasError" class="cset__center">
-      <CEmptyState :title="t('comp.settings.errorTitle')" :description="profileStore.error ?? ''" />
-      <CButton variant="outline" size="sm" @click="loadProfile">
+  <!-- Error -->
+  <CEmptyState
+    v-else-if="hasError"
+    tone="danger"
+    :title="t('comp.settings.errorTitle')"
+    :description="profileStore.error ?? ''"
+  >
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="loadProfile">
         {{ t('comp.settings.errorRetry') }}
       </CButton>
-    </div>
+    </template>
+  </CEmptyState>
 
-    <!-- Loaded -->
-    <template v-else-if="profile">
-      <!-- Hero card -->
-      <section class="cset__hero">
-        <div class="cset__hero-logo">
-          <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="cset__hero-logo-img" />
-          <div v-else class="cset__hero-logo-fallback">
-            {{ initials }}
-          </div>
-        </div>
-        <div class="cset__hero-text">
-          <div class="cset__hero-name">
-            {{ companyName }}
-          </div>
-          <span class="cset__status-badge" :class="statusBadgeClass">
-            {{ statusLabel }}
-          </span>
-        </div>
-      </section>
+  <!-- Loaded -->
+  <template v-else-if="profile">
+    <!-- The project: its mark, its name and its status -->
+    <ul class="ds-rows">
+      <li class="ds-row">
+        <CAvatar :name="companyName" :url="logoUrl ?? undefined" :size="56" />
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ companyName }}</span>
+        </span>
+        <span class="ds-row__trail">
+          <CBadge :variant="statusVariant" :text="statusLabel" />
+        </span>
+      </li>
+    </ul>
 
-      <!-- Personal block -->
-      <section class="cset__section">
-        <div class="cset__section-title cset__section-title--row">
-          <span>{{ t('comp.settings.person.title') }}</span>
-          <button
-            type="button"
-            class="cset__edit-btn"
-            :aria-label="t('common.edit')"
-            @click="openEditPerson"
-          >
-            <Pencil :size="14" />
-          </button>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">{{ t('comp.settings.person.name') }}</span>
-          <span class="cset__row-value">{{ personName || t('comp.settings.person.notSet') }}</span>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">{{ t('comp.settings.person.email') }}</span>
-          <span class="cset__row-value">{{ personEmail }}</span>
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">{{ t('comp.settings.person.language') }}</span>
-          <span class="cset__row-value">{{ languageLabel }}</span>
-        </div>
-      </section>
-
-      <!-- Profile -->
-      <section v-if="profile.description || status" class="cset__section">
-        <div class="cset__section-title cset__section-title--row">
-          <span>{{ t('comp.settings.profile.title') }}</span>
-          <button
-            type="button"
-            class="cset__edit-btn"
-            :aria-label="t('common.edit')"
-            @click="openEditProfile"
-          >
-            <Pencil :size="14" />
-          </button>
-        </div>
-        <div v-if="profile.description" class="cset__row cset__row--block">
-          <span class="cset__row-label">
-            {{ t('comp.settings.profile.description') }}
-          </span>
-          <p class="cset__row-multiline">
-            {{ profile.description }}
-          </p>
-        </div>
-        <div v-if="status" class="cset__row">
-          <span class="cset__row-label">
-            {{ t('comp.settings.profile.status') }}
-          </span>
-          <span v-if="!canWithdraw" class="cset__row-value">{{ statusLabel }}</span>
-          <CButton v-else variant="outline" size="sm" @click="openWithdrawConfirm">
-            {{ t('comp.settings.profile.withdrawCta') }}
-          </CButton>
-        </div>
-        <!-- Hidden/archived: explain who can undo it, right under the
-             status row rather than only inside a modal the user may
-             never open. -->
-        <p v-if="status === 'hidden'" class="cset__status-hint">
-          {{ t('comp.settings.profile.hiddenHint') }}
-        </p>
-        <p v-else-if="status === 'archived'" class="cset__status-hint">
-          {{ t('comp.settings.profile.archivedHint') }}
-        </p>
-      </section>
-
-      <!-- Parts: the price of a part and the parts for sale, read only -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.parts.title') }}
-        </div>
-        <div class="cset__row">
-          <span class="cset__row-label">{{ t('comp.settings.parts.price') }}</span>
-          <span class="cset__row-value">{{ formatPrice(profile.price_per_unit_cents) }}</span>
-        </div>
-        <p class="cset__status-hint">
-          {{ t('comp.settings.parts.priceHint') }}
-        </p>
-        <div class="cset__row">
-          <span class="cset__row-label">{{ t('comp.settings.parts.supply') }}</span>
-          <span class="cset__row-value">{{ dashboardStore.summary?.pool ? formatNumber(dashboardStore.summary.pool.total_options, locale) : '—' }}</span>
-        </div>
-        <p class="cset__status-hint">
-          {{ t('comp.settings.parts.supplyHint') }}
-        </p>
-      </section>
-
-      <!-- Distribution: the fixed division of the parts, read only -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.distribution.title') }}
-        </div>
-        <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="cset__row">
-          <span class="cset__row-label">{{ t(`comp.settings.distribution.rows.${row.key}`) }}</span>
-          <span class="cset__row-value">{{ row.percent }}%</span>
-        </div>
-        <p class="cset__status-hint">
-          {{ t('comp.settings.distribution.hint') }}
-        </p>
-      </section>
-
-      <!-- Documents: the project's legal documents to read -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.docs.title') }}
-        </div>
-        <RouterLink to="/company/docs" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <FileText :size="16" />
-            {{ t('comp.settings.docs.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
-      </section>
-
-      <!-- Support (TASK-39 item 4) -- same "no dead 6th tab-bar slot"
-           reasoning as Notifications/Roadmap/Posts/Attachments above:
-           CompanyShell has no More tab, so the entry point is a row
-           here instead. Measured gap: a company user had no path to
-           support anywhere in the product before this. -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.support.title') }}
-        </div>
-        <RouterLink to="/company/support" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <MessageCircle :size="16" />
-            {{ t('comp.settings.support.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
-      </section>
-
-      <!-- FAQ (TASK-39 item 3) -- same "no dead 6th tab-bar slot"
-           reasoning as Notifications/Roadmap/Posts/Attachments/Support
-           above: CompanyShell has no More tab, so the entry point is a
-           row here instead. This is the company's OWN, SEPARATE FAQ
-           (owner ruling) -- not the shared investor/agent one -- see
-           CompanyFaqView.vue for the full ruling. -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.faq.title') }}
-        </div>
-        <RouterLink to="/company/faq" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <HelpCircle :size="16" />
-            {{ t('comp.settings.faq.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
-      </section>
-
-      <!-- Audit feed (TASK-39 item 7) -- same "no dead 6th tab-bar
-           slot" reasoning as Notifications/Roadmap/Posts/Attachments/
-           Support above: CompanyShell has no More tab, so the entry
-           point is a row here instead. Measured gap: the project had
-           no way to see its own write history (who changed what and
-           when) anywhere in the product before this. -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.audit.title') }}
-        </div>
-        <RouterLink to="/company/audit" class="cset__row cset__row--clickable">
-          <span class="cset__row-label">
-            <History :size="16" />
-            {{ t('comp.settings.audit.cta') }}
-          </span>
-          <ChevronRight :size="16" />
-        </RouterLink>
-      </section>
-
-      <!-- Media links -->
-      <section v-if="mediaLinks.length > 0" class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.links.title') }}
-        </div>
-        <a
-          v-for="link in mediaLinks"
-          :key="link.key"
-          class="cset__row cset__row--clickable"
-          :href="link.url"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span class="cset__row-label">
-            <component :is="link.icon" :size="16" />
-            {{ link.label }}
-          </span>
-          <span class="cset__row-label cset__row-label--accent">
-            {{ t('comp.settings.links.open') }}
-            <ExternalLink :size="16" />
-          </span>
-        </a>
-      </section>
-
-      <!-- Actions -->
-      <section class="cset__section">
-        <div class="cset__section-title">
-          {{ t('comp.settings.actions.title') }}
-        </div>
-        <TwoFactorSection tPrefix="comp.settings.actions" />
-        <ActiveSessionsSection tPrefix="comp.settings.actions" />
-        <NotificationPreferencesSection tPrefix="comp.settings.actions" />
-        <DeactivateAccountSection tPrefix="comp.settings.actions" />
+    <!-- Personal block -->
+    <section class="ds-card" aria-labelledby="cset-person">
+      <header class="ds-card__head">
+        <h2 id="cset-person" class="ds-card__title">{{ t('comp.settings.person.title') }}</h2>
         <button
           type="button"
-          class="cset__row cset__row--clickable"
-          :class="{ 'cset__row--disabled': loggingOut }"
-          :disabled="loggingOut"
-          @click="handleLogout"
+          class="ds-button ds-button--ghost ds-button--icon"
+          data-size="sm"
+          :aria-label="`${t('common.edit')}: ${t('comp.settings.person.title')}`"
+          @click="openEditPerson"
         >
-          <span class="cset__row-label cset__row-label--danger">
-            <LogOut :size="16" />
-            {{ t('comp.settings.actions.logout') }}
-          </span>
-          <ChevronRight :size="16" />
+          <Pencil size="sm" />
         </button>
-      </section>
-
-      <!-- Withdraw confirm modal (ACTIVE -> HIDDEN only) -->
-      <CModal :open="showWithdrawConfirm" @close="showWithdrawConfirm = false">
-        <h3 class="cset__modal-title">
-          {{ t('comp.settings.profile.withdrawConfirmTitle') }}
-        </h3>
-        <p class="cset__modal-hint">
-          {{ t('comp.settings.profile.withdrawConfirmBody') }}
-        </p>
-        <div class="cset__modal-actions">
-          <CButton variant="outline" size="sm" @click="showWithdrawConfirm = false">
-            {{ t('common.cancel') }}
-          </CButton>
-          <CButton variant="primary" size="sm" :loading="withdrawing" @click="handleWithdraw">
-            {{ t('comp.settings.profile.withdrawConfirmSubmit') }}
-          </CButton>
+      </header>
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.person.name') }}</dt>
+          <dd>{{ personName || t('comp.settings.person.notSet') }}</dd>
         </div>
-      </CModal>
-
-      <!-- Profile edit modal (TASK-30 W1): description + the four media
-           URLs. Pricing/supply/distribution/status are NOT here. -->
-      <CModal :open="showEditProfile" @close="closeEditProfile">
-        <h3 class="cset__modal-title">
-          {{ t('comp.settings.profile.editTitle') }}
-        </h3>
-
-        <CTextarea
-          v-model="draftDescription"
-          :label="t('comp.settings.profile.description')"
-          :rows="5"
-          maxlength="5000"
-        />
-
-        <CInput
-          v-model="draftLogoUrl"
-          :label="t('comp.settings.links.logo')"
-          placeholder="https://..."
-          maxlength="2000"
-          :error="!logoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
-        />
-
-        <CInput
-          v-model="draftCoverUrl"
-          :label="t('comp.settings.links.cover')"
-          placeholder="https://..."
-          maxlength="2000"
-          :error="!coverUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
-        />
-
-        <CInput
-          v-model="draftPromoVideoUrl"
-          :label="t('comp.settings.links.promoVideo')"
-          placeholder="https://..."
-          maxlength="2000"
-          :error="!promoVideoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
-        />
-
-        <CInput
-          v-model="draftPresentationUrl"
-          :label="t('comp.settings.links.presentation')"
-          placeholder="https://..."
-          maxlength="2000"
-          :error="!presentationUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
-        />
-
-        <div class="cset__modal-actions">
-          <CButton variant="outline" size="sm" @click="closeEditProfile">
-            {{ t('common.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
-            size="sm"
-            :loading="savingProfile"
-            :disabled="!canSubmitProfile"
-            @click="handleSaveProfile"
-          >
-            {{ t('common.save') }}
-          </CButton>
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.person.email') }}</dt>
+          <dd>{{ personEmail }}</dd>
         </div>
-      </CModal>
-
-      <!-- Personal block edit modal: name and language -->
-      <CModal :open="showEditPerson" @close="showEditPerson = false">
-        <h3 class="cset__modal-title">
-          {{ t('comp.settings.person.editTitle') }}
-        </h3>
-        <CInput
-          v-model="draftFirstName"
-          :label="t('comp.settings.person.firstName')"
-          maxlength="100"
-        />
-        <CInput
-          v-model="draftLastName"
-          :label="t('comp.settings.person.lastName')"
-          maxlength="100"
-        />
-        <CSelect
-          v-model="draftLanguage"
-          :label="t('comp.settings.person.language')"
-          :options="languageOptions"
-        />
-        <div class="cset__modal-actions">
-          <CButton variant="outline" size="sm" @click="showEditPerson = false">
-            {{ t('common.cancel') }}
-          </CButton>
-          <CButton
-            variant="primary"
-            size="sm"
-            :loading="savingPerson"
-            :disabled="!canSubmitPerson"
-            @click="handleSavePerson"
-          >
-            {{ t('common.save') }}
-          </CButton>
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.person.language') }}</dt>
+          <dd>{{ languageLabel }}</dd>
         </div>
-      </CModal>
-    </template>
-  </div>
+      </dl>
+    </section>
+
+    <!-- Profile -->
+    <section v-if="profile.description || status" class="ds-card" aria-labelledby="cset-profile">
+      <header class="ds-card__head">
+        <h2 id="cset-profile" class="ds-card__title">{{ t('comp.settings.profile.title') }}</h2>
+        <button
+          type="button"
+          class="ds-button ds-button--ghost ds-button--icon"
+          data-size="sm"
+          :aria-label="`${t('common.edit')}: ${t('comp.settings.profile.title')}`"
+          @click="openEditProfile"
+        >
+          <Pencil size="sm" />
+        </button>
+      </header>
+      <div v-if="profile.description">
+        <p class="ds-card__label">{{ t('comp.settings.profile.description') }}</p>
+        <p class="ds-card__body cset__multiline">{{ profile.description }}</p>
+      </div>
+      <dl v-if="status" class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.profile.status') }}</dt>
+          <dd>{{ statusLabel }}</dd>
+        </div>
+      </dl>
+      <!-- Hidden/archived: explain who can undo it, right under the status
+           rather than only inside a modal the user may never open. -->
+      <p v-if="status === 'hidden'" class="ds-card__body">
+        {{ t('comp.settings.profile.hiddenHint') }}
+      </p>
+      <p v-else-if="status === 'archived'" class="ds-card__body">
+        {{ t('comp.settings.profile.archivedHint') }}
+      </p>
+      <footer v-if="canWithdraw" class="ds-card__foot">
+        <CButton variant="outline" size="sm" inline @click="openWithdrawConfirm">
+          {{ t('comp.settings.profile.withdrawCta') }}
+        </CButton>
+      </footer>
+    </section>
+
+    <!-- Parts: the price of a part and the parts for sale, read only -->
+    <section class="ds-card" aria-labelledby="cset-parts">
+      <header class="ds-card__head">
+        <h2 id="cset-parts" class="ds-card__title">{{ t('comp.settings.parts.title') }}</h2>
+      </header>
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.parts.price') }}</dt>
+          <dd>{{ formatPrice(profile.price_per_unit_cents) }}</dd>
+        </div>
+      </dl>
+      <p class="ds-card__body">
+        {{ t('comp.settings.parts.priceHint') }}
+      </p>
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('comp.settings.parts.supply') }}</dt>
+          <dd>
+            {{
+              dashboardStore.summary?.pool
+                ? formatNumber(dashboardStore.summary.pool.total_options, locale)
+                : '—'
+            }}
+          </dd>
+        </div>
+      </dl>
+      <p class="ds-card__body">
+        {{ t('comp.settings.parts.supplyHint') }}
+      </p>
+    </section>
+
+    <!-- Distribution: the fixed division of the parts, read only -->
+    <section class="ds-card" aria-labelledby="cset-distribution">
+      <header class="ds-card__head">
+        <h2 id="cset-distribution" class="ds-card__title">
+          {{ t('comp.settings.distribution.title') }}
+        </h2>
+      </header>
+      <dl class="ds-kv">
+        <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="ds-kv__row">
+          <dt>{{ t(`comp.settings.distribution.rows.${row.key}`) }}</dt>
+          <dd>{{ row.percent }}%</dd>
+        </div>
+      </dl>
+      <p class="ds-card__body">
+        {{ t('comp.settings.distribution.hint') }}
+      </p>
+    </section>
+
+    <!-- The ways to the project's other screens: documents, support, FAQ and activity.
+         CompanyShell has no More tab (five fixed tabs), so each entry is a tile here. -->
+    <nav class="ds-navtiles" :aria-label="t('comp.settings.title')">
+      <RouterLink to="/company/docs" class="ds-navtile">
+        <CIconBox><FileText /></CIconBox>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">{{ t('comp.settings.docs.title') }}</span>
+          <span class="ds-navtile__desc">{{ t('comp.settings.docs.cta') }}</span>
+        </span>
+        <ChevronRight class="ds-navtile__go" size="sm" />
+      </RouterLink>
+      <RouterLink to="/company/support" class="ds-navtile">
+        <CIconBox><MessageCircle /></CIconBox>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">{{ t('comp.settings.support.title') }}</span>
+          <span class="ds-navtile__desc">{{ t('comp.settings.support.cta') }}</span>
+        </span>
+        <ChevronRight class="ds-navtile__go" size="sm" />
+      </RouterLink>
+      <!-- This is the company's OWN, SEPARATE FAQ (owner ruling) -- see CompanyFaqView.vue -->
+      <RouterLink to="/company/faq" class="ds-navtile">
+        <CIconBox><HelpCircle /></CIconBox>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">{{ t('comp.settings.faq.title') }}</span>
+          <span class="ds-navtile__desc">{{ t('comp.settings.faq.cta') }}</span>
+        </span>
+        <ChevronRight class="ds-navtile__go" size="sm" />
+      </RouterLink>
+      <RouterLink to="/company/audit" class="ds-navtile">
+        <CIconBox><History /></CIconBox>
+        <span class="ds-navtile__text">
+          <span class="ds-navtile__title">{{ t('comp.settings.audit.title') }}</span>
+          <span class="ds-navtile__desc">{{ t('comp.settings.audit.cta') }}</span>
+        </span>
+        <ChevronRight class="ds-navtile__go" size="sm" />
+      </RouterLink>
+    </nav>
+
+    <!-- Media links -->
+    <section v-if="mediaLinks.length > 0" class="cset__section" aria-labelledby="cset-links">
+      <h2 id="cset-links" class="cset__section-title">
+        {{ t('comp.settings.links.title') }}
+      </h2>
+      <ul class="ds-rows">
+        <li v-for="link in mediaLinks" :key="link.key" class="ds-row">
+          <span class="ds-row__lead"><component :is="link.icon" size="sm" /></span>
+          <span class="ds-row__body">
+            <a class="ds-row__link" :href="link.url" target="_blank" rel="noopener noreferrer">
+              <span class="ds-row__title">{{ link.label }}</span>
+            </a>
+          </span>
+          <span class="ds-row__trail">
+            {{ t('comp.settings.links.open') }}
+            <ExternalLink size="sm" />
+          </span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Actions -->
+    <section class="cset__section" aria-labelledby="cset-actions">
+      <h2 id="cset-actions" class="cset__section-title">
+        {{ t('comp.settings.actions.title') }}
+      </h2>
+      <TwoFactorSection tPrefix="comp.settings.actions" />
+      <ActiveSessionsSection tPrefix="comp.settings.actions" />
+      <NotificationPreferencesSection tPrefix="comp.settings.actions" />
+      <DeactivateAccountSection tPrefix="comp.settings.actions" />
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOut || undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
+              <span class="ds-row__title">{{ t('comp.settings.actions.logout') }}</span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Withdraw confirm modal (ACTIVE -> HIDDEN only) -->
+    <CModal
+      :open="showWithdrawConfirm"
+      :title="t('comp.settings.profile.withdrawConfirmTitle')"
+      @close="showWithdrawConfirm = false"
+    >
+      <p class="ds-dialog__text">
+        {{ t('comp.settings.profile.withdrawConfirmBody') }}
+      </p>
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showWithdrawConfirm = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="primary" size="sm" inline :loading="withdrawing" @click="handleWithdraw">
+          {{ t('comp.settings.profile.withdrawConfirmSubmit') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Profile edit modal (TASK-30 W1): description + the four media
+         URLs. Pricing/supply/distribution/status are NOT here. -->
+    <CModal
+      :open="showEditProfile"
+      :title="t('comp.settings.profile.editTitle')"
+      @close="closeEditProfile"
+    >
+      <CTextarea
+        v-model="draftDescription"
+        :label="t('comp.settings.profile.description')"
+        :rows="5"
+        maxlength="5000"
+      />
+
+      <CInput
+        v-model="draftLogoUrl"
+        :label="t('comp.settings.links.logo')"
+        placeholder="https://..."
+        maxlength="2000"
+        :error="!logoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+      />
+
+      <CInput
+        v-model="draftCoverUrl"
+        :label="t('comp.settings.links.cover')"
+        placeholder="https://..."
+        maxlength="2000"
+        :error="!coverUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+      />
+
+      <CInput
+        v-model="draftPromoVideoUrl"
+        :label="t('comp.settings.links.promoVideo')"
+        placeholder="https://..."
+        maxlength="2000"
+        :error="!promoVideoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+      />
+
+      <CInput
+        v-model="draftPresentationUrl"
+        :label="t('comp.settings.links.presentation')"
+        placeholder="https://..."
+        maxlength="2000"
+        :error="!presentationUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+      />
+
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeEditProfile">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          inline
+          :loading="savingProfile"
+          :disabled="!canSubmitProfile"
+          @click="handleSaveProfile"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
+
+    <!-- Personal block edit modal: name and language -->
+    <CModal
+      :open="showEditPerson"
+      :title="t('comp.settings.person.editTitle')"
+      @close="showEditPerson = false"
+    >
+      <CInput
+        v-model="draftFirstName"
+        :label="t('comp.settings.person.firstName')"
+        maxlength="100"
+      />
+      <CInput v-model="draftLastName" :label="t('comp.settings.person.lastName')" maxlength="100" />
+      <CSelect
+        v-model="draftLanguage"
+        :label="t('comp.settings.person.language')"
+        :options="languageOptions"
+      />
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showEditPerson = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          inline
+          :loading="savingPerson"
+          :disabled="!canSubmitPerson"
+          @click="handleSavePerson"
+        >
+          {{ t('common.save') }}
+        </CButton>
+      </div>
+    </CModal>
+  </template>
 </template>
 
 <style scoped>
-.cset {
-  display: flex;
-  flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-/* Header */
-.cset__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.cset__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.cset__page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-/* Whole-screen states (loading / error) */
-.cset__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 280px);
-  min-block-size: calc(100dvh - 280px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-/* Hero card */
-.cset__hero {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  margin: 0 var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-.cset__hero-logo {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.cset__hero-logo-img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-.cset__hero-logo-fallback {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: var(--tracking-wide);
-}
-.cset__hero-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-.cset__hero-name {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-/* Status badge */
-.cset__status-badge {
-  display: inline-block;
-  align-self: flex-start;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  text-transform: capitalize;
-}
-.cset__status--success {
-  background: var(--bg-surface);
-  color: var(--success);
-  border: thin solid var(--success);
-}
-.cset__status--warning {
-  background: var(--bg-surface);
-  color: var(--warning);
-  border: thin solid var(--warning);
-}
-.cset__status--neutral {
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  border: thin solid var(--border-default);
-}
-
-/* Status hint (hidden / archived explanation, under the status row) */
-.cset__status-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: calc(-1 * var(--space-2)) 0 var(--space-2);
-  padding: 0 var(--space-1);
-}
-
-/* Withdraw confirm modal */
-.cset__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.cset__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.cset__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
-/* Section */
+/* A section: its heading over its rows, on the frame's rhythm. */
 .cset__section {
-  padding: 0 var(--space-4);
-  margin-block-end: var(--space-4-lg);
+  display: grid;
+  gap: var(--space-2);
 }
 .cset__section-title {
-  font-size: var(--fs-xs);
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-block-end: var(--space-2);
-  padding: 0 var(--space-1);
-}
-.cset__section-title--row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.cset__edit-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.cset__edit-btn:hover {
-  color: var(--primary);
-  background: var(--bg-subtle);
-}
-
-/* Row -- shared between <div> and <a>/<button> variants */
-.cset__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-}
-.cset__row:last-child {
-  border-block-end: none;
-}
-a.cset__row,
-button.cset__row {
-  inline-size: 100%;
-  background: transparent;
-  border: 0;
-  border-block-end: thin solid var(--border-default);
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  text-decoration: none;
-}
-a.cset__row:last-child,
-button.cset__row:last-child {
-  border-block-end: none;
-}
-
-.cset__row--block {
-  flex-wrap: wrap;
-  align-items: stretch;
-  flex-direction: column;
-}
-.cset__row--clickable {
-  transition: background var(--dur-fast);
-}
-.cset__row--clickable:hover {
-  background: var(--bg-subtle);
-}
-.cset__row--disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.cset__row-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
   color: var(--text-primary);
 }
-.cset__row-label--accent {
-  color: var(--primary);
-  font-weight: 600;
-}
-.cset__row-label--muted {
-  color: var(--text-secondary);
-}
-.cset__row-label--danger {
-  color: var(--danger);
-  font-weight: 600;
-}
-.cset__row-value {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-  text-align: end;
-  word-break: break-word;
-}
-.cset__row-multiline {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
-  line-height: 1.5;
+
+/* The description keeps its line breaks. */
+.cset__multiline {
   white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* JSON view -- monospace, scrollable on overflow */
-.cset__json {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-subtle);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  overflow-x: auto;
-  white-space: pre;
-  line-height: 1.5;
-}
-
-/* Static support hint */
-.cset__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0 var(--space-4) var(--space-4);
-  padding: 0 var(--space-1);
-  font-style: italic;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.cset__hint {
-  max-inline-size: var(--maxw-prose);
+  overflow-wrap: anywhere;
 }
 </style>

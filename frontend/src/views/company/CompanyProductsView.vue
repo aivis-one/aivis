@@ -13,23 +13,30 @@
 //   read (100 per page) and shown together.
 //
 // READ-ONLY.
-//   Product editing happens by the staff. A tap on a card points the user at
-//   support.
+//   Product editing happens by the staff. A line above the cards points the user
+//   at support.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { Info, Package } from '@/components/ui/icons'
+import { CBadge, CButton, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
 import { listMyProducts } from '@/api/products'
 import type { OwnProductResponse } from '@/api/products'
 import { formatPrice } from '@/utils/format'
-import { useToast } from '@/composables/useToast'
 
 const PER_PAGE = 100
 
 const { t } = useI18n()
-const { showToast } = useToast()
+
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('comp.products.title'),
+  lead: () => t('comp.products.subtitle'),
+})
 
 const items = ref<OwnProductResponse[]>([])
 const loading = ref(false)
@@ -49,8 +56,11 @@ function packPrice(p: OwnProductResponse): string {
   return formatPrice(p.price_per_unit_cents * p.package_size)
 }
 
-function coverStyle(p: OwnProductResponse): Record<string, string> {
-  return p.cover_url ? { backgroundImage: `url("${encodeURI(p.cover_url)}")` } : {}
+/** A product's status as a badge: on sale is green, hidden amber, archived plain. */
+function statusVariant(status: string): 'success' | 'warning' | 'neutral' {
+  if (status === 'active') return 'success'
+  if (status === 'hidden') return 'warning'
+  return 'neutral'
 }
 
 /** Reads every page of the project's own products. Also the Retry action. */
@@ -77,173 +87,63 @@ async function loadAll(): Promise<void> {
 onMounted(() => {
   void loadAll()
 })
-
-/** Card tap: product editing is staff-only, so the tap points the user at support. */
-function onCardClick(): void {
-  showToast(t('comp.products.editViaSupport'), 'info')
-}
 </script>
 
 <template>
-  <div class="cprods">
-    <div class="cprods__header">
-      <h1 class="cprods__title">
-        {{ t('comp.products.title') }}
-      </h1>
-      <p class="cprods__subtitle">
-        {{ t('comp.products.subtitle') }}
-      </p>
-    </div>
+  <StaffListSkeleton v-if="loading && items.length === 0" />
 
-    <div v-if="loading && items.length === 0" class="cprods__center">
-      <CLoader :size="28" />
-    </div>
-
-    <div v-else-if="error !== null" class="cprods__center">
-      <CEmptyState :title="t('comp.products.errorTitle')" :description="error" />
-      <CButton variant="outline" size="sm" @click="loadAll">
+  <CEmptyState
+    v-else-if="error !== null"
+    tone="danger"
+    :title="t('comp.products.errorTitle')"
+    :description="error"
+  >
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="loadAll">
         {{ t('comp.products.errorRetry') }}
       </CButton>
+    </template>
+  </CEmptyState>
+
+  <CEmptyState
+    v-else-if="isEmpty"
+    :title="t('comp.products.empty.title')"
+    :description="t('comp.products.empty.desc')"
+  />
+
+  <template v-else>
+    <!-- Product editing is staff-only: the line that was a toast on a tap stands above the cards -->
+    <div class="ds-alert ds-alert--info" role="status">
+      <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ t('comp.products.editViaSupport') }}</p>
+      </div>
     </div>
 
-    <div v-else-if="isEmpty" class="cprods__center">
-      <CEmptyState
-        :title="t('comp.products.empty.title')"
-        :description="t('comp.products.empty.desc')"
-      />
-    </div>
-
-    <div v-else class="cprods__grid">
-      <button
-        v-for="item in items"
-        :key="item.id"
-        type="button"
-        class="cprods__card"
-        @click="onCardClick"
-      >
-        <div class="cprods__cover" :style="coverStyle(item)" />
-        <div class="cprods__body">
-          <div class="cprods__name">{{ item.name }}</div>
-          <div class="cprods__price">{{ packPrice(item) }}</div>
-          <span class="cprods__status" :class="`cprods__status--${item.status}`">
-            {{ statusLabel(item.status) }}
-          </span>
+    <!-- The project's products as the system's media cards (K07) -->
+    <div class="cprods__grid">
+      <article v-for="item in items" :key="item.id" class="ds-card ds-card--media">
+        <div class="ds-card__media" :class="{ 'ds-card__media--fallback': !item.cover_url }">
+          <img v-if="item.cover_url" :src="item.cover_url" alt="" />
+          <Package v-else />
         </div>
-      </button>
+        <div class="ds-card__content">
+          <h2 class="ds-card__title">{{ item.name }}</h2>
+          <p class="ds-card__body">{{ packPrice(item) }}</p>
+          <div>
+            <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
+          </div>
+        </div>
+      </article>
     </div>
-  </div>
+  </template>
 </template>
 
 <style scoped>
-.cprods {
-  padding: var(--space-4);
-}
-
-.cprods__header {
-  margin-block-end: var(--space-4);
-}
-.cprods__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.cprods__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.cprods__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-/* Grid mirrors MarketView -- 1 / 2 / 3 columns by viewport width. */
+/* The grid of cards: as many columns as hold the system's tile width. */
 .cprods__grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-max), 1fr));
   gap: var(--space-3);
-}
-/* B-3.0 2026-08-24: was 520px. Folded onto the declared component threshold 640, which is
-   what the two other product grids (.pps__grid, .pbc__grid) already use for two-up. */
-@media (min-width: 640px) {
-  .cprods__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-/* Three-up from the system's 1120 width, which
-   .pps__grid and .pbc__grid use for three-up too. */
-@media (min-width: 1120px) {
-  .cprods__grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.cprods__sentinel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  min-block-size: var(--size-xl);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.cprods__subtitle {
-  max-inline-size: var(--maxw-prose);
-}
-
-.cprods__card {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  text-align: start;
-  cursor: pointer;
-  overflow: hidden;
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-lg);
-}
-.cprods__cover {
-  aspect-ratio: 16 / 9;
-  background-color: var(--bg-subtle);
-  background-size: cover;
-  background-position: center;
-}
-.cprods__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-  padding: var(--space-3);
-}
-.cprods__name {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.cprods__price {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.cprods__status {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
 }
 </style>

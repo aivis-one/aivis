@@ -70,7 +70,7 @@ onMounted(() => {
 <template>
   <AuthShell>
     <div v-if="checking" class="ds-empty" aria-busy="true">
-      <CLoader :size="28" />
+      <CLoader />
     </div>
 
     <!-- The agreement document is not published: nothing can be accepted -->

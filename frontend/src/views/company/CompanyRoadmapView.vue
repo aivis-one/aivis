@@ -505,7 +505,7 @@ async function handleCoverRemove(): Promise<void> {
 <template>
   <!-- Loading -->
   <div v-if="loading" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
+    <CLoader />
   </div>
 
   <!-- Error -->
@@ -739,7 +739,7 @@ async function handleCoverRemove(): Promise<void> {
     :title="t('comp.roadmap.deleteTitle')"
     @close="deleteTarget = null"
   >
-    <p class="croad__modal-hint">
+    <p class="ds-dialog__text">
       {{ t('comp.roadmap.deleteConfirm') }}
     </p>
     <div class="ds-dialog__actions">
@@ -758,7 +758,7 @@ async function handleCoverRemove(): Promise<void> {
     :title="t('comp.roadmap.cover.removeTitle')"
     @close="coverRemoveTarget = null"
   >
-    <p class="croad__modal-hint">
+    <p class="ds-dialog__text">
       {{ t('comp.roadmap.cover.removeConfirm') }}
     </p>
     <div class="ds-dialog__actions">
@@ -777,12 +777,3 @@ async function handleCoverRemove(): Promise<void> {
     </div>
   </CModal>
 </template>
-
-<style scoped>
-/* The confirm text over the dialog's actions. */
-.croad__modal-hint {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-</style>

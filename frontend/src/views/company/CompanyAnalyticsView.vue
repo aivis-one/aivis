@@ -320,7 +320,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 <template>
   <!-- Initial loading -->
   <div v-if="initialLoading" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
+    <CLoader />
   </div>
 
   <!-- Error -->

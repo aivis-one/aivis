@@ -30,8 +30,9 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
 import { useAgentStore } from '@/stores/agent'
 import { formatDate, formatPrice } from '@/utils/format'
 
@@ -95,13 +96,7 @@ onMounted(() => {
 
 <template>
   <!-- Loading -->
-  <div
-    v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null"
-    class="ds-empty"
-    aria-busy="true"
-  >
-    <CLoader :size="24" />
-  </div>
+  <StaffListSkeleton v-if="agentStore.leaderboardLoading && agentStore.leaderboard === null" />
 
   <!-- Error -->
   <CEmptyState

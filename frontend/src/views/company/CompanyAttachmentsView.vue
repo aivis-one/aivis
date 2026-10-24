@@ -425,7 +425,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
 
 <template>
   <div v-if="loading" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
+    <CLoader />
   </div>
 
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.attachments.errorTitle')">
@@ -628,7 +628,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
     :title="t('comp.attachments.deleteTitle')"
     @close="deleteTarget = null"
   >
-    <p class="catt__modal-hint">
+    <p class="ds-dialog__text">
       {{ t('comp.attachments.deleteConfirm') }}
     </p>
     <div class="ds-dialog__actions">
@@ -656,12 +656,5 @@ function onRowAction(att: AttachmentResponse, value: string): void {
   line-height: var(--lh-snug);
   color: var(--text-primary);
   overflow-wrap: anywhere;
-}
-
-/* The confirm text over the dialog's actions. */
-.catt__modal-hint {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
 }
 </style>

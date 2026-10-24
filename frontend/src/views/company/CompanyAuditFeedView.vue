@@ -57,6 +57,7 @@ import { useI18n } from 'vue-i18n'
 import { History, ShieldAlert } from '@/components/ui/icons'
 import { CEmptyState, CLoader, CButton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { fetchOwnAuditFeed } from '@/api/company-audit'
 import { formatDateTime } from '@/utils/format'
@@ -188,9 +189,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial load spinner -->
-  <div v-if="loading && items.length === 0" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
-  </div>
+  <StaffListSkeleton v-if="loading && items.length === 0" />
 
   <!-- Error (first load failed) -->
   <CEmptyState
@@ -239,7 +238,7 @@ onMounted(() => {
 
     <!-- Infinite scroll sentinel -->
     <div ref="sentinelRef" class="caf__sentinel">
-      <CLoader v-if="loading" :size="20" />
+      <CLoader v-if="loading" :size="24" />
     </div>
 
     <div v-if="loadMoreErrored && !loading" class="ds-alert ds-alert--danger" role="alert">

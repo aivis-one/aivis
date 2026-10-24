@@ -50,20 +50,14 @@
 // is_published=true publishes the moment the request lands.
 // =============================================================================
 
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
-import { ArrowLeft, Eye, Pencil, Trash2, Newspaper, Plus, X, Check } from '@/components/ui/icons'
-import {
-  CLoader,
-  CButton,
-  CBadge,
-  CEmptyState,
-  CModal,
-  CInput,
-  CTextarea,
-  CCheckbox,
-} from '@/components/ui'
+import { Eye, Pencil, Trash2, Newspaper, Plus, X, Check } from '@/components/ui/icons'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CCheckbox } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchOwnPosts, createOwnPost, updateOwnPost, deleteOwnPost } from '@/api/company-posts'
@@ -71,7 +65,14 @@ import type { PostResponse, CreateCompanyPostRequest, UpdateCompanyPostRequest }
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
-const router = useRouter()
+const tagsId = useId()
+
+// The frame's header carries the title, the line under it and the way back to Publications.
+useScreenHeader({
+  title: () => t('comp.posts.title'),
+  lead: () => t('comp.posts.subtitle'),
+  back: '/company/publications',
+})
 
 // ---------------------------------------------------------------------------
 // Data source -- own fetch, own loading/error state (no parent context,
@@ -80,7 +81,8 @@ const router = useRouter()
 
 const items = ref<PostResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+// A page is an address (the Pager, K17): `?page=n`.
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const errored = ref(false)
@@ -123,13 +125,8 @@ function setStatusFilter(s: '' | 'published' | 'draft'): void {
   void reload()
 }
 
-function goToPrevPage(): void {
-  page.value--
-  void reload()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void reload()
 }
 
@@ -369,499 +366,242 @@ async function handleDelete(): Promise<void> {
     deleting.value = false
   }
 }
-
-function goBack(): void {
-  void router.push('/company/publications')
-}
 </script>
 
 <template>
-  <div class="cpost">
-    <!-- Inline page header, back link to Settings (where the entry point lives) -->
-    <div class="cpost__header">
-      <button type="button" class="cpost__back" @click="goBack">
-        <ArrowLeft :size="16" />
-        {{ t('comp.publications.title') }}
-      </button>
-      <h1 class="cpost__page-title">
-        {{ t('comp.posts.title') }}
-      </h1>
-      <p class="cpost__page-subtitle">
-        {{ t('comp.posts.subtitle') }}
-      </p>
+  <!-- Filters: is_published chips, the search, and the one primary action -->
+  <div class="ds-shell__toolbar">
+    <div class="ds-shell__filters">
+      <div class="ds-chip-row" role="group" :aria-label="t('comp.posts.title')">
+        <button
+          class="ds-chip"
+          :aria-pressed="!statusFilter"
+          type="button"
+          @click="setStatusFilter('')"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('comp.posts.filterAll') }}</span>
+        </button>
+        <button
+          v-for="s in ['published', 'draft'] as const"
+          :key="s"
+          class="ds-chip"
+          :aria-pressed="statusFilter === s"
+          type="button"
+          @click="setStatusFilter(s)"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t(`comp.posts.${s}`) }}</span>
+        </button>
+      </div>
+      <!-- A4: a placeholder is not an accessible name -- it is a hint, and it
+           disappears the moment the user types. The visible design is a bare
+           search box, so the name goes on the control rather than into a label. -->
+      <div class="ds-field">
+        <input
+          v-model="search"
+          class="ds-input"
+          type="search"
+          :aria-label="t('comp.posts.searchPlaceholder')"
+          :placeholder="t('comp.posts.searchPlaceholder')"
+        />
+      </div>
     </div>
-
-    <!-- Filters: is_published chips -->
-    <div class="cpost__filters">
-      <button
-        class="ds-chip"
-        :aria-pressed="!statusFilter"
-        @click="setStatusFilter('')"
-        type="button"
-      >
-        <Check class="ds-chip__check" size="sm" />
-        <span>{{ t('comp.posts.filterAll') }}</span>
-      </button>
-      <button
-        v-for="s in ['published', 'draft'] as const"
-        :key="s"
-        class="ds-chip"
-        :aria-pressed="statusFilter === s"
-        @click="setStatusFilter(s)"
-        type="button"
-      >
-        <Check class="ds-chip__check" size="sm" />
-        <span>{{ t(`comp.posts.${s}`) }}</span>
-      </button>
-    </div>
-
-    <!-- Search -->
-    <!-- A4: a placeholder is not an accessible name -- it is a hint, and it
-         disappears the moment the user types. The visible design is a bare
-         search box, so the name goes on the control rather than into a label. -->
-    <div class="cpost__search">
-      <CInput
-        v-model="search"
-        :aria-label="t('comp.posts.searchPlaceholder')"
-        :placeholder="t('comp.posts.searchPlaceholder')"
-      />
-    </div>
-
-    <div class="cpost__toolbar">
-      <CButton variant="primary" size="sm" @click="openCreate">
-        <Plus :size="16" />
+    <div class="ds-shell__primary">
+      <CButton variant="primary" size="sm" inline @click="openCreate">
+        <Plus size="sm" />
         {{ t('comp.posts.addCta') }}
       </CButton>
     </div>
+  </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="cpost__center">
-      <CLoader :size="28" />
-    </div>
+  <!-- Loading -->
+  <StaffListSkeleton v-if="loading" />
 
-    <!-- Error -->
-    <div v-else-if="errored" class="cpost__center">
-      <CEmptyState :title="t('comp.posts.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="reload">
+  <!-- Error -->
+  <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.posts.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="reload">
         {{ t('comp.posts.errorRetry') }}
       </CButton>
+    </template>
+  </CEmptyState>
+
+  <!-- Loaded -->
+  <template v-else>
+    <CEmptyState v-if="!items.length" :title="t('comp.posts.empty')">
+      <template #icon>
+        <Newspaper />
+      </template>
+    </CEmptyState>
+
+    <ul v-else class="ds-rows">
+      <li v-for="post in items" :key="post.id" class="ds-row">
+        <span class="ds-row__lead"><Newspaper size="sm" /></span>
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ post.title }}</span>
+          <span class="ds-row__meta">
+            {{ t('comp.posts.createdAt') }}: {{ formatDateTime(post.created_at) }}
+            <template v-if="post.updated_at">
+              &bull; {{ t('comp.posts.updatedAt') }}: {{ formatDateTime(post.updated_at) }}
+            </template>
+          </span>
+        </span>
+        <span class="ds-row__trail">
+          <CBadge
+            :variant="post.is_published ? 'success' : 'neutral'"
+            :text="t(`comp.posts.${post.is_published ? 'published' : 'draft'}`)"
+          />
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="`${t('common.edit')}: ${post.title}`"
+            @click="openEdit(post)"
+          >
+            <Pencil size="sm" />
+          </button>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="`${t('common.delete')}: ${post.title}`"
+            @click="openDelete(post)"
+          >
+            <Trash2 size="sm" />
+          </button>
+        </span>
+      </li>
+    </ul>
+
+    <!-- Pagination (K17: a page is an address, ?page=n) -->
+    <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
+  </template>
+
+  <!-- Create / edit modal -->
+  <CModal
+    :open="showForm"
+    :title="isEditing ? t('comp.posts.editTitle') : t('comp.posts.createTitle')"
+    @close="closeForm"
+  >
+    <CInput
+      v-model="draftTitle"
+      :label="t('comp.posts.fieldTitle')"
+      :placeholder="t('comp.posts.fieldTitle')"
+      maxlength="500"
+    />
+
+    <CTextarea
+      v-model="draftBody"
+      :label="t('comp.posts.fieldBody')"
+      :placeholder="t('comp.posts.fieldBody')"
+      :rows="10"
+      maxlength="50000"
+    />
+
+    <CInput
+      v-model="draftCoverUrl"
+      :label="t('comp.posts.fieldCoverUrl')"
+      :placeholder="t('comp.posts.fieldCoverUrlPlaceholder')"
+      maxlength="2000"
+      :error="!coverUrlValid ? t('comp.posts.coverUrlError') : ''"
+    />
+
+    <!-- Tag chip-add -- interaction copied verbatim from PostListEditor.vue -->
+    <div class="ds-field c-field">
+      <label class="ds-field__label" :for="tagsId">{{ t('comp.posts.fieldTags') }}</label>
+      <div v-if="draftTags.length > 0" class="ds-chip-row">
+        <span v-for="tag in draftTags" :key="tag" class="ds-chip ds-chip--removable">
+          <span>{{ tag }}</span>
+          <button
+            type="button"
+            class="ds-chip__remove"
+            :aria-label="`${t('common.clear')} ${tag}`"
+            @click="removeTag(tag)"
+          >
+            <X size="sm" />
+          </button>
+        </span>
+      </div>
+      <input
+        :id="tagsId"
+        v-model="tagDraft"
+        class="ds-input"
+        type="text"
+        :placeholder="t('comp.posts.tagPlaceholder')"
+        @keydown="onTagKeydown"
+      />
     </div>
 
-    <!-- Loaded -->
-    <template v-else>
-      <CEmptyState v-if="!items.length" :title="t('comp.posts.empty')">
-        <template #icon>
-          <Newspaper :size="40" />
-        </template>
-      </CEmptyState>
+    <CCheckbox v-model="draftIsPublished" :label="t('comp.posts.published')" />
 
-      <div v-else class="post-list">
-        <div v-for="post in items" :key="post.id" class="post-item">
-          <div class="post-item__info">
-            <div class="post-item__top">
-              <CBadge
-                :variant="post.is_published ? 'success' : 'neutral'"
-                :text="t(`comp.posts.${post.is_published ? 'published' : 'draft'}`)"
-              />
-            </div>
-            <div class="post-item__title">
-              {{ post.title }}
-            </div>
-            <div class="post-item__meta">
-              <span>{{ t('comp.posts.createdAt') }}: {{ formatDateTime(post.created_at) }}</span>
-              <span v-if="post.updated_at">
-                &bull; {{ t('comp.posts.updatedAt') }}: {{ formatDateTime(post.updated_at) }}
-              </span>
-            </div>
-          </div>
-          <div class="post-item__actions">
-            <button
-              :aria-label="t('common.edit')"
-              class="post-item__action"
-              @click="openEdit(post)"
-            >
-              <Pencil :size="16" />
-            </button>
-            <button
-              :aria-label="t('common.delete')"
-              class="post-item__action"
-              @click="openDelete(post)"
-            >
-              <Trash2 :size="16" />
-            </button>
-          </div>
-        </div>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="closeForm">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton variant="outline" size="sm" inline @click="showPreview = true">
+        <Eye size="sm" />
+        {{ t('comp.posts.preview') }}
+      </CButton>
+      <CButton
+        variant="primary"
+        size="sm"
+        inline
+        :loading="saving"
+        :disabled="!canSubmit"
+        @click="handleSave"
+      >
+        {{ t('common.save') }}
+      </CButton>
+    </div>
+  </CModal>
+
+  <!-- Preview: the post as a buyer will see it, as the system's media card -->
+  <CModal :open="showPreview" :title="t('comp.posts.preview')" @close="showPreview = false">
+    <p class="ds-dialog__text">
+      {{ t('comp.posts.previewNote') }}
+    </p>
+    <article class="ds-card ds-card--media">
+      <div v-if="draftCoverUrl.trim() && coverUrlValid" class="ds-card__media" data-size="sm">
+        <img :src="draftCoverUrl.trim()" :alt="draftTitle" />
       </div>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="cpost__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage">
-          &larr;
-        </CButton>
-        <span class="cpost__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage">
-          &rarr;
-        </CButton>
-      </div>
-    </template>
-
-    <!-- Create / edit modal -->
-    <CModal :open="showForm" @close="closeForm">
-      <h3 class="cpost__modal-title">
-        {{ isEditing ? t('comp.posts.editTitle') : t('comp.posts.createTitle') }}
-      </h3>
-
-      <CInput
-        v-model="draftTitle"
-        :label="t('comp.posts.fieldTitle')"
-        :placeholder="t('comp.posts.fieldTitle')"
-        maxlength="500"
-      />
-
-      <CTextarea
-        v-model="draftBody"
-        :label="t('comp.posts.fieldBody')"
-        :placeholder="t('comp.posts.fieldBody')"
-        :rows="10"
-        maxlength="50000"
-      />
-
-      <CInput
-        v-model="draftCoverUrl"
-        :label="t('comp.posts.fieldCoverUrl')"
-        :placeholder="t('comp.posts.fieldCoverUrlPlaceholder')"
-        maxlength="2000"
-        :error="!coverUrlValid ? t('comp.posts.coverUrlError') : ''"
-      />
-
-      <!-- Tag chip-add -- interaction copied verbatim from PostListEditor.vue -->
-      <div class="cpost__tags-group">
-        <label class="cpost__field-label">{{ t('comp.posts.fieldTags') }}</label>
-        <div class="cpost__chips">
-          <span v-for="tag in draftTags" :key="tag" class="cpost__chip">
-            {{ tag }}
-            <button
-              :aria-label="t('common.close')"
-              type="button"
-              class="cpost__chip-x"
-              @click="removeTag(tag)"
-            >
-              <X :size="16" />
-            </button>
+      <div class="ds-card__content">
+        <h3 class="ds-card__title">{{ draftTitle }}</h3>
+        <time class="ds-card__label">{{ previewDate }}</time>
+        <p class="ds-card__body cpost__preview-body">{{ draftBody }}</p>
+        <div v-if="draftTags.length > 0" class="ds-chip-row">
+          <span v-for="tag in draftTags" :key="tag" class="ds-chip">
+            <span>{{ tag }}</span>
           </span>
         </div>
-        <CInput
-          v-model="tagDraft"
-          :aria-label="t('comp.posts.tagPlaceholder')"
-          :placeholder="t('comp.posts.tagPlaceholder')"
-          @keydown="onTagKeydown"
-        />
       </div>
+    </article>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="showPreview = false">
+        {{ t('common.close') }}
+      </CButton>
+    </div>
+  </CModal>
 
-      <CCheckbox v-model="draftIsPublished" :label="t('comp.posts.published')" />
-
-      <div class="cpost__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeForm">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton variant="outline" size="sm" @click="showPreview = true">
-          <Eye :size="16" />
-          {{ t('comp.posts.preview') }}
-        </CButton>
-        <CButton
-          variant="primary"
-          size="sm"
-          :loading="saving"
-          :disabled="!canSubmit"
-          @click="handleSave"
-        >
-          {{ t('common.save') }}
-        </CButton>
-      </div>
-    </CModal>
-
-    <!-- Preview: the post as a buyer will see it -->
-    <CModal :open="showPreview" @close="showPreview = false">
-      <p class="cpost__preview-note">
-        {{ t('comp.posts.previewNote') }}
-      </p>
-      <article class="cpost__preview">
-        <img
-          v-if="draftCoverUrl.trim() && coverUrlValid"
-          :src="draftCoverUrl.trim()"
-          :alt="draftTitle"
-          class="cpost__preview-cover"
-        />
-        <h3 class="cpost__preview-title">
-          {{ draftTitle }}
-        </h3>
-        <time class="cpost__preview-date">{{ previewDate }}</time>
-        <p class="cpost__preview-body">
-          {{ draftBody }}
-        </p>
-        <div v-if="draftTags.length > 0" class="cpost__chips">
-          <span v-for="tag in draftTags" :key="tag" class="cpost__chip">{{ tag }}</span>
-        </div>
-      </article>
-      <div class="cpost__modal-actions">
-        <CButton variant="outline" size="sm" @click="showPreview = false">
-          {{ t('common.close') }}
-        </CButton>
-      </div>
-    </CModal>
-
-    <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="cpost__modal-title">
-        {{ t('comp.posts.deleteTitle') }}
-      </h3>
-      <p class="cpost__modal-hint">
-        {{ t('comp.posts.deleteConfirm') }}
-      </p>
-      <div class="cpost__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
-          {{ t('common.delete') }}
-        </CButton>
-      </div>
-    </CModal>
-  </div>
+  <!-- Delete confirm -->
+  <CModal :open="!!deleteTarget" :title="t('comp.posts.deleteTitle')" @close="deleteTarget = null">
+    <p class="ds-dialog__text">
+      {{ t('comp.posts.deleteConfirm') }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
+        {{ t('common.delete') }}
+      </CButton>
+    </div>
+  </CModal>
 </template>
 
 <style scoped>
-.cpost {
-  padding-block-end: var(--space-5);
-}
-
-.cpost__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.cpost__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  padding: 0;
-  margin-block-end: var(--space-3);
-  cursor: pointer;
-}
-.cpost__back:hover {
-  color: var(--text-primary);
-}
-.cpost__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.cpost__page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-.cpost__filters {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding: 0 var(--space-4) var(--space-1);
-}
-
-.cpost__search {
-  padding: var(--space-3) var(--space-4) 0;
-}
-
-.cpost__toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 var(--space-4);
-  margin-block-end: var(--space-4);
-}
-
-.cpost__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 280px);
-  min-block-size: calc(100dvh - 280px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-/* -- List -- */
-.post-list {
-  display: flex;
-  flex-direction: column;
-  padding: 0 var(--space-4);
-}
-.post-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.post-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.post-item__top {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-block-end: var(--space-2);
-}
-.post-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.post-item__meta {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.post-item__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 0 0 auto;
-}
-.post-item__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.post-item__action:hover {
-  color: var(--text-primary);
-  background: var(--bg-page);
-}
-
-.cpost__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.cpost__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-/* -- Modal -- */
-.cpost__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.cpost__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.cpost__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
-}
-
-.cpost__field-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-
-.cpost__tags-group {
-  margin-block-end: var(--space-4);
-}
-.cpost__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-block-end: var(--space-2);
-}
-.cpost__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-}
-.cpost__chip-x {
-  display: flex;
-  align-items: center;
-  border: none;
-  background: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 0;
-}
-.cpost__chip-x:hover {
-  color: var(--danger);
-}
-.cpost__preview-note {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-3);
-}
-.cpost__preview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-.cpost__preview-cover {
-  inline-size: 100%;
-  max-block-size: var(--center-md);
-  object-fit: cover;
-  border-radius: var(--radius-md);
-}
-.cpost__preview-title {
-  margin: 0;
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-.cpost__preview-date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
+/* The post's text keeps its line breaks, as the buyer's page does. */
 .cpost__preview-body {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

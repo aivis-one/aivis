@@ -355,7 +355,7 @@ onMounted(() => {
 <template>
   <!-- Initial loading -->
   <div v-if="initialLoading" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
+    <CLoader />
   </div>
 
   <!-- Error -->
@@ -456,7 +456,7 @@ onMounted(() => {
       </ul>
 
       <div v-if="withdrawals.length > 0" ref="sentinelRef" class="cbal__sentinel">
-        <CLoader v-if="withdrawalsLoading" :size="20" />
+        <CLoader v-if="withdrawalsLoading" :size="24" />
       </div>
     </section>
 

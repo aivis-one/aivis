@@ -97,7 +97,7 @@ onMounted(() => {
 <template>
   <AuthShell>
     <div v-if="checking" class="ds-empty" aria-busy="true">
-      <CLoader :size="28" />
+      <CLoader />
     </div>
 
     <!-- The state could not be read -->

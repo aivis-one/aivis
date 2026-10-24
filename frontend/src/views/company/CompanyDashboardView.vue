@@ -136,7 +136,7 @@ onMounted(() => {
 
   <!-- The summary is loading -->
   <div v-if="summaryLoading" class="ds-empty" aria-busy="true">
-    <CLoader :size="28" />
+    <CLoader />
   </div>
 
   <!-- The summary failed: only its blocks give way, with a retry in their place -->
