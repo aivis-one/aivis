@@ -10,28 +10,36 @@
 // THE SERVER HAS NO READ-BY-ID FOR AN EVENT. The screen finds the event in
 // the upcoming list first and, failing that, in the past list; the lists are
 // small and public. An id that is in neither shows the "not found" state.
+//
+// The frame's header holds the title and the back control: it returns to where
+// the person came from, and a deep link (no history) goes to the shell's home.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, ExternalLink, MapPin } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { getPublicEvent } from '@/api/events'
 import { ApiResponseError } from '@/api/client'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDateTime } from '@/utils/format'
 import type { EventResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
 const route = useRoute()
-const router = useRouter()
 
 const event = ref<EventResponse | null>(null)
 const loading = ref(true)
 const errored = ref(false)
 
 const eventId = computed(() => route.params.id as string)
+
+// Back: one step back when there is a page to return to, else the shell's home.
+useScreenHeader({
+  title: () => event.value?.title,
+  back: () => (window.history.state?.back ? true : { name: 'investor-dashboard' }),
+})
 
 async function load(): Promise<void> {
   loading.value = true
@@ -54,58 +62,51 @@ const whenLabel = computed<string>(() => {
   return e.ends_at ? `${start} — ${formatDateTime(e.ends_at, locale.value)}` : start
 })
 
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(router.push({ name: 'investor-dashboard' }), '[EventDetailView] back fallback')
-}
-
 onMounted(load)
 </script>
 
 <template>
   <div class="evd">
-    <div class="evd__back">
-      <CBackLink :label="t('common.back')" @click="goBack" />
-    </div>
+    <CLoader v-if="loading" />
 
-    <div v-if="loading" class="evd__center">
-      <CLoader :size="28" />
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.events.errorTitle')">
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
-    <div v-else-if="errored" class="evd__center">
-      <CEmptyState :title="t('inv.events.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="load">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="!event" :title="t('inv.events.notFound')" />
 
-    <div v-else-if="!event" class="evd__center">
-      <CEmptyState :title="t('inv.events.notFound')" />
-    </div>
-
-    <article v-else class="evd__article">
-      <img v-if="event.cover_url" :src="event.cover_url" :alt="event.title" class="evd__cover" />
-      <h1 class="evd__title">
-        {{ event.title }}
-      </h1>
-      <p class="evd__meta">
-        <CalendarDays :size="16" />
-        <span>{{ whenLabel }}</span>
-      </p>
-      <p v-if="event.location" class="evd__meta">
-        <MapPin :size="16" />
-        <span>{{ event.location }}</span>
-      </p>
-      <p v-if="event.description" class="evd__body">
-        {{ event.description }}
-      </p>
-      <a v-if="event.url" :href="event.url" target="_blank" rel="noopener" class="evd__link">
-        <ExternalLink :size="16" />
-        {{ t('inv.events.eventCard.openUrl') }}
-      </a>
+    <article v-else class="ds-card ds-card--media evd__article">
+      <div v-if="event.cover_url" class="ds-card__media" data-size="lg">
+        <img :src="event.cover_url" :alt="event.title" />
+      </div>
+      <div class="ds-card__content">
+        <p class="evd__meta">
+          <CalendarDays size="sm" />
+          <span>{{ whenLabel }}</span>
+        </p>
+        <p v-if="event.location" class="evd__meta">
+          <MapPin size="sm" />
+          <span>{{ event.location }}</span>
+        </p>
+        <p v-if="event.description" class="ds-card__body evd__body">
+          {{ event.description }}
+        </p>
+        <div v-if="event.url" class="evd__actions">
+          <a
+            :href="event.url"
+            target="_blank"
+            rel="noopener"
+            class="ds-button ds-button--secondary"
+          >
+            <ExternalLink size="sm" />
+            <span>{{ t('inv.events.eventCard.openUrl') }}</span>
+          </a>
+        </div>
+      </div>
     </article>
   </div>
 </template>
@@ -114,44 +115,10 @@ onMounted(load)
 .evd {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-.evd__back {
-  padding: var(--space-3) var(--space-4) 0;
-}
-
-.evd__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: calc(100vh - 160px);
-  min-block-size: calc(100dvh - 160px);
-  padding: var(--space-5);
 }
 
 .evd__article {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.evd__cover {
   inline-size: 100%;
-  max-block-size: 240px;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-}
-
-.evd__title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
 }
 
 .evd__meta {
@@ -165,24 +132,19 @@ onMounted(load)
 
 .evd__body {
   margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.6;
   color: var(--text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.evd__link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--primary);
-  text-decoration: none;
+.evd__actions {
+  display: flex;
 }
 
-.evd__link:hover {
-  text-decoration: underline;
+/* On a wide screen the text keeps a reading measure instead of the full row. */
+@media (min-width: 880px) {
+  .evd__article {
+    max-inline-size: var(--maxw-prose);
+  }
 }
 </style>

@@ -12,21 +12,28 @@
 // start; the two are merged into one list and each row opens its own screen
 // (the post, or the event). Posts page in with "Show more"; events are read in
 // one go (the upcoming ones and the latest past ones), because they are few.
+//
+// The list is the system's Row list (K23): each row is one link on its title.
+// The frame's header holds the title and the back control.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, FileText } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { listPosts } from '@/api/posts'
 import { listPublicEvents, listUpcomingEvents } from '@/api/events'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate } from '@/utils/format'
 import type { EventResponse, PostResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
-const router = useRouter()
+
+// Back: one step back when there is a page to return to, else the shell's home.
+useScreenHeader({
+  title: () => t('inv.news.title'),
+  back: () => (window.history.state?.back ? true : { name: 'investor-dashboard' }),
+})
 
 const POSTS_PER_PAGE = 20
 const UPCOMING_EVENTS = 50
@@ -37,7 +44,6 @@ interface FeedRow {
   id: string
   title: string
   at: string
-  cover: string | null
 }
 
 const posts = ref<PostResponse[]>([])
@@ -54,14 +60,12 @@ const rows = computed<FeedRow[]>(() => {
     id: p.id,
     title: p.title,
     at: p.published_at ?? p.created_at,
-    cover: p.cover_url ?? null,
   }))
   const fromEvents: FeedRow[] = events.value.map((e) => ({
     kind: 'event',
     id: e.id,
     title: e.title,
     at: e.starts_at,
-    cover: e.cover_url ?? null,
   }))
   return [...fromPosts, ...fromEvents].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
 })
@@ -104,23 +108,10 @@ async function showMore(): Promise<void> {
   }
 }
 
-function openRow(row: FeedRow): void {
-  void safeNavigate(
-    router.push(
-      row.kind === 'post'
-        ? { name: 'investor-post', params: { id: row.id } }
-        : { name: 'investor-event', params: { id: row.id } },
-    ),
-    '[InvestorNewsView] to row',
-  )
-}
-
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(router.push({ name: 'investor-dashboard' }), '[InvestorNewsView] back fallback')
+function rowRoute(row: FeedRow) {
+  return row.kind === 'post'
+    ? { name: 'investor-post', params: { id: row.id } }
+    : { name: 'investor-event', params: { id: row.id } }
 }
 
 onMounted(load)
@@ -128,47 +119,50 @@ onMounted(load)
 
 <template>
   <div class="news">
-    <div class="news__back">
-      <CBackLink :label="t('common.back')" @click="goBack" />
-    </div>
-    <h1 class="news__title">
-      {{ t('inv.news.title') }}
-    </h1>
+    <!-- Loading: the placeholder rows of the list that will arrive (K19) -->
+    <section v-if="loading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" />
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
+    </section>
 
-    <div v-if="loading" class="news__center">
-      <CLoader :size="28" />
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.news.errorTitle')">
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
-    <div v-else-if="errored" class="news__center">
-      <CEmptyState :title="t('inv.news.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="load">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
-
-    <div v-else-if="rows.length === 0" class="news__center">
-      <CEmptyState :title="t('inv.news.empty')" />
-    </div>
+    <CEmptyState v-else-if="rows.length === 0" :title="t('inv.news.empty')" />
 
     <template v-else>
-      <ul class="news__list">
-        <li v-for="row in rows" :key="`${row.kind}-${row.id}`">
-          <button type="button" class="news__row" @click="openRow(row)">
-            <img v-if="row.cover" :src="row.cover" :alt="row.title" class="news__cover" loading="lazy" />
-            <span v-else class="news__icon">
-              <CalendarDays v-if="row.kind === 'event'" :size="20" />
-              <FileText v-else :size="20" />
-            </span>
-            <span class="news__body">
-              <span class="news__kind">{{ t(`inv.news.kind.${row.kind}`) }}</span>
-              <span class="news__row-title">{{ row.title }}</span>
-              <span class="news__date">{{ formatDate(row.at, locale) }}</span>
-            </span>
-          </button>
+      <ul class="ds-rows">
+        <li v-for="row in rows" :key="`${row.kind}-${row.id}`" class="ds-row">
+          <span class="ds-row__lead">
+            <CalendarDays v-if="row.kind === 'event'" size="sm" />
+            <FileText v-else size="sm" />
+          </span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="rowRoute(row)">
+              <span class="ds-row__title">{{ row.title }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">{{ formatDate(row.at, locale) }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-badge">{{ t(`inv.news.kind.${row.kind}`) }}</span>
+          </span>
         </li>
       </ul>
       <div v-if="hasMorePosts" class="news__more">
-        <CButton variant="outline" size="sm" :loading="loadingMore" @click="showMore">
+        <CButton variant="outline" size="sm" inline :loading="loadingMore" @click="showMore">
           {{ t('inv.news.showMore') }}
         </CButton>
       </div>
@@ -181,104 +175,6 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-5);
-}
-
-.news__back {
-  padding: 0;
-}
-
-.news__title {
-  margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.news__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-sm);
-  padding: var(--space-4) var(--space-2);
-}
-
-.news__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.news__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  padding: var(--space-3);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page);
-  color: inherit;
-  font-family: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: border-color var(--dur-fast);
-}
-
-.news__row:hover {
-  border-color: var(--primary);
-}
-
-.news__cover {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.news__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-
-.news__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-  flex: 1;
-}
-
-.news__kind {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-}
-
-.news__row-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-
-.news__date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
 }
 
 .news__more {

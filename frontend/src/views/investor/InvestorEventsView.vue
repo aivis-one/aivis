@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check } from '@/components/ui/icons'
+import { AlertTriangle, Check } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- InvestorEventsView (iter 2.7b C, R1 §6.3)
 // =============================================================================
@@ -28,21 +28,23 @@ import { Check } from '@/components/ui/icons'
 //   the new filter's list. Same idea as the store's epoch guard, kept
 //   in a closure here.
 //
-// STATES (mirrors CompanyListView): initial-loading spinner /
+// STATES (mirrors CompanyListView): initial-loading skeleton /
 //   first-page error + retry / empty / list + sentinel + load-more
-//   error banner. No <CHeader> -- the shell renders it (FP-19); the
-//   page title is an inline <h1>.
+//   error banner. The title is the frame's header (K25).
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import EventCard from '@/components/shared/EventCard.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { listPublicEvents } from '@/api/events'
 import type { EventResponse } from '@/api/types'
 
 const { t } = useI18n()
+
+useScreenHeader({ title: () => t('inv.events.title') })
 
 const PER_PAGE = 20
 
@@ -148,14 +150,8 @@ onMounted(() => {
 
 <template>
   <div class="iev">
-    <header class="iev__header">
-      <h1 class="iev__title">
-        {{ t('inv.events.title') }}
-      </h1>
-    </header>
-
-    <!-- Filter chips: upcoming / past -->
-    <div class="iev__filters">
+    <!-- Filter chips: upcoming / past (K13) -->
+    <div class="ds-chip-row" role="group" :aria-label="t('inv.events.title')">
       <button
         type="button"
         class="ds-chip"
@@ -176,23 +172,25 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- Initial loading -->
-    <div v-if="initialLoading" class="iev__center">
-      <CLoader :size="32" />
-    </div>
+    <!-- Initial loading: the placeholder cards of the list that will arrive (K19) -->
+    <section v-if="initialLoading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="iev__list" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton ds-skeleton--block" />
+      </div>
+    </section>
 
     <!-- First-page error + retry -->
-    <div v-else-if="errored" class="iev__center">
-      <CEmptyState :title="t('inv.events.errorTitle')" />
-      <CButton variant="primary" @click="retryFirstPage">
-        {{ t('inv.events.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.events.errorTitle')">
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="retryFirstPage">
+          {{ t('inv.events.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty (minimal fallback per R1 §6.3) -->
-    <div v-else-if="isEmpty" class="iev__center">
-      <CEmptyState :title="t('inv.events.empty')" />
-    </div>
+    <CEmptyState v-else-if="isEmpty" :title="t('inv.events.empty')" />
 
     <!-- List + sentinel + load-more error banner -->
     <template v-else>
@@ -202,11 +200,16 @@ onMounted(() => {
 
       <div ref="sentinelRef" class="iev__sentinel" />
 
-      <div v-if="loadMoreErrored" class="iev__retry">
-        <span class="iev__retry-text">{{ t('inv.events.errorTitle') }}</span>
-        <CButton variant="outline" size="sm" @click="retryLoadMore">
-          {{ t('inv.events.errorRetry') }}
-        </CButton>
+      <div v-if="loadMoreErrored" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('inv.events.errorTitle') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+              {{ t('inv.events.errorRetry') }}
+            </CButton>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -217,52 +220,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4);
-}
-.iev__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.iev__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.iev__filters {
-  display: flex;
-  gap: var(--space-2);
-}
-.iev__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-md);
-  padding: var(--space-5) var(--space-2);
 }
 .iev__list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
+/* The sentinel the infinite scroll watches: the thinnest box the system names. */
 .iev__sentinel {
-  block-size: 1px;
-}
-.iev__retry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-}
-.iev__retry-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  block-size: var(--border-input-width);
 }
 </style>

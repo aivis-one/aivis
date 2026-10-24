@@ -3,7 +3,7 @@
 // AIVIS.ONE Frontend -- NotificationsInboxView (Phase 6, the bell)
 // =============================================================================
 //
-// The screen CHeader's bell opens. ONE file, reused verbatim across
+// The screen the header's bell opens. ONE file, reused verbatim across
 // all four authenticated shells (investor / agent / company / staff)
 // via router/index.ts -- the same "shared component lives physically
 // under views/investor/, other shells' routes import it directly"
@@ -12,11 +12,9 @@
 // this codebase and this screen does not start one; see the router
 // comments at each `*-notifications` route for the four call sites.
 //
-// SHELL PATTERN: no CHeader here -- every shell that reaches this
-// route already renders one (that IS how this screen was reached).
-// CBackLink + inline <h1>, same paradigm as InvestorSupportView (a
-// detail screen reached from More AND from the bell, not a bottom
-// tab).
+// FRAME: the title, the line under it, the back control and the "mark all
+// read" action are the frame's header (K25, `useScreenHeader`); the list is the
+// system's Row list (K23).
 //
 // CURSOR PAGINATION, NOT PAGE NUMBERS. comms' inbox contract is
 // cursor/next_cursor (keyset on sent_at DESC, id DESC -- see
@@ -31,17 +29,18 @@
 // own event. None of the comms-side event producers populates `action_data`
 // today (see notifications/schemas.py's own note), so the screen is chosen
 // from the notification's type (utils/notificationTarget.ts); an `action_data`
-// that names a post or an event wins when comms sends one.
+// that names a post or an event wins when comms sends one. A row whose type has
+// no screen of its own is a plain row (it has no link); "mark all read" clears it.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Bell, CheckCheck } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { AlertTriangle, Bell, CheckCheck } from '@/components/ui/icons'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useInfiniteScroll } from '@/composables/usePagination'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { notificationTarget } from '@/utils/notificationTarget'
@@ -49,7 +48,6 @@ import { formatDateTime } from '@/utils/format'
 import type { NotificationItemOut } from '@/api/generated'
 
 const { t, locale } = useI18n()
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const store = useNotificationsStore()
@@ -70,40 +68,47 @@ function isUnread(item: NotificationItemOut): boolean {
   return item.read_at === null
 }
 
-// A tap marks the row read and opens the screen of its own event; a row whose
-// type has no screen of its own is only marked read.
-function handleRowTap(item: NotificationItemOut): void {
-  if (isUnread(item)) {
-    void store.markRead(item.id)
-  }
-  const target = notificationTarget({
+// The screen of the row's own event, or null for a type with no screen of its own.
+function targetOf(item: NotificationItemOut) {
+  return notificationTarget({
     type: item.type,
     actionData: item.action_data,
     kycStatus: authStore.kycStatus,
     shell: route.meta.shell as string | undefined,
   })
-  if (target) {
-    void safeNavigate(router.push(target), '[NotificationsInboxView] to event screen')
+}
+
+// A tap marks the row read; the link then opens the screen of its own event.
+function markRead(item: NotificationItemOut): void {
+  if (isUnread(item)) {
+    void store.markRead(item.id)
   }
 }
 
 function handleMarkAll(): void {
+  if (store.markingAll) return
   void store.markAllRead()
 }
 
-function goBack(): void {
-  // Same history-aware pattern as InvestorSupportView / InstallmentView:
-  // prefer router.back() so the screen the bell was opened from
-  // restores its scroll for free; a deep-linked entry falls back to
-  // the current shell's dashboard-ish landing via router history's
-  // absence of a `back` state, so this just goes to '/' and lets
-  // root.beforeEnter resolve the role home.
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(router.push('/'), '[NotificationsInboxView] back')
-}
+// Back: one step back (the screen the bell was opened from restores its scroll
+// for free); a deep-linked entry goes to '/' and lets root.beforeEnter resolve
+// the role home.
+useScreenHeader({
+  title: () => t('inv.notifications.title'),
+  lead: () => t('inv.notifications.subtitle'),
+  back: () => (window.history.state?.back ? true : '/'),
+  actions: () =>
+    store.unreadCount > 0
+      ? [
+          {
+            id: 'mark-all-read',
+            label: t('inv.notifications.markAllRead'),
+            icon: CheckCheck,
+            onClick: handleMarkAll,
+          },
+        ]
+      : [],
+})
 
 useInfiniteScroll(sentinelRef, hasMore, () => store.loadMore(), loadMoreError)
 
@@ -114,86 +119,65 @@ onMounted(() => {
 
 <template>
   <div class="nib">
-    <div class="nib__back-row">
-      <CBackLink :label="t('common.back')" @click="goBack" />
-    </div>
-
-    <header class="nib__header">
-      <div class="nib__header-text">
-        <h1 class="nib__title">
-          {{ t('inv.notifications.title') }}
-        </h1>
-        <p class="nib__subtitle">
-          {{ t('inv.notifications.subtitle') }}
-        </p>
+    <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
+    <section v-if="store.itemsLoading && store.items.length === 0" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" />
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
       </div>
-      <CButton
-        v-if="store.unreadCount > 0"
-        variant="outline"
-        size="sm"
-        inline
-        :loading="store.markingAll"
-        :disabled="store.markingAll"
-        @click="handleMarkAll"
-      >
-        <CheckCheck :size="16" />
-        {{ t('inv.notifications.markAllRead') }}
-      </CButton>
-    </header>
-
-    <!-- Initial load -->
-    <div v-if="store.itemsLoading && store.items.length === 0" class="nib__center">
-      <CLoader :size="32" />
-    </div>
+    </section>
 
     <!-- First-page error -->
-    <div v-else-if="store.itemsError && store.items.length === 0" class="nib__center">
-      <CEmptyState
-        :title="t('inv.notifications.errorTitle')"
-        :description="t('inv.notifications.errorDesc')"
-      />
-      <CButton variant="primary" inline @click="store.fetchFirstPage">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="store.itemsError && store.items.length === 0"
+      tone="danger"
+      :title="t('inv.notifications.errorTitle')"
+      :description="t('inv.notifications.errorDesc')"
+    >
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="store.fetchFirstPage">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
-    <div v-else-if="isEmpty" class="nib__center">
-      <CEmptyState :title="t('inv.notifications.empty')">
-        <template #icon>
-          <Bell :size="32" />
-        </template>
-      </CEmptyState>
-    </div>
+    <CEmptyState v-else-if="isEmpty" :title="t('inv.notifications.empty')">
+      <template #icon>
+        <Bell />
+      </template>
+    </CEmptyState>
 
     <!-- List -->
-    <ul v-else class="nib__list">
+    <ul v-else class="ds-rows">
       <li
         v-for="item in store.items"
         :key="item.id"
-        class="nib__item"
-        :class="{
-          'nib__item--unread': isUnread(item),
-          'nib__item--marking': store.isMarking(item.id),
-        }"
-        tabindex="0"
-        role="button"
+        class="ds-row"
         :aria-busy="store.isMarking(item.id)"
-        @click="handleRowTap(item)"
-        @keydown.enter="handleRowTap(item)"
       >
-        <span v-if="isUnread(item)" class="nib__item-dot" aria-hidden="true" />
-        <div class="nib__item-body">
-          <div class="nib__item-title">
-            {{ item.title }}
-          </div>
-          <p class="nib__item-text">
-            {{ item.body }}
-          </p>
-          <div class="nib__item-date">
-            {{ formatDateTime(item.sent_at, locale) }}
-          </div>
-        </div>
+        <span class="ds-row__body">
+          <RouterLink
+            v-if="targetOf(item)"
+            class="ds-row__link"
+            :to="targetOf(item)!"
+            @click="markRead(item)"
+          >
+            <span class="ds-row__title">{{ item.title }}</span>
+          </RouterLink>
+          <span v-else class="ds-row__title">{{ item.title }}</span>
+          <span class="ds-row__meta">{{ item.body }}</span>
+          <span class="ds-row__meta">{{ formatDateTime(item.sent_at, locale) }}</span>
+        </span>
+        <span v-if="isUnread(item)" class="ds-row__trail">
+          <span class="ds-dot" aria-hidden="true" />
+        </span>
       </li>
     </ul>
 
@@ -204,12 +188,18 @@ onMounted(() => {
 
     <div
       v-if="store.items.length > 0 && store.loadMoreError && !store.itemsLoading"
-      class="nib__loadmore-error"
+      class="ds-alert ds-alert--danger"
+      role="alert"
     >
-      <span>{{ t('inv.notifications.loadMoreError') }}</span>
-      <CButton variant="outline" size="sm" @click="store.retryLoadMore">
-        {{ t('common.retry') }}
-      </CButton>
+      <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ t('inv.notifications.loadMoreError') }}</p>
+        <div class="ds-alert__actions">
+          <CButton variant="outline" size="sm" inline @click="store.retryLoadMore">
+            {{ t('common.retry') }}
+          </CButton>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -219,146 +209,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  padding-block-end: var(--space-5);
-}
-
-.nib__back-row {
-  display: flex;
-}
-
-.nib__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-.nib__header-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-.nib__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.nib__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  max-inline-size: var(--maxw-prose);
-}
-
-.nib__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-md);
-  padding: var(--space-6) var(--space-2);
-}
-
-.nib__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.nib__item {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding-block: var(--space-3) var(--space-3);
-  padding-inline: var(--space-5) var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background var(--dur-fast) var(--ease-standard);
-}
-.nib__item:hover {
-  border-color: var(--primary-hover);
-}
-.nib__item:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-.nib__item--unread {
-  background: var(--primary-subtle);
-  border-color: var(--primary-hover);
-}
-.nib__item--marking {
-  /* A tap already sent (store.isMarking) -- visual feedback so a second
-     tap on THIS row reads as "already working", and a tap on a
-     DIFFERENT row is still free to fire (per-id guard in the store). */
-  opacity: 0.6;
-  cursor: default;
-}
-
-.nib__item-dot {
-  position: absolute;
-  inset-inline-start: var(--space-2);
-  inset-block-start: var(--space-4);
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  flex-shrink: 0;
-}
-
-.nib__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.nib__item-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.nib__item-text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  overflow-wrap: break-word;
-}
-.nib__item-date {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
 }
 
 .nib__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
-}
-
-.nib__loadmore-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  margin-block-start: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-subtle);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-align: center;
 }
 </style>
