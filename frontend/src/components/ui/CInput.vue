@@ -11,6 +11,8 @@ const props = withDefaults(
     label?: string
     placeholder?: string
     error?: string
+    // K02: a line of help under the control (ds-field__hint), tied to it by aria-describedby.
+    hint?: string
     type?: string
     autocomplete?: string
     // 'compact' is the dense panel field the balance screens use: tighter box,
@@ -50,6 +52,12 @@ function onInput(e: Event): void {
 // them and stays unique across every instance on the page.
 const fieldId = useId()
 const errorId = fieldId + '-error'
+const hintId = fieldId + '-hint'
+// The control is described by the hint and the error message, in that order.
+const describedBy = computed(() => {
+  const ids = [props.hint ? hintId : '', props.error ? errorId : ''].filter(Boolean)
+  return ids.length ? ids.join(' ') : undefined
+})
 
 // A1: the reveal control is an icon with no text, and its NAME changes with
 // state -- announcing "show password" while the password is already visible is
@@ -74,7 +82,7 @@ const { t } = useI18n()
         :placeholder="placeholder"
         :autocomplete="autocomplete"
         :aria-invalid="error ? 'true' : undefined"
-        :aria-describedby="error ? errorId : undefined"
+        :aria-describedby="describedBy"
         v-bind="controlAttrs"
         @input="onInput"
       />
@@ -89,6 +97,7 @@ const { t } = useI18n()
         <Eye v-else :size="20" />
       </button>
     </div>
+    <p v-if="hint" :id="hintId" class="ds-field__hint">{{ hint }}</p>
     <p v-if="error" :id="errorId" class="ds-field__error">
       <AlertTriangle :size="16" />
       <span>{{ error }}</span>

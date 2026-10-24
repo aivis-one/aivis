@@ -46,7 +46,15 @@
     "file": {
       "ready": "Ready to upload",
       "uploaded": "Uploaded",
-      "remove": "Remove {name}"
+      "remove": "Remove {name}",
+      "units": {
+        "b": "B",
+        "kb": "KB",
+        "mb": "MB"
+      }
+    },
+    "stat": {
+      "loading": "Loading {label}"
     },
     "downloading": "Downloading",
     "downloaded": "Downloaded",

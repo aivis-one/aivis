@@ -13,7 +13,12 @@ function makeI18n() {
     messages: {
       en: {
         common: {
-          file: { ready: 'Ready to upload', uploaded: 'Uploaded', remove: 'Remove {name}' },
+          file: {
+            ready: 'Ready to upload',
+            uploaded: 'Uploaded',
+            remove: 'Remove {name}',
+            units: { b: 'B', kb: 'KB', mb: 'MB' },
+          },
         },
       },
     },
@@ -59,6 +64,46 @@ describe('CFileField', () => {
     await stored.setProps({ busy: true })
     expect(stored.find('li.ds-file__item').attributes('data-state')).toBe('uploading')
     expect(stored.find('.ds-file__meta').text()).toBe('2 KB')
+  })
+
+  it("writes the picked file's size with the locale's units", () => {
+    const i18n = createI18n({
+      legacy: false,
+      locale: 'ru',
+      messages: {
+        ru: {
+          common: {
+            file: {
+              ready: 'Готов',
+              uploaded: 'Загружен',
+              remove: 'Удалить {name}',
+              units: { b: 'Б', kb: 'КБ', mb: 'МБ' },
+            },
+          },
+        },
+      },
+    })
+    const meta = (size: number) =>
+      mount(CFileField, {
+        props: { label: 'x', buttonLabel: 'y', file: new File([new Uint8Array(size)], 'a.bin') },
+        global: { plugins: [i18n] },
+      })
+        .find('.ds-file__meta')
+        .text()
+    expect(meta(3)).toBe('3 Б · Готов')
+    expect(meta(2048)).toBe('2.0 КБ · Готов')
+    expect(meta(3 * 1024 * 1024)).toBe('3.0 МБ · Готов')
+  })
+
+  it("shows K30's success badge on a stored file only, before the remove button", async () => {
+    const stored = mountField({ current: 'b.pdf', removable: true })
+    const aside = stored.find('.ds-file__aside')
+    expect(aside.find('.ds-badge.ds-badge--success').text()).toBe('Uploaded')
+    expect(aside.element.firstElementChild?.classList.contains('ds-badge')).toBe(true)
+    await stored.setProps({ busy: true })
+    expect(stored.find('.ds-badge').exists()).toBe(false)
+    const picked = mountField({ file: new File(['a'], 'a.pdf') })
+    expect(picked.find('.ds-badge').exists()).toBe(false)
   })
 
   it('names its remove button after the file and emits remove', async () => {

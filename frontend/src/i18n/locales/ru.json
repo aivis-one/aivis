@@ -46,7 +46,15 @@
     "file": {
       "ready": "Готов к загрузке",
       "uploaded": "Загружен",
-      "remove": "Удалить {name}"
+      "remove": "Удалить {name}",
+      "units": {
+        "b": "Б",
+        "kb": "КБ",
+        "mb": "МБ"
+      }
+    },
+    "stat": {
+      "loading": "Загружается: {label}"
     },
     "downloading": "Скачивается",
     "downloaded": "Скачано",

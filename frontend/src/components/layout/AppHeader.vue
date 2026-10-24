@@ -71,7 +71,7 @@ const homeLabel = computed(() => `${t('app.name')}, ${t('tab.home')}`)
 // ---------------------------------------------------------------------------
 const backTarget = computed(() => {
   const back = header.value.back
-  return back === true ? undefined : back
+  return back === true || typeof back === 'function' ? undefined : back
 })
 
 function goBack(): void {
@@ -82,8 +82,13 @@ function goBack(): void {
   }
 }
 
-// A route target is a link and goes by itself; `true` is one step back.
-const onBack = computed(() => (header.value.back === true ? goBack : undefined))
+// A route target is a link and goes by itself; `true` is one step back; a function is
+// the screen's own handler and the control a button calling it.
+const onBack = computed(() => {
+  const back = header.value.back
+  if (back === true) return goBack
+  return typeof back === 'function' ? back : undefined
+})
 
 // ---------------------------------------------------------------------------
 // The figures

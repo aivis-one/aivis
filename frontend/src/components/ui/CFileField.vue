@@ -14,6 +14,9 @@
 //   preview   the address of a picture for the item's thumb (an image)
 //   busy      the stored file is being replaced (`uploading`)
 //   removable show the item's remove button; the screen answers `remove`
+//
+// A stored file (`done`) also carries K30's success badge in the item's aside; the
+// sizes of a picked file are written with the locale's units (common.file.units).
 // =============================================================================
 
 import { computed, ref, useId } from 'vue'
@@ -48,10 +51,11 @@ const labelId = useId()
 const hintId = useId()
 const input = ref<HTMLInputElement | null>(null)
 
+// The size units are words of the locale (common.file.units), like the state words.
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} ${t('common.file.units.b')}`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${t('common.file.units.kb')}`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ${t('common.file.units.mb')}`
 }
 
 const itemName = computed<string>(() => props.file?.name ?? props.current ?? '')
@@ -114,6 +118,9 @@ function onRemove(): void {
           <span v-if="itemMeta" class="ds-file__meta ds-file__status">{{ itemMeta }}</span>
         </span>
         <span class="ds-file__aside">
+          <span v-if="itemState === 'done'" class="ds-badge ds-badge--success">{{
+            t('common.file.uploaded')
+          }}</span>
           <button
             v-if="removable"
             type="button"

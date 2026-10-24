@@ -59,3 +59,40 @@ describe('useScreenHeader', () => {
     hub.unmount()
   })
 })
+
+describe('the back of the header', () => {
+  const backReader = defineComponent({
+    setup() {
+      const header = useCurrentScreenHeader()
+      return () => h('p', typeof header.value.back)
+    },
+  })
+  function backType() {
+    const w = mount(backReader)
+    const value = w.text()
+    w.unmount()
+    return value
+  }
+
+  it('gives a route or true as set', () => {
+    const route = mount(screen({ back: '/investor/news' }))
+    expect(backType()).toBe('string')
+    route.unmount()
+    const one = mount(screen({ back: true }))
+    expect(backType()).toBe('boolean')
+    one.unmount()
+  })
+
+  it('gives the function a getter returns or a ref holds, and undefined when the getter returns nothing', () => {
+    const handler = (): void => {}
+    const open = ref(true)
+    const w = mount(screen({ back: () => (open.value ? handler : undefined) }))
+    expect(backType()).toBe('function')
+    open.value = false
+    expect(backType()).toBe('undefined')
+    w.unmount()
+    const held = mount(screen({ back: ref(handler) }))
+    expect(backType()).toBe('function')
+    held.unmount()
+  })
+})
