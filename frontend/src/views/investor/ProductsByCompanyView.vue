@@ -185,7 +185,6 @@ function openProduct(product: PublicProductResponse): void {
 function onRetry(): void {
   void productsStore.fetchFirstPage()
 }
-
 </script>
 
 <template>

@@ -217,8 +217,7 @@ const backFallbackRouteName = computed<string>(() => {
 
 useScreenHeader({
   title: () => t('inv.faq.title'),
-  back: () =>
-    window.history.state?.back ? true : { name: backFallbackRouteName.value },
+  back: () => (window.history.state?.back ? true : { name: backFallbackRouteName.value }),
 })
 </script>
 

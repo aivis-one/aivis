@@ -238,8 +238,7 @@ const backFallbackRouteName = computed<string>(() => {
 // Settings only for a deep-linked entry.
 useScreenHeader({
   title: () => t('inv.support.title'),
-  back: () =>
-    window.history.state?.back ? true : { name: backFallbackRouteName.value },
+  back: () => (window.history.state?.back ? true : { name: backFallbackRouteName.value }),
   actions: () =>
     hasThread.value
       ? [
@@ -282,7 +281,10 @@ onMounted(() => {
 
     <!-- The conversation: the feed and the composer (K51) -->
     <section v-else class="ds-thread isup__thread" :aria-label="t('inv.support.title')">
-      <div v-if="support.messagesLoading || support.messagesError || showInvite" class="isup__state">
+      <div
+        v-if="support.messagesLoading || support.messagesError || showInvite"
+        class="isup__state"
+      >
         <CLoader v-if="support.messagesLoading" :size="24" />
 
         <CEmptyState

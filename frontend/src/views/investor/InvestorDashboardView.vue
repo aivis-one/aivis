@@ -4,38 +4,39 @@
 // =============================================================================
 //
 // Investor home screen. Rendered by InvestorShell at /investor/dashboard
-// (the "home" tab). Shell already paints CHeader + CTabBar, so this
-// view is a plain content column -- no embedded CHeader (see
-// CompanyListView for the canonical top-level-tab-view pattern).
+// (the "home" tab). The frame's header (K25) holds the greeting and the line
+// under it, set here with `useScreenHeader`; this view is a plain content
+// column.
 //
 // Widgets, in render order:
 //
-//   1. Greeting row -- time-of-day greeting, no data call.
+//   1. Greeting -- the time-of-day greeting is the header's title, no data call.
 //
-//   2. Identity-verification card, straight under the greeting while the
+//   2. Identity-verification alert (K09), straight under the header while the
 //      verification is not passed: "not passed -- verify ($10)", "under
 //      review", "rejected -- the reason". It leaves the screen once the
-//      verification is approved. A tap opens the verification screen.
+//      verification is approved. Its action opens the verification screen.
 //
 //   2b. For an integrator only: the integrator card (AgentHomeCard) -- the
 //      commission of the month, the rank, the registrations, "Copy link".
 //
-//   3. A gift waiting for acceptance, when staff granted one: one card to
-//      the portfolio, where it is accepted.
+//   3. A gift waiting for acceptance, when staff granted one: an info alert
+//      with an action to the portfolio, where it is accepted.
 //
-//   4. Portfolio hero card -- total current value, number of projects, unit
-//      count. Tap navigates to /investor/portfolio. Source: dashboardStore.
+//   4. Portfolio summary -- the brand card (K07): total current value, number
+//      of projects, unit count. Its title is the one link, to /investor/portfolio.
+//      Source: dashboardStore.
 //
-//   5. Buyer-account card -- the ONE account of the buyer: what is on it, and
-//      what is awaiting confirmation. It is spent on parts of AIVIS and comes
+//   5. Buyer-account tile (K46) -- the ONE account of the buyer: what is on it,
+//      and what is awaiting confirmation. It is spent on parts of AIVIS and comes
 //      back only through support. A holder has accruals and payouts and no
 //      balance of their own, so no second balance is drawn here.
 //
 //   6. Quick actions row -- Deposit and Store.
 //
 //   7. "News and events" -- always shown. The three latest posts (the common
-//      feed of the platform and all projects) and the three nearest events,
-//      each tappable and opening its own screen; the row's header opens the
+//      feed of the platform and all projects) as rows and the three nearest
+//      events, each opening its own screen; the section's "See all" opens the
 //      whole feed. The events block hides itself when there are no events.
 //
 // DATA FLOW.
@@ -61,15 +62,17 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
+  AlertTriangle,
   ArrowDownToLine,
-  Briefcase,
   ChevronRight,
-  Gift,
-  ShieldCheck,
+  FileText,
+  Info,
+  ShieldAlert,
   Store,
   Wallet,
 } from '@/components/ui/icons'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import EventCard from '@/components/shared/EventCard.vue'
 import AgentHomeCard from '@/components/shared/AgentHomeCard.vue'
 import { listPosts } from '@/api/posts'
@@ -119,10 +122,6 @@ async function loadRejectionReason(): Promise<void> {
     // The card still says "rejected"; only the reason is missing.
     rejectionReason.value = ''
   }
-}
-
-function goKyc(): void {
-  void safeNavigate(router.push('/verification'), '[InvestorDashboardView] to verification')
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +211,19 @@ const greeting = computed<string>(() => {
   return t('inv.dashboard.greetingEvening')
 })
 
+// The frame's header: the greeting is the title, the screen's name the line under it.
+useScreenHeader({
+  title: greeting,
+  lead: () => t('inv.dashboard.title'),
+})
+
+// The alert of the verification card: the system's severity for each state.
+const KYC_ALERT = {
+  not_started: { look: 'warning', role: 'alert', icon: AlertTriangle },
+  submitted: { look: 'info', role: 'status', icon: Info },
+  rejected: { look: 'danger', role: 'alert', icon: ShieldAlert },
+} as const
+
 // ---------------------------------------------------------------------------
 // Portfolio hero -- reads from the dashboard store
 // ---------------------------------------------------------------------------
@@ -239,12 +251,6 @@ const hasFrozen = computed<boolean>(() => activeFrozen.value > 0)
 // Navigation helpers
 // ---------------------------------------------------------------------------
 
-function goPortfolio(): void {
-  void safeNavigate(
-    router.push({ name: 'investor-portfolio' }),
-    '[InvestorDashboardView] to portfolio',
-  )
-}
 function goBalance(): void {
   void safeNavigate(router.push({ name: 'investor-balance' }), '[InvestorDashboardView] to balance')
 }
@@ -256,17 +262,6 @@ function goMarket(): void {
   void safeNavigate(
     router.push({ name: 'investor-companies' }),
     '[InvestorDashboardView] to companies list',
-  )
-}
-
-function goNews(): void {
-  void safeNavigate(router.push({ name: 'investor-news' }), '[InvestorDashboardView] to news')
-}
-
-function openPost(post: PostResponse): void {
-  void safeNavigate(
-    router.push({ name: 'investor-post', params: { id: post.id } }),
-    '[InvestorDashboardView] to post',
   )
 }
 
@@ -308,201 +303,203 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="dash">
-    <!-- Greeting -->
-    <div class="dash__header">
-      <h1 class="dash__title">
-        {{ greeting }}
-      </h1>
-      <p class="dash__subtitle">
-        {{ t('inv.dashboard.title') }}
-      </p>
-    </div>
-
-    <!-- Identity verification: right under the greeting until it is passed -->
-    <button
+    <!-- Identity verification: right under the header until it is passed -->
+    <div
       v-if="kycCardState"
-      type="button"
-      class="dash__kyc"
-      :class="`dash__kyc--${kycCardState}`"
-      @click="goKyc"
+      class="ds-alert"
+      :class="`ds-alert--${KYC_ALERT[kycCardState].look}`"
+      :role="KYC_ALERT[kycCardState].role"
     >
-      <ShieldCheck :size="20" class="dash__kyc-icon" />
-      <span class="dash__kyc-body">
-        <span class="dash__kyc-title">
-          {{ t(`inv.dashboard.kyc.${kycCardState}`) }}
-        </span>
-        <span v-if="kycCardState === 'rejected' && rejectionReason" class="dash__kyc-sub">
-          {{ rejectionReason }}
-        </span>
+      <span class="ds-alert__icon" aria-hidden="true">
+        <component :is="KYC_ALERT[kycCardState].icon" size="sm" />
       </span>
-      <ChevronRight :size="16" />
-    </button>
+      <div class="ds-alert__content">
+        <p class="ds-alert__title">
+          {{ t(`inv.dashboard.kyc.${kycCardState}`) }}
+        </p>
+        <p v-if="kycCardState === 'rejected' && rejectionReason" class="ds-alert__text">
+          {{ rejectionReason }}
+        </p>
+        <div class="ds-alert__actions">
+          <RouterLink class="ds-button ds-button--secondary" data-size="sm" to="/verification">
+            <span>{{ t('kyc.title') }}</span>
+          </RouterLink>
+        </div>
+      </div>
+    </div>
 
     <!-- The integrator's card: commission of the month, rank, registrations, the link -->
     <AgentHomeCard v-if="isAgent" />
 
     <!-- A gift waiting for acceptance -->
-    <button v-if="pendingGifts > 0" type="button" class="dash__gift" @click="goPortfolio">
-      <Gift :size="20" class="dash__gift-icon" />
-      <span class="dash__gift-text">
-        {{ t('inv.dashboard.gift', { n: pendingGifts }) }}
-      </span>
-      <ChevronRight :size="16" />
-    </button>
-
-    <!-- Portfolio hero card -->
-    <button
-      type="button"
-      class="dash__portfolio"
-      :class="{ 'dash__portfolio--empty': portfolioEmpty }"
-      @click="goPortfolio"
-    >
-      <div class="dash__portfolio-head">
-        <span class="dash__portfolio-label">
-          <Briefcase :size="16" />
-          {{ t('inv.dashboard.portfolio.title') }}
-        </span>
-        <ChevronRight :size="16" class="dash__portfolio-chev" />
+    <div v-if="pendingGifts > 0" class="ds-alert ds-alert--info" role="status">
+      <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">
+          {{ t('inv.dashboard.gift', { n: pendingGifts }) }}
+        </p>
+        <div class="ds-alert__actions">
+          <RouterLink
+            class="ds-button ds-button--secondary"
+            data-size="sm"
+            :to="{ name: 'investor-portfolio' }"
+          >
+            <span>{{ t('inv.dashboard.portfolio.title') }}</span>
+          </RouterLink>
+        </div>
       </div>
+    </div>
+
+    <!-- Portfolio summary: the brand card (K07), its title the one link -->
+    <article class="ds-card ds-card--brand ds-card--interactive" aria-labelledby="dash-portfolio">
+      <header class="ds-card__head">
+        <h2 id="dash-portfolio" class="ds-card__title">
+          <RouterLink class="ds-card__link" :to="{ name: 'investor-portfolio' }">
+            {{ t('inv.dashboard.portfolio.title') }}
+          </RouterLink>
+        </h2>
+        <ChevronRight size="sm" />
+      </header>
 
       <template v-if="portfolioEmpty">
-        <div class="dash__portfolio-empty">
+        <p class="ds-card__label">
           {{ t('inv.dashboard.portfolio.empty') }}
-        </div>
-        <div class="dash__portfolio-empty-cta">
+        </p>
+        <p class="ds-card__delta">
           {{ t('inv.dashboard.portfolio.emptyCta') }}
-          <ChevronRight :size="16" />
-        </div>
+        </p>
       </template>
 
       <template v-else>
-        <div class="dash__portfolio-value">
+        <p class="ds-card__figure">
           {{ formatPrice(totalCurrentValue) }}
-        </div>
+        </p>
         <div class="dash__portfolio-stats">
-          <div class="dash__portfolio-stat">
-            <div class="dash__portfolio-stat-label">
+          <div>
+            <p class="ds-card__label">
               {{ t('inv.dashboard.portfolio.products') }}
-            </div>
-            <div class="dash__portfolio-stat-value">
+            </p>
+            <p class="ds-card__delta">
               {{ formatNumber(productsCount, locale) }}
-            </div>
+            </p>
           </div>
-          <div class="dash__portfolio-stat">
-            <div class="dash__portfolio-stat-label">
+          <div>
+            <p class="ds-card__label">
               {{ t('inv.dashboard.portfolio.units') }}
-            </div>
-            <div class="dash__portfolio-stat-value">
+            </p>
+            <p class="ds-card__delta">
               {{ formatNumber(totalUnits, locale) }}
-            </div>
+            </p>
           </div>
         </div>
       </template>
-    </button>
+    </article>
 
-    <!-- Buyer account: the one account, with its awaiting-confirmation part -->
-    <button type="button" class="dash__balance" @click="goBalance">
-      <div class="dash__balance-head">
-        <span class="dash__balance-label">
-          <Wallet :size="16" />
-          {{ t('inv.dashboard.balance.title') }}
-        </span>
-        <ChevronRight :size="16" />
-      </div>
-      <div class="dash__balance-value">
-        {{ formatPrice(activeConfirmed) }}
-      </div>
-      <div v-if="hasFrozen" class="dash__balance-frozen">
-        {{ t('inv.dashboard.balance.frozen') }}:
-        {{ formatPrice(activeFrozen) }}
-      </div>
-    </button>
+    <!-- Buyer account: the one account, with its awaiting-confirmation part (K46) -->
+    <CStatCard
+      :label="t('inv.dashboard.balance.title')"
+      :value="formatPrice(activeConfirmed)"
+      :sub="
+        hasFrozen ? `${t('inv.dashboard.balance.frozen')}: ${formatPrice(activeFrozen)}` : undefined
+      "
+      @click="goBalance"
+    >
+      <template #icon>
+        <Wallet />
+      </template>
+    </CStatCard>
 
     <!-- Quick actions row -->
     <div class="dash__actions">
-      <button type="button" class="dash__action" @click="goDeposit">
-        <ArrowDownToLine :size="16" />
+      <CButton variant="outline" @click="goDeposit">
+        <ArrowDownToLine size="sm" />
         <span>{{ t('inv.dashboard.actions.deposit') }}</span>
-      </button>
-      <button type="button" class="dash__action" @click="goMarket">
-        <Store :size="16" />
+      </CButton>
+      <CButton variant="outline" @click="goMarket">
+        <Store size="sm" />
         <span>{{ t('inv.dashboard.actions.market') }}</span>
-      </button>
+      </CButton>
     </div>
 
     <!-- News and events: always shown -->
-    <section class="dash__posts">
-      <button type="button" class="dash__news-head" @click="goNews">
-        <h2 class="dash__posts-title">
+    <section class="dash__section" aria-labelledby="dash-news">
+      <div class="dash__section-head">
+        <h2 id="dash-news" class="dash__section-title">
           {{ t('inv.dashboard.news.title') }}
         </h2>
-        <ChevronRight :size="16" />
-      </button>
+        <RouterLink
+          class="ds-button ds-button--ghost"
+          data-size="sm"
+          :to="{ name: 'investor-news' }"
+        >
+          <span>{{ t('inv.dashboard.posts.seeAll') }}</span>
+          <ChevronRight size="sm" />
+        </RouterLink>
+      </div>
 
       <!-- Loading -->
-      <div v-if="postsLoading && posts.length === 0 && !postsErrored" class="dash__posts-center">
-        <CLoader :size="24" />
-      </div>
+      <CLoader v-if="postsLoading && posts.length === 0 && !postsErrored" :size="24" />
 
       <!-- Error -->
-      <div v-else-if="postsErrored && posts.length === 0" class="dash__posts-center">
-        <CEmptyState :title="t('inv.dashboard.posts.errorTitle')" />
-        <CButton variant="outline" size="sm" @click="loadPosts">
-          {{ t('inv.dashboard.posts.errorRetry') }}
-        </CButton>
-      </div>
+      <CEmptyState
+        v-else-if="postsErrored && posts.length === 0"
+        tone="danger"
+        :title="t('inv.dashboard.posts.errorTitle')"
+      >
+        <template #actions>
+          <CButton variant="outline" size="sm" inline @click="loadPosts">
+            {{ t('inv.dashboard.posts.errorRetry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
       <!-- Empty -->
-      <div v-else-if="!postsLoading && posts.length === 0" class="dash__posts-center">
-        <CEmptyState :title="t('inv.dashboard.posts.empty')" />
-      </div>
+      <CEmptyState
+        v-else-if="!postsLoading && posts.length === 0"
+        :title="t('inv.dashboard.posts.empty')"
+      />
 
-      <!-- List: each post opens its own screen -->
-      <ul v-else class="dash__posts-list">
-        <li v-for="post in posts" :key="post.id">
-          <button type="button" class="dash__post" @click="openPost(post)">
-            <img
-              v-if="post.cover_url"
-              :src="post.cover_url"
-              :alt="post.title"
-              class="dash__post-cover"
-              loading="lazy"
-            />
-            <div class="dash__post-body">
-              <div class="dash__post-title">
-                {{ post.title }}
-              </div>
-              <div class="dash__post-date">
-                {{ formatDate(post.published_at ?? post.created_at, locale) }}
-              </div>
-            </div>
-          </button>
+      <!-- List: each post opens its own screen (K23) -->
+      <ul v-else class="ds-rows">
+        <li v-for="post in posts" :key="post.id" class="ds-row">
+          <span class="ds-row__lead"><FileText size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink
+              class="ds-row__link"
+              :to="{ name: 'investor-post', params: { id: post.id } }"
+            >
+              <span class="ds-row__title">{{ post.title }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">
+              {{ formatDate(post.published_at ?? post.created_at, locale) }}
+            </span>
+          </span>
         </li>
       </ul>
     </section>
 
     <!-- Upcoming events (FP-25: whole section absent when settled-empty) -->
-    <section v-if="showEventsSection" class="dash__events">
-      <h2 class="dash__events-title">
+    <section v-if="showEventsSection" class="dash__section" aria-labelledby="dash-events">
+      <h2 id="dash-events" class="dash__section-title">
         {{ t('inv.dashboard.events.title') }}
       </h2>
 
       <!-- Loading -->
-      <div
-        v-if="eventsLoading && events.length === 0 && !eventsErrored"
-        class="dash__events-center"
-      >
-        <CLoader :size="24" />
-      </div>
+      <CLoader v-if="eventsLoading && events.length === 0 && !eventsErrored" :size="24" />
 
       <!-- Error (does NOT hide -- a failed fetch must not look like
            "no events"; offer a retry instead) -->
-      <div v-else-if="eventsErrored && events.length === 0" class="dash__events-center">
-        <CEmptyState :title="t('inv.dashboard.events.errorTitle')" />
-        <CButton variant="outline" size="sm" @click="loadEvents">
-          {{ t('inv.dashboard.events.errorRetry') }}
-        </CButton>
-      </div>
+      <CEmptyState
+        v-else-if="eventsErrored && events.length === 0"
+        tone="danger"
+        :title="t('inv.dashboard.events.errorTitle')"
+      >
+        <template #actions>
+          <CButton variant="outline" size="sm" inline @click="loadEvents">
+            {{ t('inv.dashboard.events.errorRetry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
       <!-- List: each card opens its own event screen -->
       <ul v-else class="dash__events-list">
@@ -513,151 +510,17 @@ onBeforeUnmount(() => {
     </section>
   </div>
 </template>
+
 <style scoped>
 .dash {
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Header */
-.dash__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.dash__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.dash__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* Portfolio hero */
-.dash__portfolio {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary);
-  border: none;
-  cursor: pointer;
-  text-align: start;
-  font-family: inherit;
-  transition: transform var(--dur-fast);
-}
-.dash__portfolio:hover {
-  transform: translateY(-1px);
-}
-.dash__portfolio:active {
-  transform: translateY(0);
-}
-
-.dash__portfolio-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  opacity: 0.9;
-}
-.dash__portfolio-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.dash__portfolio-chev {
-  opacity: 0.8;
-}
-
-.dash__portfolio-value {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  line-height: 1.1;
-}
 .dash__portfolio-stats {
   display: flex;
   gap: var(--space-5);
-}
-.dash__portfolio-stat-label {
-  font-size: var(--fs-xs);
-  opacity: 0.8;
-  margin-block-end: var(--space-1);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-}
-.dash__portfolio-stat-value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-
-/* Empty portfolio -- still in the hero card to avoid layout shift */
-.dash__portfolio--empty {
-  /* No visual change beyond the empty content below. Class reserved
-     for future tweaks (lighter gradient, etc.). */
-}
-.dash__portfolio-empty {
-  font-size: var(--fs-body);
-  font-weight: 600;
-  opacity: 0.95;
-}
-.dash__portfolio-empty-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  opacity: 0.9;
-}
-
-/* Balance card */
-.dash__balance {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: start;
-  font-family: inherit;
-  transition: border-color var(--dur-fast);
-}
-.dash__balance:hover {
-  border-color: var(--primary);
-}
-
-.dash__balance-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-.dash__balance-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.dash__balance-value {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.dash__balance-frozen {
-  font-size: var(--fs-xs);
-  color: var(--warning);
 }
 
 /* Quick actions row */
@@ -666,190 +529,27 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
 }
-.dash__action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-.dash__action:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
 
-/* Posts */
-.dash__posts {
+/* A section of the screen: its heading, and "See all" at the end of the row. */
+.dash__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-.dash__posts-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: var(--space-1) 0 0;
-}
-.dash__posts-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-sm);
-  padding: var(--space-4) var(--space-2);
-}
-.dash__posts-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.dash__post {
-  display: flex;
-  gap: var(--space-3);
-  inline-size: 100%;
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: inherit;
-  font-family: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: border-color var(--dur-fast);
-}
-.dash__post:hover {
-  border-color: var(--primary);
-}
-
-/* The "News and events" header is a button into the whole feed. */
-.dash__news-head {
+.dash__section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  inline-size: 100%;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-primary);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* Identity verification card, and the gift card: a full-width row, tappable. */
-.dash__kyc,
-.dash__gift {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-.dash__kyc--not_started {
-  border-color: var(--warning);
-  background: var(--warning-subtle);
-}
-.dash__kyc--submitted {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
-}
-.dash__kyc--rejected {
-  border-color: var(--danger);
-  background: var(--danger-subtle);
-}
-.dash__kyc-icon,
-.dash__gift-icon {
-  flex-shrink: 0;
-}
-.dash__kyc-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 1;
-  min-inline-size: 0;
-}
-.dash__kyc-title,
-.dash__gift-text {
-  flex: 1;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-}
-.dash__kyc-sub {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  overflow-wrap: anywhere;
-}
-.dash__post-cover {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-.dash__post-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-  flex: 1;
-}
-.dash__post-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  /* Two-line clamp so long titles don't blow up the card height. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.dash__post-date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-/* Upcoming events widget */
-.dash__events {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-3);
 }
-.dash__events-title {
-  font-size: var(--fs-sm);
+.dash__section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: var(--space-1) 0 0;
 }
-.dash__events-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-sm);
-  padding: var(--space-4) var(--space-2);
-}
+
 .dash__events-list {
   list-style: none;
   margin: 0;
@@ -860,29 +560,13 @@ onBeforeUnmount(() => {
 }
 
 /* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
+   width, so on a desktop it stretches its contents to fill. Past a point the
+   extra room should be whitespace, not wider furniture. The COLUMN COUNT IS
+   DELIBERATELY UNCHANGED; only the ceiling is added. Mobile-first, so this is a
+   min-width and the phone is untouched. */
 @media (min-width: 880px) {
   .dash__actions {
     max-inline-size: calc(2 * var(--tile-max));
   }
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.dash__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

@@ -60,9 +60,7 @@ const { loadMoreError } = storeToRefs(store)
 const sentinelRef = ref<HTMLElement | null>(null)
 
 const hasMore = computed(() => store.nextCursor !== null)
-const isEmpty = computed(
-  () => !store.itemsLoading && !store.itemsError && store.items.length === 0,
-)
+const isEmpty = computed(() => !store.itemsLoading && !store.itemsError && store.items.length === 0)
 
 function isUnread(item: NotificationItemOut): boolean {
   return item.read_at === null
