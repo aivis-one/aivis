@@ -319,15 +319,9 @@ onMounted(() => {
           <component :is="iconFor(item.type)" size="sm" />
         </span>
         <span class="ds-row__body">
-          <a
-            class="ds-row__link"
-            href="#"
-            role="button"
-            @click.prevent="openDetail(item)"
-            @keydown.space.prevent="openDetail(item)"
-          >
+          <button type="button" class="ds-row__link" @click="openDetail(item)">
             <span class="ds-row__title">{{ typeLabel(item.type) }}</span>
-          </a>
+          </button>
           <span class="ds-row__meta">{{ formatDate(item.created_at) }}</span>
         </span>
         <span class="ds-row__trail">

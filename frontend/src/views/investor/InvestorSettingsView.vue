@@ -5,12 +5,10 @@
 //
 // Reached via the More tab (tab bar -> /investor/more -> Settings tile).
 // Not itself a tab -- the tab bar's "More" slot points at MoreView.
-// InvestorShell already renders CHeader for every /investor/* route, so
-// this view MUST NOT add its own. The B5 revision shipped a nested
-// <CHeader> which doubled the top bar once MoreView started linking
-// here in B6; fixed in B6 by dropping that nested header and using the
-// inline page-header pattern from MarketView / TransactionsView (<h1>
-// + <p>).
+// The frame's header (K25) holds the title and the line under it, set here with
+// `useScreenHeader`; this view adds no header of its own. Each section is a Card
+// (K07): the details a key-value list (K49), the actions Row list rows (K23), the
+// marketing consent a Toggle (K06), the theme a Segmented control (K31).
 //
 // SECTIONS.
 //   1. Profile card -- avatar (via CAvatar, URL from profile.avatar_url
@@ -42,7 +40,7 @@
 //      The e-mail (EmailSection) sits here: an account that signed in
 //      without one adds and confirms it, because identity verification
 //      starts from a confirmed e-mail.
-//   3. Preferences -- theme selector (3 chips: auto / light / dark,
+//   3. Preferences -- theme selector (3 choices: auto / light / dark,
 //      driven by useTheme -- client-only, no backend round-trip) and
 //      a marketing consent toggle backed by profile.marketing_consent
 //      (PATCH /users/me with optimistic local flip + revert on fail).
@@ -90,13 +88,10 @@
 //   failure the local ref reverts and a toast is shown.
 //
 // B5-post changes.
-//   - Clickable rows rendered as <button type="button"> instead of
-//     <div> so keyboard / screen-reader users can activate them.
-//     Styling nullified with CSS reset (appearance, background,
-//     border, font-family, text-align) to keep the visual from B5.
-//   - Marketing toggle wears aria-labelledby pointing at its sibling
-//     label span, so assistive tech reads "Marketing communications,
-//     pressed/not pressed" rather than a bare toggle state.
+//   - Clickable rows are links (the system's Row list, K23) where they open a
+//     screen, and keyboard / screen-reader users activate them.
+//   - The marketing consent is a native switch (K06) named by its own label, so
+//     assistive tech reads "Marketing communications, on/off".
 //   - Dead `if (err instanceof ApiResponseError) ... else ...` branch
 //     in applyForAgent removed; both arms showed the same toast.
 //   - getMyAgentApplications failure surfaces a load_error state with
@@ -111,6 +106,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
+  AlertTriangle,
   ChevronRight,
   FileText,
   HelpCircle,
@@ -119,13 +115,13 @@ import {
   Monitor,
   Moon,
   Pencil,
-  RefreshCw,
   Shield,
   Sun,
   UserPlus,
 } from '@/components/ui/icons'
 
-import { CAvatar, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
+import { CAvatar, CBadge, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import EmailSection from '@/components/shared/EmailSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
@@ -151,6 +147,11 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { showToast } = useToast()
+
+useScreenHeader({
+  title: () => t('inv.settings.title'),
+  lead: () => t('inv.settings.subtitle'),
+})
 
 // ---------------------------------------------------------------------------
 // Profile read-outs (all derived from authStore.user)
@@ -439,25 +440,6 @@ async function applyForAgent(): Promise<void> {
 // Navigation helpers
 // ---------------------------------------------------------------------------
 
-function goKyc(): void {
-  void safeNavigate(router.push('/verification'), '[InvestorSettingsView] to verification')
-}
-
-function goDocs(): void {
-  void safeNavigate(
-    router.push({ name: 'investor-docs' }),
-    '[InvestorSettingsView] to investor docs',
-  )
-}
-
-function goSupport(): void {
-  void safeNavigate(router.push({ name: 'investor-support' }), '[InvestorSettingsView] to support')
-}
-
-function goFaq(): void {
-  void safeNavigate(router.push({ name: 'investor-faq' }), '[InvestorSettingsView] to FAQ')
-}
-
 // The KYC row names where the verification stands.
 const kycRowKey = computed<string>(() => {
   const raw = authStore.user?.kyc_status
@@ -510,78 +492,67 @@ onMounted(() => {
 
 <template>
   <div class="sett">
-    <!-- Inline page header, no CHeader (shell renders it). -->
-    <div class="sett__header">
-      <h1 class="sett__page-title">
-        {{ t('inv.settings.title') }}
-      </h1>
-      <p class="sett__page-subtitle">
-        {{ t('inv.settings.subtitle') }}
-      </p>
-    </div>
-
     <!-- Profile card -->
-    <section class="sett__profile">
-      <CAvatar :url="avatarUrl" :name="fullName" :size="72" />
-      <div class="sett__name">
+    <section class="ds-card sett__profile" :aria-label="fullName">
+      <CAvatar :url="avatarUrl" :name="fullName" :size="56" />
+      <p class="sett__name">
         {{ fullName }}
-      </div>
-      <div v-if="email" class="sett__email">
+      </p>
+      <p v-if="email" class="sett__email">
         {{ email }}
-      </div>
-      <div class="sett__role-badge">
-        {{ roleLabel }}
-      </div>
+      </p>
+      <CBadge variant="neutral" :text="roleLabel" />
     </section>
 
     <!-- Profile details -- phone/country/language, edit pencil opens the
          profile form modal (TASK-38 item 3). -->
-    <section class="sett__section">
-      <div class="sett__section-title sett__section-title--row">
-        <span>{{ t('inv.settings.profile.title') }}</span>
+    <section class="ds-card" aria-labelledby="sett-profile">
+      <header class="ds-card__head">
+        <h2 id="sett-profile" class="ds-card__title">
+          {{ t('inv.settings.profile.title') }}
+        </h2>
         <button
           type="button"
-          class="sett__edit-btn"
+          class="ds-button ds-button--ghost ds-button--icon"
+          data-size="sm"
           :aria-label="t('common.edit')"
           @click="openEditProfile"
         >
-          <Pencil :size="14" />
+          <Pencil size="sm" />
         </button>
-      </div>
-      <div class="sett__row">
-        <span class="sett__row-label">
-          {{ t('inv.settings.profile.phone') }}
-        </span>
-        <span class="sett__row-value">{{ phoneDisplay }}</span>
-      </div>
-      <div class="sett__row">
-        <span class="sett__row-label">
-          {{ t('inv.settings.profile.country') }}
-        </span>
-        <span class="sett__row-value">{{ countryLabel }}</span>
-      </div>
-      <div class="sett__row">
-        <span class="sett__row-label">
-          {{ t('inv.settings.profile.language') }}
-        </span>
-        <span class="sett__row-value">{{ languageLabel }}</span>
-      </div>
+      </header>
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('inv.settings.profile.phone') }}</dt>
+          <dd>{{ phoneDisplay }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('inv.settings.profile.country') }}</dt>
+          <dd>{{ countryLabel }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('inv.settings.profile.language') }}</dt>
+          <dd>{{ languageLabel }}</dd>
+        </div>
+      </dl>
     </section>
 
     <!-- The e-mail: added and confirmed here when the account has none -->
-    <section v-if="showEmailSection || confirmEmail" class="sett__section">
+    <section v-if="showEmailSection || confirmEmail" class="ds-card">
       <EmailSection :confirm="confirmEmail" />
     </section>
 
     <!-- Preferences -->
-    <section class="sett__section">
-      <div class="sett__section-title">
-        {{ t('inv.settings.prefs.title') }}
-      </div>
+    <section class="ds-card" aria-labelledby="sett-prefs">
+      <header class="ds-card__head">
+        <h2 id="sett-prefs" class="ds-card__title">
+          {{ t('inv.settings.prefs.title') }}
+        </h2>
+      </header>
 
-      <!-- Theme chips -->
-      <div class="sett__row sett__row--block">
-        <span class="sett__row-label">
+      <!-- Theme (K31) -->
+      <div class="ds-field">
+        <span class="ds-field__label" aria-hidden="true">
           {{ t('inv.settings.prefs.theme') }}
         </span>
         <fieldset class="ds-segmented">
@@ -603,82 +574,73 @@ onMounted(() => {
         </fieldset>
       </div>
 
-      <!-- Marketing consent -->
-      <div class="sett__row">
-        <span id="marketing-consent-label" class="sett__row-label">
-          {{ t('inv.settings.prefs.marketing') }}
+      <!-- Marketing consent: a setting that applies at once is a Toggle (K06) -->
+      <label class="ds-toggle">
+        <span class="ds-toggle__text">
+          <span>{{ t('inv.settings.prefs.marketing') }}</span>
         </span>
-        <button
-          type="button"
-          class="sett__toggle"
-          :class="{ 'sett__toggle--active': marketingConsent }"
+        <input
+          class="ds-toggle__input"
+          type="checkbox"
+          role="switch"
+          :checked="marketingConsent"
           :disabled="marketingBusy"
-          :aria-pressed="marketingConsent"
-          aria-labelledby="marketing-consent-label"
-          @click="toggleMarketing"
+          @change="toggleMarketing"
         />
-      </div>
+        <span class="ds-toggle__track" aria-hidden="true" />
+      </label>
     </section>
 
     <!-- Become an integrator: visible to every buyer; greyed until the verification is passed -->
-    <section v-if="isInvestor" class="sett__section">
-      <div class="sett__section-title">
-        {{ t('inv.settings.agent.title') }}
-      </div>
+    <section v-if="isInvestor" class="ds-card" aria-labelledby="sett-agent">
+      <header class="ds-card__head">
+        <h2 id="sett-agent" class="ds-card__title">
+          {{ t('inv.settings.agent.title') }}
+        </h2>
+      </header>
 
       <!-- Loading -->
-      <div v-if="agentState === 'loading'" class="sett__center">
-        <CLoader :size="20" />
-      </div>
+      <CLoader v-if="agentState === 'loading'" :size="20" />
 
       <!-- Load error with retry -->
-      <button
-        v-else-if="agentState === 'load_error'"
-        type="button"
-        class="sett__row sett__row--clickable"
-        @click="fetchAgentApps"
-      >
-        <span class="sett__row-label sett__row-label--muted">
-          <RefreshCw :size="16" />
-          {{ t('inv.settings.agent.loadError') }}
-        </span>
-        <span class="sett__row-label sett__row-label--accent">
-          {{ t('common.retry') }}
-        </span>
-      </button>
+      <div v-else-if="agentState === 'load_error'" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('inv.settings.agent.loadError') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="fetchAgentApps">
+              {{ t('common.retry') }}
+            </CButton>
+          </div>
+        </div>
+      </div>
 
       <!-- Pending review -->
-      <div v-else-if="agentState === 'pending'" class="sett__row sett__row--block">
-        <CButton variant="outline" @click="onAgentButton">
-          <UserPlus :size="16" />
-          {{ t('inv.settings.agent.underReview') }}
-        </CButton>
-      </div>
+      <CButton v-else-if="agentState === 'pending'" variant="outline" @click="onAgentButton">
+        <UserPlus size="sm" />
+        {{ t('inv.settings.agent.underReview') }}
+      </CButton>
 
       <!-- Cooldown active -->
-      <div v-else-if="agentState === 'cooldown'" class="sett__row">
-        <span class="sett__row-label sett__row-label--muted">
-          <UserPlus :size="16" />
-          {{ t('inv.settings.agent.cooldown', { days: cooldownDaysLeft }) }}
-        </span>
-      </div>
+      <p v-else-if="agentState === 'cooldown'" class="ds-card__body sett__cooldown">
+        <UserPlus size="sm" />
+        {{ t('inv.settings.agent.cooldown', { days: cooldownDaysLeft }) }}
+      </p>
 
       <!-- Can apply / reapply -->
-      <div v-else class="sett__row sett__row--block">
-        <CButton
-          :variant="agentState === 'kyc_required' ? 'outline' : 'primary'"
-          :class="{ 'sett__agent-btn--locked': agentState === 'kyc_required' }"
-          :aria-disabled="agentState === 'kyc_required' || undefined"
-          @click="onAgentButton"
-        >
-          <UserPlus :size="16" />
-          {{
-            agentState === 'can_reapply'
-              ? t('inv.settings.agent.reapply')
-              : t('inv.settings.agent.apply')
-          }}
-        </CButton>
-      </div>
+      <CButton
+        v-else
+        :variant="agentState === 'kyc_required' ? 'outline' : 'primary'"
+        :aria-disabled="agentState === 'kyc_required' || undefined"
+        @click="onAgentButton"
+      >
+        <UserPlus size="sm" />
+        {{
+          agentState === 'can_reapply'
+            ? t('inv.settings.agent.reapply')
+            : t('inv.settings.agent.apply')
+        }}
+      </CButton>
 
       <IntegratorApplicationModal
         :open="agentModalOpen"
@@ -690,86 +652,104 @@ onMounted(() => {
     </section>
 
     <!-- Actions -->
-    <section class="sett__section">
-      <div class="sett__section-title">
-        {{ t('inv.settings.actions.title') }}
-      </div>
+    <section class="ds-card" aria-labelledby="sett-actions">
+      <header class="ds-card__head">
+        <h2 id="sett-actions" class="ds-card__title">
+          {{ t('inv.settings.actions.title') }}
+        </h2>
+      </header>
 
-      <!-- Identity verification, with where it stands -->
-      <button type="button" class="sett__row sett__row--clickable" @click="goKyc">
-        <span class="sett__row-label sett__row-label--accent">
-          <Shield :size="16" />
-          {{ t('inv.settings.actions.kyc.title') }}
-        </span>
-        <span class="sett__row-value">{{ t(kycRowKey) }}</span>
-      </button>
+      <ul class="ds-rows">
+        <!-- Identity verification, with where it stands -->
+        <li class="ds-row">
+          <span class="ds-row__lead"><Shield size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" to="/verification">
+              <span class="ds-row__title">{{ t('inv.settings.actions.kyc.title') }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">{{ t(kycRowKey) }}</span>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
 
-      <button type="button" class="sett__row sett__row--clickable" @click="goDocs">
-        <span class="sett__row-label sett__row-label--accent">
-          <FileText :size="16" />
-          {{ t('inv.settings.actions.docs') }}
-        </span>
-        <ChevronRight :size="16" />
-      </button>
+        <li class="ds-row">
+          <span class="ds-row__lead"><FileText size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: 'investor-docs' }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.docs') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
 
-      <button type="button" class="sett__row sett__row--clickable" @click="goSupport">
-        <span class="sett__row-label sett__row-label--accent">
-          <MessageCircle :size="16" />
-          {{ t('inv.settings.actions.support') }}
-        </span>
-        <ChevronRight :size="16" />
-      </button>
+        <li class="ds-row">
+          <span class="ds-row__lead"><MessageCircle size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: 'investor-support' }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.support') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
 
-      <button type="button" class="sett__row sett__row--clickable" @click="goFaq">
-        <span class="sett__row-label sett__row-label--accent">
-          <HelpCircle :size="16" />
-          {{ t('inv.settings.actions.faq') }}
-        </span>
-        <ChevronRight :size="16" />
-      </button>
+        <li class="ds-row">
+          <span class="ds-row__lead"><HelpCircle size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: 'investor-faq' }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.faq') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
 
       <!-- Security: two-factor, sessions, sign out of all devices, sign out -->
       <TwoFactorSection tPrefix="inv.settings.actions" />
       <ActiveSessionsSection tPrefix="inv.settings.actions" />
-      <button
-        type="button"
-        class="sett__row sett__row--clickable"
-        :class="{ 'sett__row--disabled': loggingOutAll }"
-        :disabled="loggingOutAll"
-        @click="handleLogoutAll"
-      >
-        <span class="sett__row-label sett__row-label--danger">
-          <LogOut :size="16" />
-          {{ t('inv.settings.actions.logoutAll') }}
-        </span>
-        <ChevronRight :size="16" />
-      </button>
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOutAll ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button
+              type="button"
+              class="ds-row__link"
+              :disabled="loggingOutAll"
+              @click="handleLogoutAll"
+            >
+              <span class="ds-row__title sett__title--danger">
+                {{ t('inv.settings.actions.logoutAll') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
 
       <NotificationPreferencesSection tPrefix="inv.settings.actions" />
       <DeactivateAccountSection tPrefix="inv.settings.actions" />
 
-      <button
-        type="button"
-        class="sett__row sett__row--clickable"
-        :class="{ 'sett__row--disabled': loggingOut }"
-        :disabled="loggingOut"
-        @click="handleLogout"
-      >
-        <span class="sett__row-label sett__row-label--danger">
-          <LogOut :size="16" />
-          {{ t('inv.settings.actions.logout') }}
-        </span>
-        <ChevronRight :size="16" />
-      </button>
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
+              <span class="ds-row__title sett__title--danger">
+                {{ t('inv.settings.actions.logout') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
     </section>
 
     <!-- Profile edit modal (TASK-38 item 3): first/last name, phone,
          country, language. -->
-    <CModal :open="showEditProfile" @close="closeEditProfile">
-      <h3 class="sett__modal-title">
-        {{ t('inv.settings.profile.editTitle') }}
-      </h3>
-
+    <CModal
+      :open="showEditProfile"
+      :title="t('inv.settings.profile.editTitle')"
+      @close="closeEditProfile"
+    >
       <div class="sett__modal-row">
         <CInput
           v-model="draftFirstName"
@@ -806,13 +786,14 @@ onMounted(() => {
         :options="languageOptions"
       />
 
-      <div class="sett__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeEditProfile">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeEditProfile">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="savingProfile"
           :disabled="!canSubmitProfile"
           @click="handleSaveProfile"
@@ -828,249 +809,48 @@ onMounted(() => {
 .sett {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
+  gap: var(--space-4);
 }
 
-/* Inline page header -- MarketView pattern */
-.sett__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.sett__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.sett__page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-.sett__agent-btn--locked {
-  opacity: 0.55;
-}
-
-.sett__center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4-lg);
-}
-
-/* Profile card */
+/* Profile card: the avatar, the name, the e-mail and the role, centred */
 .sett__profile {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: var(--space-4-lg) var(--space-4) var(--space-5);
+  text-align: center;
   gap: var(--space-2);
 }
 .sett__name {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin-block-start: var(--space-2);
 }
 .sett__email {
+  margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-}
-.sett__role-badge {
-  display: inline-block;
-  margin-block-start: var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  color: var(--primary);
-  text-transform: capitalize;
+  overflow-wrap: anywhere;
 }
 
-/* Section */
-.sett__section {
-  padding: 0 var(--space-4);
-  margin-block-end: var(--space-4-lg);
-}
-.sett__section-title {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-block-end: var(--space-2);
-  padding: 0 var(--space-1);
-}
-.sett__section-title--row {
+/* The cooldown line: an icon and the words */
+.sett__cooldown {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.sett__edit-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.sett__edit-btn:hover {
-  color: var(--primary);
-  background: var(--bg-subtle);
-}
-
-/*
- * Row. Rendered either as <div> (read-only) or <button type="button">
- * (clickable). Shared CSS -- the button variant needs a reset to
- * erase default button chrome (background, border, font, text-align)
- * so the visual stays identical to the div variant from B5.
- */
-.sett__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-}
-.sett__row:last-child {
-  border-block-end: none;
-}
-button.sett__row {
-  inline-size: 100%;
-  background: transparent;
-  border: 0;
-  border-block-end: thin solid var(--border-default);
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-button.sett__row:last-child {
-  border-block-end: none;
-}
-
-.sett__row--block {
-  flex-wrap: wrap;
-  align-items: stretch;
-}
-.sett__row--clickable {
-  transition: background var(--dur-fast);
-}
-.sett__row--clickable:hover {
-  background: var(--bg-subtle);
-}
-.sett__row--disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.sett__row-label {
-  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
+  margin: 0;
 }
-.sett__row-label--accent {
-  color: var(--primary);
-  font-weight: 600;
-}
-.sett__row-label--muted {
-  color: var(--text-secondary);
-}
-.sett__row-label--danger {
+
+/* The label of a row that signs out or ends sessions (K23: danger on the title) */
+.sett__title--danger {
   color: var(--danger);
-  font-weight: 600;
-}
-.sett__row-value {
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-  text-align: end;
-}
-
-/* Toggle switch. The track is tokenised and the knob was a raw #fff, so the
-   track followed the theme and the knob could not: measured 1.57:1 knob-vs-track
-   in LIGHT against 11.6:1 in dark, i.e. the affordance was carried by its drop
-   shadow alone. Both sides now read --toggle-* and the pair is 4.57:1 in BOTH
-   themes. See variables.css for the values and for what moves on screen. */
-.sett__toggle {
-  inline-size: var(--size-2xl);
-  block-size: var(--size-xs);
-  background: var(--toggle-track);
-  border-radius: var(--radius-md);
-  position: relative;
-  cursor: pointer;
-  transition:
-    background var(--dur-base) var(--ease-standard),
-    opacity var(--dur-base) var(--ease-standard);
-  border: none;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-/* A5: the PAINTED box stays this size on purpose; the HIT AREA is expanded past
-   it with a centred overlay. Growing the box itself would move the text this
-   control sits inside or beside. max() so an already-large box never shrinks. */
-.sett__toggle::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.sett__toggle::after {
-  content: '';
-  position: absolute;
-  inline-size: var(--size-2xs);
-  block-size: var(--size-2xs);
-  background: var(--toggle-knob);
-  border-radius: 50%;
-  inset-block-start: 2px;
-  inset-inline-start: 2px;
-  transition: transform var(--dur-base);
-  box-shadow: var(--shadow-1);
-}
-.sett__toggle--active {
-  background: var(--primary);
-}
-.sett__toggle--active::after {
-  transform: translateX(20px);
-}
-.sett__toggle:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* Profile edit modal (TASK-38 item 3) */
-.sett__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
 .sett__modal-row {
   display: flex;
   gap: var(--space-3);
 }
 .sett__modal-col {
   flex: 1;
-}
-.sett__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
 }
 </style>
