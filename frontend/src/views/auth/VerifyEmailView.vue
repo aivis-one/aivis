@@ -223,17 +223,9 @@ async function handleResend(): Promise<void> {
         </span>
       </div>
 
-      <div class="entry-logout">
+      <div class="ds-auth__foot">
         <AuthLogoutLink />
       </div>
     </div>
   </AuthShell>
 </template>
-
-<style scoped>
-.entry-logout {
-  display: flex;
-  justify-content: center;
-  margin-block-start: var(--space-5);
-}
-</style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AuthShell from '@/components/layout/AuthShell.vue'
-import { ChevronLeft, Info, ShieldAlert } from '@/components/ui/icons'
+import { Info, ShieldAlert } from '@/components/ui/icons'
 // =============================================================================
 // AIVIS.ONE Frontend -- RegisterView (iter 2.6 batch 2 + R22 STYLE-22-02)
 // =============================================================================
@@ -49,7 +49,7 @@ import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
-import { CInput } from '@/components/ui'
+import { CBackLink, CCheckbox, CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { acceptDocumentByType } from '@/api/documents'
 import { rememberReturnPath } from '@/utils/postAuthReturn'
@@ -172,10 +172,7 @@ async function handleRegister(): Promise<void> {
   <AuthShell>
     <template #start>
       <AivisLogo :height="28" />
-      <button type="button" class="ds-button ds-button--ghost" @click="goToLogin">
-        <ChevronLeft :size="16" />
-        {{ t('auth.back') }}
-      </button>
+      <CBackLink :label="t('auth.back')" @click="goToLogin" />
     </template>
 
     <h1 class="ds-auth__title">
@@ -235,33 +232,27 @@ async function handleRegister(): Promise<void> {
         </div>
       </div>
 
-      <label class="auth-consent">
-        <input v-model="acceptedTerms" type="checkbox" />
-        <span class="auth-consent-text"
-          >{{ t('auth.register.consentPrefix') }}
-          <a
-            :href="termsUrl"
-            target="_blank"
-            rel="noopener"
-            @click.prevent="openDoc = 'cabinet_terms'"
-            >{{ t('auth.register.consentTerms') }}</a
-          >.</span
-        >
-      </label>
+      <CCheckbox v-model="acceptedTerms">
+        {{ t('auth.register.consentPrefix') }}
+        <a
+          :href="termsUrl"
+          target="_blank"
+          rel="noopener"
+          @click.prevent="openDoc = 'cabinet_terms'"
+          >{{ t('auth.register.consentTerms') }}</a
+        >.
+      </CCheckbox>
 
-      <label class="auth-consent auth-consent--second">
-        <input v-model="acceptedPrivacy" type="checkbox" />
-        <span class="auth-consent-text"
-          >{{ t('auth.register.consentPrefix') }}
-          <a
-            :href="privacyUrl"
-            target="_blank"
-            rel="noopener"
-            @click.prevent="openDoc = 'privacy_policy'"
-            >{{ t('auth.register.consentPrivacy') }}</a
-          >.</span
-        >
-      </label>
+      <CCheckbox v-model="acceptedPrivacy">
+        {{ t('auth.register.consentPrefix') }}
+        <a
+          :href="privacyUrl"
+          target="_blank"
+          rel="noopener"
+          @click.prevent="openDoc = 'privacy_policy'"
+          >{{ t('auth.register.consentPrivacy') }}</a
+        >.
+      </CCheckbox>
 
       <button
         class="ds-button ds-button--primary ds-button--block"
@@ -295,26 +286,5 @@ async function handleRegister(): Promise<void> {
 /* The field inside a hint pair gives up its own margin to the wrapper. */
 .form-group__field {
   margin-block-end: 0;
-}
-.auth-consent {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  inline-size: 100%;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-align: start;
-  line-height: 1.5;
-}
-.auth-consent input[type='checkbox'] {
-  flex: none;
-  /* centre the box on the first text line: (line-height 1.5 * fs-xs - box) / 2 */
-  margin: calc((1.5 * var(--fs-xs) - 1rem) / 2) 0 0;
-  inline-size: 1rem;
-  block-size: 1rem;
-}
-.auth-consent a {
-  color: var(--primary);
-  text-decoration: underline;
 }
 </style>

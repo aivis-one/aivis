@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AuthShell from '@/components/layout/AuthShell.vue'
-import { ChevronDown, ShieldAlert } from '@/components/ui/icons'
+import { ChevronDown, Image, ShieldAlert, Upload, X } from '@/components/ui/icons'
 // Identity verification screen (H10).
 //
 // ONE SCREEN CARRYING FOUR STATES, not a modal over the page the 402
@@ -39,7 +39,7 @@ import { ChevronDown, ShieldAlert } from '@/components/ui/icons'
 // the one that counts; these exist so a person is told about a HEIC
 // before uploading eight megabytes of it, not after.
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -55,6 +55,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { acceptDocumentByType } from '@/api/documents'
 import { updateMe } from '@/api/users'
 import { COUNTRIES } from '@/utils/countries'
+import { formatBytes } from '@/utils/format'
 import { CInput, CSelect } from '@/components/ui'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
@@ -152,6 +153,28 @@ function setSlot(target: SlotTarget, file: File | null): void {
   else if (target === 'back') backImage.value = file
   else selfieImage.value = file
 }
+
+// Removing a chosen file empties the slot AND the input: the input is re-made
+// (its key changes), so a file chosen again after a removal is a change.
+const resets = reactive<Record<SlotTarget, number>>({ front: 0, back: 0, selfie: 0 })
+
+function clearSlot(target: SlotTarget): void {
+  setSlot(target, null)
+  resets[target] += 1
+}
+
+// The slots the form asks for now, in the order the picker shows them: the
+// front, the back when this document has one, the selfie.
+const slots = computed(() => {
+  const list: Array<{ target: SlotTarget; label: string; file: File | null }> = [
+    { target: 'front', label: t('kyc.upload.front'), file: frontImage.value },
+  ]
+  if (needsBack.value) {
+    list.push({ target: 'back', label: t('kyc.upload.back'), file: backImage.value })
+  }
+  list.push({ target: 'selfie', label: t('kyc.upload.selfie'), file: selfieImage.value })
+  return list
+})
 
 function pickFile(target: SlotTarget, event: Event): void {
   const input = event.target as HTMLInputElement
@@ -318,13 +341,13 @@ onMounted(() => {
 
 <template>
   <AuthShell>
-    <div v-if="loading" class="kyc-card">{{ t('common.loading') }}</div>
+    <p v-if="loading" class="ds-auth__subtitle" role="status">{{ t('common.loading') }}</p>
 
-    <div v-else-if="status" class="kyc-card">
+    <div v-else-if="status" class="ds-auth__form">
       <!-- Paid, waiting -->
       <template v-if="status.kyc_status === 'submitted'">
         <h1 class="ds-auth__title">{{ t('kyc.pendingTitle') }}</h1>
-        <p class="kyc-text">{{ t('kyc.pendingText') }}</p>
+        <p class="ds-auth__subtitle">{{ t('kyc.pendingText') }}</p>
       </template>
 
       <!-- Not started, refused, or an approval withdrawn: the same form -->
@@ -338,7 +361,7 @@ onMounted(() => {
                 : t('kyc.title')
           }}
         </h1>
-        <p class="kyc-text">
+        <p class="ds-auth__subtitle">
           {{
             status.kyc_status === 'revoked'
               ? t('kyc.revokedText')
@@ -353,13 +376,13 @@ onMounted(() => {
         >
           {{ t('kyc.rejectedReason', { reason: status.rejection_reason }) }}
         </p>
-        <p class="kyc-balance">
+        <p class="ds-auth__subtitle">
           {{ t('kyc.balance', { available: availableUsd }) }}
         </p>
 
         <!-- Verification starts from a confirmed e-mail -->
-        <div v-if="emailMissing" class="kyc-gate">
-          <p class="kyc-text">{{ t('kyc.emailFirst') }}</p>
+        <div v-if="emailMissing" class="ds-auth__form">
+          <p class="ds-auth__subtitle">{{ t('kyc.emailFirst') }}</p>
           <button
             type="button"
             class="ds-button ds-button--primary ds-button--block"
@@ -370,21 +393,17 @@ onMounted(() => {
         </div>
 
         <template v-else>
-          <div class="kyc-form">
-            <div class="kyc-row">
-              <CInput
-                v-model="firstName"
-                class="kyc-row__col"
-                :label="t('kyc.details.firstName')"
-                autocomplete="given-name"
-              />
-              <CInput
-                v-model="lastName"
-                class="kyc-row__col"
-                :label="t('kyc.details.lastName')"
-                autocomplete="family-name"
-              />
-            </div>
+          <div class="ds-auth__form">
+            <CInput
+              v-model="firstName"
+              :label="t('kyc.details.firstName')"
+              autocomplete="given-name"
+            />
+            <CInput
+              v-model="lastName"
+              :label="t('kyc.details.lastName')"
+              autocomplete="family-name"
+            />
             <CInput v-model="phone" :label="t('kyc.details.phone')" type="tel" autocomplete="tel" />
             <CSelect
               v-model="country"
@@ -411,40 +430,53 @@ onMounted(() => {
               </div>
             </label>
 
-            <label class="ds-field">
-              <span class="ds-field__label">{{ t('kyc.upload.front') }}</span>
-              <input
-                type="file"
-                class="ds-input"
-                :accept="KYC_ACCEPT_ATTRIBUTE"
-                @change="pickFile('front', $event)"
-              />
-            </label>
+            <!-- The images: a file input (K30) for each slot; the chosen file is listed
+                 with its size and a button that removes it. -->
+            <div v-for="entry in slots" :key="entry.target" class="ds-field ds-file">
+              <span :id="`kyc-${entry.target}-label`" class="ds-field__label">{{
+                entry.label
+              }}</span>
+              <label class="ds-button ds-button--secondary ds-file__pick">
+                <Upload size="sm" />
+                <span>{{ t('staff.platform.documents.form.chooseFile') }}</span>
+                <input
+                  :key="`${entry.target}-${resets[entry.target]}`"
+                  type="file"
+                  class="ds-file__input"
+                  :accept="KYC_ACCEPT_ATTRIBUTE"
+                  :aria-labelledby="`kyc-${entry.target}-label`"
+                  aria-describedby="kyc-upload-hint"
+                  @change="pickFile(entry.target, $event)"
+                />
+              </label>
+              <ul v-if="entry.file" class="ds-file__list" aria-live="polite">
+                <li class="ds-file__item" data-state="selected">
+                  <span class="ds-file__thumb"><Image size="sm" /></span>
+                  <span class="ds-file__body">
+                    <span class="ds-file__name">{{ entry.file.name }}</span>
+                    <span class="ds-file__meta ds-file__status">{{
+                      formatBytes(entry.file.size)
+                    }}</span>
+                  </span>
+                  <span class="ds-file__aside">
+                    <button
+                      type="button"
+                      class="ds-file__remove"
+                      :aria-label="`${t('common.clear')}: ${entry.file.name}`"
+                      @click="clearSlot(entry.target)"
+                    >
+                      <X size="sm" />
+                    </button>
+                  </span>
+                </li>
+              </ul>
+            </div>
 
-            <label v-if="needsBack" class="ds-field">
-              <span class="ds-field__label">{{ t('kyc.upload.back') }}</span>
-              <input
-                type="file"
-                class="ds-input"
-                :accept="KYC_ACCEPT_ATTRIBUTE"
-                @change="pickFile('back', $event)"
-              />
-            </label>
-
-            <label class="ds-field">
-              <span class="ds-field__label">{{ t('kyc.upload.selfie') }}</span>
-              <input
-                type="file"
-                class="ds-input"
-                :accept="KYC_ACCEPT_ATTRIBUTE"
-                @change="pickFile('selfie', $event)"
-              />
-            </label>
-
-            <p class="ds-field__hint">{{ t('kyc.upload.hint') }}</p>
+            <p id="kyc-upload-hint" class="ds-field__hint">{{ t('kyc.upload.hint') }}</p>
             <p class="ds-field__hint">
               {{ t('kyc.notice.lead') }}
               <a
+                class="ds-auth__link"
                 :href="noticeUrl"
                 target="_blank"
                 rel="noopener"
@@ -467,7 +499,7 @@ onMounted(() => {
             }}
           </button>
           <template v-else>
-            <p class="kyc-text">{{ t('kyc.needsTopUp') }}</p>
+            <p class="ds-auth__subtitle">{{ t('kyc.needsTopUp') }}</p>
             <button class="ds-button ds-button--primary ds-button--block" @click="toDeposit">
               {{ t('kyc.toDeposit') }}
             </button>
@@ -482,11 +514,11 @@ onMounted(() => {
         </template>
       </template>
 
-      <p class="kyc-text">{{ t('kyc.unlocks') }}</p>
+      <p class="ds-auth__subtitle">{{ t('kyc.unlocks') }}</p>
       <button class="ds-button ds-button--secondary ds-button--block" @click="goBack">
         {{ t('kyc.back') }}
       </button>
-      <div class="kyc-logout">
+      <div class="ds-auth__foot">
         <AuthLogoutLink />
       </div>
     </div>
@@ -506,46 +538,3 @@ onMounted(() => {
     />
   </AuthShell>
 </template>
-
-<style scoped>
-.kyc-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  text-align: center;
-}
-.kyc-text {
-  color: var(--text-secondary);
-}
-.kyc-balance {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.kyc-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  text-align: start;
-}
-.kyc-row {
-  display: flex;
-  gap: var(--space-3);
-}
-.kyc-row__col {
-  flex: 1;
-  min-inline-size: 0;
-}
-.kyc-gate {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.ds-field__hint a {
-  color: var(--primary);
-  text-decoration: underline;
-}
-.kyc-logout {
-  display: flex;
-  justify-content: center;
-}
-</style>

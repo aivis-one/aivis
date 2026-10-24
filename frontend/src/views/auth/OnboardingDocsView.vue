@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AuthShell from '@/components/layout/AuthShell.vue'
 import CLoader from '@/components/ui/CLoader.vue'
+import { CCheckbox } from '@/components/ui'
 import { ExternalLink, ShieldAlert } from '@/components/ui/icons'
 // Document signing screen.
 // Flow:
@@ -183,65 +184,52 @@ async function handleSignAll(): Promise<void> {
     </p>
 
     <!-- Loading -->
-    <div v-if="loadingDocs" class="docs-loading">
+    <div v-if="loadingDocs" class="ds-auth__icon">
       <CLoader />
     </div>
 
     <!-- Document list / empty state -->
     <template v-else>
-      <div v-if="documents.length > 0" class="doc-list">
-        <div
-          v-for="doc in documents"
-          :key="doc.id"
-          class="doc-item"
-          :class="{ signed: doc.is_signed }"
-          @click="toggleCheck(doc)"
-        >
-          <!--
-              A11y: the ROW carries @click and used to be the only way to toggle
-              this, which made it mouse-only. It cannot become role="button" --
-              it contains the "open document" button, and an ARIA button must not
-              hold interactive descendants.
-              What the row actually IS is a checkbox, so the box itself takes the
-              role, the state and the keyboard, and the link stays a sibling.
-            -->
-          <div
-            class="doc-checkbox"
-            :class="{ checked: isChecked(doc), locked: doc.is_signed }"
-            role="checkbox"
-            :aria-checked="isChecked(doc)"
-            :aria-label="doc.title"
-            :tabindex="doc.is_signed ? -1 : 0"
-            @click.stop="toggleCheck(doc)"
-            @keydown.enter.prevent="toggleCheck(doc)"
-            @keydown.space.prevent="toggleCheck(doc)"
-          >
-            <span v-if="isChecked(doc)">✓</span>
-          </div>
-          <div class="doc-info">
-            <div class="doc-title">
-              {{ doc.title }}
-            </div>
-            <div class="doc-meta">
-              <span class="doc-required">{{ t('auth.docs.required') }}</span>
-            </div>
-          </div>
-          <button type="button" class="doc-link" @click.stop="openDocument(doc)">
-            <ExternalLink :size="16" />
-            <span class="doc-link-label">{{ t('auth.docs.read') }}</span>
-          </button>
-        </div>
-      </div>
+      <!--
+        A row of the Row list (K23) per document: the tick (K45) with the document's
+        title, the word "required" under it, and a ghost button that opens the text.
+        The tick is a real checkbox, so the box carries the role, the state and the
+        keyboard; the button is a sibling, not inside the label.
+      -->
+      <ul v-if="documents.length > 0" class="ds-rows">
+        <li v-for="doc in documents" :key="doc.id" class="ds-row">
+          <span class="ds-row__body">
+            <CCheckbox
+              :model-value="isChecked(doc)"
+              :disabled="doc.is_signed"
+              :label="doc.title"
+              @update:model-value="toggleCheck(doc)"
+            />
+            <span class="ds-row__meta">{{ t('auth.docs.required') }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <button
+              type="button"
+              class="ds-button ds-button--ghost"
+              data-size="sm"
+              @click="openDocument(doc)"
+            >
+              <ExternalLink size="sm" />
+              <span>{{ t('auth.docs.read') }}</span>
+            </button>
+          </span>
+        </li>
+      </ul>
 
       <!-- Counter -->
-      <div v-if="documents.length > 0" class="doc-counter">
+      <p v-if="documents.length > 0" class="ds-auth__subtitle">
         {{ t('auth.docs.checkedOf', { checked: checkedCount, total: documents.length }) }}
-      </div>
+      </p>
 
       <!-- No docs required for this role -->
-      <div v-if="documents.length === 0" class="no-docs">
+      <p v-if="documents.length === 0" class="ds-auth__subtitle">
         {{ t('auth.docs.noDocs') }}
-      </div>
+      </p>
 
       <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
         <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
@@ -250,7 +238,7 @@ async function handleSignAll(): Promise<void> {
         </div>
       </div>
 
-      <div class="doc-actions">
+      <div class="ds-auth__form">
         <button
           class="ds-button ds-button--primary ds-button--block"
           :aria-busy="signing || undefined"
@@ -263,7 +251,7 @@ async function handleSignAll(): Promise<void> {
         </button>
       </div>
 
-      <div class="entry-logout">
+      <div class="ds-auth__foot">
         <AuthLogoutLink />
       </div>
     </template>
@@ -278,149 +266,3 @@ async function handleSignAll(): Promise<void> {
     />
   </AuthShell>
 </template>
-
-<style scoped>
-.docs-loading {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6-lg);
-}
-.no-docs {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  text-align: center;
-  margin-block-end: var(--space-5);
-}
-.doc-list {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form-wide);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-block-end: var(--space-4);
-}
-.doc-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--dur-base);
-}
-.doc-item:hover {
-  border-color: var(--primary-hover);
-  background: var(--bg-surface);
-}
-.doc-item.signed {
-  cursor: default;
-}
-.doc-checkbox {
-  position: relative;
-  inline-size: var(--size-xs);
-  block-size: var(--size-xs);
-  min-inline-size: var(--size-xs);
-  border: calc(var(--border-input-width) * 2) solid var(--border-default);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--dur-base);
-  margin-block-start: var(--space-1);
-  font-size: var(--fs-xs);
-  color: var(--on-primary);
-}
-/* A5: 24x24 painted. It only became visible to a hit test once it was given
-   role="checkbox" -- before that no interactive-element query could select
-   it at all. The painted box stays; the hit area is expanded past it. */
-.doc-checkbox::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.doc-checkbox.checked {
-  background: var(--primary);
-  border-color: var(--primary);
-}
-.doc-checkbox.locked {
-  opacity: 0.8;
-}
-/* A flex item defaults to min-width:auto, so it will not shrink below its
-   content. With a long document title this pushed .doc-info to 435px against
-   a 390 viewport -- and documentElement.scrollWidth stayed 390, so the
-   overflow was CLIPPED and unreachable, on all eight rows. min-width:0 lets
-   it shrink; overflow-wrap lets a long unbroken title break rather than push.
-   Found only on a direct load: the push sweep renders no documents here.
-   Same idiom already used by .event-card__body and .company-item__info. */
-.doc-info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.doc-title {
-  overflow-wrap: anywhere;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-1);
-}
-.doc-meta {
-  display: flex;
-  gap: var(--space-2);
-}
-.doc-required {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  font-weight: 500;
-}
-.doc-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-  background: none;
-  border: none;
-  padding: var(--space-1) var(--space-1);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--fs-xs);
-  transition: color var(--dur-base);
-}
-/* A5: 8 of these failed the 44px area test -- found ONLY by loading
-   /onboarding/docs directly; the push sweep renders no documents here and
-   reported the route clean. The painted link stays inline beside the row
-   text, so the hit area is expanded past it. */
-.doc-link::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-.doc-link:hover {
-  color: var(--primary);
-}
-.doc-counter {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin-block-end: var(--space-4);
-}
-.doc-actions {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-form-wide);
-}
-.entry-logout {
-  display: flex;
-  justify-content: center;
-  margin-block-start: var(--space-5);
-}
-</style>

@@ -157,4 +157,3 @@ async function handleSubmit(): Promise<void> {
   </AuthShell>
 </template>
 
-<style scoped></style>
