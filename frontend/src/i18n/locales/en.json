@@ -1592,6 +1592,11 @@
           "gift": "Gift",
           "installment_tranche": "Installment payment"
         },
+        "basis": {
+          "sale": "Basis: Parts bought under the Buyer Agreement you accepted in the Cabinet.",
+          "installment_tranche": "Basis: one paid month of your instalment plan, its own purchase agreement accepted in the Cabinet.",
+          "gift": "Basis: Parts given by AIVIS.ONE LLC under its order on gifts, accepted by you in the Cabinet."
+        },
         "units": "Units",
         "paid": "Paid",
         "pricePerUnit": "Price per unit",
@@ -2829,7 +2834,7 @@
   "intro": {
     "what": {
       "title": "What AIVIS.ONE is",
-      "text": "AIVIS.ONE sells parts of intellectual property projects. A part is a share of 15 percent of the project's gross receipts, the sale of an existing right; it is entered in the company's register in your name."
+      "text": "AIVIS.ONE sells parts of intellectual property projects. A part is a share of 10 percent of the project's gross receipts, the sale of an existing right; it is entered in the company's register in your name."
     },
     "where": {
       "title": "Where you are",

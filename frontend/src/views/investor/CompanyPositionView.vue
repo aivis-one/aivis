@@ -234,6 +234,13 @@ function legalBasisLabel(basis: string): string {
   return tOrRaw(t, `inv.companyPosition.purchases.legalBasis.${basis}`, basis)
 }
 
+/** The basis line of the Booking card: the document and the Parts only. A basis the catalogue does not know yet shows no line. */
+function legalBasisLine(basis: string): string {
+  return basis === 'sale' || basis === 'gift' || basis === 'installment_tranche'
+    ? t(`inv.companyPosition.purchases.basis.${basis}`)
+    : ''
+}
+
 /**
  * Map a Purchase.legal_basis to the localised label for the per-row
  * VIEW button (iter 2.5 batch 7).
@@ -440,6 +447,9 @@ onUnmounted(() => {
                   <dd>{{ formatPrice(p.paid_cents) }}</dd>
                 </div>
               </dl>
+              <p v-if="legalBasisLine(p.legal_basis)" class="ds-booking__basis">
+                {{ legalBasisLine(p.legal_basis) }}
+              </p>
               <ul class="ds-booking__docs">
                 <li class="ds-row ds-docrow">
                   <span class="ds-row__lead"><FileText size="sm" /></span>
