@@ -128,6 +128,7 @@ async def test_ownership_email_links_to_this_company(monkeypatch: pytest.MonkeyP
     data = SimpleNamespace(
         investor_email="holder@example.test",
         investor_name="Holder",
+        investor_language="en",
         investor_id=uuid4(),
         company=SimpleNamespace(id=company_id, name="Acme"),
         total_units=7,
