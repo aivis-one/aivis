@@ -23,7 +23,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Package } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CTextarea } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { ApiResponseError } from '@/api/client'
 import {
   allowedProductStatuses,
@@ -55,7 +59,7 @@ const companyId = computed<string>(() => {
 
 const items = ref<ProductResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
@@ -78,13 +82,8 @@ async function load(): Promise<void> {
   }
 }
 
-function goToPrevPage(): void {
-  page.value--
-  void load()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void load()
 }
 
@@ -229,86 +228,96 @@ onMounted(load)
 
 <template>
   <div class="scprod">
-    <p class="scprod__hint">{{ t('staff.platform.products.hint') }}</p>
+    <StaffAlert tone="info">
+      {{ t('staff.platform.products.hint') }}
+    </StaffAlert>
 
     <div v-if="canCreate" class="scprod__toolbar">
-      <CButton variant="primary" size="sm" @click="openCreate">
+      <CButton variant="primary" size="sm" inline @click="openCreate">
         {{ t('staff.platform.products.create') }}
       </CButton>
     </div>
 
-    <div v-if="loading" class="scprod__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
-    <div v-else-if="error" class="scprod__center">
-      <p class="scprod__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="load">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
-
-    <CEmptyState v-else-if="!items.length" :title="t('staff.platform.products.empty')">
-      <template #icon>
-        <Package :size="40" />
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
       </template>
     </CEmptyState>
 
-    <ul v-else class="scprod__list">
-      <li v-for="p in items" :key="p.id" class="scprod__item">
-        <div class="scprod__info">
-          <div class="scprod__name">
-            {{ p.name }}
-            <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
-          </div>
-          <div v-if="p.description" class="scprod__desc">{{ p.description }}</div>
-          <div class="scprod__meta">
+    <CEmptyState v-else-if="!items.length" :title="t('staff.platform.products.empty')">
+      <template #icon>
+        <Package />
+      </template>
+    </CEmptyState>
+
+    <!-- The products (K23 rows) -->
+    <ul v-else class="ds-rows scprod__list">
+      <li v-for="p in items" :key="p.id" class="ds-row scprod__item">
+        <span class="ds-row__lead"><Package size="sm" /></span>
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ p.name }}</span>
+          <span v-if="p.description" class="ds-row__meta">{{ p.description }}</span>
+          <span class="ds-row__meta">
             {{
               t('staff.platform.products.meta', {
                 size: formatNumber(p.package_size, locale),
                 price: formatPrice(p.price_per_unit_cents, 'USD'),
               })
             }}
-          </div>
-        </div>
-        <div class="scprod__actions">
-          <CButton
+          </span>
+        </span>
+        <span class="ds-row__trail scprod__actions">
+          <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
+          <button
             v-for="to in movesOf(p)"
             :key="to"
-            variant="outline"
-            size="sm"
+            type="button"
+            class="ds-button ds-button--secondary"
+            data-size="sm"
             :disabled="movingId === p.id"
             @click="requestMove(p, to)"
           >
-            {{ t(moveKey(to)) }}
-          </CButton>
-          <CButton v-if="canEdit" variant="outline" size="sm" @click="openEdit(p)">
-            {{ t('common.edit') }}
-          </CButton>
-        </div>
+            <span>{{ t(moveKey(to)) }}</span>
+          </button>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="ds-button ds-button--secondary"
+            data-size="sm"
+            @click="openEdit(p)"
+          >
+            <span>{{ t('common.edit') }}</span>
+          </button>
+        </span>
       </li>
     </ul>
 
-    <div v-if="!loading && !error && totalPages > 1" class="scprod__pagination">
-      <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
-        &larr;
-      </CButton>
-      <span class="scprod__page">{{ page }} / {{ totalPages }}</span>
-      <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
-        &rarr;
-      </CButton>
-    </div>
+    <!-- Pagination (K17) -->
+    <StaffPager
+      v-if="!loading && !error"
+      :page="page"
+      :total-pages="totalPages"
+      @update:page="goToPage"
+    />
 
-    <CModal :open="archiveTarget !== null" @close="archiveTarget = null">
-      <h3 class="scprod__modal-title">{{ t('staff.platform.products.archiveTitle') }}</h3>
-      <p class="scprod__modal-note">{{ t('staff.platform.products.archiveBody') }}</p>
-      <div class="scprod__modal-actions">
-        <CButton variant="outline" size="sm" @click="archiveTarget = null">
+    <CModal
+      :open="archiveTarget !== null"
+      :title="t('staff.platform.products.archiveTitle')"
+      @close="archiveTarget = null"
+    >
+      <p class="ds-dialog__text">{{ t('staff.platform.products.archiveBody') }}</p>
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="archiveTarget = null">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="movingId !== null"
           @click="archiveTarget && applyMove(archiveTarget, 'archived')"
         >
@@ -317,14 +326,13 @@ onMounted(load)
       </div>
     </CModal>
 
-    <CModal :open="showForm" @close="showForm = false">
-      <h3 class="scprod__modal-title">
-        {{
-          editing
-            ? t('staff.platform.products.editTitle')
-            : t('staff.platform.products.createTitle')
-        }}
-      </h3>
+    <CModal
+      :open="showForm"
+      :title="
+        editing ? t('staff.platform.products.editTitle') : t('staff.platform.products.createTitle')
+      "
+      @close="showForm = false"
+    >
       <CInput v-model="draftName" :label="t('staff.platform.products.fieldName')" maxlength="500" />
       <CTextarea
         v-model="draftDescription"
@@ -349,15 +357,16 @@ onMounted(load)
               : undefined
           "
         />
-        <p class="scprod__modal-note">{{ t('staff.platform.products.packageSizeNote') }}</p>
+        <p class="ds-field__hint">{{ t('staff.platform.products.packageSizeNote') }}</p>
       </template>
-      <div class="scprod__modal-actions">
-        <CButton variant="outline" size="sm" @click="showForm = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showForm = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
@@ -371,112 +380,18 @@ onMounted(load)
 
 <style scoped>
 .scprod {
-  padding: var(--space-4);
-}
-
-.scprod__hint {
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .scprod__toolbar {
-  margin-block-end: var(--space-4);
-}
-
-.scprod__center {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-3);
 }
 
-.scprod__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
-.scprod__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.scprod__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-
-.scprod__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.scprod__name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.scprod__desc {
-  margin-block-start: var(--space-1);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
-}
-
+/* A product's moves and Edit wrap under each other on a narrow row. */
 .scprod__actions {
-  display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.scprod__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-
-.scprod__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.scprod__meta {
-  margin-block-start: var(--space-1);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.scprod__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-
-.scprod__modal-note {
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.scprod__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
 }
 </style>

@@ -45,6 +45,7 @@
 import { inject, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ExternalLink } from '@/components/ui/icons'
 import {
   CLoader,
   CBadge,
@@ -267,116 +268,152 @@ function formatPrice(cents: number): string {
   <div class="scp">
     <!-- Loading -->
     <div v-if="loading" class="scp__center">
-      <CLoader :size="28" />
+      <CLoader />
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="scp__center">
-      <CButton variant="secondary" size="sm" @click="reload">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="reload">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else-if="company">
-      <!-- Cover (FP-25 self-hide when absent) -->
-      <div v-if="company.cover_url" class="scp__cover">
-        <img :src="company.cover_url" :alt="company.name" class="scp__cover-img" />
-      </div>
+      <!-- Cover (FP-25 self-hide when absent): the media card's cover (K07) -->
+      <article v-if="company.cover_url" class="ds-card ds-card--media">
+        <div class="ds-card__media">
+          <img :src="company.cover_url" :alt="company.name" />
+        </div>
+      </article>
 
-      <!-- Name (with the profile edit), status, price of a part, parts -->
-      <div class="scp__row">
-        <span class="scp__label">{{ t('staff.platform.profile.name') }}</span>
-        <div class="scp__status-cell">
-          <span class="scp__value">{{ company.name }}</span>
-          <CButton v-if="canEditProfile" variant="outline" size="sm" @click="openProfileEdit">
-            {{ t('staff.platform.profile.profileEditCta') }}
-          </CButton>
+      <!-- Name and status, each with its edit (K23 rows) -->
+      <ul class="ds-rows">
+        <li class="ds-row">
+          <span class="ds-row__body">
+            <span class="ds-row__meta">{{ t('staff.platform.profile.name') }}</span>
+            <span class="ds-row__title">{{ company.name }}</span>
+          </span>
+          <span v-if="canEditProfile" class="ds-row__trail">
+            <CButton variant="outline" size="sm" inline @click="openProfileEdit">
+              {{ t('staff.platform.profile.profileEditCta') }}
+            </CButton>
+          </span>
+        </li>
+        <li class="ds-row">
+          <span class="ds-row__body">
+            <span class="ds-row__meta">{{ t('staff.platform.profile.status') }}</span>
+            <span>
+              <CBadge
+                :variant="statusVariant(company.status)"
+                :text="statusValueLabel(company.status)"
+              />
+            </span>
+          </span>
+          <span v-if="canShowStatusEdit" class="ds-row__trail">
+            <CButton variant="outline" size="sm" inline @click="openStatusEdit">
+              {{ t('staff.platform.profile.statusEditCta') }}
+            </CButton>
+          </span>
+        </li>
+      </ul>
+
+      <!-- Price of a part, parts (K49) -->
+      <dl class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.profile.price') }}</dt>
+          <dd>{{ formatPrice(company.price_per_unit_cents) }}</dd>
         </div>
-      </div>
-      <div class="scp__row">
-        <span class="scp__label">{{ t('staff.platform.profile.status') }}</span>
-        <div class="scp__status-cell">
-          <CBadge
-            :variant="statusVariant(company.status)"
-            :text="statusValueLabel(company.status)"
-          />
-          <CButton v-if="canShowStatusEdit" variant="outline" size="sm" @click="openStatusEdit">
-            {{ t('staff.platform.profile.statusEditCta') }}
-          </CButton>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.platform.profile.totalSupply') }}</dt>
+          <dd>{{ company.total_supply.toLocaleString() }}</dd>
         </div>
-      </div>
-      <div class="scp__row">
-        <span class="scp__label">{{ t('staff.platform.profile.price') }}</span>
-        <span class="scp__value">{{ formatPrice(company.price_per_unit_cents) }}</span>
-      </div>
-      <div class="scp__row">
-        <span class="scp__label">{{ t('staff.platform.profile.totalSupply') }}</span>
-        <span class="scp__value">{{ company.total_supply.toLocaleString() }}</span>
-      </div>
+      </dl>
 
       <!-- Description (FP-25 self-hide when absent) -->
-      <div v-if="company.description" class="scp__section">
-        <h3 class="scp__section-title">
+      <section v-if="company.description" class="scp__section">
+        <h2 class="scp__section-title">
           {{ t('staff.platform.profile.description') }}
-        </h3>
+        </h2>
         <p class="scp__description">
           {{ company.description }}
         </p>
-      </div>
+      </section>
 
-      <!-- External links (FP-25 self-hide each when absent) -->
-      <div
+      <!-- External links (FP-25 self-hide each when absent): K23 rows that open the link -->
+      <section
         v-if="company.logo_url || company.promo_video_url || company.presentation_url"
         class="scp__section"
       >
-        <h3 class="scp__section-title">
+        <h2 class="scp__section-title">
           {{ t('staff.platform.profile.links') }}
-        </h3>
-        <ul class="scp__links">
-          <li v-if="company.logo_url">
-            <a :href="company.logo_url" target="_blank" rel="noopener">
-              {{ t('staff.platform.profile.logoUrl') }}
-            </a>
+        </h2>
+        <ul class="ds-rows">
+          <li v-if="company.logo_url" class="ds-row">
+            <span class="ds-row__lead"><ExternalLink size="sm" /></span>
+            <span class="ds-row__body">
+              <a class="ds-row__link" :href="company.logo_url" target="_blank" rel="noopener">
+                <span class="ds-row__title">{{ t('staff.platform.profile.logoUrl') }}</span>
+              </a>
+            </span>
           </li>
-          <li v-if="company.promo_video_url">
-            <a :href="company.promo_video_url" target="_blank" rel="noopener">
-              {{ t('staff.platform.profile.promoVideoUrl') }}
-            </a>
+          <li v-if="company.promo_video_url" class="ds-row">
+            <span class="ds-row__lead"><ExternalLink size="sm" /></span>
+            <span class="ds-row__body">
+              <a
+                class="ds-row__link"
+                :href="company.promo_video_url"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="ds-row__title">{{ t('staff.platform.profile.promoVideoUrl') }}</span>
+              </a>
+            </span>
           </li>
-          <li v-if="company.presentation_url">
-            <a :href="company.presentation_url" target="_blank" rel="noopener">
-              {{ t('staff.platform.profile.presentationUrl') }}
-            </a>
+          <li v-if="company.presentation_url" class="ds-row">
+            <span class="ds-row__lead"><ExternalLink size="sm" /></span>
+            <span class="ds-row__body">
+              <a
+                class="ds-row__link"
+                :href="company.presentation_url"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="ds-row__title">{{ t('staff.platform.profile.presentationUrl') }}</span>
+              </a>
+            </span>
           </li>
         </ul>
-      </div>
+      </section>
 
-      <!-- The division of the parts: fixed, read only -->
-      <div class="scp__section">
-        <h3 class="scp__section-title">
+      <!-- The division of the parts: fixed, read only (K49) -->
+      <section class="scp__section">
+        <h2 class="scp__section-title">
           {{ t('staff.platform.profile.distribution.title') }}
-        </h3>
-        <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="scp__row">
-          <span class="scp__label">{{
-            t(`staff.platform.profile.distribution.rows.${row.key}`)
-          }}</span>
-          <span class="scp__value">{{ row.percent }}%</span>
-        </div>
-        <p class="scp__modal-hint">
+        </h2>
+        <dl class="ds-kv">
+          <div v-for="row in DISTRIBUTION_ROWS" :key="row.key" class="ds-kv__row">
+            <dt>{{ t(`staff.platform.profile.distribution.rows.${row.key}`) }}</dt>
+            <dd>{{ row.percent }}%</dd>
+          </div>
+        </dl>
+        <p class="scp__description">
           {{ t('staff.platform.profile.distribution.hint') }}
         </p>
-      </div>
+      </section>
     </template>
 
     <!-- Defensive empty (company null but no error/loading -- shouldn't happen) -->
     <CEmptyState v-else :title="t('common.noResults')" />
 
     <!-- Profile edit modal: name, description, links (project_manage-gated) -->
-    <CModal :open="showProfileEdit" @close="showProfileEdit = false">
-      <h3 class="scp__modal-title">
-        {{ t('staff.platform.profile.profileEditTitle') }}
-      </h3>
+    <CModal
+      :open="showProfileEdit"
+      :title="t('staff.platform.profile.profileEditTitle')"
+      @close="showProfileEdit = false"
+    >
       <CInput v-model="draftName" :label="t('staff.platform.profile.name')" maxlength="500" />
       <CTextarea
         v-model="draftDescription"
@@ -404,14 +441,15 @@ function formatPrice(cents: number): string {
         :label="t('staff.platform.profile.presentationUrl')"
         :placeholder="t('staff.platform.urlPlaceholder')"
       />
-      <p class="scp__modal-hint">{{ t('staff.platform.profile.profileEditHint') }}</p>
-      <div class="scp__modal-actions">
-        <CButton variant="outline" size="sm" @click="showProfileEdit = false">
+      <p class="ds-field__hint">{{ t('staff.platform.profile.profileEditHint') }}</p>
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showProfileEdit = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="savingProfile"
           :disabled="!canSaveProfile"
           @click="handleProfileSave"
@@ -422,11 +460,12 @@ function formatPrice(cents: number): string {
     </CModal>
 
     <!-- Status edit modal (project_manage-gated) -->
-    <CModal :open="showStatusEdit" @close="showStatusEdit = false">
-      <h3 class="scp__modal-title">
-        {{ t('staff.platform.profile.statusEditTitle') }}
-      </h3>
-      <p class="scp__modal-hint">
+    <CModal
+      :open="showStatusEdit"
+      :title="t('staff.platform.profile.statusEditTitle')"
+      @close="showStatusEdit = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.profile.statusEditHint') }}
       </p>
       <CSelect
@@ -434,13 +473,14 @@ function formatPrice(cents: number): string {
         :label="t('staff.platform.profile.status')"
         :options="statusOptions"
       />
-      <div class="scp__modal-actions">
-        <CButton variant="outline" size="sm" @click="showStatusEdit = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showStatusEdit = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="savingStatus"
           :disabled="!statusDraft"
           @click="handleStatusSave"
@@ -454,7 +494,9 @@ function formatPrice(cents: number): string {
 
 <style scoped>
 .scp {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
 }
 
 .scp__center {
@@ -466,101 +508,23 @@ function formatPrice(cents: number): string {
   gap: var(--space-4);
 }
 
-.scp__cover {
-  margin-block-end: var(--space-4);
-}
-.scp__cover-img {
-  inline-size: 100%;
-  max-block-size: 180px;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  display: block;
-}
-
-.scp__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.scp__label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.scp__value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.scp__status-cell {
-  display: flex;
-  align-items: center;
+.scp__section {
+  display: grid;
   gap: var(--space-3);
 }
-
-.scp__modal-title {
+.scp__section-title {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.scp__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.scp__modal-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  margin: 0 0 var(--space-4);
-}
-.scp__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
-.scp__section {
-  margin-block-start: var(--space-4-lg);
-}
-.scp__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
 }
 .scp__description {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
   margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
   white-space: pre-wrap;
-}
-.scp__links {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.scp__links a {
-  font-size: var(--fs-sm);
-  color: var(--primary);
-  text-decoration: underline;
-  word-break: break-all;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.scp__description {
   max-inline-size: var(--maxw-prose);
 }
 </style>

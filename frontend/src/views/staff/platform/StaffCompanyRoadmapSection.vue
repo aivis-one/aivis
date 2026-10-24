@@ -33,7 +33,7 @@
 // than parsing the 400 message. Any 400 that still slips through
 // surfaces as a generic error toast.
 //
-// REORDER (up/down, not drag-drop -- buttons beat drag on a 380px touch
+// REORDER (up/down, not drag-drop -- buttons beat drag on a narrow touch
 // screen and need no dependency). Each click swaps two adjacent items,
 // then submits the COMPLETE id list in the new order. Per-company scope
 // (NOT per-kind). The roadmap reorder endpoint's set-mismatch error has
@@ -56,7 +56,7 @@
 // both and the backend leaves them null.
 // =============================================================================
 
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, inject, useId } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -65,19 +65,12 @@ import {
   Pencil,
   Trash2,
   Map as MapIcon,
+  ExternalLink,
   ImageUp,
   X,
 } from '@/components/ui/icons'
-import {
-  CLoader,
-  CButton,
-  CBadge,
-  CEmptyState,
-  CModal,
-  CInput,
-  CTextarea,
-  CSelect,
-} from '@/components/ui'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CSelect } from '@/components/ui'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { ApiResponseError } from '@/api/client'
@@ -554,7 +547,7 @@ const COVER_MIME_WHITELIST = ['image/png', 'image/jpeg', 'image/webp'] as const
 const COVER_MAX_BYTES = 10 * 1024 * 1024 // 10 MiB, mirrors backend cap
 
 // Hidden file input ref (clicked via the upload button).
-const coverInputEl = ref<HTMLInputElement | null>(null)
+const coverLabelId = useId()
 
 // Presigned URL of the current cover for the item being edited, or '' if
 // none. Seeded in openEdit, updated from the upload response, cleared on
@@ -567,14 +560,6 @@ const coverRemoving = ref(false)
 
 // Remove-confirm modal target (the item id being cleared).
 const coverRemoveTarget = ref<string | null>(null)
-
-function triggerCoverPicker(): void {
-  if (!canManage.value) {
-    console.warn('[StaffCompanyRoadmapSection] cover picker blocked: no company_manage')
-    return
-  }
-  coverInputEl.value?.click()
-}
 
 async function onCoverSelected(e: Event): Promise<void> {
   if (!canManage.value) {
@@ -675,22 +660,22 @@ onMounted(() => {
 <template>
   <div class="scr">
     <!-- Loading -->
-    <div v-if="loading" class="scr__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="errored" class="scr__center">
-      <CButton variant="secondary" size="sm" @click="reload">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="reload">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Loaded -->
     <template v-else>
       <!-- Add CTA (FP-23) -->
       <div v-if="canManage" class="scr__toolbar">
-        <CButton variant="primary" size="sm" @click="openCreate">
+        <CButton variant="primary" size="sm" inline @click="openCreate">
           {{ t('staff.platform.roadmap.addCta') }}
         </CButton>
       </div>
@@ -698,138 +683,153 @@ onMounted(() => {
       <!-- Empty -->
       <CEmptyState v-if="!items.length" :title="t('staff.platform.roadmap.empty')">
         <template #icon>
-          <MapIcon :size="40" />
+          <MapIcon />
         </template>
       </CEmptyState>
 
-      <!-- List (order ASC) -->
-      <div v-else class="rm-list">
-        <div v-for="(item, idx) in items" :key="item.id" class="rm-item">
+      <!-- List (order ASC; K39: the move buttons are named by the row) -->
+      <ol v-else class="ds-reorder rm-list">
+        <li v-for="(item, idx) in items" :key="item.id" class="ds-reorder__item rm-item">
           <!-- Reorder (FP-23) -->
-          <div v-if="canManage" class="rm-item__reorder">
+          <div v-if="canManage" class="ds-reorder__controls">
             <button
-              :aria-label="t('common.moveUp')"
-              class="rm-item__move"
+              type="button"
+              class="ds-reorder__move"
+              :aria-label="`${t('common.moveUp')}: ${item.title}`"
               :disabled="idx === 0 || reordering"
               @click="move(idx, -1)"
             >
-              <ChevronUp :size="16" />
+              <ChevronUp />
             </button>
             <button
-              :aria-label="t('common.moveDown')"
-              class="rm-item__move"
+              type="button"
+              class="ds-reorder__move"
+              :aria-label="`${t('common.moveDown')}: ${item.title}`"
               :disabled="idx === items.length - 1 || reordering"
               @click="move(idx, 1)"
             >
-              <ChevronDown :size="16" />
+              <ChevronDown />
             </button>
           </div>
+          <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
 
-          <!-- Cover thumbnail (FP-25 self-hide) -->
-          <div v-if="item.cover_url" class="rm-item__cover">
-            <img :src="item.cover_url" :alt="item.title" class="rm-item__cover-img" />
-          </div>
+          <!-- Cover thumbnail (FP-25 self-hide): the avatar's photo form (K50) -->
+          <span v-if="item.cover_url" class="ds-avatar" data-size="lg">
+            <img :src="item.cover_url" :alt="item.title" />
+          </span>
 
           <!-- Body -->
-          <div class="rm-item__body">
-            <div class="rm-item__badges">
+          <div class="ds-reorder__body">
+            <span class="ds-reorder__title">{{ item.title }}</span>
+
+            <span class="ds-reorder__meta rm-item__badges">
               <CBadge :variant="kindVariant(item.kind)" :text="kindLabel(item.kind)" />
               <CBadge
                 v-if="item.kind === 'milestone'"
                 :variant="statusVariant(item.status)"
                 :text="statusLabel(item.status)"
               />
-            </div>
-
-            <div class="rm-item__title">
-              {{ item.title }}
-            </div>
+            </span>
 
             <!-- Dates (FP-25 self-hide) -->
-            <div v-if="item.target_date || item.valid_until" class="rm-item__dates">
-              <span v-if="item.target_date">
+            <span v-if="item.target_date || item.valid_until" class="ds-reorder__meta">
+              <template v-if="item.target_date">
                 {{ t('staff.platform.roadmap.fieldTargetDate') }}:
                 {{ formatDate(item.target_date) }}
-              </span>
-              <span v-if="item.valid_until">
+              </template>
+              <template v-if="item.valid_until">
                 {{ t('staff.platform.roadmap.fieldValidUntil') }}:
                 {{ formatDate(item.valid_until) }}
-              </span>
-            </div>
+              </template>
+            </span>
 
             <!-- Description (FP-25 self-hide) -->
-            <p v-if="item.description" class="rm-item__desc">
+            <span v-if="item.description" class="ds-reorder__meta rm-item__desc">
               {{ item.description }}
-            </p>
+            </span>
 
             <!-- External URL (FP-25 self-hide) -->
+            <span v-if="item.external_url" class="ds-reorder__meta rm-item__url">
+              {{ item.external_url }}
+            </span>
+
+            <!-- Linked post / product (FP-25 self-hide). D1 has no picker
+                 UI; these only ever appear if a link was set elsewhere. -->
+            <span v-if="item.post" class="ds-reorder__meta">
+              {{ item.post.title }}
+            </span>
+          </div>
+
+          <span class="ds-row__trail">
             <a
               v-if="item.external_url"
               :href="item.external_url"
               target="_blank"
               rel="noopener noreferrer"
-              class="rm-item__link"
-              >{{ item.external_url }}</a
+              class="ds-button ds-button--ghost ds-button--icon"
+              data-size="sm"
+              :aria-label="t('staff.platform.roadmap.fieldExternalUrl')"
             >
-
-            <!-- Linked post / product (FP-25 self-hide). D1 has no picker
-                 UI; these only ever appear if a link was set elsewhere. -->
-            <div v-if="item.post" class="rm-item__rel">
-              {{ item.post.title }}
-            </div>
-          </div>
-
-          <!-- Row actions (FP-23) -->
-          <div v-if="canManage" class="rm-item__actions">
-            <button :aria-label="t('common.edit')" class="rm-item__action" @click="openEdit(item)">
-              <Pencil :size="16" />
-            </button>
-            <button
-              :aria-label="t('common.delete')"
-              class="rm-item__action"
-              @click="openDelete(item)"
-            >
-              <Trash2 :size="16" />
-            </button>
-          </div>
-        </div>
-      </div>
+              <ExternalLink />
+            </a>
+            <!-- Row actions (FP-23) -->
+            <template v-if="canManage">
+              <button
+                type="button"
+                class="ds-button ds-button--ghost ds-button--icon"
+                data-size="sm"
+                :aria-label="t('common.edit')"
+                @click="openEdit(item)"
+              >
+                <Pencil />
+              </button>
+              <button
+                type="button"
+                class="ds-button ds-button--danger ds-button--icon"
+                data-size="sm"
+                :aria-label="t('common.delete')"
+                @click="openDelete(item)"
+              >
+                <Trash2 />
+              </button>
+            </template>
+          </span>
+        </li>
+      </ol>
     </template>
 
     <!-- Create / edit modal -->
-    <CModal :open="showForm" @close="closeForm">
-      <h3 class="scr__modal-title">
-        {{
-          isEditing
-            ? t('staff.platform.roadmap.editTitle')
-            : t('staff.platform.roadmap.createTitle')
-        }}
-      </h3>
-
-      <!-- Kind: tab strip on create, locked badge on edit -->
-      <div class="scr__kind">
-        <span class="scr__kind-label">{{ t('staff.platform.roadmap.kindLabel') }}</span>
-        <template v-if="isEditing">
+    <CModal
+      :open="showForm"
+      :title="
+        isEditing ? t('staff.platform.roadmap.editTitle') : t('staff.platform.roadmap.createTitle')
+      "
+      @close="closeForm"
+    >
+      <!-- Kind: segmented choice on create (K31), locked badge on edit -->
+      <div v-if="isEditing" class="ds-field">
+        <span class="ds-field__label">{{ t('staff.platform.roadmap.kindLabel') }}</span>
+        <span>
           <CBadge :variant="kindVariant(draftKind)" :text="kindLabel(draftKind)" />
-          <p class="scr__kind-hint">
-            {{ t('staff.platform.roadmap.kindLockedHint') }}
-          </p>
-        </template>
-        <fieldset v-else class="ds-segmented">
-          <legend class="ds-sr-only">{{ t('staff.platform.roadmap.kindLabel') }}</legend>
-          <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
-            <input
-              class="ds-segmented__input"
-              type="radio"
-              name="scr-kind"
-              :value="k"
-              :checked="draftKind === k"
-              @change="selectKind(k)"
-            />
-            {{ kindLabel(k) }}
-          </label>
-        </fieldset>
+        </span>
+        <p class="ds-field__hint">
+          {{ t('staff.platform.roadmap.kindLockedHint') }}
+        </p>
       </div>
+      <fieldset v-else class="ds-segmented">
+        <legend class="ds-field__label">{{ t('staff.platform.roadmap.kindLabel') }}</legend>
+        <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
+          <input
+            class="ds-segmented__input"
+            type="radio"
+            name="scr-kind"
+            :value="k"
+            :checked="draftKind === k"
+            @change="selectKind(k)"
+          />
+          {{ kindLabel(k) }}
+        </label>
+      </fieldset>
 
       <!-- Title (all kinds) -->
       <CInput
@@ -846,11 +846,11 @@ onMounted(() => {
       />
 
       <!-- Event date hint -->
-      <p v-if="draftKind === 'event'" class="scr__hint">
+      <p v-if="draftKind === 'event'" class="ds-dialog__text">
         {{ t('staff.platform.roadmap.eventDatesHint') }}
       </p>
 
-      <!-- Target date (milestone optional, event required) -->
+      <!-- Target date (milestone optional, event required): the date input, K29 -->
       <CInput
         v-if="showTargetDate"
         v-model="draftTargetDate"
@@ -876,13 +876,15 @@ onMounted(() => {
            so the locked transition can't even be attempted. -->
       <template v-if="showStatus">
         <template v-if="statusLocked">
-          <div class="scr__field">
-            <label class="scr__field-label">{{ t('staff.platform.roadmap.fieldStatus') }}</label>
-            <CBadge :variant="statusVariant(draftStatus)" :text="statusLabel(draftStatus)" />
+          <div class="ds-field">
+            <span class="ds-field__label">{{ t('staff.platform.roadmap.fieldStatus') }}</span>
+            <span>
+              <CBadge :variant="statusVariant(draftStatus)" :text="statusLabel(draftStatus)" />
+            </span>
+            <p class="ds-field__hint">
+              {{ t('staff.platform.roadmap.completedLockedHint') }}
+            </p>
           </div>
-          <p class="scr__hint">
-            {{ t('staff.platform.roadmap.completedLockedHint') }}
-          </p>
         </template>
         <CSelect
           v-else
@@ -900,69 +902,70 @@ onMounted(() => {
         :error="!externalUrlValid ? t('staff.platform.roadmap.externalUrlError') : ''"
       />
 
-      <!-- Cover image (D2). Edit-only: a cover needs an item id, and on
-           create the row does not exist yet. Operations are immediate
+      <!-- Cover image (D2), the file input K30. Edit-only: a cover needs an item id,
+           and on create the row does not exist yet. Operations are immediate
            (not tied to Save). FP-23: gated on canManage (the whole
            section's controls only render for managers anyway). -->
-      <div class="scr__cover">
-        <label class="scr__field-label">{{ t('staff.platform.roadmap.cover.label') }}</label>
-
-        <template v-if="isEditing">
-          <!-- Preview (FP-25 self-hide when no cover) -->
-          <div v-if="coverPreviewUrl" class="scr__cover-preview">
-            <img :src="coverPreviewUrl" alt="" class="scr__cover-img" />
-          </div>
-
-          <div class="scr__cover-actions">
-            <CButton
-              variant="outline"
-              size="sm"
-              :loading="coverUploading"
-              @click="triggerCoverPicker"
-            >
-              <ImageUp :size="16" />
-              {{
-                coverPreviewUrl
-                  ? t('staff.platform.roadmap.cover.replace')
-                  : t('staff.platform.roadmap.cover.upload')
-              }}
-            </CButton>
-            <CButton
-              v-if="coverPreviewUrl"
-              variant="outline"
-              size="sm"
-              :loading="coverRemoving"
-              @click="openCoverRemove"
-            >
-              <X :size="16" />
-              {{ t('staff.platform.roadmap.cover.remove') }}
-            </CButton>
-          </div>
-
-          <!-- Hidden native picker (no CFileInput in the kit). -->
+      <div v-if="isEditing" class="ds-field ds-file" :aria-busy="coverUploading || undefined">
+        <span :id="coverLabelId" class="ds-field__label">
+          {{ t('staff.platform.roadmap.cover.label') }}
+        </span>
+        <label class="ds-button ds-button--secondary ds-file__pick">
+          <ImageUp size="sm" />
+          <span>
+            {{
+              coverPreviewUrl
+                ? t('staff.platform.roadmap.cover.replace')
+                : t('staff.platform.roadmap.cover.upload')
+            }}
+          </span>
           <input
-            ref="coverInputEl"
-            :aria-label="t('staff.platform.roadmap.cover.remove')"
+            class="ds-file__input"
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            class="scr__cover-input"
+            :aria-labelledby="coverLabelId"
+            :disabled="coverUploading"
             @change="onCoverSelected"
           />
-        </template>
+        </label>
+        <!-- Preview (FP-25 self-hide when no cover) -->
+        <ul class="ds-file__list" aria-live="polite">
+          <li v-if="coverPreviewUrl" class="ds-file__item" data-state="done">
+            <span class="ds-file__thumb"><img :src="coverPreviewUrl" alt="" /></span>
+            <span class="ds-file__body">
+              <span class="ds-file__name">{{ t('staff.platform.roadmap.cover.label') }}</span>
+            </span>
+            <span class="ds-file__aside">
+              <button
+                type="button"
+                class="ds-file__remove"
+                :aria-label="t('staff.platform.roadmap.cover.remove')"
+                :disabled="coverRemoving"
+                @click="openCoverRemove"
+              >
+                <X size="sm" />
+              </button>
+            </span>
+          </li>
+        </ul>
+      </div>
 
-        <!-- Create mode: cover not available until the item exists. -->
-        <p v-else class="scr__hint">
+      <!-- Create mode: cover not available until the item exists. -->
+      <div v-else class="ds-field">
+        <span class="ds-field__label">{{ t('staff.platform.roadmap.cover.label') }}</span>
+        <p class="ds-field__hint">
           {{ t('staff.platform.roadmap.cover.createFirst') }}
         </p>
       </div>
 
-      <div class="scr__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeForm">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeForm">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="!canSubmit"
           @click="handleSave"
@@ -973,36 +976,44 @@ onMounted(() => {
     </CModal>
 
     <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="scr__modal-title">
-        {{ t('staff.platform.roadmap.deleteTitle') }}
-      </h3>
-      <p class="scr__modal-hint">
+    <CModal
+      :open="!!deleteTarget"
+      :title="t('staff.platform.roadmap.deleteTitle')"
+      @close="deleteTarget = null"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.roadmap.deleteConfirm') }}
       </p>
-      <div class="scr__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
+        <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
           {{ t('common.delete') }}
         </CButton>
       </div>
     </CModal>
 
     <!-- Cover remove confirm (D2) -->
-    <CModal :open="!!coverRemoveTarget" @close="coverRemoveTarget = null">
-      <h3 class="scr__modal-title">
-        {{ t('staff.platform.roadmap.cover.removeTitle') }}
-      </h3>
-      <p class="scr__modal-hint">
+    <CModal
+      :open="!!coverRemoveTarget"
+      :title="t('staff.platform.roadmap.cover.removeTitle')"
+      @close="coverRemoveTarget = null"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.roadmap.cover.removeConfirm') }}
       </p>
-      <div class="scr__modal-actions">
-        <CButton variant="outline" size="sm" @click="coverRemoveTarget = null">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="coverRemoveTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="coverRemoving" @click="handleCoverRemove">
+        <CButton
+          variant="danger"
+          size="sm"
+          inline
+          :loading="coverRemoving"
+          @click="handleCoverRemove"
+        >
           {{ t('staff.platform.roadmap.cover.remove') }}
         </CButton>
       </div>
@@ -1012,246 +1023,28 @@ onMounted(() => {
 
 <style scoped>
 .scr {
-  padding: var(--space-4);
-}
-
-.scr__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
 }
 
 .scr__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-block-end: var(--space-4);
 }
 
-/* -- List -- */
-.rm-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.rm-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-}
-
-.rm-item__reorder {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 0 0 auto;
-}
-.rm-item__move {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-sm);
-  block-size: var(--size-xs);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-base) var(--ease-standard),
-    color var(--dur-base) var(--ease-standard);
-}
-.rm-item__move:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-.rm-item__move:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.rm-item__cover {
-  flex: 0 0 auto;
-}
-.rm-item__cover-img {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  display: block;
-}
-
-.rm-item__body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+/* The badges sit in a line under the title. */
 .rm-item__badges {
   display: flex;
-  gap: var(--space-2);
   flex-wrap: wrap;
-}
-.rm-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.rm-item__dates {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.rm-item__desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-.rm-item__link {
-  font-size: var(--fs-sm);
-  color: var(--primary);
-  word-break: break-all;
-  text-decoration: none;
-}
-.rm-item__link:hover {
-  text-decoration: underline;
-}
-.rm-item__rel {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.rm-item__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 0 0 auto;
-}
-.rm-item__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.rm-item__action:hover {
-  color: var(--text-primary);
-  background: var(--bg-page);
-}
-
-/* -- Modal -- */
-.scr__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.scr__modal-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.scr__modal-actions {
-  display: flex;
   gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
 }
 
-.scr__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-  line-height: 1.4;
-}
-
-/* Kind tab strip */
-.scr__kind {
-  margin-block-end: var(--space-4);
-}
-.scr__kind-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-.scr__kind-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: var(--space-2) 0 0;
-  line-height: 1.4;
-}
-
-/* Native date field (no CDatePicker in the kit) */
-.scr__field {
-  margin-block-end: var(--space-4);
-}
-.scr__field-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-.scr__field-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  margin-block-start: var(--space-1);
-}
-
-/* Cover block (D2) */
-.scr__cover {
-  margin-block-end: var(--space-4);
-}
-.scr__cover-preview {
-  margin-block-end: var(--space-2);
-}
-.scr__cover-img {
-  inline-size: 100%;
-  max-block-size: 180px;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  display: block;
-}
-.scr__cover-actions {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.scr__cover-input {
-  display: none;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
 .rm-item__desc {
   max-inline-size: var(--maxw-prose);
 }
-.scr__hint {
-  max-inline-size: var(--maxw-prose);
+.rm-item__desc,
+.rm-item__url {
+  overflow-wrap: anywhere;
 }
 </style>

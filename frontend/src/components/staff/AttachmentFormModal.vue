@@ -19,9 +19,10 @@
 // hint, not the gate.
 // =============================================================================
 
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Upload } from '@/components/ui/icons'
+import { FileText, Upload, X } from '@/components/ui/icons'
+import { formatBytes } from '@/utils/format'
 import { CButton, CCheckbox, CInput, CModal, CSelect, CTextarea } from '@/components/ui'
 import { ApiResponseError } from '@/api/client'
 import {
@@ -169,6 +170,12 @@ async function handleSave(): Promise<void> {
 
 const fileInputEl = ref<HTMLInputElement | null>(null)
 const replaceFileEl = ref<HTMLInputElement | null>(null)
+const fileLabelId = useId()
+
+function clearSelectedFile(): void {
+  selectedFile.value = null
+  if (fileInputEl.value) fileInputEl.value.value = ''
+}
 
 function onFileSelected(e: Event): void {
   const input = e.target as HTMLInputElement
@@ -195,15 +202,15 @@ async function onReplaceSelected(e: Event): Promise<void> {
 </script>
 
 <template>
-  <CModal :open="open" @close="emit('close')">
-    <h3 class="afm__title">
-      {{
-        isEditing
-          ? t('staff.platform.documents.form.editTitle')
-          : t('staff.platform.documents.form.createTitle')
-      }}
-    </h3>
-
+  <CModal
+    :open="open"
+    :title="
+      isEditing
+        ? t('staff.platform.documents.form.editTitle')
+        : t('staff.platform.documents.form.createTitle')
+    "
+    @close="emit('close')"
+  >
     <CInput v-model="draftTitle" :label="t('staff.platform.documents.form.fieldTitle')" />
 
     <CTextarea
@@ -212,17 +219,19 @@ async function onReplaceSelected(e: Event): Promise<void> {
       :rows="3"
     />
 
-    <CInput
-      v-model="draftCategory"
-      :label="t('staff.platform.documents.form.fieldCategory')"
-      placeholder="legal/incorporation"
-      :error="
-        trimmedCategory && !categoryValid ? t('staff.platform.documents.form.categoryError') : ''
-      "
-    />
-    <p class="afm__hint">
-      {{ t('staff.platform.documents.form.categoryHint') }}
-    </p>
+    <div class="ds-field">
+      <CInput
+        v-model="draftCategory"
+        :label="t('staff.platform.documents.form.fieldCategory')"
+        placeholder="legal/incorporation"
+        :error="
+          trimmedCategory && !categoryValid ? t('staff.platform.documents.form.categoryError') : ''
+        "
+      />
+      <p class="ds-field__hint">
+        {{ t('staff.platform.documents.form.categoryHint') }}
+      </p>
+    </div>
 
     <CSelect
       v-model="draftLanguage"
@@ -236,45 +245,73 @@ async function onReplaceSelected(e: Event): Promise<void> {
     />
     <CCheckbox v-model="draftIsPublic" :label="t('staff.platform.documents.form.fieldPublic')" />
 
-    <div v-if="!isEditing" class="afm__field">
-      <span class="afm__field-label">{{ t('staff.platform.documents.form.fieldFile') }}</span>
-      <CButton variant="outline" size="sm" @click="fileInputEl?.click()">
-        <Upload :size="16" />
-        {{ selectedFile ? selectedFile.name : t('staff.platform.documents.form.chooseFile') }}
-      </CButton>
-      <input
-        ref="fileInputEl"
-        type="file"
-        :accept="FILE_ACCEPT"
-        class="afm__file-input"
-        @change="onFileSelected"
-      />
+    <!-- The file to put on the project (K30: the picker is the label that draws the
+         button, the chosen file is listed with a remove control). -->
+    <div v-if="!isEditing" class="ds-field ds-file">
+      <span :id="fileLabelId" class="ds-field__label">
+        {{ t('staff.platform.documents.form.fieldFile') }}
+      </span>
+      <label class="ds-button ds-button--secondary ds-file__pick">
+        <Upload size="sm" />
+        <span>{{ t('staff.platform.documents.form.chooseFile') }}</span>
+        <input
+          ref="fileInputEl"
+          class="ds-file__input"
+          type="file"
+          :accept="FILE_ACCEPT"
+          :aria-labelledby="fileLabelId"
+          @change="onFileSelected"
+        />
+      </label>
+      <ul class="ds-file__list" aria-live="polite">
+        <li v-if="selectedFile" class="ds-file__item" data-state="selected">
+          <span class="ds-file__thumb"><FileText size="sm" /></span>
+          <span class="ds-file__body">
+            <span class="ds-file__name">{{ selectedFile.name }}</span>
+            <span class="ds-file__meta ds-file__status">{{ formatBytes(selectedFile.size) }}</span>
+          </span>
+          <span class="ds-file__aside">
+            <button
+              type="button"
+              class="ds-file__remove"
+              :aria-label="`${t('common.clear')}: ${selectedFile.name}`"
+              @click="clearSelectedFile"
+            >
+              <X size="sm" />
+            </button>
+          </span>
+        </li>
+      </ul>
     </div>
 
-    <div v-else class="afm__field">
-      <span class="afm__field-label">{{
-        t('staff.platform.documents.form.fieldReplaceFile')
-      }}</span>
-      <CButton variant="outline" size="sm" :loading="replacing" @click="replaceFileEl?.click()">
-        <Upload :size="16" />
-        {{ editing?.original_filename }}
-      </CButton>
-      <input
-        ref="replaceFileEl"
-        type="file"
-        :accept="FILE_ACCEPT"
-        class="afm__file-input"
-        @change="onReplaceSelected"
-      />
+    <!-- The file of a document that is there: swap it, the rest is kept (K30). -->
+    <div v-else class="ds-field ds-file" :aria-busy="replacing || undefined">
+      <span :id="fileLabelId" class="ds-field__label">
+        {{ t('staff.platform.documents.form.fieldReplaceFile') }}
+      </span>
+      <label class="ds-button ds-button--secondary ds-file__pick">
+        <Upload size="sm" />
+        <span>{{ editing?.original_filename }}</span>
+        <input
+          ref="replaceFileEl"
+          class="ds-file__input"
+          type="file"
+          :accept="FILE_ACCEPT"
+          :aria-labelledby="fileLabelId"
+          :disabled="replacing"
+          @change="onReplaceSelected"
+        />
+      </label>
     </div>
 
-    <div class="afm__actions">
-      <CButton variant="outline" size="sm" @click="emit('close')">
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="emit('close')">
         {{ t('common.cancel') }}
       </CButton>
       <CButton
         variant="primary"
         size="sm"
+        inline
         :loading="saving"
         :disabled="!canSubmit"
         @click="handleSave"
@@ -284,42 +321,3 @@ async function onReplaceSelected(e: Event): Promise<void> {
     </div>
   </CModal>
 </template>
-
-<style scoped>
-.afm__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-
-.afm__hint {
-  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.afm__field {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-  margin: var(--space-3) 0;
-}
-
-.afm__field-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.afm__file-input {
-  display: none;
-}
-
-.afm__actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-}
-</style>

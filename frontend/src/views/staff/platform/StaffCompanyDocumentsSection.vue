@@ -15,7 +15,7 @@
 // takes the COMPLETE ordered id list for one (company, category) and
 // enforces an exact set match. Each up/down click swaps two adjacent
 // rows WITHIN their category, then submits the full category id list in
-// the new order. Buttons beat drag-drop on a 380px touch screen and
+// the new order. Buttons beat drag-drop on a narrow touch screen and
 // need no extra dependency.
 //
 // SET-MISMATCH HANDLING. If another staffer changed the category
@@ -40,8 +40,10 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, Trash2, FileText, Pencil, Upload } from '@/components/ui/icons'
-import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
 import AttachmentFormModal from '@/components/staff/AttachmentFormModal.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import { formatBytes } from '@/utils/format'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { ApiResponseError } from '@/api/client'
@@ -105,12 +107,6 @@ const grouped = computed<{ category: string; rows: StaffAttachmentResponse[] }[]
   }
   return Array.from(map.entries()).map(([category, rows]) => ({ category, rows }))
 })
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 async function loadAttachments(): Promise<void> {
   const id = companyId.value
@@ -210,21 +206,21 @@ onMounted(loadAttachments)
 <template>
   <div class="scd">
     <!-- Loading -->
-    <div v-if="loading" class="scd__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="scd__center">
-      <CButton variant="secondary" size="sm" @click="loadAttachments">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadAttachments">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <template v-else>
       <div v-if="canManage" class="scd__toolbar">
-        <CButton variant="primary" size="sm" @click="openUpload">
-          <Upload :size="16" />
+        <CButton variant="primary" size="sm" inline @click="openUpload">
+          <Upload size="sm" />
           {{ t('staff.platform.documents.addCta') }}
         </CButton>
       </div>
@@ -232,40 +228,49 @@ onMounted(loadAttachments)
       <!-- Empty -->
       <CEmptyState v-if="!items.length" :title="t('staff.platform.documents.empty')">
         <template #icon>
-          <FileText :size="40" />
+          <FileText />
         </template>
       </CEmptyState>
 
       <template v-else>
-        <div v-for="group in grouped" :key="group.category" class="scd__group">
-          <h3 class="scd__group-title">
+        <section v-for="(group, g) in grouped" :key="group.category" class="scd__group">
+          <h2 :id="`scd-group-${g}`" class="scd__group-title">
             {{ group.category }}
-          </h3>
+          </h2>
 
-          <div class="doc-list">
-            <div v-for="(att, idx) in group.rows" :key="att.id" class="doc-item">
-              <!-- Reorder buttons (FP-23: only with company_manage) -->
-              <div v-if="canManage" class="doc-item__reorder">
+          <!-- The category's documents in order (K39: the move buttons are named by the row) -->
+          <ol class="ds-reorder doc-list" :aria-labelledby="`scd-group-${g}`">
+            <li v-for="(att, idx) in group.rows" :key="att.id" class="ds-reorder__item doc-item">
+              <!-- Reorder buttons (FP-23: only with project_manage) -->
+              <div v-if="canManage" class="ds-reorder__controls">
                 <button
-                  :aria-label="t('common.moveUp')"
-                  class="doc-item__move"
+                  type="button"
+                  class="ds-reorder__move"
+                  :aria-label="`${t('common.moveUp')}: ${att.title}`"
                   :disabled="idx === 0 || reordering"
                   @click="move(group.category, group.rows, idx, -1)"
                 >
-                  <ChevronUp :size="16" />
+                  <ChevronUp />
                 </button>
                 <button
-                  :aria-label="t('common.moveDown')"
-                  class="doc-item__move"
+                  type="button"
+                  class="ds-reorder__move"
+                  :aria-label="`${t('common.moveDown')}: ${att.title}`"
                   :disabled="idx === group.rows.length - 1 || reordering"
                   @click="move(group.category, group.rows, idx, 1)"
                 >
-                  <ChevronDown :size="16" />
+                  <ChevronDown />
                 </button>
               </div>
+              <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
 
-              <div class="doc-item__info">
-                <div class="doc-item__top">
+              <div class="ds-reorder__body">
+                <span class="ds-reorder__title">{{ att.title }}</span>
+                <span class="ds-reorder__meta">
+                  {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }} &bull;
+                  {{ att.language.toUpperCase() }}
+                </span>
+                <span class="ds-reorder__meta doc-item__badges">
                   <CBadge
                     :variant="att.is_published ? 'success' : 'neutral'"
                     :text="
@@ -279,37 +284,34 @@ onMounted(loadAttachments)
                     variant="accent"
                     :text="t('staff.platform.documents.public')"
                   />
-                  <span class="doc-item__lang">{{ att.language.toUpperCase() }}</span>
-                </div>
-                <div class="doc-item__title">
-                  {{ att.title }}
-                </div>
-                <div class="doc-item__meta">
-                  {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }}
-                </div>
+                </span>
                 <code class="doc-item__storage">{{ att.storage_key }}</code>
               </div>
 
               <!-- Edit and delete (FP-23) -->
-              <button
-                v-if="canManage"
-                :aria-label="t('common.edit')"
-                class="doc-item__delete"
-                @click="openEdit(att)"
-              >
-                <Pencil :size="16" />
-              </button>
-              <button
-                v-if="canManage"
-                :aria-label="t('common.delete')"
-                class="doc-item__delete"
-                @click="openDelete(att)"
-              >
-                <Trash2 :size="16" />
-              </button>
-            </div>
-          </div>
-        </div>
+              <span v-if="canManage" class="ds-row__trail">
+                <button
+                  type="button"
+                  class="ds-button ds-button--ghost ds-button--icon"
+                  data-size="sm"
+                  :aria-label="t('common.edit')"
+                  @click="openEdit(att)"
+                >
+                  <Pencil />
+                </button>
+                <button
+                  type="button"
+                  class="ds-button ds-button--danger ds-button--icon"
+                  data-size="sm"
+                  :aria-label="t('common.delete')"
+                  @click="openDelete(att)"
+                >
+                  <Trash2 />
+                </button>
+              </span>
+            </li>
+          </ol>
+        </section>
       </template>
     </template>
 
@@ -323,21 +325,22 @@ onMounted(loadAttachments)
     />
 
     <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="scd__modal-title">
-        {{ t('staff.platform.documents.deleteTitle') }}
-      </h3>
-      <p class="scd__modal-text">
+    <CModal
+      :open="!!deleteTarget"
+      :title="t('staff.platform.documents.deleteTitle')"
+      @close="deleteTarget = null"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.platform.documents.deleteConfirm') }}
       </p>
-      <p v-if="deleteTarget" class="scd__modal-target">
+      <p v-if="deleteTarget" class="scd__target">
         {{ deleteTarget.title }}
       </p>
-      <div class="scd__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
+        <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
           {{ t('common.delete') }}
         </CButton>
       </div>
@@ -347,178 +350,52 @@ onMounted(loadAttachments)
 
 <style scoped>
 .scd {
-  padding: var(--space-4);
-}
-
-.scd__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
+  display: grid;
   gap: var(--space-4);
+  align-content: start;
 }
 
 .scd__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-block-end: var(--space-4);
-}
-
-.scd__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
 }
 
 .scd__group {
-  margin-block-end: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
 }
 .scd__group-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0 0 var(--space-2);
-  word-break: break-all;
-}
-
-.doc-list {
-  display: flex;
-  flex-direction: column;
-}
-.doc-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.doc-item__reorder {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-.doc-item__move {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-sm);
-  block-size: var(--size-xs);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-.doc-item__move:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.doc-item__move:not(:disabled):hover {
-  background: var(--bg-subtle);
-}
-
-.doc-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.doc-item__top {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  flex-wrap: wrap;
-  margin-block-end: var(--space-1);
-}
-.doc-item__lang {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  font-weight: 600;
-}
-.doc-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.doc-item__meta {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-.doc-item__storage {
-  display: block;
-  font-size: var(--fs-xs);
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-  background: var(--bg-subtle);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  margin-block-start: var(--space-2);
-  word-break: break-all;
-}
-
-.doc-item__delete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-.doc-item__delete:hover {
-  background: var(--bg-subtle);
-  color: var(--danger);
-}
-
-.scd__modal-title {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.scd__modal-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-2);
-}
-.scd__modal-target {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
   word-break: break-all;
 }
-.scd__modal-actions {
+
+/* The badges sit in a line under the file's facts. */
+.doc-item__badges {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
 }
 
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.scd__toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-end: var(--space-4);
+/* The storage key is read and copied character by character: a mono block (D11). */
+.doc-item__storage {
+  display: block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  word-break: break-all;
 }
 
-.scd__hint {
-  max-inline-size: var(--maxw-prose);
+.scd__target {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
 }
 </style>

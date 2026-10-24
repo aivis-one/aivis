@@ -30,6 +30,8 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { tOrRaw } from '@/utils/i18n'
 import { CLoader, CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
 import { fetchStaffCompanyTemplates, fetchStaffCompanyTemplate } from '@/api/staff-companies'
 import type { TemplateResponse, TemplateDetailResponse } from '@/api/types'
 
@@ -133,9 +135,9 @@ onMounted(loadTemplates)
 
 <template>
   <div class="sct">
-    <!-- Filter chip rows -->
+    <!-- Filter chip rows (K13) -->
     <div class="sct__filters">
-      <div class="sct__filter-row">
+      <div class="ds-chip-row" role="group" :aria-label="t('staff.platform.templates.allKinds')">
         <button class="ds-chip" :aria-pressed="!kindFilter" @click="setKind('')" type="button">
           <Check class="ds-chip__check" size="sm" />
           <span>{{ t('staff.platform.templates.allKinds') }}</span>
@@ -152,7 +154,11 @@ onMounted(loadTemplates)
           <span>{{ t(`staff.platform.templates.kind.${k}`) }}</span>
         </button>
       </div>
-      <div class="sct__filter-row">
+      <div
+        class="ds-chip-row"
+        role="group"
+        :aria-label="t('staff.platform.templates.allLanguages')"
+      >
         <button
           class="ds-chip"
           :aria-pressed="!languageFilter"
@@ -174,7 +180,7 @@ onMounted(loadTemplates)
           <span>{{ l.toUpperCase() }}</span>
         </button>
       </div>
-      <div class="sct__filter-row">
+      <div class="ds-chip-row" role="group" :aria-label="t('staff.platform.templates.allStatuses')">
         <button class="ds-chip" :aria-pressed="!statusFilter" @click="setStatus('')" type="button">
           <Check class="ds-chip__check" size="sm" />
           <span>{{ t('staff.platform.templates.allStatuses') }}</span>
@@ -194,70 +200,61 @@ onMounted(loadTemplates)
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="sct__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="sct__center">
-      <CButton variant="secondary" size="sm" @click="loadTemplates">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadTemplates">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.platform.templates.empty')" />
 
-    <!-- List -->
-    <template v-else>
-      <div class="tpl-list">
-        <button
-          v-for="tpl in items"
-          :key="tpl.id"
-          type="button"
-          class="tpl-item"
-          @click="openDetail(tpl)"
-        >
-          <div class="tpl-item__info">
-            <div class="tpl-item__top">
-              <CBadge
-                :variant="statusVariant(tpl.status)"
-                :text="tOrRaw(t, `staff.platform.templates.status.${tpl.status}`, tpl.status)"
-              />
-              <CBadge
-                v-if="tpl.is_platform_default"
-                variant="primary"
-                :text="t('staff.platform.templates.platformDefault')"
-              />
-            </div>
-            <div class="tpl-item__title">
-              {{ tpl.title }}
-            </div>
-            <div class="tpl-item__meta">
-              {{ t(`staff.platform.templates.kind.${tpl.kind}`) }}
-              &bull; {{ tpl.language.toUpperCase() }} &bull; v{{ tpl.version }}
-            </div>
-          </div>
-        </button>
-      </div>
-    </template>
+    <!-- List (K23 rows; a row opens the template's source in place) -->
+    <ul v-else class="ds-rows tpl-list">
+      <li v-for="tpl in items" :key="tpl.id" class="ds-row">
+        <span class="ds-row__body">
+          <button type="button" class="ds-row__link tpl-item" @click="openDetail(tpl)">
+            <span class="ds-row__title">{{ tpl.title }}</span>
+          </button>
+          <span class="ds-row__meta">
+            {{ t(`staff.platform.templates.kind.${tpl.kind}`) }}
+            &bull; {{ tpl.language.toUpperCase() }} &bull; v{{ tpl.version }}
+          </span>
+        </span>
+        <span class="ds-row__trail">
+          <CBadge
+            :variant="statusVariant(tpl.status)"
+            :text="tOrRaw(t, `staff.platform.templates.status.${tpl.status}`, tpl.status)"
+          />
+          <CBadge
+            v-if="tpl.is_platform_default"
+            variant="primary"
+            :text="t('staff.platform.templates.platformDefault')"
+          />
+        </span>
+      </li>
+    </ul>
 
     <!-- Detail modal -->
-    <CModal :open="showDetail" @close="showDetail = false">
-      <div v-if="detailLoading" class="sct__center" style="min-block-size: var(--center-md)">
+    <CModal
+      :open="showDetail"
+      :title="detail && !detailLoading && !detailError ? detail.title : undefined"
+      @close="showDetail = false"
+    >
+      <div v-if="detailLoading" class="sct__center">
         <CLoader :size="24" />
       </div>
 
-      <div v-else-if="detailError" class="sct__center" style="min-block-size: var(--center-md)">
-        <p class="sct__detail-error">
-          {{ t('staff.platform.templates.detailError') }}
-        </p>
-      </div>
+      <StaffAlert v-else-if="detailError" tone="danger">
+        {{ t('staff.platform.templates.detailError') }}
+      </StaffAlert>
 
       <template v-else-if="detail">
-        <h3 class="sct__modal-title">
-          {{ detail.title }}
-        </h3>
         <div class="sct__detail-meta">
           <CBadge
             :variant="statusVariant(detail.status)"
@@ -269,29 +266,29 @@ onMounted(loadTemplates)
         </div>
 
         <!-- storage_prefix hint (MinIO deep-link reference) -->
-        <div class="sct__storage">
-          <span class="sct__storage-label">{{ t('staff.platform.templates.storagePrefix') }}</span>
-          <code class="sct__storage-value">{{ detail.storage_prefix }}</code>
+        <div class="sct__block">
+          <span class="sct__label">{{ t('staff.platform.templates.storagePrefix') }}</span>
+          <code class="sct__code">{{ detail.storage_prefix }}</code>
         </div>
 
         <!-- asset_files list (if any) -->
-        <div v-if="detail.asset_files.length" class="sct__assets">
-          <span class="sct__assets-label">{{ t('staff.platform.templates.assetFiles') }}</span>
+        <div v-if="detail.asset_files.length" class="sct__block">
+          <span class="sct__label">{{ t('staff.platform.templates.assetFiles') }}</span>
           <ul class="sct__assets-list">
             <li v-for="f in detail.asset_files" :key="f">
-              {{ f }}
+              <code class="sct__code">{{ f }}</code>
             </li>
           </ul>
         </div>
 
         <!-- HTML body as source text (NOT rendered) -->
-        <div class="sct__html">
-          <span class="sct__html-label">{{ t('staff.platform.templates.htmlSource') }}</span>
-          <pre class="sct__html-pre">{{ detail.html_content }}</pre>
+        <div class="sct__block">
+          <span class="sct__label">{{ t('staff.platform.templates.htmlSource') }}</span>
+          <pre class="sct__code sct__html-pre">{{ detail.html_content }}</pre>
         </div>
 
-        <div class="sct__modal-actions">
-          <CButton variant="outline" size="sm" @click="showDetail = false">
+        <div class="ds-dialog__actions">
+          <CButton variant="outline" size="sm" inline @click="showDetail = false">
             {{ t('common.close') }}
           </CButton>
         </div>
@@ -302,20 +299,14 @@ onMounted(loadTemplates)
 
 <style scoped>
 .sct {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
 }
 
 .sct__filters {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-.sct__filter-row {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-block-end: var(--space-1);
 }
 
 .sct__center {
@@ -323,70 +314,16 @@ onMounted(loadTemplates)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-block-size: var(--center-sm);
+  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
-.sct__detail-error {
-  font-size: var(--fs-sm);
-  color: var(--danger);
-  text-align: center;
-}
 
-.tpl-list {
-  display: flex;
-  flex-direction: column;
-}
+/* The row opens the template in place: a button holds the row's one link-part
+   (the title), and a button aligns its text to the start by hand. */
 .tpl-item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
   text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.tpl-item:hover {
-  background: var(--bg-subtle);
-}
-.tpl-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.tpl-item__top {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-block-end: var(--space-2);
-}
-.tpl-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tpl-item__meta {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
 }
 
-.sct__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
 .sct__detail-meta {
   display: flex;
   align-items: center;
@@ -394,68 +331,40 @@ onMounted(loadTemplates)
   flex-wrap: wrap;
   font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-block-end: var(--space-4);
 }
 
-.sct__storage,
-.sct__assets {
-  margin-block-end: var(--space-4);
+.sct__block {
+  display: grid;
+  gap: var(--space-2);
 }
-.sct__storage-label,
-.sct__assets-label,
-.sct__html-label {
-  display: block;
+.sct__label {
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-block-end: var(--space-2);
-}
-.sct__storage-value {
-  font-size: var(--fs-xs);
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  background: var(--bg-subtle);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  word-break: break-all;
+  color: var(--text-secondary);
 }
 .sct__assets-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-1);
 }
-.sct__assets-list li {
-  font-size: var(--fs-xs);
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-}
 
-.sct__html {
-  margin-block-end: var(--space-2);
+/* Source text, names and paths are read character by character: the mono family (D11). */
+.sct__code {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+  word-break: break-all;
 }
 .sct__html-pre {
-  font-size: var(--fs-xs);
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
+  margin: 0;
   padding: var(--space-3);
   overflow: auto;
-  max-block-size: 360px;
-  margin: 0;
+  max-block-size: var(--center-lg);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.sct__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
 }
 </style>
