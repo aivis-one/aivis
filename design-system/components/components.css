@@ -43,6 +43,14 @@
 .ds-section-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); }
 .ds-note { margin: 0; font-family: var(--font-body); font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
 .ds-note--xs { font-size: var(--fs-xs); }
+/* the summary amount: a sheet's or a dialog's headline figure, mono and tabular; data-size="sm" is the body size (a figure inside a dialog's text), data-tone="success|danger" paints it (the sign and the words say the same; both colours stand on the surface, the page and the card ground at 4.5 or better) */
+.ds-amount { margin: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-2xl); font-weight: 700; line-height: var(--lh-tight); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-amount[data-size="sm"] { font-size: var(--fs-body); }
+.ds-amount[data-tone="success"] { color: var(--success); }
+.ds-amount[data-tone="danger"] { color: var(--danger); }
+/* the small label: an uppercase caption over a group, a field of a detail or a type; --fs-xs by default, data-size="md" takes --fs-sm; the quiet --text-secondary colour */
+.ds-label { margin: 0; font-size: var(--fs-xs); font-weight: 600; line-height: var(--lh-snug); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
+.ds-label[data-size="md"] { font-size: var(--fs-sm); }
 
 /* ===== K01 Button ===== */
 .ds-button {
@@ -2727,6 +2735,7 @@ button.ds-card__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   line-height: var(--lh-snug);
   color: var(--text-primary);
   overflow-wrap: anywhere;
+  user-select: all;
 }
 
 /* ===== K54 Timeline, addition: the entry's title as a button (an entry that opens something that is not an address) ===== */

@@ -357,6 +357,34 @@
    ],
    "weight": 400,
    "use": "a quiet small line under a figure or a heading; ds-note--xs is the caption role (--fs-xs)"
+  },
+  "ds-amount": {
+   "role": "2xl",
+   "family": "mono",
+   "tokens": [
+    "--font-mono",
+    "--fs-2xl",
+    "--fs-body",
+    "--lh-tight",
+    "--text-primary",
+    "--success",
+    "--danger"
+   ],
+   "weight": 700,
+   "use": "the summary amount of a sheet or a dialog; data-size=sm takes --fs-body; data-tone=success|danger paints it"
+  },
+  "ds-label": {
+   "role": "xs",
+   "family": "body",
+   "tokens": [
+    "--fs-xs",
+    "--fs-sm",
+    "--lh-snug",
+    "--tracking-wide",
+    "--text-secondary"
+   ],
+   "weight": 600,
+   "use": "the small uppercase caption over a group, a detail field or a type; data-size=md takes --fs-sm"
   }
  }
 }
