@@ -44,11 +44,10 @@
 // the app enforces itself before Nginx would ever see the request).
 // =============================================================================
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 import {
-  ArrowLeft,
+  AlertTriangle,
   ChevronUp,
   ChevronDown,
   Pencil,
@@ -68,6 +67,10 @@ import {
   CSelect,
   CCheckbox,
 } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import ActionMenu from '@/views/company/ActionMenu.vue'
+import type { ActionMenuItem } from '@/views/company/ActionMenu.vue'
+import FileField from '@/views/company/FileField.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { downloadAttachment } from '@/api/attachments'
@@ -86,7 +89,14 @@ import type { AttachmentPatchBody, AttachmentResponse } from '@/api/types'
 const { t } = useI18n()
 const profileStore = useCompanyProfileStore()
 const { showToast } = useToast()
-const router = useRouter()
+const categoryId = useId()
+
+// The frame's header carries the title, the line under it and the way back to Publications.
+useScreenHeader({
+  title: () => t('comp.attachments.title'),
+  lead: () => t('comp.attachments.subtitle'),
+  back: '/company/publications',
+})
 
 // File types accepted by the picker, mirroring
 // companies/constants.py::ALLOWED_ATTACHMENT_MIME_TYPES by extension.
@@ -188,10 +198,9 @@ const draftIsPublic = ref(false)
 const isEditing = computed<boolean>(() => editingId.value !== null)
 
 // File picked for a NEW attachment (required on create). Replacing the
-// file of an EXISTING attachment is a separate control (replaceFileEl
-// below) since the backend treats it as a distinct endpoint that leaves
-// metadata untouched.
-const fileInputEl = ref<HTMLInputElement | null>(null)
+// file of an EXISTING attachment is a separate control (the second
+// FileField) since the backend treats it as a distinct endpoint that
+// leaves metadata untouched.
 const selectedFile = ref<File | null>(null)
 
 function resetDraft(): void {
@@ -226,11 +235,6 @@ function openEdit(att: AttachmentResponse): void {
 
 function closeForm(): void {
   showForm.value = false
-}
-
-function onFileSelected(e: Event): void {
-  const input = e.target as HTMLInputElement
-  selectedFile.value = input.files?.[0] ?? null
 }
 
 const trimmedTitle = computed<string>(() => draftTitle.value.trim())
@@ -313,18 +317,10 @@ async function handleSave(): Promise<void> {
 // Replace file (existing attachment only)
 // ---------------------------------------------------------------------------
 
-const replaceFileEl = ref<HTMLInputElement | null>(null)
 const replacing = ref(false)
 
-function triggerReplacePicker(): void {
-  replaceFileEl.value?.click()
-}
-
-async function onReplaceSelected(e: Event): Promise<void> {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file || !editingId.value) return
+async function onReplaceSelected(file: File): Promise<void> {
+  if (!editingId.value) return
 
   replacing.value = true
   try {
@@ -406,446 +402,266 @@ async function handleDelete(): Promise<void> {
   }
 }
 
-function goBack(): void {
-  void router.push('/company/publications')
+// ---------------------------------------------------------------------------
+// The row's actions, as the system's Action menu (K26)
+// ---------------------------------------------------------------------------
+
+function rowActions(att: AttachmentResponse): ActionMenuItem[] {
+  const items: ActionMenuItem[] = []
+  if (att.is_published) {
+    items.push({ value: 'download', label: t('comp.attachments.download'), icon: Download })
+  }
+  items.push({ value: 'edit', label: t('common.edit'), icon: Pencil })
+  items.push({ value: 'delete', label: t('common.delete'), icon: Trash2, danger: true })
+  return items
+}
+
+function onRowAction(att: AttachmentResponse, value: string): void {
+  if (value === 'download') void openFile(att)
+  else if (value === 'edit') openEdit(att)
+  else if (value === 'delete') openDelete(att)
 }
 </script>
 
 <template>
-  <div class="catt">
-    <div class="catt__header">
-      <button type="button" class="catt__back" @click="goBack">
-        <ArrowLeft :size="16" />
-        {{ t('comp.publications.title') }}
-      </button>
-      <h1 class="catt__page-title">
-        {{ t('comp.attachments.title') }}
-      </h1>
-      <p class="catt__page-subtitle">
-        {{ t('comp.attachments.subtitle') }}
-      </p>
-    </div>
+  <div v-if="loading" class="ds-empty" aria-busy="true">
+    <CLoader :size="28" />
+  </div>
 
-    <div v-if="loading" class="catt__center">
-      <CLoader :size="28" />
-    </div>
-
-    <div v-else-if="errored" class="catt__center">
-      <CEmptyState :title="t('comp.attachments.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="reload">
+  <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.attachments.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="reload">
         {{ t('comp.attachments.errorRetry') }}
       </CButton>
-    </div>
+    </template>
+  </CEmptyState>
 
-    <template v-else>
-      <div class="catt__toolbar">
-        <CButton variant="primary" size="sm" @click="openCreate">
-          <Upload :size="16" />
+  <template v-else>
+    <div class="ds-shell__toolbar">
+      <div class="ds-shell__primary">
+        <CButton variant="primary" size="sm" inline @click="openCreate">
+          <Upload size="sm" />
           {{ t('comp.attachments.addCta') }}
         </CButton>
       </div>
+    </div>
 
-      <CEmptyState v-if="!rawItems.length" :title="t('comp.attachments.empty')">
-        <template #icon>
-          <FileText :size="40" />
-        </template>
-      </CEmptyState>
+    <CEmptyState v-if="!rawItems.length" :title="t('comp.attachments.empty')">
+      <template #icon>
+        <FileText />
+      </template>
+    </CEmptyState>
 
-      <div v-else class="catt__groups">
-        <div v-for="group in grouped" :key="group.category" class="catt__group">
-          <h3 class="catt__group-title">
-            {{ group.category }}
-          </h3>
+    <template v-else>
+      <section
+        v-for="(group, g) in grouped"
+        :key="group.category"
+        class="catt__group"
+        :aria-labelledby="`catt-group-${g}`"
+      >
+        <h2 :id="`catt-group-${g}`" class="catt__group-title">
+          {{ group.category }}
+        </h2>
 
-          <div class="doc-list">
-            <div v-for="(att, idx) in group.rows" :key="att.id" class="doc-item">
-              <div class="doc-item__reorder">
-                <button
-                  :aria-label="t('common.moveUp')"
-                  class="doc-item__move"
-                  :disabled="idx === 0 || reordering"
-                  @click="move(group.category, group.rows, idx, -1)"
-                >
-                  <ChevronUp :size="16" />
-                </button>
-                <button
-                  :aria-label="t('common.moveDown')"
-                  class="doc-item__move"
-                  :disabled="idx === group.rows.length - 1 || reordering"
-                  @click="move(group.category, group.rows, idx, 1)"
-                >
-                  <ChevronDown :size="16" />
-                </button>
-              </div>
-
-              <div class="doc-item__info">
-                <div class="doc-item__top">
-                  <CBadge
-                    :variant="att.is_published ? 'success' : 'neutral'"
-                    :text="
-                      att.is_published
-                        ? t('comp.attachments.published')
-                        : t('comp.attachments.unpublished')
-                    "
-                  />
-                  <CBadge
-                    v-if="att.is_public"
-                    variant="accent"
-                    :text="t('comp.attachments.public')"
-                  />
-                  <span class="doc-item__lang">{{ att.language.toUpperCase() }}</span>
-                </div>
-                <div class="doc-item__title">
-                  {{ att.title }}
-                </div>
-                <p v-if="att.description" class="doc-item__desc">
-                  {{ att.description }}
-                </p>
-                <div class="doc-item__meta">
-                  {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }}
-                </div>
-              </div>
-
-              <div class="doc-item__actions">
-                <button
-                  v-if="att.is_published"
-                  :aria-label="t('comp.attachments.download')"
-                  :title="t('comp.attachments.download')"
-                  class="doc-item__action"
-                  @click="openFile(att)"
-                >
-                  <Download :size="16" />
-                </button>
-                <button
-                  :aria-label="t('common.edit')"
-                  class="doc-item__action"
-                  @click="openEdit(att)"
-                >
-                  <Pencil :size="16" />
-                </button>
-                <button
-                  :aria-label="t('common.delete')"
-                  class="doc-item__action"
-                  @click="openDelete(att)"
-                >
-                  <Trash2 :size="16" />
-                </button>
-              </div>
+        <!-- Reorder list (K39), one row actions menu (K26) at each row's end -->
+        <ol class="ds-reorder" :aria-labelledby="`catt-group-${g}`">
+          <li v-for="(att, idx) in group.rows" :key="att.id" class="ds-reorder__item">
+            <div class="ds-reorder__controls">
+              <button
+                type="button"
+                class="ds-reorder__move"
+                :aria-label="`${t('common.moveUp')}: ${att.title}`"
+                :disabled="idx === 0 || reordering"
+                @click="move(group.category, group.rows, idx, -1)"
+              >
+                <ChevronUp size="sm" />
+              </button>
+              <button
+                type="button"
+                class="ds-reorder__move"
+                :aria-label="`${t('common.moveDown')}: ${att.title}`"
+                :disabled="idx === group.rows.length - 1 || reordering"
+                @click="move(group.category, group.rows, idx, 1)"
+              >
+                <ChevronDown size="sm" />
+              </button>
             </div>
-          </div>
-        </div>
-      </div>
+            <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
+
+            <div class="ds-reorder__body">
+              <span class="ds-reorder__title">{{ att.title }}</span>
+              <span class="ds-reorder__meta">
+                <CBadge
+                  :variant="att.is_published ? 'success' : 'neutral'"
+                  :text="
+                    att.is_published
+                      ? t('comp.attachments.published')
+                      : t('comp.attachments.unpublished')
+                  "
+                />
+                <CBadge
+                  v-if="att.is_public"
+                  variant="accent"
+                  :text="t('comp.attachments.public')"
+                />
+                {{ att.language.toUpperCase() }}
+              </span>
+              <span v-if="att.description" class="ds-reorder__meta">{{ att.description }}</span>
+              <span class="ds-reorder__meta">
+                {{ att.original_filename }} &bull; {{ formatBytes(att.file_size_bytes) }}
+              </span>
+            </div>
+
+            <ActionMenu
+              :label="att.title"
+              icon-key="more"
+              icon-only
+              align="end"
+              :items="rowActions(att)"
+              @select="(value) => onRowAction(att, value)"
+            />
+          </li>
+        </ol>
+      </section>
     </template>
+  </template>
 
-    <!-- Create / edit modal -->
-    <CModal :open="showForm" @close="closeForm">
-      <h3 class="catt__modal-title">
-        {{ isEditing ? t('comp.attachments.editTitle') : t('comp.attachments.createTitle') }}
-      </h3>
+  <!-- Create / edit modal -->
+  <CModal
+    :open="showForm"
+    :title="isEditing ? t('comp.attachments.editTitle') : t('comp.attachments.createTitle')"
+    @close="closeForm"
+  >
+    <CInput
+      v-model="draftTitle"
+      :label="t('comp.attachments.fieldTitle')"
+      :placeholder="t('comp.attachments.fieldTitle')"
+    />
 
-      <CInput
-        v-model="draftTitle"
-        :label="t('comp.attachments.fieldTitle')"
-        :placeholder="t('comp.attachments.fieldTitle')"
-      />
+    <CTextarea
+      v-model="draftDescription"
+      :label="t('comp.attachments.fieldDescription')"
+      :rows="3"
+    />
 
-      <CTextarea
-        v-model="draftDescription"
-        :label="t('comp.attachments.fieldDescription')"
-        :rows="3"
-      />
-
-      <CInput
+    <div class="ds-field c-field">
+      <label class="ds-field__label" :for="categoryId">
+        {{ t('comp.attachments.fieldCategory') }}
+      </label>
+      <input
+        :id="categoryId"
         v-model="draftCategory"
-        :label="t('comp.attachments.fieldCategory')"
+        class="ds-input"
+        type="text"
         placeholder="legal/incorporation"
-        :error="trimmedCategory && !categoryValid ? t('comp.attachments.categoryError') : ''"
+        :aria-invalid="trimmedCategory && !categoryValid ? 'true' : undefined"
+        :aria-describedby="
+          trimmedCategory && !categoryValid
+            ? `${categoryId}-hint ${categoryId}-error`
+            : `${categoryId}-hint`
+        "
       />
-      <p class="catt__hint">
+      <p :id="`${categoryId}-hint`" class="ds-field__hint">
         {{ t('comp.attachments.categoryHint') }}
       </p>
-
-      <CSelect
-        v-model="draftLanguage"
-        :label="t('comp.attachments.fieldLanguage')"
-        :options="languageOptions"
-      />
-
-      <CCheckbox v-model="draftIsPublished" :label="t('comp.attachments.fieldPublished')" />
-      <CCheckbox v-model="draftIsPublic" :label="t('comp.attachments.fieldPublic')" />
-
-      <div v-if="!isEditing" class="catt__field">
-        <label class="catt__field-label">{{ t('comp.attachments.fieldFile') }}</label>
-        <CButton variant="outline" size="sm" @click="fileInputEl?.click()">
-          <Upload :size="16" />
-          {{ selectedFile ? selectedFile.name : t('comp.attachments.chooseFile') }}
-        </CButton>
-        <input
-          ref="fileInputEl"
-          type="file"
-          :accept="FILE_ACCEPT"
-          class="catt__file-input"
-          @change="onFileSelected"
-        />
-      </div>
-
-      <div v-else class="catt__field">
-        <label class="catt__field-label">{{ t('comp.attachments.fieldReplaceFile') }}</label>
-        <CButton variant="outline" size="sm" :loading="replacing" @click="triggerReplacePicker">
-          <Upload :size="16" />
-          {{ editingOriginal?.original_filename }}
-        </CButton>
-        <input
-          ref="replaceFileEl"
-          type="file"
-          :accept="FILE_ACCEPT"
-          class="catt__file-input"
-          @change="onReplaceSelected"
-        />
-      </div>
-
-      <div class="catt__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeForm">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton
-          variant="primary"
-          size="sm"
-          :loading="saving"
-          :disabled="!canSubmit"
-          @click="handleSave"
-        >
-          {{ t('common.save') }}
-        </CButton>
-      </div>
-    </CModal>
-
-    <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="catt__modal-title">
-        {{ t('comp.attachments.deleteTitle') }}
-      </h3>
-      <p class="catt__modal-hint">
-        {{ t('comp.attachments.deleteConfirm') }}
+      <p
+        v-if="trimmedCategory && !categoryValid"
+        :id="`${categoryId}-error`"
+        class="ds-field__error"
+      >
+        <AlertTriangle size="sm" />
+        <span>{{ t('comp.attachments.categoryError') }}</span>
       </p>
-      <div class="catt__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
-          {{ t('common.delete') }}
-        </CButton>
-      </div>
-    </CModal>
-  </div>
+    </div>
+
+    <CSelect
+      v-model="draftLanguage"
+      :label="t('comp.attachments.fieldLanguage')"
+      :options="languageOptions"
+    />
+
+    <CCheckbox v-model="draftIsPublished" :label="t('comp.attachments.fieldPublished')" />
+    <CCheckbox v-model="draftIsPublic" :label="t('comp.attachments.fieldPublic')" />
+
+    <!-- The file: chosen for a new attachment, replaced at once on an existing one (K30) -->
+    <FileField
+      v-if="!isEditing"
+      :file="selectedFile"
+      :label="t('comp.attachments.fieldFile')"
+      :button-label="t('comp.attachments.chooseFile')"
+      :accept="FILE_ACCEPT"
+      removable
+      @select="(file) => (selectedFile = file)"
+      @remove="selectedFile = null"
+    />
+    <FileField
+      v-else
+      :label="t('comp.attachments.fieldReplaceFile')"
+      :button-label="t('comp.attachments.chooseFile')"
+      :accept="FILE_ACCEPT"
+      :current="editingOriginal?.original_filename"
+      :current-meta="editingOriginal ? formatBytes(editingOriginal.file_size_bytes) : undefined"
+      :busy="replacing"
+      @select="onReplaceSelected"
+    />
+
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="closeForm">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton
+        variant="primary"
+        size="sm"
+        inline
+        :loading="saving"
+        :disabled="!canSubmit"
+        @click="handleSave"
+      >
+        {{ t('common.save') }}
+      </CButton>
+    </div>
+  </CModal>
+
+  <!-- Delete confirm -->
+  <CModal
+    :open="!!deleteTarget"
+    :title="t('comp.attachments.deleteTitle')"
+    @close="deleteTarget = null"
+  >
+    <p class="catt__modal-hint">
+      {{ t('comp.attachments.deleteConfirm') }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
+        {{ t('common.delete') }}
+      </CButton>
+    </div>
+  </CModal>
 </template>
 
 <style scoped>
-.catt {
-  padding-block-end: var(--space-5);
-}
-
-.catt__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.catt__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  padding: 0;
-  margin-block-end: var(--space-3);
-  cursor: pointer;
-}
-.catt__back:hover {
-  color: var(--text-primary);
-}
-.catt__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.catt__page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-.catt__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 280px);
-  min-block-size: calc(100dvh - 280px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-.catt__toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 var(--space-4);
-  margin-block-end: var(--space-4);
-}
-
-.catt__groups {
-  padding: 0 var(--space-4);
-}
+/* One category: its heading over its list, on the frame's rhythm. */
 .catt__group {
-  margin-block-end: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
 }
 .catt__group-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0 0 var(--space-2);
-  word-break: break-all;
-}
-
-/* -- List (shared naming with the staff section for visual parity) -- */
-.doc-list {
-  display: flex;
-  flex-direction: column;
-}
-.doc-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.doc-item__reorder {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-.doc-item__move {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-sm);
-  block-size: var(--size-xs);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-.doc-item__move:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.doc-item__move:not(:disabled):hover {
-  background: var(--bg-subtle);
-}
-
-.doc-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.doc-item__top {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  flex-wrap: wrap;
-  margin-block-end: var(--space-1);
-}
-.doc-item__lang {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  font-weight: 600;
-}
-.doc-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.doc-item__desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
-  line-height: 1.4;
-  max-inline-size: var(--maxw-prose);
-}
-.doc-item__meta {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.doc-item__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-.doc-item__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.doc-item__action:hover {
-  background: var(--bg-subtle);
-  color: var(--text-primary);
-}
-
-/* -- Modal -- */
-.catt__modal-title {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
 }
+
+/* The confirm text over the dialog's actions. */
 .catt__modal-hint {
-  font-size: var(--fs-xs);
+  margin: 0;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.catt__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
-}
-
-.catt__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
-  line-height: 1.4;
-  max-inline-size: var(--maxw-prose);
-}
-
-.catt__field {
-  margin-block-end: var(--space-4);
-}
-.catt__field-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-.catt__file-input {
-  display: none;
 }
 </style>

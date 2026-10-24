@@ -24,7 +24,7 @@
 //
 // LAYOUT, in render order:
 //
-//   1. Page header     -- title + subtitle, no data call.
+//   1. Page header     -- the frame's header (useScreenHeader).
 //
 //   2. Top metrics card (big primary value with two
 //      sub-metrics underneath, NOT three equal tiles). The dashboard
@@ -37,13 +37,12 @@
 //   3. Bar chart -- sales_by_month, oldest first, height proportional
 //      to revenue_cents (per the F5.2 B1 design decision: revenue is
 //      the primary business metric for the company; units are a
-//      secondary curiosity in the hover tooltip).
+//      secondary curiosity in the table beside the chart).
 //
-//      No charting library. A CSS bar chart
-//      (`.chart-bars` / `.chart-bar { height: % }`); the native
-//      `title=` attribute carries the per-bar tooltip. We follow the
-//      same pattern -- adding a charting dep (~50KB gzip for recharts
-//      etc.) for one chart is poor leverage at this stage.
+//      No charting library. The system's bar chart (K37): an svg of
+//      rects in a viewBox of N columns by 100 rows, and the same
+//      numbers as a table beside it (the text alternative, in place
+//      of the per-bar hover tooltip).
 //
 //      Bar height policy:
 //        - Empty data: render the empty placeholder, no chart.
@@ -93,12 +92,19 @@ import { useI18n } from 'vue-i18n'
 
 import { Download } from '@/components/ui/icons'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { getCompanyAnalytics } from '@/api/company'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { CompanyAnalyticsResponse, SalesByMonthEntry, SalesByProductEntry } from '@/api/types'
 
 const { t, locale } = useI18n()
+
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('comp.analytics.title'),
+  lead: () => t('comp.analytics.subtitle'),
+})
 
 // ---------------------------------------------------------------------------
 // State + epoch guard
@@ -237,8 +243,8 @@ function shortMonthLabel(ym: string): string {
 }
 
 /**
- * Long month label for the hover tooltip and the range caption,
- * e.g. "April 2026". Carries the year so a tooltip in isolation is
+ * Long month label for the table rows and the range caption,
+ * e.g. "April 2026". Carries the year so a row in isolation is
  * unambiguous.
  */
 function longMonthLabel(ym: string): string {
@@ -248,21 +254,6 @@ function longMonthLabel(ym: string): string {
     month: 'long',
     year: 'numeric',
   })
-}
-
-/**
- * Tooltip string per bar: "April 2026 · $12,345.00 · 100 units".
- * Native browser tooltip via the `title=` attribute -- enough at
- * this scope; a custom hover popover would need pointer / focus
- * handling we don't need yet.
- */
-function tooltipFor(entry: SalesByMonthEntry): string {
-  const month = longMonthLabel(entry.month)
-  const revenue = formatPrice(entry.revenue_cents)
-  const units = t('comp.analytics.chart.tooltipUnits', {
-    units: formatNumber(entry.options_sold, locale.value),
-  })
-  return `${month} · ${revenue} · ${units}`
 }
 
 /**
@@ -283,19 +274,20 @@ const rangeCaption = computed<string>(() => {
 })
 
 /**
- * Per-bar height as a percentage of the chart area. Bounded [0, 100]
- * so a malformed payload can't break the layout. Floor at a small
- * sliver so a bar with revenue > 0 is always visible even when the
- * max bar dwarfs it -- otherwise tiny months render as a pixel and
- * disappear under the baseline.
+ * Per-bar height in rows of the chart (K37: the plot is N columns by 100 rows).
+ * Bounded [0, 100] so a malformed payload can't break the layout; a value above
+ * zero is at least one row, so a small month is never lost under the baseline.
  */
 function barHeightPercent(entry: SalesByMonthEntry): number {
   if (entry.revenue_cents <= 0) return 0
   const pct = (entry.revenue_cents / maxRevenue.value) * 100
   if (pct > 100) return 100
-  if (pct < 4) return 4
+  if (pct < 1) return 1
   return pct
 }
+
+/** The plot's width in columns: ten units a month, the bar inside it eight wide. */
+const chartWidth = computed<number>(() => salesByMonth.value.length * 10)
 
 // ---------------------------------------------------------------------------
 // B2 -- sales_by_product table
@@ -326,62 +318,41 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 </script>
 
 <template>
-  <div class="canl">
-    <!-- Page header -->
-    <div class="canl__header">
-      <h1 class="canl__title">
-        {{ t('comp.analytics.title') }}
-      </h1>
-      <p class="canl__subtitle">
-        {{ t('comp.analytics.subtitle') }}
-      </p>
-    </div>
+  <!-- Initial loading -->
+  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+    <CLoader :size="28" />
+  </div>
 
-    <!-- Initial loading -->
-    <div v-if="initialLoading" class="canl__center">
-      <CLoader :size="28" />
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="errored" class="canl__center">
-      <CEmptyState :title="t('comp.analytics.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="refresh">
+  <!-- Error -->
+  <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.analytics.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="refresh">
         {{ t('comp.analytics.errorRetry') }}
       </CButton>
+    </template>
+  </CEmptyState>
+
+  <!-- Loaded -->
+  <template v-else>
+    <!-- The top figures -->
+    <div class="ds-stats">
+      <CStatCard
+        :label="t('comp.analytics.metrics.totalRevenue')"
+        :value="formatPrice(totalRevenue)"
+      />
+      <CStatCard
+        :label="t('comp.analytics.metrics.thisMonth')"
+        :value="formatPrice(revenueThisMonth)"
+      />
+      <CStatCard
+        :label="t('comp.analytics.metrics.optionsSold')"
+        :value="formatNumber(totalOptionsSold, locale)"
+      />
     </div>
 
-    <!-- Loaded -->
-    <template v-else>
-      <!-- Top metrics card: big primary + two sub-metrics row -->
-      <section class="canl__metrics">
-        <div class="canl__metrics-label">
-          {{ t('comp.analytics.metrics.totalRevenue') }}
-        </div>
-        <div class="canl__metrics-value">
-          {{ formatPrice(totalRevenue) }}
-        </div>
-        <div class="canl__metrics-row">
-          <div class="canl__metrics-sub">
-            <div class="canl__metrics-sub-label">
-              {{ t('comp.analytics.metrics.thisMonth') }}
-            </div>
-            <div class="canl__metrics-sub-value">
-              {{ formatPrice(revenueThisMonth) }}
-            </div>
-          </div>
-          <div class="canl__metrics-sub">
-            <div class="canl__metrics-sub-label">
-              {{ t('comp.analytics.metrics.optionsSold') }}
-            </div>
-            <div class="canl__metrics-sub-value">
-              {{ formatNumber(totalOptionsSold, locale) }}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- The period of the chart, and the export -->
-      <div class="canl__tools">
+    <!-- The period of the chart, and the export -->
+    <div class="ds-shell__toolbar">
+      <div class="ds-shell__filters">
         <fieldset class="ds-segmented" data-size="sm">
           <legend class="ds-sr-only">{{ t('comp.analytics.period.label') }}</legend>
           <label v-for="p in PERIODS" :key="p" class="ds-segmented__option">
@@ -396,334 +367,132 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
             {{ t('comp.analytics.period.months', { n: p }) }}
           </label>
         </fieldset>
-        <CButton variant="outline" size="sm" @click="exportCsv">
-          <Download :size="16" />
+      </div>
+      <div class="ds-shell__primary">
+        <CButton variant="outline" size="sm" inline @click="exportCsv">
+          <Download size="sm" />
           {{ t('comp.analytics.export') }}
         </CButton>
       </div>
+    </div>
 
-      <!-- Sales by month chart -->
-      <section class="canl__chart-section">
-        <div class="canl__chart-header">
-          <h2 class="canl__chart-title">
-            {{ t('comp.analytics.chart.title') }}
-          </h2>
-          <span v-if="rangeCaption" class="canl__chart-range">
-            {{ rangeCaption }}
-          </span>
-        </div>
+    <!-- Sales by month: the bar chart with its text alternative (K37) -->
+    <CEmptyState v-if="!hasChartData" framed :description="t('comp.analytics.chart.empty')" />
 
-        <!-- Empty state -->
-        <p v-if="!hasChartData" class="canl__chart-empty">
-          {{ t('comp.analytics.chart.empty') }}
-        </p>
-
-        <!-- Bars -->
-        <div v-else class="canl__chart">
-          <div class="canl__chart-bars">
-            <div v-for="entry in salesByMonth" :key="entry.month" class="canl__chart-col">
-              <div class="canl__chart-bar-wrap">
-                <div
-                  class="canl__chart-bar"
-                  :style="{ blockSize: barHeightPercent(entry) + '%' }"
-                  :title="tooltipFor(entry)"
-                />
-              </div>
-              <div class="canl__chart-month">
-                {{ shortMonthLabel(entry.month) }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- B2: sales by product breakdown -->
-      <section class="canl__table-section">
-        <div class="canl__chart-header">
-          <h2 class="canl__chart-title">
-            {{ t('comp.analytics.byProduct.title') }}
-          </h2>
-        </div>
-
-        <p v-if="!hasProductData" class="canl__chart-empty">
-          {{ t('comp.analytics.byProduct.empty') }}
-        </p>
-
-        <ul v-else class="canl__table">
-          <li v-for="entry in salesByProduct" :key="entry.product_id" class="canl__row">
-            <div class="canl__row-body">
-              <div class="canl__row-name">
-                {{ entry.product_name }}
-              </div>
-              <div class="canl__row-sub">
-                {{ unitsLabelFor(entry) }}
-              </div>
-            </div>
-            <div class="canl__row-revenue">
-              {{ formatPrice(entry.revenue_cents) }}
-            </div>
+    <figure v-else class="ds-barchart">
+      <div class="ds-barchart__head">
+        <h2 id="canl-chart-title" class="ds-barchart__title">
+          {{ t('comp.analytics.chart.title') }}
+        </h2>
+        <span v-if="rangeCaption" id="canl-chart-range" class="ds-barchart__range">
+          {{ rangeCaption }}
+        </span>
+      </div>
+      <div class="ds-barchart__plot">
+        <svg
+          class="ds-barchart__svg"
+          role="img"
+          :aria-labelledby="rangeCaption ? 'canl-chart-title canl-chart-range' : 'canl-chart-title'"
+          :viewBox="`0 0 ${chartWidth} 100`"
+          preserveAspectRatio="none"
+          focusable="false"
+        >
+          <line
+            v-for="y in [25, 50, 75]"
+            :key="y"
+            class="ds-barchart__grid"
+            x1="0"
+            :x2="chartWidth"
+            :y1="y"
+            :y2="y"
+          />
+          <rect
+            v-for="(entry, i) in salesByMonth"
+            :key="entry.month"
+            class="ds-barchart__bar"
+            :x="i * 10 + 1"
+            :y="100 - barHeightPercent(entry)"
+            width="8"
+            :height="barHeightPercent(entry)"
+          />
+        </svg>
+        <ul class="ds-barchart__labels" aria-hidden="true">
+          <li v-for="entry in salesByMonth" :key="entry.month">
+            {{ shortMonthLabel(entry.month) }}
           </li>
         </ul>
-      </section>
-    </template>
-  </div>
+      </div>
+      <details class="ds-barchart__alt" open>
+        <summary>{{ t('comp.analytics.chart.title') }}</summary>
+        <div
+          class="ds-table-wrap"
+          role="region"
+          :aria-label="t('comp.analytics.chart.title')"
+          tabindex="0"
+        >
+          <table class="ds-table">
+            <thead>
+              <tr>
+                <th scope="col">{{ t('comp.analytics.period.label') }}</th>
+                <th scope="col" class="ds-table__num">
+                  {{ t('comp.analytics.metrics.optionsSold') }}
+                </th>
+                <th scope="col" class="ds-table__num">
+                  {{ t('comp.analytics.metrics.totalRevenue') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in salesByMonth" :key="entry.month">
+                <th scope="row">{{ longMonthLabel(entry.month) }}</th>
+                <td class="ds-table__num">{{ formatNumber(entry.options_sold, locale) }}</td>
+                <td class="ds-table__num">{{ formatPrice(entry.revenue_cents) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+
+    <!-- B2: sales by product breakdown -->
+    <section class="canl__section" aria-labelledby="canl-products">
+      <h2 id="canl-products" class="canl__section-title">
+        {{ t('comp.analytics.byProduct.title') }}
+      </h2>
+
+      <CEmptyState
+        v-if="!hasProductData"
+        framed
+        :description="t('comp.analytics.byProduct.empty')"
+      />
+
+      <ul v-else class="ds-rows">
+        <li v-for="entry in salesByProduct" :key="entry.product_id" class="ds-row">
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ entry.product_name }}</span>
+            <span class="ds-row__meta">{{ unitsLabelFor(entry) }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value">{{ formatPrice(entry.revenue_cents) }}</span>
+          </span>
+        </li>
+      </ul>
+    </section>
+  </template>
 </template>
 
 <style scoped>
-.canl {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* Page header */
-.canl__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.canl__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.canl__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* Whole-screen states */
-.canl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+/* A section: its heading over its rows, on the frame's rhythm. */
+.canl__section {
+  display: grid;
   gap: var(--space-3);
-  min-block-size: calc(100vh - 240px);
-  min-block-size: calc(100dvh - 240px);
-  padding: var(--space-5);
-  text-align: center;
 }
-
-/*
- * Top metrics card:
- * gradient background with the primary value as the headline and a
- * row of two sub-metrics underneath. The gradient uses --primary as
- * the anchor; --primary-dark falls back to --primary so themes that
- * only define one tone still render.
- */
-.canl__metrics {
-  padding: var(--space-4) var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary), var(--primary-active));
-  color: var(--on-primary);
-}
-.canl__metrics-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.85;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-block-end: var(--space-2);
-}
-.canl__metrics-value {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  line-height: 1.1;
-}
-.canl__metrics-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.canl__metrics-sub-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-block-end: var(--space-1);
-}
-.canl__metrics-sub-value {
-  font-size: var(--fs-body);
-  font-weight: 700;
-}
-
-/* Chart section */
-.canl__chart-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.canl__chart-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.canl__chart-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
+.canl__section-title {
   margin: 0;
-}
-.canl__chart-range {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.canl__chart-empty {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin dashed var(--border-default);
-  text-align: center;
-}
-
-/* Chart container */
-.canl__chart {
-  padding: var(--space-4) var(--space-3) var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-
-.canl__chart-bars {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-2);
-  block-size: 160px;
-}
-
-/*
- * Each column carries the bar (top, flexes to fill the tallest area
- * available) and a month label below. column-reverse on the wrapper
- * anchors the bar to the bottom of the chart area regardless of its
- * height percentage.
- */
-.canl__chart-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-
-.canl__chart-bar-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column-reverse;
-  min-block-size: 0;
-}
-
-.canl__chart-bar {
-  inline-size: 100%;
-  background: var(--primary);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition:
-    block-size var(--dur-base) var(--ease-standard),
-    opacity var(--dur-fast) var(--ease-standard);
-  cursor: default;
-  min-block-size: 1px;
-}
-.canl__chart-bar:hover {
-  opacity: 0.8;
-}
-
-.canl__chart-month {
-  font-size: var(--fs-3xs);
-  color: var(--text-tertiary);
-  text-align: center;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* B2 -- sales by product table */
-.canl__table-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.canl__table {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.canl__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-
-.canl__row-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.canl__row-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.canl__row-sub {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.canl__row-revenue {
-  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.canl__subtitle {
-  max-inline-size: var(--maxw-prose);
-}
-.canl__tools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 </style>

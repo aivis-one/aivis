@@ -39,18 +39,9 @@
 
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon } from '@/components/ui/icons'
 import {
-  ArrowLeft,
-  ChevronUp,
-  ChevronDown,
-  Pencil,
-  Trash2,
-  Map as MapIcon,
-  ImageUp,
-  X,
-} from '@/components/ui/icons'
-import {
+  CAvatar,
   CLoader,
   CButton,
   CBadge,
@@ -60,6 +51,8 @@ import {
   CTextarea,
   CSelect,
 } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import FileField from '@/views/company/FileField.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import {
@@ -80,7 +73,13 @@ import type {
 
 const { t } = useI18n()
 const { showToast } = useToast()
-const router = useRouter()
+
+// The frame's header carries the title, the line under it and the way back to Publications.
+useScreenHeader({
+  title: () => t('comp.roadmap.title'),
+  lead: () => t('comp.roadmap.subtitle'),
+  back: '/company/publications',
+})
 
 // ---------------------------------------------------------------------------
 // Data source -- own fetch, own loading/error state (no parent context)
@@ -441,21 +440,12 @@ async function handleDelete(): Promise<void> {
 const COVER_MIME_WHITELIST = ['image/png', 'image/jpeg', 'image/webp'] as const
 const COVER_MAX_BYTES = 10 * 1024 * 1024 // 10 MiB, mirrors backend cap
 
-const coverInputEl = ref<HTMLInputElement | null>(null)
 const coverPreviewUrl = ref('')
 const coverUploading = ref(false)
 const coverRemoving = ref(false)
 const coverRemoveTarget = ref<string | null>(null)
 
-function triggerCoverPicker(): void {
-  coverInputEl.value?.click()
-}
-
-async function onCoverSelected(e: Event): Promise<void> {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
+async function onCoverSelected(file: File): Promise<void> {
   if (!editingId.value) return
 
   if (!(COVER_MIME_WHITELIST as readonly string[]).includes(file.type)) {
@@ -510,581 +500,289 @@ async function handleCoverRemove(): Promise<void> {
     coverRemoving.value = false
   }
 }
-
-function goBack(): void {
-  void router.push('/company/publications')
-}
 </script>
 
 <template>
-  <div class="croad">
-    <!-- Inline page header, back link to Settings (where the entry point lives) -->
-    <div class="croad__header">
-      <button type="button" class="croad__back" @click="goBack">
-        <ArrowLeft :size="16" />
-        {{ t('comp.publications.title') }}
-      </button>
-      <h1 class="croad__page-title">
-        {{ t('comp.roadmap.title') }}
-      </h1>
-      <p class="croad__page-subtitle">
-        {{ t('comp.roadmap.subtitle') }}
-      </p>
-    </div>
+  <!-- Loading -->
+  <div v-if="loading" class="ds-empty" aria-busy="true">
+    <CLoader :size="28" />
+  </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="croad__center">
-      <CLoader :size="28" />
-    </div>
-
-    <!-- Error -->
-    <div v-else-if="errored" class="croad__center">
-      <CEmptyState :title="t('comp.roadmap.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="reload">
+  <!-- Error -->
+  <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.roadmap.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="reload">
         {{ t('comp.roadmap.errorRetry') }}
       </CButton>
-    </div>
+    </template>
+  </CEmptyState>
 
-    <!-- Loaded -->
-    <template v-else>
-      <div class="croad__toolbar">
-        <CButton variant="primary" size="sm" @click="openCreate">
+  <!-- Loaded -->
+  <template v-else>
+    <div class="ds-shell__toolbar">
+      <div class="ds-shell__primary">
+        <CButton variant="primary" size="sm" inline @click="openCreate">
           {{ t('comp.roadmap.addCta') }}
         </CButton>
       </div>
+    </div>
 
-      <CEmptyState v-if="!items.length" :title="t('comp.roadmap.empty')">
-        <template #icon>
-          <MapIcon :size="40" />
-        </template>
-      </CEmptyState>
+    <CEmptyState v-if="!items.length" :title="t('comp.roadmap.empty')">
+      <template #icon>
+        <MapIcon />
+      </template>
+    </CEmptyState>
 
-      <div v-else class="rm-list">
-        <div v-for="(item, idx) in items" :key="item.id" class="rm-item">
-          <div class="rm-item__reorder">
-            <button
-              :aria-label="t('common.moveUp')"
-              class="rm-item__move"
-              :disabled="idx === 0 || reordering"
-              @click="move(idx, -1)"
-            >
-              <ChevronUp :size="16" />
-            </button>
-            <button
-              :aria-label="t('common.moveDown')"
-              class="rm-item__move"
-              :disabled="idx === items.length - 1 || reordering"
-              @click="move(idx, 1)"
-            >
-              <ChevronDown :size="16" />
-            </button>
-          </div>
-
-          <div v-if="item.cover_url" class="rm-item__cover">
-            <img :src="item.cover_url" :alt="item.title" class="rm-item__cover-img" />
-          </div>
-
-          <div class="rm-item__body">
-            <div class="rm-item__badges">
-              <CBadge :variant="kindVariant(item.kind)" :text="kindLabel(item.kind)" />
-              <CBadge
-                v-if="item.kind === 'milestone'"
-                :variant="statusVariant(item.status)"
-                :text="statusLabel(item.status)"
-              />
-            </div>
-
-            <div class="rm-item__title">
-              {{ item.title }}
-            </div>
-
-            <div v-if="item.target_date || item.valid_until" class="rm-item__dates">
-              <span v-if="item.target_date">
-                {{ t('comp.roadmap.fieldTargetDate') }}: {{ formatDate(item.target_date) }}
-              </span>
-              <span v-if="item.valid_until">
-                {{ t('comp.roadmap.fieldValidUntil') }}: {{ formatDate(item.valid_until) }}
-              </span>
-            </div>
-
-            <p v-if="item.description" class="rm-item__desc">
-              {{ item.description }}
-            </p>
-
-            <a
-              v-if="item.external_url"
-              :href="item.external_url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rm-item__link"
-              >{{ item.external_url }}</a
-            >
-
-            <div v-if="item.post" class="rm-item__rel">
-              {{ item.post.title }}
-            </div>
-          </div>
-
-          <div class="rm-item__actions">
-            <button :aria-label="t('common.edit')" class="rm-item__action" @click="openEdit(item)">
-              <Pencil :size="16" />
-            </button>
-            <button
-              :aria-label="t('common.delete')"
-              class="rm-item__action"
-              @click="openDelete(item)"
-            >
-              <Trash2 :size="16" />
-            </button>
-          </div>
+    <!-- Reorder list (K39): the move pair at the start, the item's edit and delete at the end -->
+    <ol v-else class="ds-reorder" :aria-label="t('comp.roadmap.title')">
+      <li v-for="(item, idx) in items" :key="item.id" class="ds-reorder__item">
+        <div class="ds-reorder__controls">
+          <button
+            type="button"
+            class="ds-reorder__move"
+            :aria-label="`${t('common.moveUp')}: ${item.title}`"
+            :disabled="idx === 0 || reordering"
+            @click="move(idx, -1)"
+          >
+            <ChevronUp size="sm" />
+          </button>
+          <button
+            type="button"
+            class="ds-reorder__move"
+            :aria-label="`${t('common.moveDown')}: ${item.title}`"
+            :disabled="idx === items.length - 1 || reordering"
+            @click="move(idx, 1)"
+          >
+            <ChevronDown size="sm" />
+          </button>
         </div>
+        <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
+
+        <CAvatar v-if="item.cover_url" :name="item.title" :url="item.cover_url" />
+
+        <div class="ds-reorder__body">
+          <span class="ds-reorder__meta">
+            <CBadge :variant="kindVariant(item.kind)" :text="kindLabel(item.kind)" />
+            <CBadge
+              v-if="item.kind === 'milestone'"
+              :variant="statusVariant(item.status)"
+              :text="statusLabel(item.status)"
+            />
+          </span>
+          <span class="ds-reorder__title">{{ item.title }}</span>
+          <span v-if="item.target_date || item.valid_until" class="ds-reorder__meta">
+            <template v-if="item.target_date">
+              {{ t('comp.roadmap.fieldTargetDate') }}: {{ formatDate(item.target_date) }}
+            </template>
+            <template v-if="item.valid_until">
+              {{ t('comp.roadmap.fieldValidUntil') }}: {{ formatDate(item.valid_until) }}
+            </template>
+          </span>
+          <span v-if="item.description" class="ds-reorder__meta">{{ item.description }}</span>
+          <span v-if="item.external_url" class="ds-reorder__meta">
+            <a :href="item.external_url" target="_blank" rel="noopener noreferrer">{{
+              item.external_url
+            }}</a>
+          </span>
+          <span v-if="item.post" class="ds-reorder__meta">{{ item.post.title }}</span>
+        </div>
+
+        <button
+          type="button"
+          class="ds-button ds-button--ghost ds-button--icon"
+          data-size="sm"
+          :aria-label="`${t('common.edit')}: ${item.title}`"
+          @click="openEdit(item)"
+        >
+          <Pencil size="sm" />
+        </button>
+        <button
+          type="button"
+          class="ds-button ds-button--ghost ds-button--icon"
+          data-size="sm"
+          :aria-label="`${t('common.delete')}: ${item.title}`"
+          @click="openDelete(item)"
+        >
+          <Trash2 size="sm" />
+        </button>
+      </li>
+    </ol>
+  </template>
+
+  <!-- Create / edit modal -->
+  <CModal
+    :open="showForm"
+    :title="isEditing ? t('comp.roadmap.editTitle') : t('comp.roadmap.createTitle')"
+    @close="closeForm"
+  >
+    <fieldset v-if="isEditing" class="ds-fieldset">
+      <legend class="ds-fieldset__legend">{{ t('comp.roadmap.kindLabel') }}</legend>
+      <div>
+        <CBadge :variant="kindVariant(draftKind)" :text="kindLabel(draftKind)" />
       </div>
+      <p class="ds-field__hint">
+        {{ t('comp.roadmap.kindLockedHint') }}
+      </p>
+    </fieldset>
+    <fieldset v-else class="ds-segmented">
+      <legend class="ds-sr-only">{{ t('comp.roadmap.kindLabel') }}</legend>
+      <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
+        <input
+          class="ds-segmented__input"
+          type="radio"
+          name="croad-kind"
+          :value="k"
+          :checked="draftKind === k"
+          @change="selectKind(k)"
+        />
+        {{ kindLabel(k) }}
+      </label>
+    </fieldset>
+
+    <CInput
+      v-model="draftTitle"
+      :label="t('comp.roadmap.fieldTitle')"
+      :placeholder="t('comp.roadmap.fieldTitle')"
+    />
+
+    <CTextarea v-model="draftDescription" :label="t('comp.roadmap.fieldDescription')" :rows="4" />
+
+    <p v-if="draftKind === 'event'" class="ds-field__hint">
+      {{ t('comp.roadmap.eventDatesHint') }}
+    </p>
+
+    <!-- The dates are the Date picker (K29); a period is two inputs, the second's min is the first -->
+    <CInput
+      v-if="showTargetDate"
+      v-model="draftTargetDate"
+      :label="t('comp.roadmap.fieldTargetDate')"
+      type="date"
+    />
+
+    <CInput
+      v-if="showValidUntil"
+      v-model="draftValidUntil"
+      :label="t('comp.roadmap.fieldValidUntil')"
+      type="date"
+      :min="draftTargetDate || undefined"
+      :error="
+        draftTargetDate && draftValidUntil && !eventDatesValid
+          ? t('comp.roadmap.validUntilAfterTargetError')
+          : ''
+      "
+    />
+
+    <template v-if="showStatus">
+      <fieldset v-if="statusLocked" class="ds-fieldset">
+        <legend class="ds-fieldset__legend">{{ t('comp.roadmap.fieldStatus') }}</legend>
+        <div>
+          <CBadge :variant="statusVariant(draftStatus)" :text="statusLabel(draftStatus)" />
+        </div>
+        <p class="ds-field__hint">
+          {{ t('comp.roadmap.completedLockedHint') }}
+        </p>
+      </fieldset>
+      <CSelect
+        v-else
+        v-model="draftStatus"
+        :label="t('comp.roadmap.fieldStatus')"
+        :options="statusOptions"
+      />
     </template>
 
-    <!-- Create / edit modal -->
-    <CModal :open="showForm" @close="closeForm">
-      <h3 class="croad__modal-title">
-        {{ isEditing ? t('comp.roadmap.editTitle') : t('comp.roadmap.createTitle') }}
-      </h3>
+    <CInput
+      v-model="draftExternalUrl"
+      :label="t('comp.roadmap.fieldExternalUrl')"
+      :placeholder="t('comp.roadmap.fieldExternalUrlPlaceholder')"
+      :error="!externalUrlValid ? t('comp.roadmap.externalUrlError') : ''"
+    />
 
-      <div class="croad__kind">
-        <span class="croad__kind-label">{{ t('comp.roadmap.kindLabel') }}</span>
-        <template v-if="isEditing">
-          <CBadge :variant="kindVariant(draftKind)" :text="kindLabel(draftKind)" />
-          <p class="croad__kind-hint">
-            {{ t('comp.roadmap.kindLockedHint') }}
-          </p>
-        </template>
-        <fieldset v-else class="ds-segmented">
-          <legend class="ds-sr-only">{{ t('comp.roadmap.kindLabel') }}</legend>
-          <label v-for="k in KIND_VALUES" :key="k" class="ds-segmented__option">
-            <input
-              class="ds-segmented__input"
-              type="radio"
-              name="croad-kind"
-              :value="k"
-              :checked="draftKind === k"
-              @change="selectKind(k)"
-            />
-            {{ kindLabel(k) }}
-          </label>
-        </fieldset>
-      </div>
+    <!-- The cover image (K30), added to a saved item -->
+    <FileField
+      v-if="isEditing"
+      :label="t('comp.roadmap.cover.label')"
+      :button-label="
+        coverPreviewUrl ? t('comp.roadmap.cover.replace') : t('comp.roadmap.cover.upload')
+      "
+      accept="image/png,image/jpeg,image/webp"
+      :current="coverPreviewUrl ? t('comp.roadmap.cover.label') : undefined"
+      :preview="coverPreviewUrl || undefined"
+      :busy="coverUploading || coverRemoving"
+      removable
+      @select="onCoverSelected"
+      @remove="openCoverRemove"
+    />
+    <p v-else class="ds-field__hint">
+      {{ t('comp.roadmap.cover.createFirst') }}
+    </p>
 
-      <CInput
-        v-model="draftTitle"
-        :label="t('comp.roadmap.fieldTitle')"
-        :placeholder="t('comp.roadmap.fieldTitle')"
-      />
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="closeForm">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton
+        variant="primary"
+        size="sm"
+        inline
+        :loading="saving"
+        :disabled="!canSubmit"
+        @click="handleSave"
+      >
+        {{ t('common.save') }}
+      </CButton>
+    </div>
+  </CModal>
 
-      <CTextarea v-model="draftDescription" :label="t('comp.roadmap.fieldDescription')" :rows="4" />
+  <!-- Delete confirm -->
+  <CModal
+    :open="!!deleteTarget"
+    :title="t('comp.roadmap.deleteTitle')"
+    @close="deleteTarget = null"
+  >
+    <p class="croad__modal-hint">
+      {{ t('comp.roadmap.deleteConfirm') }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="deleteTarget = null">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton variant="danger" size="sm" inline :loading="deleting" @click="handleDelete">
+        {{ t('common.delete') }}
+      </CButton>
+    </div>
+  </CModal>
 
-      <p v-if="draftKind === 'event'" class="croad__hint">
-        {{ t('comp.roadmap.eventDatesHint') }}
-      </p>
-
-      <CInput
-        v-if="showTargetDate"
-        v-model="draftTargetDate"
-        :label="t('comp.roadmap.fieldTargetDate')"
-        type="date"
-      />
-
-      <CInput
-        v-if="showValidUntil"
-        v-model="draftValidUntil"
-        :label="t('comp.roadmap.fieldValidUntil')"
-        type="date"
-        :error="
-          draftTargetDate && draftValidUntil && !eventDatesValid
-            ? t('comp.roadmap.validUntilAfterTargetError')
-            : ''
-        "
-      />
-
-      <template v-if="showStatus">
-        <template v-if="statusLocked">
-          <div class="croad__field">
-            <label class="croad__field-label">{{ t('comp.roadmap.fieldStatus') }}</label>
-            <CBadge :variant="statusVariant(draftStatus)" :text="statusLabel(draftStatus)" />
-          </div>
-          <p class="croad__hint">
-            {{ t('comp.roadmap.completedLockedHint') }}
-          </p>
-        </template>
-        <CSelect
-          v-else
-          v-model="draftStatus"
-          :label="t('comp.roadmap.fieldStatus')"
-          :options="statusOptions"
-        />
-      </template>
-
-      <CInput
-        v-model="draftExternalUrl"
-        :label="t('comp.roadmap.fieldExternalUrl')"
-        :placeholder="t('comp.roadmap.fieldExternalUrlPlaceholder')"
-        :error="!externalUrlValid ? t('comp.roadmap.externalUrlError') : ''"
-      />
-
-      <div class="croad__cover">
-        <label class="croad__field-label">{{ t('comp.roadmap.cover.label') }}</label>
-
-        <template v-if="isEditing">
-          <div v-if="coverPreviewUrl" class="croad__cover-preview">
-            <img :src="coverPreviewUrl" alt="" class="croad__cover-img" />
-          </div>
-
-          <div class="croad__cover-actions">
-            <CButton
-              variant="outline"
-              size="sm"
-              :loading="coverUploading"
-              @click="triggerCoverPicker"
-            >
-              <ImageUp :size="16" />
-              {{
-                coverPreviewUrl ? t('comp.roadmap.cover.replace') : t('comp.roadmap.cover.upload')
-              }}
-            </CButton>
-            <CButton
-              v-if="coverPreviewUrl"
-              variant="outline"
-              size="sm"
-              :loading="coverRemoving"
-              @click="openCoverRemove"
-            >
-              <X :size="16" />
-              {{ t('comp.roadmap.cover.remove') }}
-            </CButton>
-          </div>
-
-          <input
-            ref="coverInputEl"
-            :aria-label="t('comp.roadmap.cover.remove')"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            class="croad__cover-input"
-            @change="onCoverSelected"
-          />
-        </template>
-
-        <p v-else class="croad__hint">
-          {{ t('comp.roadmap.cover.createFirst') }}
-        </p>
-      </div>
-
-      <div class="croad__modal-actions">
-        <CButton variant="outline" size="sm" @click="closeForm">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton
-          variant="primary"
-          size="sm"
-          :loading="saving"
-          :disabled="!canSubmit"
-          @click="handleSave"
-        >
-          {{ t('common.save') }}
-        </CButton>
-      </div>
-    </CModal>
-
-    <!-- Delete confirm -->
-    <CModal :open="!!deleteTarget" @close="deleteTarget = null">
-      <h3 class="croad__modal-title">
-        {{ t('comp.roadmap.deleteTitle') }}
-      </h3>
-      <p class="croad__modal-hint">
-        {{ t('comp.roadmap.deleteConfirm') }}
-      </p>
-      <div class="croad__modal-actions">
-        <CButton variant="outline" size="sm" @click="deleteTarget = null">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton variant="danger" size="sm" :loading="deleting" @click="handleDelete">
-          {{ t('common.delete') }}
-        </CButton>
-      </div>
-    </CModal>
-
-    <!-- Cover remove confirm -->
-    <CModal :open="!!coverRemoveTarget" @close="coverRemoveTarget = null">
-      <h3 class="croad__modal-title">
-        {{ t('comp.roadmap.cover.removeTitle') }}
-      </h3>
-      <p class="croad__modal-hint">
-        {{ t('comp.roadmap.cover.removeConfirm') }}
-      </p>
-      <div class="croad__modal-actions">
-        <CButton variant="outline" size="sm" @click="coverRemoveTarget = null">
-          {{ t('common.cancel') }}
-        </CButton>
-        <CButton variant="danger" size="sm" :loading="coverRemoving" @click="handleCoverRemove">
-          {{ t('comp.roadmap.cover.remove') }}
-        </CButton>
-      </div>
-    </CModal>
-  </div>
+  <!-- Cover remove confirm -->
+  <CModal
+    :open="!!coverRemoveTarget"
+    :title="t('comp.roadmap.cover.removeTitle')"
+    @close="coverRemoveTarget = null"
+  >
+    <p class="croad__modal-hint">
+      {{ t('comp.roadmap.cover.removeConfirm') }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="coverRemoveTarget = null">
+        {{ t('common.cancel') }}
+      </CButton>
+      <CButton
+        variant="danger"
+        size="sm"
+        inline
+        :loading="coverRemoving"
+        @click="handleCoverRemove"
+      >
+        {{ t('comp.roadmap.cover.remove') }}
+      </CButton>
+    </div>
+  </CModal>
 </template>
 
 <style scoped>
-.croad {
-  padding-block-end: var(--space-5);
-}
-
-.croad__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.croad__back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  padding: 0;
-  margin-block-end: var(--space-3);
-  cursor: pointer;
-}
-.croad__back:hover {
-  color: var(--text-primary);
-}
-.croad__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.croad__page-subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-.croad__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 280px);
-  min-block-size: calc(100dvh - 280px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-.croad__toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 var(--space-4);
-  margin-block-end: var(--space-4);
-}
-
-/* -- List (shared naming with the staff section for visual parity) -- */
-.rm-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: 0 var(--space-4);
-}
-
-.rm-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-}
-
-.rm-item__reorder {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 0 0 auto;
-}
-.rm-item__move {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-sm);
-  block-size: var(--size-xs);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-base) var(--ease-standard),
-    color var(--dur-base) var(--ease-standard);
-}
-.rm-item__move:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-.rm-item__move:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.rm-item__cover {
-  flex: 0 0 auto;
-}
-.rm-item__cover-img {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  display: block;
-}
-
-.rm-item__body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.rm-item__badges {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.rm-item__title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.rm-item__dates {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.rm-item__desc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.4;
-  max-inline-size: var(--maxw-prose);
-}
-.rm-item__link {
-  font-size: var(--fs-sm);
-  color: var(--primary);
-  word-break: break-all;
-  text-decoration: none;
-}
-.rm-item__link:hover {
-  text-decoration: underline;
-}
-.rm-item__rel {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.rm-item__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 0 0 auto;
-}
-.rm-item__action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-sm);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.rm-item__action:hover {
-  color: var(--text-primary);
-  background: var(--bg-page);
-}
-
-/* -- Modal -- */
-.croad__modal-title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
+/* The confirm text over the dialog's actions. */
 .croad__modal-hint {
-  font-size: var(--fs-xs);
+  margin: 0;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-}
-.croad__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  justify-content: flex-end;
-}
-
-.croad__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-  line-height: 1.4;
-  max-inline-size: var(--maxw-prose);
-}
-
-.croad__kind {
-  margin-block-end: var(--space-4);
-}
-.croad__kind-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-.croad__kind-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: var(--space-2) 0 0;
-  line-height: 1.4;
-}
-
-.croad__field {
-  margin-block-end: var(--space-4);
-}
-.croad__field-label {
-  display: block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-block-end: var(--space-2);
-}
-
-.croad__cover {
-  margin-block-end: var(--space-4);
-}
-.croad__cover-preview {
-  margin-block-end: var(--space-2);
-}
-.croad__cover-img {
-  inline-size: 100%;
-  max-block-size: 180px;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  display: block;
-}
-.croad__cover-actions {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.croad__cover-input {
-  display: none;
 }
 </style>

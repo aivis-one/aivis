@@ -19,9 +19,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import AivisLogo from '@/components/ui/AivisLogo.vue'
-import CAppControls from '@/components/ui/CAppControls.vue'
 import { CButton, CCheckbox, CLoader } from '@/components/ui'
+import AuthShell from '@/components/layout/AuthShell.vue'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { ApiResponseError } from '@/api/client'
@@ -96,53 +95,48 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="welcome">
-    <div class="welcome__bar">
-      <AivisLogo :height="28" :show-text="false" />
-      <CAppControls />
+  <AuthShell>
+    <div v-if="checking" class="ds-empty" aria-busy="true">
+      <CLoader :size="28" />
     </div>
 
-    <div class="welcome__card">
-      <div v-if="checking" class="welcome__center">
-        <CLoader :size="28" />
-      </div>
+    <!-- The state could not be read -->
+    <template v-else-if="termsStore.status === 'error'">
+      <h1 class="ds-auth__title">
+        {{ t('comp.welcome.errorTitle') }}
+      </h1>
+      <CButton variant="outline" @click="check">
+        {{ t('common.retry') }}
+      </CButton>
+    </template>
 
-      <!-- The state could not be read -->
-      <template v-else-if="termsStore.status === 'error'">
-        <h1 class="welcome__title">
-          {{ t('comp.welcome.errorTitle') }}
-        </h1>
-        <CButton variant="outline" @click="check">
-          {{ t('common.retry') }}
-        </CButton>
-      </template>
+    <template v-else>
+      <h1 class="ds-auth__title">
+        {{ t('comp.welcome.title') }}
+      </h1>
+      <p class="ds-auth__subtitle">
+        {{ t('comp.welcome.intro') }}
+      </p>
 
-      <template v-else>
-        <h1 class="welcome__title">
-          {{ t('comp.welcome.title') }}
-        </h1>
-        <p class="welcome__text">
-          {{ t('comp.welcome.intro') }}
-        </p>
-
+      <form class="ds-auth__form" @submit.prevent="onAccept">
         <div v-for="doc in pending" :key="doc.id" class="welcome__doc">
           <CCheckbox
             v-model="ticked[doc.id]"
             :label="`${t('auth.register.consentPrefix')} ${docName(doc)}`"
           />
-          <a href="#read" class="welcome__read" @click.prevent="reading = doc">
+          <CButton variant="link" type="button" @click="reading = doc">
             {{ t('comp.welcome.read') }}
-          </a>
+          </CButton>
         </div>
 
-        <CButton variant="primary" :disabled="!allTicked" :loading="accepting" @click="onAccept">
+        <CButton variant="primary" type="submit" :disabled="!allTicked" :loading="accepting">
           {{ t('comp.welcome.accept') }}
         </CButton>
-      </template>
+      </form>
+    </template>
 
-      <div class="welcome__logout">
-        <AuthLogoutLink />
-      </div>
+    <div class="ds-auth__foot">
+      <AuthLogoutLink />
     </div>
 
     <LegalDocModal
@@ -152,79 +146,14 @@ onMounted(() => {
       :type="reading?.type ?? ''"
       @close="reading = null"
     />
-  </div>
+  </AuthShell>
 </template>
 
 <style scoped>
-.welcome {
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-page);
-}
-
-.welcome__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-}
-
-.welcome__card {
-  inline-size: 100%;
-  max-inline-size: var(--maxw-prose, 560px);
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.welcome__center {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6, 32px) 0;
-}
-
-.welcome__title {
-  margin: 0;
-  font-size: var(--fs-h3, 1.375rem);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.welcome__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
+/* One document: its tick, and the link that reads it. */
 .welcome__doc {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  justify-items: start;
   gap: var(--space-1);
-}
-
-.welcome__read {
-  align-self: flex-start;
-  margin-inline-start: var(--space-6, 32px);
-  font-size: var(--fs-sm);
-  color: var(--primary);
-}
-
-.welcome__logout {
-  display: flex;
-  justify-content: center;
-  padding-block-start: var(--space-2);
-}
-
-/* On a tablet and a desktop the card gets more room above it. */
-@media (min-width: 880px) {
-  .welcome__card {
-    padding-block-start: var(--space-6, 32px);
-  }
 }
 </style>

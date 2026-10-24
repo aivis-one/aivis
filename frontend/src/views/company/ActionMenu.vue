@@ -31,6 +31,8 @@ const props = withDefaults(
     items: ActionMenuItem[]
     /** An icon before the word. */
     icon?: Component
+    /** A key of the system's sprite drawn before the word, where the cabinet's icon list has no component for it ("more"). */
+    iconKey?: string
     iconOnly?: boolean
     /** `end` opens toward the end edge: use it when the button sits at the end of a row. */
     align?: 'end'
@@ -144,8 +146,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
       @keydown="onButtonKey"
     >
       <component :is="icon" v-if="icon" size="sm" />
+      <svg v-else-if="iconKey" class="ds-icon" aria-hidden="true" viewBox="0 0 24 24">
+        <use :href="'#i-' + iconKey" />
+      </svg>
       <template v-if="!iconOnly">{{ label }}</template>
-      <ChevronDown size="sm" />
+      <ChevronDown v-if="!iconOnly" size="sm" />
     </button>
     <ul
       :id="listId"

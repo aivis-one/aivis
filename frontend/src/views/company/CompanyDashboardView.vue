@@ -31,7 +31,8 @@ import {
 } from '@/components/ui/icons'
 import type { Component } from 'vue'
 
-import { CButton, CLoader, CStatCard } from '@/components/ui'
+import { CAvatar, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import type { CompanyTransactionResponse } from '@/api/types'
@@ -45,23 +46,18 @@ const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
 const dashboardStore = useCompanyDashboardStore()
 
+// The frame's header carries the title and the line under it.
+useScreenHeader({
+  title: () => t('comp.dashboard.title'),
+  lead: () => t('comp.dashboard.subtitle'),
+})
+
 // ---------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------
 
 const companyName = computed<string>(() => profileStore.profile?.name ?? '')
 const logoUrl = computed<string | null>(() => profileStore.profile?.logo_url ?? null)
-
-/** Initials when there is no logo: the first letters of up to two words. */
-const initials = computed<string>(() => {
-  const name = companyName.value.trim()
-  if (!name) return 'P'
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-})
 
 // ---------------------------------------------------------------------------
 // Summary blocks
@@ -107,10 +103,11 @@ function typeLabel(type: string): string {
   return tOrRaw(t, `comp.operations.type.${type}`, tOrRaw(t, `inv.transactions.type.${type}`, type))
 }
 
-function amountClass(amountCents: number): string {
-  if (amountCents > 0) return 'dash__tx-amount--credit'
-  if (amountCents < 0) return 'dash__tx-amount--debit'
-  return ''
+/** The lead box's tone: a credit is green, a debit red; the signed amount says the same in text. */
+function amountTone(amountCents: number): 'success' | 'danger' | undefined {
+  if (amountCents > 0) return 'success'
+  if (amountCents < 0) return 'danger'
+  return undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -127,492 +124,148 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dash">
-    <!-- Page header -->
-    <div class="dash__header">
-      <h1 class="dash__title">
-        {{ t('comp.dashboard.title') }}
-      </h1>
-      <p class="dash__subtitle">
-        {{ t('comp.dashboard.subtitle') }}
-      </p>
-    </div>
+  <!-- The project's identity (shown whenever the profile is read) -->
+  <ul v-if="profileStore.profile" class="ds-rows">
+    <li class="ds-row">
+      <CAvatar :name="companyName" :url="logoUrl ?? undefined" :size="56" />
+      <span class="ds-row__body">
+        <span class="ds-row__title">{{ companyName }}</span>
+      </span>
+    </li>
+  </ul>
 
-    <!-- Hero -- the project's identity (shown whenever the profile is read) -->
-    <div v-if="profileStore.profile" class="dash__hero">
-      <div class="dash__hero-logo">
-        <img v-if="logoUrl" :src="logoUrl" :alt="companyName" class="dash__hero-logo-img" />
-        <div v-else class="dash__hero-logo-fallback">
-          {{ initials }}
-        </div>
-      </div>
-      <div class="dash__hero-text">
-        <div class="dash__hero-name">
-          {{ companyName }}
-        </div>
-      </div>
-    </div>
+  <!-- The summary is loading -->
+  <div v-if="summaryLoading" class="ds-empty" aria-busy="true">
+    <CLoader :size="28" />
+  </div>
 
-    <!-- The summary is loading -->
-    <div v-if="summaryLoading" class="dash__center">
-      <CLoader :size="28" />
-    </div>
-
-    <!-- The summary failed: only its blocks give way, with a retry in their place -->
-    <div v-else-if="summaryFailed" class="dash__failed">
-      <span>{{ t('comp.dashboard.errorTitle') }}</span>
-      <CButton variant="outline" size="sm" @click="loadAll">
+  <!-- The summary failed: only its blocks give way, with a retry in their place -->
+  <CEmptyState v-else-if="summaryFailed" tone="danger" :title="t('comp.dashboard.errorTitle')">
+    <template #actions>
+      <CButton variant="outline" size="sm" inline @click="loadAll">
         {{ t('comp.dashboard.errorRetry') }}
       </CButton>
-    </div>
+    </template>
+  </CEmptyState>
 
-    <template v-else>
+  <template v-else>
+    <!-- Five figures, each a link to the screen that holds its detail -->
+    <div class="ds-stats">
       <!-- Balance -> the balance screen -->
-      <RouterLink to="/company/balance" class="dash__balance dash__link">
-        <div class="dash__balance-head">
-          <span class="dash__balance-label">
-            <Wallet :size="16" />
+      <div class="ds-stat ds-stat--interactive">
+        <span class="ds-stat__icon"><Wallet /></span>
+        <p class="ds-stat__label">
+          <RouterLink class="ds-stat__link" to="/company/balance">
             {{ t('comp.dashboard.balance.title') }}
-          </span>
-          <ChevronRight :size="16" />
-        </div>
-        <div class="dash__balance-value">
-          {{ formatPrice(passiveConfirmed) }}
-        </div>
-        <div v-if="hasFrozen" class="dash__balance-frozen">
-          {{ t('comp.dashboard.balance.frozen') }}:
-          {{ formatPrice(passiveFrozen) }}
-        </div>
-      </RouterLink>
+          </RouterLink>
+        </p>
+        <p class="ds-stat__value">{{ formatPrice(passiveConfirmed) }}</p>
+        <p v-if="hasFrozen" class="ds-stat__sub">
+          {{ t('comp.dashboard.balance.frozen') }}: {{ formatPrice(passiveFrozen) }}
+        </p>
+      </div>
 
       <!-- The project's pool: a share of the gross receipts, zero until a sale -->
-      <RouterLink to="/company/analytics" class="dash__pool dash__link">
-        <div class="dash__pool-head">
-          <span class="dash__pool-label">
-            <Layers :size="16" />
+      <div class="ds-stat ds-stat--interactive">
+        <span class="ds-stat__icon"><Layers /></span>
+        <p class="ds-stat__label">
+          <RouterLink class="ds-stat__link" to="/company/analytics">
             {{ t('comp.dashboard.pool.title') }}
-          </span>
-          <ChevronRight :size="16" />
-        </div>
-        <div class="dash__pool-value">
-          {{ formatPrice(poolCents) }}
-        </div>
-        <p class="dash__pool-note">
+          </RouterLink>
+        </p>
+        <p class="ds-stat__value">{{ formatPrice(poolCents) }}</p>
+        <p class="ds-stat__sub">
           {{ t('comp.dashboard.pool.note', { percent: POOL_PERCENT }) }}
         </p>
-      </RouterLink>
-
-      <!-- Three figures, each a link to its screen -->
-      <div class="dash__metrics">
-        <RouterLink to="/company/analytics" class="dash__link dash__link--tile">
-          <CStatCard
-            :value="formatPrice(partSales)"
-            :label="t('comp.dashboard.metrics.revenue')"
-          >
-            <template #icon>
-              <TrendingUp :size="20" />
-            </template>
-          </CStatCard>
-        </RouterLink>
-        <RouterLink to="/company/analytics" class="dash__link dash__link--tile">
-          <CStatCard
-            :value="formatNumber(partsSold, locale)"
-            :label="t('comp.dashboard.metrics.optionsSold')"
-          >
-            <template #icon>
-              <Package :size="20" />
-            </template>
-          </CStatCard>
-        </RouterLink>
-        <RouterLink to="/company/products" class="dash__link dash__link--tile">
-          <CStatCard
-            :value="formatNumber(productsCount, locale)"
-            :label="t('comp.dashboard.metrics.products')"
-          >
-            <template #icon>
-              <Layers :size="20" />
-            </template>
-          </CStatCard>
-        </RouterLink>
       </div>
 
-      <!-- Recent operations, and the way to all of them -->
-      <div class="dash__recent">
-        <div class="dash__recent-head">
-          <h2 class="dash__recent-title">
-            {{ t('comp.dashboard.recent.title') }}
-          </h2>
-          <RouterLink to="/company/balance/transactions" class="dash__recent-all">
-            {{ t('comp.dashboard.recent.all') }}
-            <ChevronRight :size="14" />
+      <div class="ds-stat ds-stat--interactive">
+        <span class="ds-stat__icon"><TrendingUp /></span>
+        <p class="ds-stat__label">
+          <RouterLink class="ds-stat__link" to="/company/analytics">
+            {{ t('comp.dashboard.metrics.revenue') }}
           </RouterLink>
-        </div>
-
-        <p v-if="recentTransactions.length === 0" class="dash__recent-empty">
-          {{ t('comp.dashboard.recent.empty') }}
         </p>
-
-        <ul v-else class="dash__tx-list">
-          <li v-for="tx in recentTransactions" :key="tx.id" class="dash__tx-item">
-            <div class="dash__tx-icon">
-              <component :is="iconForType(tx.type)" :size="16" />
-            </div>
-            <div class="dash__tx-body">
-              <div class="dash__tx-line">
-                <span class="dash__tx-type">
-                  {{ typeLabel(tx.type) }}
-                </span>
-                <span class="dash__tx-amount" :class="amountClass(tx.amount_cents)">
-                  {{ formatSignedPrice(tx.amount_cents, tx.currency) }}
-                </span>
-              </div>
-              <div class="dash__tx-date">
-                {{ formatDateTime(tx.created_at, locale) }}
-              </div>
-            </div>
-          </li>
-        </ul>
+        <p class="ds-stat__value">{{ formatPrice(partSales) }}</p>
       </div>
-    </template>
-  </div>
+
+      <div class="ds-stat ds-stat--interactive">
+        <span class="ds-stat__icon"><Package /></span>
+        <p class="ds-stat__label">
+          <RouterLink class="ds-stat__link" to="/company/analytics">
+            {{ t('comp.dashboard.metrics.optionsSold') }}
+          </RouterLink>
+        </p>
+        <p class="ds-stat__value">{{ formatNumber(partsSold, locale) }}</p>
+      </div>
+
+      <div class="ds-stat ds-stat--interactive">
+        <span class="ds-stat__icon"><Layers /></span>
+        <p class="ds-stat__label">
+          <RouterLink class="ds-stat__link" to="/company/products">
+            {{ t('comp.dashboard.metrics.products') }}
+          </RouterLink>
+        </p>
+        <p class="ds-stat__value">{{ formatNumber(productsCount, locale) }}</p>
+      </div>
+    </div>
+
+    <!-- Recent operations, and the way to all of them -->
+    <section class="dash__recent" aria-labelledby="dash-recent">
+      <h2 id="dash-recent" class="dash__recent-title">
+        {{ t('comp.dashboard.recent.title') }}
+      </h2>
+
+      <CEmptyState
+        v-if="recentTransactions.length === 0"
+        framed
+        :description="t('comp.dashboard.recent.empty')"
+      />
+
+      <ul v-else class="ds-rows">
+        <li v-for="tx in recentTransactions" :key="tx.id" class="ds-row">
+          <span class="ds-row__lead" :data-tone="amountTone(tx.amount_cents)">
+            <component :is="iconForType(tx.type)" size="sm" />
+          </span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ typeLabel(tx.type) }}</span>
+            <span class="ds-row__meta">{{ formatDateTime(tx.created_at, locale) }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value">
+              {{ formatSignedPrice(tx.amount_cents, tx.currency) }}
+            </span>
+          </span>
+        </li>
+      </ul>
+
+      <RouterLink
+        to="/company/balance/transactions"
+        class="ds-button ds-button--ghost dash__all"
+        data-size="sm"
+      >
+        <span>{{ t('comp.dashboard.recent.all') }}</span>
+        <ChevronRight size="sm" />
+      </RouterLink>
+    </section>
+  </template>
 </template>
 
 <style scoped>
-.dash {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* Whole-screen states (loading / error) */
-.dash__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: calc(100vh - 200px);
-  min-block-size: calc(100dvh - 200px);
-  padding: var(--space-5);
-  text-align: center;
-}
-
-/* Header */
-.dash__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.dash__title {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.dash__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* Hero -- company identity, no CTA */
-.dash__hero {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-.dash__hero-logo {
-  inline-size: var(--size-4xl);
-  block-size: var(--size-4xl);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dash__hero-logo-img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-.dash__hero-logo-fallback {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: var(--tracking-wide);
-}
-.dash__hero-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-.dash__hero-name {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-/* Balance card -- mirrors investor balance card; non-clickable in B2 */
-.dash__balance {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  color: var(--text-primary);
-}
-.dash__balance-head {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-.dash__balance-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.dash__balance-value {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.dash__balance-frozen {
-  font-size: var(--fs-xs);
-  color: var(--warning);
-}
-
-/* Pool widget (B3) */
-.dash__pool {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-.dash__pool-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.dash__pool-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-.dash__pool-equity {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-.dash__pool-stats {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-/* Metrics row */
-.dash__metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-}
-@media (max-width: 480px) {
-  .dash__metrics {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Recent transactions (B3) */
+/* The recent operations: a heading over its rows, on the frame's rhythm. */
 .dash__recent {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-3);
+}
+.dash__all {
+  justify-self: start;
 }
 .dash__recent-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-block: var(--space-1) 0;
-  margin-inline: 0 0;
-}
-.dash__recent-empty {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
   margin: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: thin dashed var(--border-default);
-  text-align: center;
-}
-
-/* Transaction list -- compact two-line rows */
-.dash__tx-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.dash__tx-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-}
-.dash__tx-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page);
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.dash__tx-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.dash__tx-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.dash__tx-type {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dash__tx-amount {
-  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
+  line-height: var(--lh-snug);
   color: var(--text-primary);
-  flex-shrink: 0;
-}
-.dash__tx-amount--credit {
-  color: var(--success);
-}
-.dash__tx-amount--debit {
-  color: var(--danger);
-}
-.dash__tx-date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-/* Blocks that are links */
-.dash__link {
-  color: inherit;
-  text-decoration: none;
-  transition: border-color var(--dur-fast);
-}
-.dash__link:hover {
-  border-color: var(--primary);
-}
-.dash__link--tile {
-  display: block;
-  border-radius: var(--radius-md);
-}
-.dash__balance-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.dash__pool-value {
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.dash__pool-note {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-.dash__failed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  border: thin dashed var(--border-default);
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-.dash__recent-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.dash__recent-all {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--primary);
-  text-decoration: none;
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
-   this is a min-width and the phone is untouched. */
-@media (min-width: 880px) {
-  .dash__metrics {
-    max-inline-size: calc(3 * var(--tile-max));
-  }
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.dash__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>
