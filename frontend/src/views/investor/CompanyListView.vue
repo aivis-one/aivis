@@ -238,7 +238,7 @@ async function retryLoadMore(): Promise<void> {
 
 .cl__sentinel {
   /* Non-zero height so IntersectionObserver has something to detect.
-     The thinnest box the system names is enough -- the rootMargin: '200px 0px'
+     The thinnest box the system names is enough -- the root margin
      in the composable does the heavy lifting. */
   inline-size: 100%;
   block-size: var(--border-input-width);
