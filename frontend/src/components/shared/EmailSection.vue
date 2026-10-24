@@ -106,14 +106,16 @@ async function sendAgain(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="awaitingCode || !address" class="em">
-    <div class="em__title">
-      {{ t('inv.settings.email.title') }}
+  <section v-if="awaitingCode || !address" class="ds-card ds-card--flat">
+    <div class="ds-card__head">
+      <h3 class="ds-card__title">
+        {{ t('inv.settings.email.title') }}
+      </h3>
     </div>
 
     <!-- The code step -->
     <template v-if="awaitingCode">
-      <p class="em__hint">
+      <p class="ds-card__body">
         {{ t('inv.settings.email.codeHint', { email: address }) }}
       </p>
       <CInput
@@ -125,7 +127,7 @@ async function sendAgain(): Promise<void> {
         :error="error"
         @keydown.enter="confirmCode"
       />
-      <div class="em__actions">
+      <div class="ds-card__foot">
         <CButton variant="outline" size="sm" :disabled="busy" @click="sendAgain">
           {{ t('inv.settings.email.sendAgain') }}
         </CButton>
@@ -143,7 +145,7 @@ async function sendAgain(): Promise<void> {
 
     <!-- No e-mail yet -->
     <template v-else-if="!address">
-      <p class="em__hint">
+      <p class="ds-card__body">
         {{ t('inv.settings.email.needed') }}
       </p>
       <CInput
@@ -155,7 +157,7 @@ async function sendAgain(): Promise<void> {
         :error="error"
         @keydown.enter="sendCode"
       />
-      <div class="em__actions">
+      <div class="ds-card__foot">
         <CButton
           variant="primary"
           size="sm"
@@ -167,33 +169,5 @@ async function sendAgain(): Promise<void> {
         </CButton>
       </div>
     </template>
-  </div>
+  </section>
 </template>
-
-<style scoped>
-.em {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-}
-
-.em__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.em__hint {
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.em__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-</style>

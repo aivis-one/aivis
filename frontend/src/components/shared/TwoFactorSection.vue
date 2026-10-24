@@ -44,10 +44,10 @@
 
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Copy, Shield, ShieldCheck } from '@/components/ui/icons'
+import { AlertTriangle, ChevronRight, Copy, Shield, ShieldCheck } from '@/components/ui/icons'
 import QRCode from 'qrcode'
 
-import { CButton, CInput, CModal } from '@/components/ui'
+import { CBadge, CButton, CInput, CModal } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { setupTwoFactor, confirmTwoFactor, disableTwoFactor } from '@/api/auth'
@@ -75,7 +75,8 @@ const isEnabled = computed<boolean>(() => Boolean(authStore.user?.two_factor_ena
 const currentPassword = ref('')
 const secret = ref('')
 const provisioningUri = ref('')
-const qrSvg = ref<string | null>(null)
+// The QR as an image (a data address), drawn on the invoice block's white pad (K43).
+const qrSrc = ref<string | null>(null)
 const setupCode = ref('')
 const backupCodes = ref<string[]>([])
 
@@ -94,7 +95,7 @@ function reset(): void {
   currentPassword.value = ''
   secret.value = ''
   provisioningUri.value = ''
-  qrSvg.value = null
+  qrSrc.value = null
   setupCode.value = ''
   backupCodes.value = []
   disablePassword.value = ''
@@ -146,16 +147,17 @@ function mapError(err: unknown, badRequestKey: string | null = null): string {
 
 async function generateQr(uri: string): Promise<string | null> {
   try {
-    return await QRCode.toString(uri, {
+    const svg = await QRCode.toString(uri, {
       type: 'svg',
       margin: 0,
-      width: 220,
       // Forced light palette -- same reasoning as InvestorDepositView's
       // deposit-address QR: camera/authenticator-app scanners need high
-      // contrast regardless of the host UI theme.
+      // contrast regardless of the host UI theme (K43: dark on white). The
+      // library takes colour strings and cannot read a token.
       color: { dark: '#000000', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     })
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   } catch {
     return null
   }
@@ -164,6 +166,13 @@ async function generateQr(uri: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 // Enable flow
 // ---------------------------------------------------------------------------
+
+const stepTitle = computed<string>(() => {
+  if (step.value === 'password') return tk('setupTitle')
+  if (step.value === 'qr') return tk('qrTitle')
+  if (step.value === 'codes') return tk('codesTitle')
+  return tk('disableTitle')
+})
 
 const canSubmitPassword = computed(() => currentPassword.value.length > 0)
 
@@ -175,7 +184,7 @@ async function submitPassword(): Promise<void> {
     const resp = await setupTwoFactor({ current_password: currentPassword.value })
     secret.value = resp.secret
     provisioningUri.value = resp.provisioning_uri
-    qrSvg.value = await generateQr(resp.provisioning_uri)
+    qrSrc.value = await generateQr(resp.provisioning_uri)
     step.value = 'qr'
   } catch (err) {
     error.value = mapError(err)
@@ -199,6 +208,15 @@ async function submitSetupCode(): Promise<void> {
     error.value = mapError(err, 'errorCode')
   } finally {
     loading.value = false
+  }
+}
+
+// The manual-entry code is a copyable value (K53); a failed copy is told by a toast.
+async function copySecret(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(secret.value)
+  } catch {
+    showToast(tk('copyFailed'), 'error')
   }
 }
 
@@ -245,25 +263,29 @@ async function submitDisable(): Promise<void> {
 </script>
 
 <template>
-  <button type="button" class="tfs__row" @click="openFlow">
-    <span class="tfs__row-label">
-      <ShieldCheck v-if="isEnabled" :size="16" />
-      <Shield v-else :size="16" />
-      {{ isEnabled ? tk('ctaManage') : tk('ctaEnable') }}
-    </span>
-    <span class="tfs__row-right">
-      <span v-if="isEnabled" class="tfs__status-badge">{{ tk('statusEnabled') }}</span>
-      <ChevronRight :size="16" />
-    </span>
-  </button>
+  <!-- The settings row that opens the flow (K23) -->
+  <ul class="ds-rows">
+    <li class="ds-row">
+      <span class="ds-row__lead">
+        <ShieldCheck v-if="isEnabled" size="sm" />
+        <Shield v-else size="sm" />
+      </span>
+      <span class="ds-row__body">
+        <button type="button" class="ds-row__link" @click="openFlow">
+          <span class="ds-row__title">{{ isEnabled ? tk('ctaManage') : tk('ctaEnable') }}</span>
+        </button>
+      </span>
+      <span class="ds-row__trail">
+        <CBadge v-if="isEnabled" variant="success" :text="tk('statusEnabled')" />
+        <ChevronRight size="sm" />
+      </span>
+    </li>
+  </ul>
 
-  <CModal :open="open" @close="close">
+  <CModal :open="open" :title="stepTitle" @close="close">
     <!-- ENABLE: step 1 -- current password -->
     <template v-if="step === 'password'">
-      <h3 class="tfs__title">
-        {{ tk('setupTitle') }}
-      </h3>
-      <p class="tfs__subtitle">
+      <p class="ds-dialog__text">
         {{ tk('setupIntro') }}
       </p>
 
@@ -277,17 +299,21 @@ async function submitDisable(): Promise<void> {
         @keydown.enter="submitPassword"
       />
 
-      <p v-if="error" class="tfs__error">
-        {{ error }}
-      </p>
+      <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ error }}</p>
+        </div>
+      </div>
 
-      <div class="tfs__actions">
-        <CButton variant="outline" size="sm" :disabled="loading" @click="close">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline :disabled="loading" @click="close">
           {{ tk('cancelBtn') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="loading"
           :disabled="!canSubmitPassword"
           @click="submitPassword"
@@ -297,20 +323,33 @@ async function submitDisable(): Promise<void> {
       </div>
     </template>
 
-    <!-- ENABLE: step 2 -- QR + secret + confirm code -->
+    <!-- ENABLE: step 2 -- QR + secret + confirm code. The QR stands on the invoice
+         block's white pad (K43), the secret is a copyable value (K53). -->
     <template v-else-if="step === 'qr'">
-      <h3 class="tfs__title">
-        {{ tk('qrTitle') }}
-      </h3>
-      <p class="tfs__subtitle">
+      <p class="ds-dialog__text">
         {{ tk('qrSubtitle') }}
       </p>
 
-      <div v-if="qrSvg" class="tfs__qr" v-html="qrSvg" />
+      <div v-if="qrSrc" class="ds-invoice">
+        <div class="ds-invoice__qr">
+          <img :src="qrSrc" :alt="tk('qrTitle')" />
+        </div>
+      </div>
 
-      <div class="tfs__secret-block">
-        <span class="tfs__secret-label">{{ tk('secretLabel') }}</span>
-        <code class="tfs__secret-value">{{ secret }}</code>
+      <div class="ds-copy">
+        <span class="ds-field__label">{{ tk('secretLabel') }}</span>
+        <div class="ds-copy__box">
+          <p class="ds-copy__value">{{ secret }}</p>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon ds-copy__button"
+            data-size="sm"
+            :aria-label="tk('secretLabel')"
+            @click="copySecret"
+          >
+            <Copy size="sm" />
+          </button>
+        </div>
       </div>
 
       <CInput
@@ -325,17 +364,21 @@ async function submitDisable(): Promise<void> {
         @keydown.enter="submitSetupCode"
       />
 
-      <p v-if="error" class="tfs__error">
-        {{ error }}
-      </p>
+      <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ error }}</p>
+        </div>
+      </div>
 
-      <div class="tfs__actions">
-        <CButton variant="outline" size="sm" :disabled="loading" @click="close">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline :disabled="loading" @click="close">
           {{ tk('cancelBtn') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="loading"
           :disabled="!canSubmitSetupCode"
           @click="submitSetupCode"
@@ -347,39 +390,36 @@ async function submitDisable(): Promise<void> {
 
     <!-- ENABLE: step 3 -- backup codes, shown once -->
     <template v-else-if="step === 'codes'">
-      <h3 class="tfs__title">
-        {{ tk('codesTitle') }}
-      </h3>
-      <p class="tfs__warning">
-        {{ tk('codesWarning') }}
-      </p>
+      <div class="ds-alert ds-alert--warning" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ tk('codesWarning') }}</p>
+        </div>
+      </div>
 
-      <ul class="tfs__codes-list">
-        <li v-for="c in backupCodes" :key="c" class="tfs__codes-item">
-          {{ c }}
-        </li>
-      </ul>
+      <div class="ds-card ds-card--flat" data-size="sm">
+        <ul class="tfs__codes-list">
+          <li v-for="c in backupCodes" :key="c" class="tfs__codes-item">
+            {{ c }}
+          </li>
+        </ul>
+      </div>
 
-      <div class="tfs__actions tfs__actions--left">
+      <div>
         <CButton variant="outline" size="sm" inline @click="copyBackupCodes">
-          <Copy :size="14" />
+          <Copy size="sm" />
           {{ tk('copyAllBtn') }}
         </CButton>
       </div>
 
-      <div class="tfs__actions">
-        <CButton variant="primary" size="sm" @click="finishEnableFlow">
-          {{ tk('savedBtn') }}
-        </CButton>
-      </div>
+      <CButton variant="primary" size="sm" @click="finishEnableFlow">
+        {{ tk('savedBtn') }}
+      </CButton>
     </template>
 
     <!-- DISABLE -->
     <template v-else>
-      <h3 class="tfs__title">
-        {{ tk('disableTitle') }}
-      </h3>
-      <p class="tfs__subtitle">
+      <p class="ds-dialog__text">
         {{ tk('disableSubtitle') }}
       </p>
 
@@ -402,17 +442,21 @@ async function submitDisable(): Promise<void> {
         @keydown.enter="submitDisable"
       />
 
-      <p v-if="error" class="tfs__error">
-        {{ error }}
-      </p>
+      <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ error }}</p>
+        </div>
+      </div>
 
-      <div class="tfs__actions">
-        <CButton variant="outline" size="sm" :disabled="loading" @click="close">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline :disabled="loading" @click="close">
           {{ tk('cancelBtn') }}
         </CButton>
         <CButton
           variant="danger"
           size="sm"
+          inline
           :loading="loading"
           :disabled="!canSubmitDisable"
           @click="submitDisable"
@@ -425,145 +469,20 @@ async function submitDisable(): Promise<void> {
 </template>
 
 <style scoped>
-.tfs__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-  inline-size: 100%;
-  background: transparent;
-  border-inline-start: 0;
-  border-inline-end: 0;
-  border-block-start: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.tfs__row:hover {
-  background: var(--bg-subtle);
-}
-.tfs__row:last-child {
-  border-block-end: none;
-}
-.tfs__row-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--primary);
-}
-.tfs__row-right {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.tfs__status-badge {
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--success-subtle, var(--bg-subtle));
-  color: var(--success, var(--text-secondary));
-}
-
-.tfs__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.tfs__subtitle {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-  line-height: 1.5;
-}
-.tfs__warning {
-  font-size: var(--fs-xs);
-  color: var(--danger);
-  margin: 0 0 var(--space-4);
-  line-height: 1.5;
-  font-weight: 600;
-}
-
-.tfs__qr {
-  display: flex;
-  justify-content: center;
-  margin: 0 0 var(--space-4);
-}
-.tfs__qr :deep(svg) {
-  inline-size: 180px;
-  block-size: 180px;
-  border-radius: var(--radius-sm);
-}
-
-.tfs__secret-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-}
-.tfs__secret-label {
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-tertiary);
-}
-.tfs__secret-value {
-  font-family: var(--font-mono, monospace);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  word-break: break-all;
-  user-select: all;
-}
-
+/* The backup codes: two columns of codes in the mono face, set from tokens (the
+   system has no list of codes; NEED). */
 .tfs__codes-list {
   list-style: none;
-  margin: 0 0 var(--space-3);
-  padding: var(--space-3);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
+  margin: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-2);
 }
 .tfs__codes-item {
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--text-primary);
   user-select: all;
-}
-
-.tfs__error {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  color: var(--danger);
-}
-
-.tfs__actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  margin-block-start: var(--space-4);
-}
-.tfs__actions--left {
-  justify-content: flex-start;
-  margin-block-start: var(--space-2);
 }
 </style>

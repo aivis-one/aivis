@@ -106,19 +106,22 @@ async function confirm(): Promise<void> {
 </script>
 
 <template>
-  <button type="button" class="das__row" @click="openConfirm">
-    <span class="das__row-label">
-      <AlertTriangle :size="16" />
-      {{ tk('cta') }}
-    </span>
-    <ChevronRight :size="16" />
-  </button>
+  <!-- The settings row that opens the confirmation (K23); the danger tone of its
+       lead box is a second sign, the title says the same in words -->
+  <ul class="ds-rows">
+    <li class="ds-row">
+      <span class="ds-row__lead" data-tone="danger"><AlertTriangle size="sm" /></span>
+      <span class="ds-row__body">
+        <button type="button" class="ds-row__link" @click="openConfirm">
+          <span class="ds-row__title">{{ tk('cta') }}</span>
+        </button>
+      </span>
+      <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+    </li>
+  </ul>
 
-  <CModal :open="open" @close="close">
-    <h3 class="das__title">
-      {{ tk('title') }}
-    </h3>
-    <p class="das__warning">
+  <CModal :open="open" :title="tk('title')" @close="close">
+    <p class="ds-dialog__text">
       {{ tk('warning') }}
     </p>
 
@@ -132,17 +135,21 @@ async function confirm(): Promise<void> {
       @keydown.enter="confirm"
     />
 
-    <p v-if="error" class="das__error">
-      {{ error }}
-    </p>
+    <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+      <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ error }}</p>
+      </div>
+    </div>
 
-    <div class="das__actions">
-      <CButton variant="outline" size="sm" :disabled="loading" @click="close">
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline :disabled="loading" @click="close">
         {{ tk('cancelBtn') }}
       </CButton>
       <CButton
         variant="danger"
         size="sm"
+        inline
         :loading="loading"
         :disabled="currentPassword.length === 0"
         @click="confirm"
@@ -152,69 +159,3 @@ async function confirm(): Promise<void> {
     </div>
   </CModal>
 </template>
-
-<style scoped>
-.das__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-  inline-size: 100%;
-  background: transparent;
-  border-inline-start: 0;
-  border-inline-end: 0;
-  border-block-start: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.das__row:hover {
-  background: var(--bg-subtle);
-}
-.das__row:last-child {
-  border-block-end: none;
-}
-.das__row-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--danger);
-}
-
-.das__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.das__warning {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-4);
-  line-height: 1.5;
-}
-
-.das__error {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  color: var(--danger);
-}
-
-.das__actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  margin-block-start: var(--space-4);
-}
-</style>

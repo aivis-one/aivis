@@ -50,9 +50,9 @@
 
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Bell, ChevronRight } from '@/components/ui/icons'
+import { AlertTriangle, Bell, Check, ChevronRight } from '@/components/ui/icons'
 
-import { CButton, CCheckbox, CInput, CLoader, CModal } from '@/components/ui'
+import { CButton, CCheckbox, CEmptyState, CInput, CLoader, CModal } from '@/components/ui'
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
@@ -153,7 +153,9 @@ const selectedDays = computed(() => DAY_CODES.filter((d) => scheduleDays[d]))
 
 const canSave = computed(() => {
   if (!scheduleEnabled.value) return true
-  return scheduleFrom.value.length > 0 && scheduleTo.value.length > 0 && selectedDays.value.length > 0
+  return (
+    scheduleFrom.value.length > 0 && scheduleTo.value.length > 0 && selectedDays.value.length > 0
+  )
 })
 
 function mapError(err: unknown): string {
@@ -199,86 +201,93 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <button type="button" class="nps__row" @click="openPreferences">
-    <span class="nps__row-label">
-      <Bell :size="16" />
-      {{ tk('cta') }}
-    </span>
-    <ChevronRight :size="16" />
-  </button>
+  <!-- The settings row that opens the window (K23) -->
+  <ul class="ds-rows">
+    <li class="ds-row">
+      <span class="ds-row__lead"><Bell size="sm" /></span>
+      <span class="ds-row__body">
+        <button type="button" class="ds-row__link" @click="openPreferences">
+          <span class="ds-row__title">{{ tk('cta') }}</span>
+        </button>
+      </span>
+      <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+    </li>
+  </ul>
 
-  <CModal :open="open" @close="close">
-    <h3 class="nps__title">
-      {{ tk('title') }}
-    </h3>
-
-    <div v-if="loading" class="nps__center">
+  <CModal :open="open" :title="tk('title')" @close="close">
+    <div v-if="loading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
-    <div v-else-if="loadError" class="nps__center nps__center--column">
-      <p class="nps__load-error">
-        {{ tk('loadError') }}
-      </p>
-      <CButton variant="outline" size="sm" inline @click="fetchPreferences">
-        {{ tk('retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="loadError" tone="danger" :title="tk('loadError')">
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="fetchPreferences">
+          {{ tk('retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <template v-else>
-      <section class="nps__section">
-        <h4 class="nps__section-title">
+      <fieldset class="ds-fieldset">
+        <legend class="ds-fieldset__legend">
           {{ tk('categoriesTitle') }}
-        </h4>
-        <div class="nps__categories">
-          <CCheckbox
-            v-for="category in categoryOrder"
-            :key="category"
-            v-model="categories[category]"
-            :label="categoryLabel(category)"
-          />
-        </div>
-      </section>
+        </legend>
+        <CCheckbox
+          v-for="category in categoryOrder"
+          :key="category"
+          v-model="categories[category]"
+          :label="categoryLabel(category)"
+        />
+      </fieldset>
 
-      <section class="nps__section">
+      <fieldset class="ds-fieldset">
         <CCheckbox v-model="scheduleEnabled" :label="tk('scheduleEnableLabel')" />
-        <p class="nps__hint">
+        <p class="ds-field__hint">
           {{ tk('scheduleDescription') }}
         </p>
 
         <template v-if="scheduleEnabled">
-          <div class="nps__time-row">
-            <CInput v-model="scheduleFrom" type="time" :label="tk('fromLabel')" />
-            <CInput v-model="scheduleTo" type="time" :label="tk('toLabel')" />
-          </div>
+          <CInput v-model="scheduleFrom" type="time" :label="tk('fromLabel')" />
+          <CInput v-model="scheduleTo" type="time" :label="tk('toLabel')" />
 
-          <p class="nps__days-label">
+          <p id="nps-days-label" class="ds-field__label">
             {{ tk('daysLabel') }}
           </p>
-          <div class="nps__days">
-            <label v-for="day in DAY_CODES" :key="day" class="nps__day">
-              <input v-model="scheduleDays[day]" type="checkbox" />
+          <div class="ds-chip-row" role="group" aria-labelledby="nps-days-label">
+            <button
+              v-for="day in DAY_CODES"
+              :key="day"
+              type="button"
+              class="ds-chip"
+              :aria-pressed="scheduleDays[day] ? 'true' : 'false'"
+              @click="scheduleDays[day] = !scheduleDays[day]"
+            >
+              <Check class="ds-chip__check" size="sm" />
               <span>{{ dayLabel(day) }}</span>
-            </label>
+            </button>
           </div>
 
-          <p v-if="timezone" class="nps__hint">
+          <p v-if="timezone" class="ds-field__hint">
             {{ tk('timezoneNote', { timezone }) }}
           </p>
         </template>
-      </section>
+      </fieldset>
 
-      <p v-if="error" class="nps__error">
-        {{ error }}
-      </p>
+      <div v-if="error" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ error }}</p>
+        </div>
+      </div>
 
-      <div class="nps__actions">
-        <CButton variant="outline" size="sm" :disabled="saving" @click="close">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline :disabled="saving" @click="close">
           {{ tk('cancelBtn') }}
         </CButton>
         <CButton
           variant="primary"
           size="sm"
+          inline
           :loading="saving"
           :disabled="!canSave"
           @click="save"
@@ -289,132 +298,3 @@ async function save(): Promise<void> {
     </template>
   </CModal>
 </template>
-
-<style scoped>
-.nps__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-  inline-size: 100%;
-  background: transparent;
-  border-inline-start: 0;
-  border-inline-end: 0;
-  border-block-start: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.nps__row:hover {
-  background: var(--bg-subtle);
-}
-.nps__row-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.nps__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-
-.nps__center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5) 0;
-}
-.nps__center--column {
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.nps__load-error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.nps__section {
-  margin-block-end: var(--space-4);
-}
-.nps__section-title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-.nps__categories {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.nps__hint {
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-
-.nps__time-row {
-  display: flex;
-  gap: var(--space-3);
-  margin-block-start: var(--space-3);
-}
-.nps__time-row > * {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.nps__days-label {
-  margin: var(--space-3) 0 var(--space-2);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.nps__days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.nps__day {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.nps__error {
-  margin: var(--space-3) 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  color: var(--danger);
-}
-
-.nps__actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  margin-block-start: var(--space-4);
-}
-</style>

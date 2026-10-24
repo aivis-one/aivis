@@ -39,9 +39,9 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Monitor, RefreshCw } from '@/components/ui/icons'
+import { AlertTriangle, ChevronRight, Monitor, RefreshCw } from '@/components/ui/icons'
 
-import { CButton, CLoader, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
 import { listSessions, revokeSession } from '@/api/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
@@ -70,7 +70,9 @@ const revokingId = ref<string | null>(null)
 const actionError = ref('')
 
 function tk(key: string, params?: Record<string, unknown>): string {
-  return params ? t(`${props.tPrefix}.sessions.${key}`, params) : t(`${props.tPrefix}.sessions.${key}`)
+  return params
+    ? t(`${props.tPrefix}.sessions.${key}`, params)
+    : t(`${props.tPrefix}.sessions.${key}`)
 }
 
 function authMethodLabel(method: string): string {
@@ -150,51 +152,51 @@ async function confirmRevoke(sessionId: string): Promise<void> {
 </script>
 
 <template>
-  <button type="button" class="sas__row" @click="openSessions">
-    <span class="sas__row-label">
-      <Monitor :size="16" />
-      {{ tk('cta') }}
-    </span>
-    <ChevronRight :size="16" />
-  </button>
+  <!-- The settings row that opens the window (K23) -->
+  <ul class="ds-rows">
+    <li class="ds-row">
+      <span class="ds-row__lead"><Monitor size="sm" /></span>
+      <span class="ds-row__body">
+        <button type="button" class="ds-row__link" @click="openSessions">
+          <span class="ds-row__title">{{ tk('cta') }}</span>
+        </button>
+      </span>
+      <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+    </li>
+  </ul>
 
-  <CModal :open="open" @close="close">
-    <h3 class="sas__title">
-      {{ tk('title') }}
-    </h3>
-
-    <div v-if="loading" class="sas__center">
+  <CModal :open="open" :title="tk('title')" @close="close">
+    <div v-if="loading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
-    <div v-else-if="loadError" class="sas__center sas__center--column">
-      <p class="sas__load-error">
-        {{ tk('loadError') }}
-      </p>
-      <CButton variant="outline" size="sm" inline @click="fetchSessions">
-        <RefreshCw :size="14" />
-        {{ tk('retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="loadError" tone="danger" :title="tk('loadError')">
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="fetchSessions">
+          <RefreshCw size="sm" />
+          {{ tk('retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
-    <ul v-else class="sas__list">
-      <li v-for="item in sessions" :key="item.session_id" class="sas__item">
-        <div class="sas__item-info">
-          <span class="sas__item-method">
-            <span v-if="item.is_current" class="sas__current-badge">{{ tk('current') }}</span>
-            <template v-else>{{ authMethodLabel(item.auth_method) }}</template>
-          </span>
-          <span v-if="item.ip || item.user_agent" class="sas__item-meta">
+    <ul v-else class="ds-rows">
+      <li v-for="item in sessions" :key="item.session_id" class="ds-row">
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ authMethodLabel(item.auth_method) }}</span>
+          <span v-if="item.ip || item.user_agent" class="ds-row__meta">
             {{ [item.ip, item.user_agent].filter(Boolean).join(' · ') }}
           </span>
-          <span class="sas__item-date">
+          <span class="ds-row__meta">
             {{ tk('createdAt', { date: formatDateTime(item.created_at, locale) }) }}
           </span>
-        </div>
+          <span v-if="confirmingId === item.session_id" class="ds-row__meta">
+            {{ tk('revokeConfirmTitle') }}
+          </span>
+        </span>
 
-        <div v-if="!item.is_current" class="sas__item-actions">
-          <template v-if="confirmingId === item.session_id">
-            <span class="sas__confirm-label">{{ tk('revokeConfirmTitle') }}</span>
+        <span class="ds-row__trail">
+          <CBadge v-if="item.is_current" variant="primary" :text="tk('current')" />
+          <template v-else-if="confirmingId === item.session_id">
             <CButton
               variant="outline"
               size="sm"
@@ -217,143 +219,15 @@ async function confirmRevoke(sessionId: string): Promise<void> {
           <CButton v-else variant="outline" size="sm" inline @click="askRevoke(item.session_id)">
             {{ tk('revokeBtn') }}
           </CButton>
-        </div>
+        </span>
       </li>
     </ul>
 
-    <p v-if="actionError" class="sas__error">
-      {{ actionError }}
-    </p>
+    <div v-if="actionError" class="ds-alert ds-alert--danger" role="alert">
+      <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ actionError }}</p>
+      </div>
+    </div>
   </CModal>
 </template>
-
-<style scoped>
-.sas__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-block-end: thin solid var(--border-default);
-  min-block-size: var(--size-3xl);
-  inline-size: 100%;
-  background: transparent;
-  border-inline-start: 0;
-  border-inline-end: 0;
-  border-block-start: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: background var(--dur-fast);
-}
-.sas__row:hover {
-  background: var(--bg-subtle);
-}
-.sas__row:last-child {
-  border-block-end: none;
-}
-.sas__row-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.sas__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-
-.sas__center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5) 0;
-}
-.sas__center--column {
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.sas__load-error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.sas__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.sas__item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.sas__item:last-child {
-  border-block-end: none;
-}
-.sas__item-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.sas__item-method {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.sas__current-badge {
-  font-size: var(--fs-3xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--primary);
-  color: var(--on-primary);
-}
-.sas__item-meta {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  word-break: break-word;
-}
-.sas__item-date {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.sas__item-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.sas__confirm-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  flex: 1 1 100%;
-}
-
-.sas__error {
-  margin: var(--space-3) 0 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  background: var(--danger-subtle);
-  border: thin solid var(--danger);
-  color: var(--danger);
-}
-</style>
