@@ -292,10 +292,20 @@ describe('a project: products', () => {
     } as never)
   }
 
-  /** The buttons of one product's row, by their text. */
+  /** The acts of one product's row (the items of its Action menu), by their text. */
   function buttonsOf(wrapper: ReturnType<typeof mount>, name: string): string[] {
     const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes(name))!
-    return row.findAll('button').map((b) => b.text())
+    return row.findAll('[role="menuitem"]').map((b) => b.text())
+  }
+
+  /** Open a product row's Action menu and pick the item with this text. */
+  async function pick(wrapper: ReturnType<typeof mount>, name: string, item: string): Promise<void> {
+    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes(name))!
+    await row.find('.ds-menu__button').trigger('click')
+    await row
+      .findAll('[role="menuitem"]')
+      .find((b) => b.text() === item)!
+      .trigger('click')
   }
 
   it('reads the project products in every status and shows the status on each card', async () => {
@@ -342,8 +352,7 @@ describe('a project: products', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffCompanyProductsSection)
     await flushPromises()
-    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Alpha'))!
-    await row.findAll('button')[0]!.trigger('click')
+    await pick(wrapper, 'Alpha', 'staff.platform.products.hide')
     await flushPromises()
     expect(updateStaffProductStatus).toHaveBeenCalledWith('p-active', 'hidden')
     expect(fetchStaffCompanyProducts).toHaveBeenCalledTimes(2)
@@ -356,8 +365,7 @@ describe('a project: products', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffCompanyProductsSection)
     await flushPromises()
-    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Beta'))!
-    await row.findAll('button')[0]!.trigger('click')
+    await pick(wrapper, 'Beta', 'staff.platform.products.return')
     await flushPromises()
     expect(updateStaffProductStatus).toHaveBeenCalledWith('p-hidden', 'active')
     wrapper.unmount()
@@ -369,8 +377,7 @@ describe('a project: products', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffCompanyProductsSection, { attachTo: document.body })
     await flushPromises()
-    const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Alpha'))!
-    await row.findAll('button')[1]!.trigger('click')
+    await pick(wrapper, 'Alpha', 'staff.platform.products.archive')
     await flushPromises()
     expect(updateStaffProductStatus).not.toHaveBeenCalled()
     const confirm = Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find(

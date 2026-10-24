@@ -24,6 +24,8 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Package } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
+import CActionMenu from '@/components/ui/CActionMenu.vue'
+import type { ActionMenuItem } from '@/components/ui/CActionMenu.vue'
 import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
@@ -112,6 +114,23 @@ function moveKey(to: StaffProductStatus): string {
   if (to === 'hidden') return 'staff.platform.products.hide'
   if (to === 'archived') return 'staff.platform.products.archive'
   return 'staff.platform.products.return'
+}
+
+/** The acts of a product's row, in one Action menu (K26): its moves, then Edit. */
+function rowActions(product: ProductResponse): ActionMenuItem[] {
+  const items: ActionMenuItem[] = movesOf(product).map((to) => ({
+    value: to,
+    label: t(moveKey(to)),
+    danger: to === 'archived',
+    disabled: movingId.value === product.id,
+  }))
+  if (canEdit.value) items.push({ value: 'edit', label: t('common.edit') })
+  return items
+}
+
+function onRowAction(product: ProductResponse, value: string): void {
+  if (value === 'edit') openEdit(product)
+  else requestMove(product, value as StaffProductStatus)
 }
 
 const movingId = ref<string | null>(null)
@@ -272,26 +291,15 @@ onMounted(load)
         </span>
         <span class="ds-row__trail">
           <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
-          <button
-            v-for="to in movesOf(p)"
-            :key="to"
-            type="button"
-            class="ds-button ds-button--secondary"
-            data-size="sm"
-            :disabled="movingId === p.id"
-            @click="requestMove(p, to)"
-          >
-            <span>{{ t(moveKey(to)) }}</span>
-          </button>
-          <button
-            v-if="canEdit"
-            type="button"
-            class="ds-button ds-button--secondary"
-            data-size="sm"
-            @click="openEdit(p)"
-          >
-            <span>{{ t('common.edit') }}</span>
-          </button>
+          <CActionMenu
+            v-if="rowActions(p).length"
+            :label="t('common.actions', { title: p.name })"
+            icon-key="more"
+            icon-only
+            align="end"
+            :items="rowActions(p)"
+            @select="(value) => onRowAction(p, value)"
+          />
         </span>
       </li>
     </ul>
