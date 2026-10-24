@@ -39,7 +39,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, Bell, CheckCheck } from '@/components/ui/icons'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CListSkeleton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -119,18 +119,7 @@ onMounted(() => {
 <template>
   <div class="nib">
     <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
-    <section v-if="store.itemsLoading && store.items.length === 0" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" />
-          <span class="ds-skeleton-stack">
-            <span class="ds-skeleton ds-skeleton--title" />
-            <span class="ds-skeleton ds-skeleton--text" />
-          </span>
-        </div>
-      </div>
-    </section>
+    <CListSkeleton v-if="store.itemsLoading && store.items.length === 0" :rows="4" />
 
     <!-- First-page error -->
     <CEmptyState

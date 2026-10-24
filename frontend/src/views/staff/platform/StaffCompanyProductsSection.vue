@@ -368,13 +368,13 @@ onMounted(load)
           inputmode="numeric"
           autocomplete="off"
           :label="t('staff.platform.products.fieldPackageSize')"
+          :hint="t('staff.platform.products.packageSizeNote')"
           :error="
             draftPackageSize.trim() !== '' && packageSize === null
               ? t('staff.platform.products.packageSizeError')
               : undefined
           "
         />
-        <p class="ds-field__hint">{{ t('staff.platform.products.packageSizeNote') }}</p>
       </template>
       <div class="ds-dialog__actions">
         <CButton variant="outline" size="sm" inline @click="showForm = false">

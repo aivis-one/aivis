@@ -243,7 +243,6 @@
       "claim": "Übernehmen",
       "claimConflict": "Bereits von einem anderen Mitarbeiter übernommen — Liste aktualisieren",
       "refresh": "Aktualisieren",
-      "backToQueue": "Zurück zur Warteschlange",
       "readOnlyHint": "Übernehmen Sie die Anfrage, bevor Sie antworten",
       "foreignHint": "Diese Anfrage gehört einem anderen Mitarbeiter — nur Ansicht",
       "placeholder": "Ihre Antwort",

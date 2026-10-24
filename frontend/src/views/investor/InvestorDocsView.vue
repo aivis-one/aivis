@@ -76,7 +76,7 @@ import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, Download, FileText, X } from '@/components/ui/icons'
 
-import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CListSkeleton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useDialog } from '@/composables/useDialog'
 import { ApiResponseError } from '@/api/client'
@@ -360,18 +360,7 @@ function metaLabel(doc: DocumentResponse): string {
 <template>
   <div class="docs">
     <!-- First load: the placeholder rows of the list that will arrive (K19) -->
-    <section v-if="loading && documents.length === 0" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" />
-          <span class="ds-skeleton-stack">
-            <span class="ds-skeleton ds-skeleton--title" />
-            <span class="ds-skeleton ds-skeleton--text" />
-          </span>
-        </div>
-      </div>
-    </section>
+    <CListSkeleton v-if="loading && documents.length === 0" :rows="4" />
 
     <!-- Error state -->
     <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.docs.errorTitle')">

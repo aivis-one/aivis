@@ -429,7 +429,6 @@
       "claim": "Claim",
       "claimConflict": "Already claimed by another staff member — refresh the list",
       "refresh": "Refresh",
-      "backToQueue": "Back to queue",
       "readOnlyHint": "Claim this request before replying",
       "foreignHint": "This request belongs to another staff member — view only",
       "placeholder": "Your reply",

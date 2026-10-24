@@ -99,9 +99,9 @@ const version = __APP_VERSION__
       <h2 id="staff-settings-name" class="ds-section-title">
         {{ userName }}
       </h2>
-      <div class="staff-settings__email">
+      <p class="ds-note">
         {{ userEmail }}
-      </div>
+      </p>
       <CBadge variant="primary" :text="roleLine" />
     </section>
 
@@ -174,10 +174,6 @@ const version = __APP_VERSION__
   justify-items: center;
   gap: var(--space-2);
   text-align: center;
-}
-.staff-settings__email {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
 }
 
 .staff-settings__section {

@@ -66,4 +66,11 @@ Thumbs.db
 checks/ds-copies-*/
 
 # -- Check fixtures: a --selftest builds its throwaway tree in checks/<name>-XXXX and removes it --
-/checks/*-*/
+/checks/breakpoints-*/
+/checks/comms_profile-*/
+/checks/deploy-addresses-*/
+/checks/preauth-*/
+/checks/reftruth-*/
+/checks/routes-*/
+/checks/shell_layout-*/
+/checks/tokens-*/

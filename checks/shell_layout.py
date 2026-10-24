@@ -142,64 +142,66 @@ def selftest(root: str) -> list[str]:
 
     out = []
     base = tempfile.mkdtemp(prefix="shell_layout-", dir=os.path.dirname(os.path.abspath(__file__)))
-    shutil.copytree(os.path.join(root, "frontend", "src"),
-                    os.path.join(base, "frontend", "src"))
-    ok, _ = run(base)
-    assert ok, "the untouched copy already fails"
+    try:
+        shutil.copytree(os.path.join(root, "frontend", "src"),
+                        os.path.join(base, "frontend", "src"))
+        ok, _ = run(base)
+        assert ok, "the untouched copy already fails"
 
-    def plant(rel, old, new, label):
-        path = os.path.join(base, "frontend", "src", rel)
-        text = open(path, encoding="utf-8").read()
-        assert old in text, "selftest anchor missing for %r" % label
-        changed = text.replace(old, new, 1)
-        assert changed != text, "selftest plant %r changed nothing" % label
-        open(path, "w", encoding="utf-8").write(changed)
-        broke, _ = run(base)
-        assert not broke, "selftest: %s was not caught" % label
-        open(path, "w", encoding="utf-8").write(text)
+        def plant(rel, old, new, label):
+            path = os.path.join(base, "frontend", "src", rel)
+            text = open(path, encoding="utf-8").read()
+            assert old in text, "selftest anchor missing for %r" % label
+            changed = text.replace(old, new, 1)
+            assert changed != text, "selftest plant %r changed nothing" % label
+            open(path, "w", encoding="utf-8").write(changed)
+            broke, _ = run(base)
+            assert not broke, "selftest: %s was not caught" % label
+            open(path, "w", encoding="utf-8").write(text)
+            restored, _ = run(base)
+            assert restored, "selftest: %s left the copy broken" % label
+            out.append("  caught: %s" % label)
+
+        plant("components/layout/AppShell.vue", "'ds-shell--navless': !tabs",
+              "'ds-shell--navless': false", "the storefront given the menu")
+        plant("components/layout/AppShell.vue", '<AppNav v-if="tabs"',
+              "<AppNav", "the menu drawn without its gate")
+        plant("components/layout/AppShell.vue", "route.meta.shell === 'staff' ? 'wide'",
+              "route.meta.shell === 'staff' ? undefined", "staff's wide measure silently removed")
+        plant("styles/global.css", "button.ds-navtile {",
+              "@media (min-width: 880px) {\n  .ds-shell { --_bar: 0; }\n}\n\nbutton.ds-navtile {",
+              "a frame tier block written outside the design system")
+        plant("components/layout/AppNav.vue", "</template>",
+              "</template>\n\n<style scoped>\n@media (min-width: 880px) {\n  .ds-nav { --tab-bar-height: 0; }\n}\n</style>",
+              "a second 880 tier block in the menu")
+
+        # A SURVIVAL PLANT, not a break: a slot template ABOVE the root <div>. This is
+        # legal Vue and changes nothing the check is about, so the check must still
+        # PASS. It exists because the region match used to be non-greedy, and a
+        # truncating region match fails SILENTLY -- it reports a smaller region and
+        # no error. The plant asserts three things in order, so it can never rot into
+        # a no-op: the text changed, the OLD form now gives a DIFFERENT answer from
+        # the shipped one (proving the plant reaches the defect), and the check still
+        # passes.
+        shell_rel = "components/layout/AppShell.vue"
+        shell_path = os.path.join(base, "frontend", "src", shell_rel)
+        original = open(shell_path, encoding="utf-8").read()
+        anchor = '<div class="ds-shell"'
+        assert anchor in original, "selftest anchor missing for the slot-above-root plant"
+        slotted = original.replace(anchor, '<template #decoy><span /></template>\n    ' + anchor, 1)
+        assert slotted != original, "slot-above-root plant changed nothing"
+        non_greedy = re.search(r"<template>(.*?)</template>", slotted, re.S)
+        assert (non_greedy.group(1) if non_greedy else None) != _template(slotted), \
+            "the slot-above-root plant does not separate the greedy and non-greedy forms"
+        open(shell_path, "w", encoding="utf-8").write(slotted)
+        survived, _ = run(base)
+        open(shell_path, "w", encoding="utf-8").write(original)
+        assert survived, ("a slot template above the root div broke the check -- the region "
+                          "match is truncating again")
         restored, _ = run(base)
-        assert restored, "selftest: %s left the copy broken" % label
-        out.append("  caught: %s" % label)
+        assert restored, "the slot-above-root plant left the copy broken"
+        out.append("  survives: a slot template above the root <div> (the truncating region match)")
 
-    plant("components/layout/AppShell.vue", "'ds-shell--navless': !tabs",
-          "'ds-shell--navless': false", "the storefront given the menu")
-    plant("components/layout/AppShell.vue", '<AppNav v-if="tabs"',
-          "<AppNav", "the menu drawn without its gate")
-    plant("components/layout/AppShell.vue", "route.meta.shell === 'staff' ? 'wide'",
-          "route.meta.shell === 'staff' ? undefined", "staff's wide measure silently removed")
-    plant("styles/global.css", "button.ds-navtile {",
-          "@media (min-width: 880px) {\n  .ds-shell { --_bar: 0; }\n}\n\nbutton.ds-navtile {",
-          "a frame tier block written outside the design system")
-    plant("components/layout/AppNav.vue", "</template>",
-          "</template>\n\n<style scoped>\n@media (min-width: 880px) {\n  .ds-nav { --tab-bar-height: 0; }\n}\n</style>",
-          "a second 880 tier block in the menu")
-
-    # A SURVIVAL PLANT, not a break: a slot template ABOVE the root <div>. This is
-    # legal Vue and changes nothing the check is about, so the check must still
-    # PASS. It exists because the region match used to be non-greedy, and a
-    # truncating region match fails SILENTLY -- it reports a smaller region and
-    # no error. The plant asserts three things in order, so it can never rot into
-    # a no-op: the text changed, the OLD form now gives a DIFFERENT answer from
-    # the shipped one (proving the plant reaches the defect), and the check still
-    # passes.
-    shell_rel = "components/layout/AppShell.vue"
-    shell_path = os.path.join(base, "frontend", "src", shell_rel)
-    original = open(shell_path, encoding="utf-8").read()
-    anchor = '<div class="ds-shell"'
-    assert anchor in original, "selftest anchor missing for the slot-above-root plant"
-    slotted = original.replace(anchor, '<template #decoy><span /></template>\n    ' + anchor, 1)
-    assert slotted != original, "slot-above-root plant changed nothing"
-    non_greedy = re.search(r"<template>(.*?)</template>", slotted, re.S)
-    assert (non_greedy.group(1) if non_greedy else None) != _template(slotted), \
-        "the slot-above-root plant does not separate the greedy and non-greedy forms"
-    open(shell_path, "w", encoding="utf-8").write(slotted)
-    survived, _ = run(base)
-    open(shell_path, "w", encoding="utf-8").write(original)
-    assert survived, ("a slot template above the root div broke the check -- the region "
-                      "match is truncating again")
-    restored, _ = run(base)
-    assert restored, "the slot-above-root plant left the copy broken"
-    out.append("  survives: a slot template above the root <div> (the truncating region match)")
-
-    shutil.rmtree(base, ignore_errors=True)
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
     return out

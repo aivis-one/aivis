@@ -59,7 +59,7 @@ import {
   ListChecks,
   Wallet,
 } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CListSkeleton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'
@@ -277,18 +277,7 @@ onMounted(() => {
       </h2>
 
       <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
-      <div v-if="loadingHistory && items.length === 0 && !historyError" aria-busy="true">
-        <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-        <div class="ds-rows" aria-hidden="true">
-          <div v-for="n in 3" :key="n" class="ds-skeleton-row">
-            <span class="ds-skeleton ds-skeleton--avatar" />
-            <span class="ds-skeleton-stack">
-              <span class="ds-skeleton ds-skeleton--title" />
-              <span class="ds-skeleton ds-skeleton--text" />
-            </span>
-          </div>
-        </div>
-      </div>
+      <CListSkeleton v-if="loadingHistory && items.length === 0 && !historyError" :rows="3" />
 
       <!-- Error (first-page failure) -->
       <CEmptyState

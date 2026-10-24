@@ -273,7 +273,7 @@ onMounted(loadWithdrawals)
       <p class="ds-dialog__text">
         {{ t('staff.withdrawals.confirmConfirm') }}
       </p>
-      <p v-if="confirmTarget" class="staff-wd__amount">
+      <p v-if="confirmTarget" class="ds-amount" data-size="sm">
         {{ formatCents(confirmTarget.amount_cents) }}
       </p>
       <template v-if="confirmTarget">
@@ -314,7 +314,7 @@ onMounted(loadWithdrawals)
       <p class="ds-dialog__text">
         {{ t('staff.withdrawals.rejectConfirm') }}
       </p>
-      <p v-if="rejectTarget" class="staff-wd__amount">
+      <p v-if="rejectTarget" class="ds-amount" data-size="sm">
         {{ formatCents(rejectTarget.amount_cents) }}
       </p>
       <CInput
@@ -339,12 +339,5 @@ onMounted(loadWithdrawals)
   display: grid;
   gap: var(--space-4);
   align-content: start;
-}
-
-.staff-wd__amount {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>

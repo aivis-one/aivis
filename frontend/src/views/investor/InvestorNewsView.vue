@@ -20,7 +20,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, FileText } from '@/components/ui/icons'
-import { CButton, CEmptyState } from '@/components/ui'
+import { CButton, CEmptyState, CListSkeleton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { listPosts } from '@/api/posts'
 import { listPublicEvents, listUpcomingEvents } from '@/api/events'
@@ -123,18 +123,7 @@ onMounted(load)
 <template>
   <div class="news">
     <!-- Loading: the placeholder rows of the list that will arrive (K19) -->
-    <section v-if="loading" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" />
-          <span class="ds-skeleton-stack">
-            <span class="ds-skeleton ds-skeleton--title" />
-            <span class="ds-skeleton ds-skeleton--text" />
-          </span>
-        </div>
-      </div>
-    </section>
+    <CListSkeleton v-if="loading" :rows="4" />
 
     <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.news.errorTitle')">
       <template #actions>

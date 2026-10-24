@@ -413,12 +413,12 @@ onMounted(() => {
               :button-label="t('common.chooseFile')"
               :accept="KYC_ACCEPT_ATTRIBUTE"
               :file="entry.file"
+              :hint="t('kyc.upload.hint')"
               removable
               @select="pickFile(entry.target, $event)"
               @remove="setSlot(entry.target, null)"
             />
 
-            <p id="kyc-upload-hint" class="ds-field__hint">{{ t('kyc.upload.hint') }}</p>
             <p class="ds-field__hint">
               {{ t('kyc.notice.lead') }}
               <a

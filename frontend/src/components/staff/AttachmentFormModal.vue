@@ -219,19 +219,15 @@ async function onReplaceSelected(e: Event): Promise<void> {
       :rows="3"
     />
 
-    <div class="ds-field">
-      <CInput
-        v-model="draftCategory"
-        :label="t('staff.platform.documents.form.fieldCategory')"
-        placeholder="legal/incorporation"
-        :error="
-          trimmedCategory && !categoryValid ? t('staff.platform.documents.form.categoryError') : ''
-        "
-      />
-      <p class="ds-field__hint">
-        {{ t('staff.platform.documents.form.categoryHint') }}
-      </p>
-    </div>
+    <CInput
+      v-model="draftCategory"
+      :label="t('staff.platform.documents.form.fieldCategory')"
+      :hint="t('staff.platform.documents.form.categoryHint')"
+      placeholder="legal/incorporation"
+      :error="
+        trimmedCategory && !categoryValid ? t('staff.platform.documents.form.categoryError') : ''
+      "
+    />
 
     <CSelect
       v-model="draftLanguage"

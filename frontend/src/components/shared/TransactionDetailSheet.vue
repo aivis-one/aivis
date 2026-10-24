@@ -35,15 +35,14 @@
 //   a flow we expose in F4.3.
 // =============================================================================
 
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Copy } from '@/components/ui/icons'
+import { Check, Copy } from '@/components/ui/icons'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CEmptyState, CLoader } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
-import { useToast } from '@/composables/useToast'
 import { formatDateTime, formatPrice, formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
@@ -56,7 +55,6 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const { t, locale } = useI18n()
-const { showToast } = useToast()
 
 const txn = ref<TransactionResponse | null>(null)
 const loading = ref(false)
@@ -119,15 +117,27 @@ function formatValue(key: string, value: unknown): string {
 
 // The line under a copyable value says what happened, in words (K53).
 const copyStatus = ref('')
+const copied = ref(false)
+let copyStatusTimer: ReturnType<typeof setTimeout> | undefined
+
+function tellCopy(text: string, ok: boolean): void {
+  copyStatus.value = text
+  copied.value = ok
+  clearTimeout(copyStatusTimer)
+  copyStatusTimer = setTimeout(() => {
+    copyStatus.value = ''
+    copied.value = false
+  }, 3000)
+}
+
+onUnmounted(() => clearTimeout(copyStatusTimer))
 
 async function copyValue(value: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(value)
-    copyStatus.value = t('inv.transactions.detail.copied')
-    showToast(copyStatus.value, 'success')
+    tellCopy(t('inv.transactions.detail.copied'), true)
   } catch {
-    copyStatus.value = t('inv.transactions.detail.copyError')
-    showToast(copyStatus.value, 'error')
+    tellCopy(t('inv.transactions.detail.copyError'), false)
   }
 }
 
@@ -215,7 +225,8 @@ function onClose(): void {
                   :aria-label="t('inv.transactions.detail.copy')"
                   @click="copyValue(value)"
                 >
-                  <Copy size="sm" />
+                  <Check v-if="copied" size="sm" />
+                  <Copy v-else size="sm" />
                 </button>
               </div>
               <p class="ds-copy__status" role="status" aria-live="polite">{{ copyStatus }}</p>

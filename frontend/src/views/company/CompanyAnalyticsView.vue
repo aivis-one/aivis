@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- CompanyAnalyticsView (Phase F5.2 B1)
+// AIVIS.ONE Frontend -- CompanyAnalyticsView (B1)
 // =============================================================================
 //
 // Analytics tab inside CompanyShell. CompanyShell paints the global
@@ -35,7 +35,7 @@
 //        - Sub right: total_options_sold (formatNumber)
 //
 //   3. Bar chart -- sales_by_month, oldest first, height proportional
-//      to revenue_cents (per the F5.2 B1 design decision: revenue is
+//      to revenue_cents (per the B1 design decision: revenue is
 //      the primary business metric for the company; units are a
 //      secondary curiosity in the table beside the chart).
 //

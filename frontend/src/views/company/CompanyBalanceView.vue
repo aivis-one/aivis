@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- CompanyBalanceView (Phase F5.2 B3 + B4)
+// AIVIS.ONE Frontend -- CompanyBalanceView (B3 + B4)
 // =============================================================================
 //
 // The project's balance screen, opened from the balance in the top bar and from

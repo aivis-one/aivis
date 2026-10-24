@@ -63,7 +63,7 @@ import {
 
 import { ApiResponseError } from '@/api/client'
 import { downloadTransactionsExport } from '@/api/transactions'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader, CListSkeleton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import TransactionDetailSheet from '@/components/shared/TransactionDetailSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -272,18 +272,7 @@ onMounted(() => {
     </div>
 
     <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
-    <section v-if="store.loading && !hasItems && !store.errored" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 5" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" />
-          <span class="ds-skeleton-stack">
-            <span class="ds-skeleton ds-skeleton--title" />
-            <span class="ds-skeleton ds-skeleton--text" />
-          </span>
-        </div>
-      </div>
-    </section>
+    <CListSkeleton v-if="store.loading && !hasItems && !store.errored" :rows="5" />
 
     <!-- First-page error -->
     <CEmptyState
