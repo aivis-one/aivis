@@ -361,8 +361,7 @@
       "installmentsEmpty": "Für dieses Produkt sind keine Ratenzahlungspläne verfügbar",
       "installmentsBonus": "+{n} Bonus-Anteile",
       "buy": "Jetzt kaufen",
-      "soldOut": "Ausverkauft",
-      "backLink": "Back to the store"
+      "soldOut": "Ausverkauft"
     },
     "purchase": {
       "title": "Kauf",
@@ -389,7 +388,6 @@
         "soldOut": "Not enough parts are left for this package"
       },
       "pay": "Pay",
-      "backLink": "Back",
       "shortfall": "{amount} is missing",
       "topUp": "Top up",
       "successBonus": "Purchase made. Bonus parts: {units}"
@@ -479,7 +477,6 @@
       "copyError": "Adresse konnte nicht kopiert werden",
       "qrUnavailable": "QR-Code nicht verfügbar — verwenden Sie bitte die Adresse unten.",
       "backToBalance": "Zurück zum Kontostand",
-      "backLink": "Zurück zum Kontostand",
       "txidIntro": "Geben Sie nach der Überweisung den Transaktions-Hash an, damit die Zahlung im Netzwerk gefunden werden kann.",
       "txidLabel": "Transaktions-Hash",
       "txidPlaceholder": "Hash aus Ihrer Wallet oder dem Explorer einfügen",
@@ -1001,7 +998,6 @@
     "balance": {
       "title": "Guthaben",
       "subtitle": "Ihr Konto, Ihre Provision und Ihre Auszahlungen",
-      "backLink": "Zurück zu Partner",
       "account": {
         "title": "Käuferkonto",
         "frozen": "Wartet auf Bestätigung",
@@ -1025,7 +1021,6 @@
       }
     },
     "commissions": {
-      "backLink": "Zurück zu Partner",
       "from": "Von {name}",
       "forProduct": "für {product}",
       "partnerId": "ID {id}",
@@ -1200,9 +1195,6 @@
       "metrics": {
         "totalRevenue": "Verkäufe von Anteilen",
         "optionsSold": "Verkaufte Anteile"
-      },
-      "chart": {
-        "tooltipUnits": "{units} Anteile"
       },
       "byProduct": {
         "units": "{n} Anteile"

@@ -361,8 +361,7 @@
       "installmentsEmpty": "لا توجد خطط تقسيط متاحة لهذا المنتج",
       "installmentsBonus": "+{n} وحدة إضافية",
       "buy": "شراء الآن",
-      "soldOut": "نفد الكمية",
-      "backLink": "Back to the store"
+      "soldOut": "نفد الكمية"
     },
     "purchase": {
       "title": "شراء",
@@ -389,7 +388,6 @@
         "soldOut": "Not enough parts are left for this package"
       },
       "pay": "Pay",
-      "backLink": "Back",
       "shortfall": "{amount} is missing",
       "topUp": "Top up",
       "successBonus": "Purchase made. Bonus parts: {units}"
@@ -479,7 +477,6 @@
       "copyError": "تعذر نسخ العنوان",
       "qrUnavailable": "رمز QR غير متاح — يرجى استخدام العنوان أدناه.",
       "backToBalance": "العودة إلى الرصيد",
-      "backLink": "العودة إلى الرصيد",
       "txidIntro": "بعد إتمام التحويل، أدخل معرّف المعاملة حتى يمكن العثور على الدفعة على الشبكة.",
       "txidLabel": "معرّف المعاملة",
       "txidPlaceholder": "الصق المعرّف من محفظتك أو من مستكشف الشبكة",
@@ -1001,7 +998,6 @@
     "balance": {
       "title": "الرصيد",
       "subtitle": "حسابك وعمولتك وعمليات السحب",
-      "backLink": "العودة إلى الشركاء",
       "account": {
         "title": "حساب المشتري",
         "frozen": "بانتظار التأكيد",
@@ -1025,7 +1021,6 @@
       }
     },
     "commissions": {
-      "backLink": "العودة إلى الشركاء",
       "from": "من {name}",
       "forProduct": "عن {product}",
       "partnerId": "المعرّف {id}",
@@ -1200,9 +1195,6 @@
       "metrics": {
         "totalRevenue": "مبيعات الحصص",
         "optionsSold": "الحصص المباعة"
-      },
-      "chart": {
-        "tooltipUnits": "{units} حصة"
       },
       "byProduct": {
         "units": "{n} حصة"

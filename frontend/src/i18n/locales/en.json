@@ -36,7 +36,22 @@
     "codeDigit": "Digit {n} of {total}",
     "codeGroup": "Verification code",
     "clear": "Clear",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "pager": {
+      "label": "Pagination",
+      "prev": "Previous page",
+      "next": "Next page",
+      "page": "Page {n}"
+    },
+    "file": {
+      "ready": "Ready to upload",
+      "uploaded": "Uploaded",
+      "remove": "Remove {name}"
+    },
+    "downloading": "Downloading",
+    "downloaded": "Downloaded",
+    "chooseFile": "Choose a file",
+    "actions": "Actions for {title}"
   },
   "error": {
     "pageNotFound": "Page not found"
@@ -323,7 +338,9 @@
           "errorIncorrectPassword": "Incorrect password",
           "errorCode": "Invalid or expired code",
           "errorDisableCode": "Invalid code",
-          "errorGeneric": "Something went wrong. Please try again."
+          "errorGeneric": "Something went wrong. Please try again.",
+          "copySecret": "Copy the code",
+          "secretCopied": "Code copied"
         },
         "sessions": {
           "cta": "Active sessions",
@@ -448,7 +465,8 @@
     "userPicker": {
       "searchPlaceholder": "Search by email or name...",
       "hint": "Type at least 2 characters to search",
-      "noResults": "No users found"
+      "noResults": "No users found",
+      "count": "{n} results"
     },
     "userDetail": {
       "title": "User Details",
@@ -1062,7 +1080,6 @@
         "desc": "This product may have been removed or is no longer available"
       },
       "backToMarket": "Back to the store",
-      "backLink": "Back to the store",
       "pricePerPack": "Price per pack",
       "availability": "Availability",
       "description": "About",
@@ -1098,7 +1115,6 @@
         "soldOut": "Not enough parts are left for this package"
       },
       "pay": "Pay",
-      "backLink": "Back",
       "shortfall": "{amount} is missing",
       "topUp": "Top up",
       "successBonus": "Purchase made. Bonus parts: {units}"
@@ -1114,7 +1130,6 @@
         "desc": "This product does not offer installment plans"
       },
       "backToProduct": "Back to product",
-      "backLink": "Back to product",
       "selectTitle": "Choose a plan",
       "selectHint": "Pick the plan that fits your schedule",
       "planTitle": "Selected plan",
@@ -1160,7 +1175,6 @@
       },
       "detail": {
         "title": "Installment Plan",
-        "backLink": "Back to plans",
         "errorTitle": "Could not load this plan",
         "notFoundTitle": "Plan not found",
         "notFoundDesc": "This plan does not exist or is not yours.",
@@ -1297,7 +1311,6 @@
       "copyError": "Could not copy the address",
       "qrUnavailable": "QR code unavailable — please use the address below.",
       "backToBalance": "Back to balance",
-      "backLink": "Back to balance",
       "txidIntro": "After sending the transfer, submit its transaction hash so the payment can be found on chain.",
       "txidLabel": "Transaction hash",
       "txidPlaceholder": "Paste the hash from your wallet or explorer",
@@ -1351,7 +1364,8 @@
       "networkNotSupported": "This network is not available right now. Choose another one.",
       "offline": "No connection. Check your internet and try again.",
       "bankLine": "To pay by bank, write to support.",
-      "bankCta": "Write to support"
+      "bankCta": "Write to support",
+      "qrAlt": "QR code of the deposit address"
     },
     "transactions": {
       "title": "Transactions",
@@ -1516,7 +1530,6 @@
     "companyOverview": {
       "status": "Active",
       "backToList": "All projects",
-      "backLink": "Back to the store",
       "errorTitle": "Could not load project",
       "errorRetry": "Retry",
       "notFound": "Project not found",
@@ -1563,7 +1576,6 @@
     },
     "companyPosition": {
       "title": "Position",
-      "backLink": "Back to portfolio",
       "aggregate": {
         "totalUnits": "Total units",
         "avgPrice": "Avg. price",
@@ -1583,7 +1595,8 @@
         "units": "Units",
         "paid": "Paid",
         "pricePerUnit": "Price per unit",
-        "certificate": "Certificate"
+        "certificate": "Certificate",
+        "booked": "Booked"
       },
       "errorTitle": "Could not load position",
       "ownership": {
@@ -1742,7 +1755,9 @@
           "errorIncorrectPassword": "Incorrect password",
           "errorCode": "Invalid or expired code",
           "errorDisableCode": "Invalid code",
-          "errorGeneric": "Something went wrong. Please try again."
+          "errorGeneric": "Something went wrong. Please try again.",
+          "copySecret": "Copy the code",
+          "secretCopied": "Code copied"
         },
         "sessions": {
           "cta": "Active sessions",
@@ -1904,11 +1919,11 @@
       "errorTitle": "Couldn't load your notifications",
       "errorDesc": "Something went wrong, try again",
       "empty": "You're all caught up",
-      "loadMoreError": "Couldn't load more, try again"
+      "loadMoreError": "Couldn't load more, try again",
+      "unread": "Unread"
     },
     "productsByCompany": {
       "title": "Products",
-      "backLink": "Back to project",
       "empty": {
         "title": "No products yet",
         "subtitle": "This project hasn't published any products yet."
@@ -2082,7 +2097,9 @@
           "errorIncorrectPassword": "Incorrect password",
           "errorCode": "Invalid or expired code",
           "errorDisableCode": "Invalid code",
-          "errorGeneric": "Something went wrong. Please try again."
+          "errorGeneric": "Something went wrong. Please try again.",
+          "copySecret": "Copy the code",
+          "secretCopied": "Code copied"
         },
         "sessions": {
           "cta": "Active sessions",
@@ -2222,7 +2239,8 @@
         "errorMime": "Cover must be a PNG, JPEG, or WEBP image.",
         "errorSize": "Cover image must be 10 MB or smaller.",
         "removeTitle": "Remove cover image",
-        "removeConfirm": "The cover image will be removed from this roadmap item."
+        "removeConfirm": "The cover image will be removed from this roadmap item.",
+        "hint": "PNG, JPEG or WebP, up to 10 MB."
       }
     },
     "posts": {
@@ -2286,7 +2304,8 @@
       "deleteTitle": "Delete attachment",
       "deleteConfirm": "This attachment will be hidden from all flows. The file stays in storage.",
       "download": "Open the file",
-      "downloadError": "Could not open the file"
+      "downloadError": "Could not open the file",
+      "fileHint": "PDF, Word, Excel, PowerPoint, an image, a video or a text file, up to 100 MB."
     },
     "auditFeed": {
       "list": {
@@ -2388,7 +2407,8 @@
         "title": "Sales by month",
         "empty": "No sales data yet",
         "range": "{start} — {end}",
-        "tooltipUnits": "{units} parts"
+        "peak": "peak in {month}",
+        "table": "Table of the numbers"
       },
       "byProduct": {
         "title": "By product",
@@ -2441,7 +2461,9 @@
           "networkPlaceholder": "Choose a network",
           "walletLabel": "Wallet address",
           "walletPlaceholder": "Wallet address",
-          "errorWallet": "Enter a wallet address without spaces"
+          "errorWallet": "Enter a wallet address without spaces",
+          "groupPayee": "Where to pay",
+          "groupAmount": "Amount to withdraw"
         }
       },
       "payout": {
@@ -2504,7 +2526,6 @@
     "referrals": {
       "title": "My network",
       "subtitle": "Buyers and sub-integrators in your downline",
-      "backLink": "Back",
       "errorTitle": "Couldn't load your network",
       "joined": "Joined",
       "level": "L{n}",
@@ -2551,7 +2572,6 @@
       "bonus": {
         "rankLabel": "Rank"
       },
-      "backLink": "Back to Partners",
       "from": "From {name}",
       "forProduct": "for {product}",
       "partnerId": "ID {id}",
@@ -2560,7 +2580,6 @@
     "leaderboard": {
       "title": "Leaderboard",
       "subtitle": "Top integrators by referral volume",
-      "backLink": "Back",
       "errorTitle": "Couldn't load the leaderboard",
       "period": "Since {date}",
       "you": "You",
@@ -2608,11 +2627,12 @@
           "networkPlaceholder": "Choose a network",
           "walletLabel": "Wallet address",
           "walletPlaceholder": "Paste your wallet address",
-          "errorWallet": "Enter the wallet address without spaces."
+          "errorWallet": "Enter the wallet address without spaces.",
+          "groupPayee": "Where to pay",
+          "groupAmount": "Amount to withdraw"
         },
         "rule": "The minimum withdrawal is {min}. A payout is made after 14 days."
       },
-      "backLink": "Back to Partners",
       "account": {
         "title": "Buyer account",
         "frozen": "Awaiting confirmation",
@@ -2631,7 +2651,8 @@
       "copyProject": "Copy project link",
       "accepted": "Agreement accepted. Your link is ready.",
       "acceptError": "Could not record the acceptance. Please try again.",
-      "agreementTitle": "Agent-integrator agreement"
+      "agreementTitle": "Agent-integrator agreement",
+      "shareVia": "Share via…"
     },
     "home": {
       "title": "Integrator",
@@ -2820,6 +2841,7 @@
     },
     "next": "Next",
     "skip": "Skip",
-    "start": "Start"
+    "start": "Start",
+    "step": "Step {n} of {total}"
   }
 }
