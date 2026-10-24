@@ -156,4 +156,3 @@ async function handleSubmit(): Promise<void> {
     </template>
   </AuthShell>
 </template>
-

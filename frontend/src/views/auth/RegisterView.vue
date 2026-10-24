@@ -198,7 +198,7 @@ async function handleRegister(): Promise<void> {
         @keydown.enter="handleRegister"
       />
 
-      <!-- The hint belongs to the field, 4px under it, so the pair is wrapped
+      <!-- The hint belongs to the field, directly under it, so the pair is wrapped
              and the field's own bottom margin is dropped; the wrapper carries
              the spacing that used to sit on .form-group. -->
       <div class="ds-field">
