@@ -288,8 +288,8 @@ onMounted(loadAttachments)
                 <code class="doc-item__storage">{{ att.storage_key }}</code>
               </div>
 
-              <!-- Edit and delete (FP-23) -->
-              <span v-if="canManage" class="ds-row__trail">
+              <!-- Edit and delete (FP-23): K39's trailing slot -->
+              <div v-if="canManage" class="ds-reorder__trail">
                 <button
                   type="button"
                   class="ds-button ds-button--ghost ds-button--icon"
@@ -308,7 +308,7 @@ onMounted(loadAttachments)
                 >
                   <Trash2 />
                 </button>
-              </span>
+              </div>
             </li>
           </ol>
         </section>

@@ -713,9 +713,9 @@ onMounted(() => {
           </div>
           <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
 
-          <!-- Cover thumbnail (FP-25 self-hide): the avatar's photo form (K50) -->
-          <span v-if="item.cover_url" class="ds-avatar" data-size="lg">
-            <img :src="item.cover_url" :alt="item.title" />
+          <!-- Cover thumbnail (FP-25 self-hide): the system's thumbnail (K23), the title beside it -->
+          <span v-if="item.cover_url" class="ds-thumb">
+            <img :src="item.cover_url" alt="" />
           </span>
 
           <!-- Body -->
@@ -760,7 +760,8 @@ onMounted(() => {
             </span>
           </div>
 
-          <span class="ds-row__trail">
+          <!-- The item's own acts: K39's trailing slot -->
+          <div class="ds-reorder__trail">
             <a
               v-if="item.external_url"
               :href="item.external_url"
@@ -793,7 +794,7 @@ onMounted(() => {
                 <Trash2 />
               </button>
             </template>
-          </span>
+          </div>
         </li>
       </ol>
     </template>
