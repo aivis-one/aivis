@@ -39,13 +39,19 @@ the same reason as in the source (EXCLUDED). Every `--expect` origin must be
 found at least once: an empty or wrongly built tree must not pass for having
 nothing in it.
 
-STANDARD LIBRARY ONLY, like every check here.
+GIT-IGNORED FILES ARE NOT SCANNED (a local `.env` is not the product): the
+files `git check-ignore` reports as ignored are skipped; a tracked file is
+never reported by it, so it is always scanned. Without git, nothing is
+skipped.
+
+STANDARD LIBRARY ONLY, like every check here (git is called when present).
 """
 from __future__ import annotations
 
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -73,6 +79,13 @@ EXCLUDED = (
     ("frontend/public/legal/", "legal texts of AIVIS.ONE LLC: the operator's "
      "contact e-mail and the domain in them are text of the document, changed "
      "by the lawyer, not configuration"),
+    ("frontend/public/faq/", "the FAQ pages: document text carrying the "
+     "operator's contacts and the support bot's link, like the legal texts, "
+     "changed by the operator, not configuration"),
+    ("backend/scripts/templates/", "the text of the generated legal documents "
+     "(purchase agreement, certificates, subcontract): the Cabinet's address "
+     "in them is text of the document, as in the legal texts; the document "
+     "renderer has no variable for the site's origin yet"),
     ("*.md", "documents, not code"),
 )
 
@@ -137,6 +150,22 @@ def _walk(base: str):
             yield os.path.join(dirpath, name)
 
 
+def _ignored(root: str, rels: list[str]) -> set[str]:
+    """The paths among `rels` that git ignores (tracked files never are)."""
+    if not rels:
+        return set()
+    try:
+        done = subprocess.run(
+            ["git", "-C", root, "check-ignore", "-z", "--stdin"],
+            input="\0".join(rels).encode("utf-8"), capture_output=True,
+            timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if done.returncode not in (0, 1):
+        return set()
+    return {p.decode("utf-8") for p in done.stdout.split(b"\0") if p}
+
+
 def _findings(rel: str, text: str, rules) -> list[str]:
     """One finding per occurrence: the first rule (in order) that matches a
     span reports it, so `https://aivis.one` is one finding, not two."""
@@ -169,9 +198,10 @@ def scan_source(root: str) -> tuple[bool, list[str]]:
                        "update ROOTS rather than scan nothing" % top)
             continue
         scanned = 0
-        for path in _walk(base):
-            rel = _rel(root, path)
-            if _excluded(rel):
+        candidates = [(path, _rel(root, path)) for path in _walk(base)]
+        ignored = _ignored(root, [r for _p, r in candidates if not _excluded(r)])
+        for path, rel in candidates:
+            if _excluded(rel) or rel in ignored:
                 continue
             text = _read_text(path)
             if text is None:
@@ -197,6 +227,7 @@ def scan_source(root: str) -> tuple[bool, list[str]]:
         lines.append("allowed: %s in %s -- %s" % (allowed, path, reason))
     if bad:
         return False, bad + lines
+    lines.append("not scanned: files git ignores")
     lines.append("no deployment address in the product's code")
     return True, lines
 
@@ -242,6 +273,14 @@ def run(root: str) -> tuple[bool, list[str]]:
 # selftest
 # ---------------------------------------------------------------------------
 
+def _rmtree(path: str) -> None:
+    """rmtree that also removes git objects (read-only on Windows)."""
+    def unlock(func, target, _err):
+        os.chmod(target, 0o700)
+        func(target)
+    shutil.rmtree(path, onexc=unlock)
+
+
 def _write(base: str, rel: str, text: str) -> None:
     path = os.path.join(base, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -261,6 +300,9 @@ def _clean_tree(root: str, tmp: str) -> None:
         dst = os.path.join(tmp, path)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copyfile(os.path.join(root, path), dst)
+    # its own repository, so a git-ignored file is judged by the planted
+    # .gitignore and not by the checkout this tree happens to sit in
+    subprocess.run(["git", "init", "-q", tmp], check=True, capture_output=True)
 
 
 def selftest(root: str) -> list[str]:
@@ -273,7 +315,7 @@ def selftest(root: str) -> list[str]:
             plant(tmp)
             ok, lines = scan_source(tmp)
         finally:
-            shutil.rmtree(tmp)
+            _rmtree(tmp)
         assert ok == expect_ok, "%s: expected %s, got %s\n%s" % (
             what, "pass" if expect_ok else "refusal", "pass" if ok else "refusal",
             "\n".join(lines))
@@ -304,6 +346,25 @@ def selftest(root: str) -> list[str]:
          False, "the domain as test data (tests use example.com)")
     case(put("frontend/public/legal/en/terms.html", "<p>hello@aivis.one, aivis.one</p>\n"),
          True, "the domain in a legal text (excluded: frontend/public/legal/)")
+    case(put("frontend/public/faq/en/agent.html", "<p>hello@aivis.one, t.me/aivisonebot</p>\n"),
+         True, "the operator's contacts in a FAQ page (excluded: frontend/public/faq/)")
+    case(put("backend/scripts/templates/_default/x/en/template.html",
+             "<p>through the Cabinet at aivis.one/app/</p>\n"),
+         True, "the domain in a document template (excluded: backend/scripts/templates/)")
+
+    def ignored_env(tmp: str) -> None:
+        _write(tmp, "frontend/.gitignore", ".env\n")
+        _write(tmp, "frontend/.env", "VITE_API_BASE_URL=https://api.aivis.one\n")
+    case(ignored_env, True, "the domain in a git-ignored local file")
+
+    def tracked_despite_ignore(tmp: str) -> None:
+        ignored_env(tmp)
+        subprocess.run(["git", "-C", tmp, "add", "-f", "frontend/.env"],
+                       check=True, capture_output=True)
+    case(tracked_despite_ignore, False,
+         "the domain in a tracked file the .gitignore also names (never skipped)")
+    case(put("frontend/.env", "VITE_API_BASE_URL=https://api.aivis.one\n"),
+         False, "the domain in a local file nothing ignores")
     case(put("frontend/README.md", "Served at https://aivis.one/app/\n"),
          True, "the domain in a document (excluded: *.md)")
     case(put("landing/site/index.html", "<a href='https://aivis.one/'>\n"),
@@ -341,7 +402,7 @@ def selftest(root: str) -> list[str]:
                 _write(tmp, rel, text)
             ok, lines = scan_built(tmp, expect)
         finally:
-            shutil.rmtree(tmp)
+            _rmtree(tmp)
         assert ok == expect_ok, "%s\n%s" % (what, "\n".join(lines))
         out.append("  --built %s %s" % ("passes" if expect_ok else "refuses", what))
 
