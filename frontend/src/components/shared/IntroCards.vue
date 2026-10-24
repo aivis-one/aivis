@@ -52,8 +52,8 @@ function next(): void {
 
 <template>
   <CModal :open="open" :title="t(`intro.${card}.title`)" @close="finish">
-    <!-- Step dots (K32); their spoken position needs a line of the translation tables. -->
-    <ol class="ds-dots" aria-hidden="true">
+    <!-- Step dots (K32); the list says the position in words. -->
+    <ol class="ds-dots" :aria-label="t('intro.step', { n: step + 1, total: CARDS.length })">
       <li
         v-for="(c, i) in CARDS"
         :key="c"

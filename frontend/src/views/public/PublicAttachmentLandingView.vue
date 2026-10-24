@@ -8,7 +8,7 @@
 // expect marketing channels (agents, social posts, email) to share.
 //
 // SHAPE.
-//   Loading      -> spinner centered in the page
+//   Loading      -> the centred page loader (K20)
 //   404          -> "document unavailable" empty state with back-link
 //                   to /public/companies/:id (the visitor still has a
 //                   useful context they can explore)
@@ -61,7 +61,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { File as FileIcon } from '@/components/ui/icons'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { ApiResponseError } from '@/api/client'
@@ -194,8 +194,9 @@ function onDownloadFailed(err: unknown): void {
 <template>
   <div class="atl">
     <!-- Loading -->
-    <div v-if="loading" class="ds-empty">
-      <CLoader />
+    <div v-if="loading" class="ds-loader ds-loader--centered" data-extent="page" role="status">
+      <span class="ds-loader__ring" aria-hidden="true" />
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <!-- Not found: wrong id, or private / unpublished, or company inactive. The

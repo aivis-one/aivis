@@ -438,7 +438,7 @@ onMounted(() => {
               }}</span>
               <label class="ds-button ds-button--secondary ds-file__pick">
                 <Upload size="sm" />
-                <span>{{ t('staff.platform.documents.form.chooseFile') }}</span>
+                <span>{{ t('common.chooseFile') }}</span>
                 <input
                   :key="`${entry.target}-${resets[entry.target]}`"
                   type="file"
@@ -462,7 +462,7 @@ onMounted(() => {
                     <button
                       type="button"
                       class="ds-file__remove"
-                      :aria-label="`${t('common.clear')}: ${entry.file.name}`"
+                      :aria-label="t('common.file.remove', { name: entry.file.name })"
                       @click="clearSlot(entry.target)"
                     >
                       <X size="sm" />

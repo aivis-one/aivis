@@ -8,8 +8,8 @@
 // same event consistently (no duplicated event markup):
 //
 //   variant="compact"  -- dashboard "Upcoming events" widget. A row of the
-//                         Row list (K23): calendar icon + title + date, time
-//                         and location. The whole row is one click target
+//                         Row list (K23): the date leaf + title + time and
+//                         location. The whole row is one click target
 //                         (the title's button stretches over it); the parent
 //                         navigates to the events screen.
 //   variant="full"     -- /investor/events list. A media card (K07): the
@@ -83,6 +83,11 @@ const time = computed<string>(() => {
 const meta = computed<string>(() =>
   [`${day.value} ${month.value}`, time.value, props.event.location].filter(Boolean).join(', '),
 )
+// The compact row's date is its date leaf (the lead), so its meta line is the
+// time and the place.
+const compactMeta = computed<string>(() =>
+  [time.value, props.event.location].filter(Boolean).join(', '),
+)
 
 function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   try {
@@ -98,7 +103,10 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
        a button whose area stretches over the row. -->
   <ul v-if="variant === 'compact'" class="ds-rows">
     <li class="ds-row">
-      <span class="ds-row__lead"><CalendarDays size="sm" /></span>
+      <span class="ds-row__lead ds-dateleaf"
+        ><span class="ds-dateleaf__day">{{ day }}</span
+        ><span class="ds-dateleaf__month">{{ month }}</span></span
+      >
       <span class="ds-row__body">
         <button
           type="button"
@@ -107,7 +115,7 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
         >
           <span class="ds-row__title">{{ event.title }}</span>
         </button>
-        <span class="ds-row__meta">{{ meta }}</span>
+        <span v-if="compactMeta" class="ds-row__meta">{{ compactMeta }}</span>
       </span>
       <span class="ds-row__trail"><ChevronRight size="sm" /></span>
     </li>

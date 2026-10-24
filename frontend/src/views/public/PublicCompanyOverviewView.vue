@@ -69,7 +69,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 
-import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
+import { CButton, CEmptyState, CStatCard } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'
 import PublicProductsSection from '@/components/shared/PublicProductsSection.vue'
@@ -213,8 +213,9 @@ function onRoadmapPostClick(postId: string): void {
 <template>
   <div class="co">
     <!-- Initial loading -->
-    <div v-if="loading" class="ds-empty">
-      <CLoader />
+    <div v-if="loading" class="ds-loader ds-loader--centered" data-extent="page" role="status">
+      <span class="ds-loader__ring" aria-hidden="true" />
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <!-- 404: company doesn't exist or is non-active. -->
@@ -270,7 +271,7 @@ function onRoadmapPostClick(postId: string): void {
 
       <!-- Roadmap (hidden if empty per R1 §6.1) -->
       <section v-if="hasRoadmap" class="co__section">
-        <h2 class="co__section-title">
+        <h2 class="ds-section-title">
           {{ t('public.companyOverview.sectionRoadmap') }}
         </h2>
         <RoadmapTimeline
@@ -317,18 +318,9 @@ function onRoadmapPostClick(postId: string): void {
   max-inline-size: var(--maxw-prose);
 }
 
-/* A section of the screen: its heading in the display face, then its content. */
+/* A section of the screen: its heading (the system's section title), then its content. */
 .co__section {
   display: grid;
   gap: var(--space-4);
-}
-
-.co__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 </style>

@@ -231,17 +231,15 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
           >
             {{ formatDate(item.target_date!) }}
           </time>
-          <span class="ds-timeline__title">
-            <button
-              v-if="hasPost(item)"
-              type="button"
-              class="rti__title-button"
-              @click="onEntryClick(item)"
-            >
-              {{ item.title }}
-            </button>
-            <template v-else>{{ item.title }}</template>
-          </span>
+          <button
+            v-if="hasPost(item)"
+            type="button"
+            class="ds-timeline__title"
+            @click="onEntryClick(item)"
+          >
+            {{ item.title }}
+          </button>
+          <span v-else class="ds-timeline__title">{{ item.title }}</span>
           <CBadge variant="neutral" :text="kindLabel(item.kind)" />
           <CBadge
             v-if="item.status"
@@ -321,12 +319,5 @@ const endMarkerLabel = computed<string>(() => t('inv.roadmap.endMarker'))
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-/* A title that opens a screen is a button in the title's own type (the system's
-   timeline has no title-as-button form; NEED). */
-.rti__title-button {
-  padding: 0;
-  text-align: start;
 }
 </style>

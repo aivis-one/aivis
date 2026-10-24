@@ -9,7 +9,7 @@
 //     shown again when the person opens the button that reads "under review".
 // Sending is the parent's (it owns the request); this component only draws.
 
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
@@ -25,6 +25,8 @@ defineProps<{
 const emit = defineEmits<{ close: []; submit: [] }>()
 
 const { t, locale } = useI18n()
+// The list of what the role gives is named by the sentence above it (K52).
+const whatId = useId()
 const router = useRouter()
 
 // The legal texts and the FAQ ship in English and Russian.
@@ -58,10 +60,10 @@ function toSupport(): void {
     </template>
 
     <template v-else>
-      <p class="ds-dialog__text">
+      <p :id="whatId" class="ds-dialog__text">
         {{ t('inv.settings.agent.modal.what') }}
       </p>
-      <ul class="iam__list">
+      <ul class="ds-dialog__list" :aria-labelledby="whatId">
         <li>{{ t('inv.settings.agent.modal.pointLink') }}</li>
         <li>{{ t('inv.settings.agent.modal.pointCommission') }}</li>
         <li>{{ t('inv.settings.agent.modal.pointWithdrawal') }}</li>
@@ -97,18 +99,3 @@ function toSupport(): void {
     />
   </CModal>
 </template>
-
-<style scoped>
-/* The dialog body has no list of its own (NEED): plain bullets, set from tokens
-   in the dialog text's own size and colour. */
-.iam__list {
-  margin: 0;
-  padding-inline-start: var(--space-5);
-  list-style: disc;
-  display: grid;
-  gap: var(--space-1);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  color: var(--text-secondary);
-}
-</style>

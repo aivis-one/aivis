@@ -15,9 +15,9 @@
 //
 // F4.4 B7 UX:
 //   The pack is the unit of purchase, not the share -- B7 wants the
-//   storefront to anchor pricing on it. Left meta block now shows
-//   `$N / pack` as the primary line, with `$X / unit` below as a
-//   reference. The right meta block ("X packs available") is unchanged.
+//   storefront to anchor pricing on it. The card's price line (K07) shows
+//   `$N / pack` as the figure, and its reference line under it says
+//   `$X / unit` and how many packs are available.
 //   `price_per_pack_cents` comes from the backend pre-computed
 //   (package_size * price_per_unit_cents) so the client doesn't multiply.
 //
@@ -71,76 +71,28 @@ const available = computed(() => props.product.available_packages)
       <p v-if="product.description" class="ds-card__body product-card__desc">
         {{ product.description }}
       </p>
-      <div class="product-card__meta">
-        <div class="product-card__price-block">
-          <span class="product-card__price">
-            {{ formatPrice(product.price_per_pack_cents, product.currency) }}
-            <span class="product-card__unit">/ {{ t('inv.pack') }}</span>
-          </span>
-          <span class="product-card__price-secondary">
-            {{ formatPrice(product.price_per_unit_cents, product.currency) }}
-            / {{ t('inv.unit') }}
-          </span>
-        </div>
-        <span class="product-card__units">
-          {{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
-        </span>
-      </div>
+      <p class="ds-card__price">
+        <span class="ds-card__price-figure">{{
+          formatPrice(product.price_per_pack_cents, product.currency)
+        }}</span>
+        <span class="ds-card__price-unit">/ {{ t('inv.pack') }}</span>
+      </p>
+      <p class="ds-card__price-ref">
+        {{ formatPrice(product.price_per_unit_cents, product.currency) }} / {{ t('inv.unit') }} ·
+        {{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
+      </p>
     </div>
   </article>
 </template>
 
 <style scoped>
-/* The card, its cover, the chip on the photo and the title link are the system's
-   media card (K07). What is left is the description's clamp and the price block
-   under it: the system has no price line for a card (NEED), so its type is set
-   from tokens. */
+/* The card, its cover, the chip on the photo, the title link and the price line
+   are the system's media card (K07). What is left is the description's clamp. */
 .product-card__desc {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   max-inline-size: var(--maxw-prose);
-}
-
-/* Meta is a 2-column row: the left column is a 2-line block (the pack price and
-   the per-unit reference), the right one ("packs available") is one line anchored
-   to the top of the price block. */
-.product-card__meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.product-card__price-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-
-.product-card__price {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--primary);
-}
-.product-card__unit {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-/* The per-unit reference under the pack price: quiet type. */
-.product-card__price-secondary {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.product-card__units {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  text-align: end;
-  white-space: nowrap;
 }
 </style>

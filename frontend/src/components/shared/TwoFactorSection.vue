@@ -42,7 +42,7 @@
 // avatar-guard message, 429 shared rate-limit copy, 400 per-step key).
 // =============================================================================
 
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, ChevronRight, Copy, Shield, ShieldCheck } from '@/components/ui/icons'
 import QRCode from 'qrcode'
@@ -59,6 +59,8 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+// The backup codes are named by the warning above them (K52).
+const codesId = useId()
 const authStore = useAuthStore()
 const { showToast } = useToast()
 
@@ -211,10 +213,11 @@ async function submitSetupCode(): Promise<void> {
   }
 }
 
-// The manual-entry code is a copyable value (K53); a failed copy is told by a toast.
+// The manual-entry code is a copyable value (K53); the copy is told by a toast.
 async function copySecret(): Promise<void> {
   try {
     await navigator.clipboard.writeText(secret.value)
+    showToast(tk('secretCopied'), 'success')
   } catch {
     showToast(tk('copyFailed'), 'error')
   }
@@ -344,7 +347,7 @@ async function submitDisable(): Promise<void> {
             type="button"
             class="ds-button ds-button--ghost ds-button--icon ds-copy__button"
             data-size="sm"
-            :aria-label="tk('secretLabel')"
+            :aria-label="tk('copySecret')"
             @click="copySecret"
           >
             <Copy size="sm" />
@@ -393,17 +396,13 @@ async function submitDisable(): Promise<void> {
       <div class="ds-alert ds-alert--warning" role="alert">
         <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
         <div class="ds-alert__content">
-          <p class="ds-alert__text">{{ tk('codesWarning') }}</p>
+          <p :id="codesId" class="ds-alert__text">{{ tk('codesWarning') }}</p>
         </div>
       </div>
 
-      <div class="ds-card ds-card--flat" data-size="sm">
-        <ul class="tfs__codes-list">
-          <li v-for="c in backupCodes" :key="c" class="tfs__codes-item">
-            {{ c }}
-          </li>
-        </ul>
-      </div>
+      <ul class="ds-dialog__codes" :aria-labelledby="codesId">
+        <li v-for="c in backupCodes" :key="c">{{ c }}</li>
+      </ul>
 
       <div>
         <CButton variant="outline" size="sm" inline @click="copyBackupCodes">
@@ -467,22 +466,3 @@ async function submitDisable(): Promise<void> {
     </template>
   </CModal>
 </template>
-
-<style scoped>
-/* The backup codes: two columns of codes in the mono face, set from tokens (the
-   system has no list of codes; NEED). */
-.tfs__codes-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-2);
-}
-.tfs__codes-item {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  user-select: all;
-}
-</style>

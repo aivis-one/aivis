@@ -52,7 +52,7 @@ import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, Bell, Check, ChevronRight } from '@/components/ui/icons'
 
-import { CButton, CCheckbox, CEmptyState, CInput, CLoader, CModal } from '@/components/ui'
+import { CButton, CCheckbox, CEmptyState, CInput, CModal } from '@/components/ui'
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
@@ -215,8 +215,9 @@ async function save(): Promise<void> {
   </ul>
 
   <CModal :open="open" :title="tk('title')" @close="close">
-    <div v-if="loading" class="ds-empty">
-      <CLoader :size="24" />
+    <div v-if="loading" class="ds-loader ds-loader--centered" role="status">
+      <span class="ds-loader__ring" aria-hidden="true" />
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <CEmptyState v-else-if="loadError" tone="danger" :title="tk('loadError')">
