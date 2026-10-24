@@ -8,14 +8,12 @@
 // single thread -- see STAKE A below for why that is deliberate, not
 // a shortcut.
 //
-// Reached from a nav-item in StaffMoreView, same tier as
-// StaffAgentAppsView / StaffAvatarView (both outside STAFF_TABS).
-// Neither of those has a CBackLink or an inline <h1> -- 14 of 15
-// screens in this cabinet skip both; the one exception
-// (StaffCompanyDetailView) is a real routed detail entity with tabs.
-// This screen follows the dominant convention: no page title of its own,
-// a short one-line hint instead (an info Alert, as StaffAgentAppsView has).
-// Its refresh is a title-side action, so it stands in the frame's header.
+// A section of the Users hub, as StaffAgentAppsView and StaffAvatarView are.
+// It sets no page title of its own: a short one-line hint stands instead (an
+// info Alert, as StaffAgentAppsView has). Its refresh is a title-side action,
+// so it stands in the frame's header. The conversation is a state of this
+// screen and not a route (stake A), so its way back is the screen's own back
+// button, not the header's.
 //
 // STAKE A (gate): one route, not a routed thread id.
 //   The new GET .../messages endpoint is gated ONLY by "does this
