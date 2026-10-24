@@ -77,7 +77,7 @@ def run(root: str) -> tuple[bool, list[str]]:
                 continue
             path = os.path.join(dirpath, name)
             for condition, _whole, body in media_blocks(_css_of(path)):
-                if "880px" in condition and re.search(r"\.ds-(shell|nav|header)\b|tab-bar-height", body):
+                if "880px" in condition and re.search(r"\.ds-(shell|nav|header)(?:__|\b)|tab-bar-height", body):
                     tier.append(path)
     if tier:
         problems.append("the frame's 880 tier belongs to the design system alone; a block in "
