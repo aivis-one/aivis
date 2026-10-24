@@ -99,6 +99,7 @@ def test_shared_addresses_come_from_the_frontend_origin(
     assert data["code"] == "123456"
     # nothing configured: the letter points at the site and at hello@ on its host
     monkeypatch.setattr(settings, "support_url", "")
+    monkeypatch.setattr(settings, "telegram_bot_url", "")
     monkeypatch.setattr(settings, "support_email", "")
     data = email_action_data()
     assert data["support_url"] == "https://example.com"
