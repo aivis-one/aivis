@@ -13,9 +13,9 @@
 // Neither of those has a CBackLink or an inline <h1> -- 14 of 15
 // screens in this cabinet skip both; the one exception
 // (StaffCompanyDetailView) is a real routed detail entity with tabs.
-// This screen follows the dominant convention: no page title, a
-// short one-line hint instead (matches StaffAgentAppsView's
-// `.staff-apps__hint`).
+// This screen follows the dominant convention: no page title of its own,
+// a short one-line hint instead (an info Alert, as StaffAgentAppsView has).
+// Its refresh is a title-side action, so it stands in the frame's header.
 //
 // STAKE A (gate): one route, not a routed thread id.
 //   The new GET .../messages endpoint is gated ONLY by "does this
@@ -83,18 +83,38 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RefreshCw } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader, CTextarea } from '@/components/ui'
+import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
+import { CBackLink, CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
 import { useAuthStore } from '@/stores/auth'
 import type { SupportActionError } from '@/stores/support'
 import type { SupportMessageResponse, SupportOperatorThreadRow } from '@/api/support'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const support = useSupportStore()
 const auth = useAuthStore()
 
 const myOperatorId = computed<string | null>(() => auth.user?.id ?? null)
+
+// The queue's refresh is the screen's one title-side action, so the frame's header
+// carries it (an icon button, named by its label); the open conversation has none.
+useScreenHeader({
+  actions: () =>
+    openThreadId.value === null
+      ? [
+          {
+            id: 'refresh',
+            label: t('staff.support.refresh'),
+            icon: RefreshCw,
+            onClick: retryQueue,
+          },
+        ]
+      : [],
+})
 
 // -- Queue --------------------------------------------------------------
 
@@ -150,6 +170,10 @@ function openThread(threadId: string): void {
 
 function closeThread(): void {
   openThreadId.value = null
+}
+
+function sentAt(message: SupportMessageResponse): string | null {
+  return message.created_at ? formatDateTime(message.created_at, locale.value) : null
 }
 
 function retryFeed(): void {
@@ -248,37 +272,25 @@ onMounted(() => {
   <div class="ssup">
     <!-- ============================== QUEUE ============================== -->
     <template v-if="openThreadId === null">
-      <p class="ssup__hint">
+      <StaffAlert tone="info">
         {{ t('staff.support.hint') }}
-      </p>
+      </StaffAlert>
 
-      <div class="ssup__toolbar">
-        <CButton
-          variant="outline"
-          size="sm"
-          inline
-          :disabled="support.queueLoading"
-          :aria-label="t('staff.support.refresh')"
-          @click="retryQueue"
-        >
-          <RefreshCw :size="16" />
-        </CButton>
-      </div>
+      <StaffListSkeleton v-if="support.queueLoading && !support.queueLoaded" />
 
-      <div v-if="support.queueLoading && !support.queueLoaded" class="ssup__center">
-        <CLoader :size="32" />
-      </div>
+      <CEmptyState
+        v-else-if="support.queueError"
+        tone="danger"
+        :description="errorMessage(support.queueError)"
+      >
+        <template #actions>
+          <CButton variant="primary" size="sm" inline @click="retryQueue">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
-      <div v-else-if="support.queueError" class="ssup__center">
-        <CEmptyState :description="errorMessage(support.queueError)" />
-        <CButton variant="primary" inline @click="retryQueue">
-          {{ t('common.retry') }}
-        </CButton>
-      </div>
-
-      <div v-else-if="support.queue.length === 0" class="ssup__center">
-        <CEmptyState :title="t('staff.support.empty')" />
-      </div>
+      <CEmptyState v-else-if="support.queue.length === 0" :title="t('staff.support.empty')" />
 
       <div v-else class="ssup__groups">
         <section v-if="poolRows.length > 0" class="ssup__group">
@@ -291,122 +303,112 @@ onMounted(() => {
                in, and nobody takes part in an unclaimed one. Said on
                screen because its absence is otherwise read as a bug. -->
           <p class="ssup__group-note">{{ t('staff.support.poolNoUnread') }}</p>
-          <div
-            v-for="row in poolRows"
-            :key="row.id"
-            class="ssup__row"
-            role="button"
-            tabindex="0"
-            @click="openThread(row.id)"
-            @keyup.enter="openThread(row.id)"
-            @keyup.space.prevent="openThread(row.id)"
-          >
-            <div class="ssup__row-body">
-              <span class="ssup__row-client">{{ clientName(row) }}</span>
-              <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
-              <span v-if="row.last_message_at" class="ssup__row-time">
-                {{ new Date(row.last_message_at).toLocaleString() }}
+          <ul class="ds-rows">
+            <li v-for="row in poolRows" :key="row.id" class="ds-row ssup__row">
+              <span class="ds-row__body">
+                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                  <span class="ds-row__title">{{ clientName(row) }}</span>
+                </button>
+                <span class="ds-row__meta">
+                  {{ row.id.slice(0, 8) }}
+                  <template v-if="row.last_message_at">
+                    &bull; {{ new Date(row.last_message_at).toLocaleString() }}
+                  </template>
+                </span>
+                <StaffAlert v-if="support.claimErrors[row.id]" tone="danger">
+                  {{
+                    support.claimErrors[row.id]?.status === 409
+                      ? t('staff.support.claimConflict')
+                      : errorMessage(support.claimErrors[row.id])
+                  }}
+                </StaffAlert>
               </span>
-            </div>
-            <div v-if="support.claimErrors[row.id]" class="ssup__row-error">
-              {{
-                support.claimErrors[row.id]?.status === 409
-                  ? t('staff.support.claimConflict')
-                  : errorMessage(support.claimErrors[row.id])
-              }}
-            </div>
-            <CButton
-              variant="primary"
-              size="sm"
-              inline
-              :loading="support.claiming[row.id]"
-              :disabled="support.claiming[row.id]"
-              @click.stop="handleClaim(row.id)"
-            >
-              {{ t('staff.support.claim') }}
-            </CButton>
-          </div>
+              <span class="ds-row__trail">
+                <CButton
+                  variant="primary"
+                  size="sm"
+                  inline
+                  :loading="support.claiming[row.id]"
+                  :disabled="support.claiming[row.id]"
+                  @click="handleClaim(row.id)"
+                >
+                  {{ t('staff.support.claim') }}
+                </CButton>
+              </span>
+            </li>
+          </ul>
         </section>
 
         <section v-if="mineRows.length > 0" class="ssup__group">
           <h2 class="ssup__group-title">
             {{ t('staff.support.groupMine') }}
           </h2>
-          <div
-            v-for="row in mineRows"
-            :key="row.id"
-            class="ssup__row"
-            role="button"
-            tabindex="0"
-            @click="openThread(row.id)"
-            @keyup.enter="openThread(row.id)"
-            @keyup.space.prevent="openThread(row.id)"
-          >
-            <div class="ssup__row-body">
-              <span class="ssup__row-client">{{ clientName(row) }}</span>
-              <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
-              <span
-                v-if="typeof row.unread === 'number' && row.unread > 0"
-                class="ssup__row-unread"
-              >
-                {{ row.unread }}
+          <ul class="ds-rows">
+            <li v-for="row in mineRows" :key="row.id" class="ds-row ssup__row">
+              <span class="ds-row__body">
+                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                  <span class="ds-row__title">{{ clientName(row) }}</span>
+                </button>
+                <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
               </span>
-            </div>
-          </div>
+              <span class="ds-row__trail">
+                <CBadge
+                  v-if="typeof row.unread === 'number' && row.unread > 0"
+                  variant="primary"
+                  :text="String(row.unread)"
+                />
+              </span>
+            </li>
+          </ul>
         </section>
 
         <section v-if="foreignRows.length > 0" class="ssup__group">
           <h2 class="ssup__group-title">
             {{ t('staff.support.groupForeign') }}
           </h2>
-          <div
-            v-for="row in foreignRows"
-            :key="row.id"
-            class="ssup__row"
-            role="button"
-            tabindex="0"
-            @click="openThread(row.id)"
-            @keyup.enter="openThread(row.id)"
-            @keyup.space.prevent="openThread(row.id)"
-          >
-            <div class="ssup__row-body">
-              <span class="ssup__row-client">{{ clientName(row) }}</span>
-              <span class="ssup__row-id">{{ row.id.slice(0, 8) }}</span>
-            </div>
-          </div>
+          <ul class="ds-rows">
+            <li v-for="row in foreignRows" :key="row.id" class="ds-row ssup__row">
+              <span class="ds-row__body">
+                <button type="button" class="ds-row__link ssup__open" @click="openThread(row.id)">
+                  <span class="ds-row__title">{{ clientName(row) }}</span>
+                </button>
+                <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
+              </span>
+            </li>
+          </ul>
         </section>
       </div>
     </template>
 
     <!-- =========================== CONVERSATION =========================== -->
     <template v-else>
-      <div class="ssup__back-row">
+      <!-- The conversation is a state of this screen, not a route (stake A), so its
+           way back is the screen's own: the back button (K01 ghost with the arrow). -->
+      <div>
         <CBackLink :label="t('staff.support.backToQueue')" @click="closeThread" />
       </div>
 
-      <div v-if="selectedThread === null" class="ssup__center">
-        <!-- The row left the queue mid-view (a colleague's claim
-             changed visibility, or a refresh dropped it). Reading is
-             still allowed by the backend, but this screen has nothing
-             left in `support.queue` to gate actions against, so it
-             sends the person back rather than guess. -->
-        <CEmptyState :title="t('staff.support.empty')" />
-      </div>
+      <CEmptyState v-if="selectedThread === null" :title="t('staff.support.empty')" />
+      <!-- The row left the queue mid-view (a colleague's claim
+           changed visibility, or a refresh dropped it). Reading is
+           still allowed by the backend, but this screen has nothing
+           left in `support.queue` to gate actions against, so it
+           sends the person back rather than guess. -->
 
       <template v-else>
         <div class="ssup__panel-head">
-          <span class="ssup__panel-client">{{ clientName(selectedThread) }}</span>
-          <span class="ssup__panel-ids">
-            <span v-if="!clientNameIsIdentifier(selectedThread)" class="ssup__panel-id">
+          <h2 class="ssup__panel-client">{{ clientName(selectedThread) }}</h2>
+          <p class="ssup__panel-ids">
+            <span v-if="!clientNameIsIdentifier(selectedThread)">
               {{ selectedThread.client }}
             </span>
-            <span class="ssup__panel-id">
+            <span>
               {{ t('staff.support.threadId', { id: selectedThread.id.slice(0, 8) }) }}
             </span>
-          </span>
+          </p>
         </div>
 
-        <div v-if="isMine || isForeign" class="ssup__status-row">
+        <div v-if="isMine || isForeign" class="ssup__actions">
           <CButton
             v-if="canChangeStatus"
             variant="outline"
@@ -429,13 +431,13 @@ onMounted(() => {
           >
             {{ t('staff.support.statusClose') }}
           </CButton>
-          <div v-if="support.statusErrors[selectedThread.id]" class="ssup__row-error">
-            {{ errorMessage(support.statusErrors[selectedThread.id]) }}
-          </div>
         </div>
+        <StaffAlert v-if="support.statusErrors[selectedThread.id]" tone="danger">
+          {{ errorMessage(support.statusErrors[selectedThread.id]) }}
+        </StaffAlert>
 
-        <div v-if="isPool" class="ssup__claim-row">
-          <span class="ssup__hint">{{ t('staff.support.readOnlyHint') }}</span>
+        <div v-if="isPool" class="ssup__actions">
+          <p class="ssup__note">{{ t('staff.support.readOnlyHint') }}</p>
           <CButton
             variant="primary"
             size="sm"
@@ -446,84 +448,111 @@ onMounted(() => {
           >
             {{ t('staff.support.claim') }}
           </CButton>
-          <div v-if="support.claimErrors[selectedThread.id]" class="ssup__row-error">
-            {{
-              support.claimErrors[selectedThread.id]?.status === 409
-                ? t('staff.support.claimConflict')
-                : errorMessage(support.claimErrors[selectedThread.id])
-            }}
-          </div>
         </div>
+        <StaffAlert v-if="isPool && support.claimErrors[selectedThread.id]" tone="danger">
+          {{
+            support.claimErrors[selectedThread.id]?.status === 409
+              ? t('staff.support.claimConflict')
+              : errorMessage(support.claimErrors[selectedThread.id])
+          }}
+        </StaffAlert>
 
-        <p v-if="isForeign" class="ssup__hint">
+        <StaffAlert v-if="isForeign" tone="info">
           {{ t('staff.support.foreignHint') }}
-        </p>
+        </StaffAlert>
 
-        <div class="ssup__body">
-          <div v-if="support.staffMessagesLoading" class="ssup__center">
+        <!-- The feed and the composer (K51) -->
+        <section class="ds-thread ssup__thread" :aria-label="clientName(selectedThread)">
+          <div v-if="support.staffMessagesLoading" class="ssup__state">
             <CLoader :size="24" />
           </div>
 
-          <div v-else-if="support.staffMessagesError" class="ssup__center">
-            <CEmptyState
-              :title="t('staff.support.feedErrorTitle')"
-              :description="errorMessage(support.staffMessagesError)"
-            />
-            <CButton variant="outline" size="sm" inline @click="retryFeed">
-              {{ t('common.retry') }}
-            </CButton>
-          </div>
+          <CEmptyState
+            v-else-if="support.staffMessagesError"
+            tone="danger"
+            :title="t('staff.support.feedErrorTitle')"
+            :description="errorMessage(support.staffMessagesError)"
+          >
+            <template #actions>
+              <CButton variant="outline" size="sm" inline @click="retryFeed">
+                {{ t('common.retry') }}
+              </CButton>
+            </template>
+          </CEmptyState>
 
-          <div v-else-if="chronologicalMessages.length === 0" class="ssup__center">
-            <CEmptyState :title="t('staff.support.empty')" />
-          </div>
+          <CEmptyState
+            v-else-if="chronologicalMessages.length === 0"
+            :title="t('staff.support.empty')"
+          />
 
-          <div v-else class="ssup__feed">
-            <div
+          <ul v-else class="ds-thread__feed" role="log" aria-live="polite" tabindex="0">
+            <li
               v-for="message in chronologicalMessages"
               :key="message.id"
-              class="ssup__msg"
-              :class="{ 'ssup__msg--right': isRight(message) }"
+              class="ds-message"
+              :data-from="isRight(message) ? 'own' : 'other'"
             >
-              <span class="ssup__msg-sender sr-only">
+              <span class="ds-message__author">
                 {{
                   isRight(message)
                     ? t('staff.support.sender.operator')
                     : t('staff.support.sender.client')
                 }}
               </span>
-              <p class="ssup__msg-body">
+              <p class="ds-message__bubble">
                 {{ message.body }}
               </p>
-            </div>
-          </div>
-        </div>
+              <time
+                v-if="sentAt(message)"
+                class="ds-message__time"
+                :datetime="message.created_at ?? undefined"
+              >
+                {{ sentAt(message) }}
+              </time>
+            </li>
+          </ul>
 
-        <div v-if="isMine" class="ssup__composer">
-          <div v-if="support.replyErrors[selectedThread.id]" class="ssup__composer-error">
-            {{
-              support.replyErrors[selectedThread.id]?.status === 409
-                ? t('staff.support.readOnlyHint')
-                : errorMessage(support.replyErrors[selectedThread.id])
-            }}
-          </div>
-          <CTextarea
-            v-model="composerText"
-            :placeholder="t('staff.support.placeholder')"
-            :disabled="support.replying[selectedThread.id]"
-            maxlength="4000"
-            :rows="2"
-            size="compact"
-          />
-          <CButton
-            variant="primary"
-            :loading="support.replying[selectedThread.id]"
-            :disabled="composerText.trim() === '' || support.replying[selectedThread.id]"
-            @click="handleSend"
-          >
-            {{ t('staff.support.send') }}
-          </CButton>
-        </div>
+          <form v-if="isMine" class="ds-composer" @submit.prevent="handleSend">
+            <div class="ds-field ds-composer__input">
+              <label class="ds-sr-only" for="ssup-message">{{ t('staff.support.placeholder') }}</label>
+              <textarea
+                id="ssup-message"
+                v-model="composerText"
+                class="ds-input"
+                rows="2"
+                maxlength="4000"
+                :placeholder="t('staff.support.placeholder')"
+                :disabled="support.replying[selectedThread.id]"
+                :aria-invalid="support.replyErrors[selectedThread.id] ? 'true' : undefined"
+                :aria-describedby="
+                  support.replyErrors[selectedThread.id] ? 'ssup-message-error' : undefined
+                "
+              />
+              <p
+                v-if="support.replyErrors[selectedThread.id]"
+                id="ssup-message-error"
+                class="ds-field__error"
+              >
+                <AlertTriangle size="sm" />
+                <span>
+                  {{
+                    support.replyErrors[selectedThread.id]?.status === 409
+                      ? t('staff.support.readOnlyHint')
+                      : errorMessage(support.replyErrors[selectedThread.id])
+                  }}
+                </span>
+              </p>
+            </div>
+            <CButton
+              variant="primary"
+              inline
+              :loading="support.replying[selectedThread.id]"
+              :disabled="composerText.trim() === '' || support.replying[selectedThread.id]"
+            >
+              {{ t('staff.support.send') }}
+            </CButton>
+          </form>
+        </section>
       </template>
     </template>
   </div>
@@ -531,216 +560,78 @@ onMounted(() => {
 
 <style scoped>
 .ssup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  min-block-size: 0;
-  flex: 1;
-}
-
-.ssup__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.ssup__toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.ssup__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-md);
-  padding: var(--space-5) var(--space-2);
-  flex: 1;
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-inline-size: 0;
 }
 
 .ssup__groups {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
 }
 .ssup__group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: var(--space-2);
 }
 .ssup__group-title {
-  font-size: var(--fs-xs);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin: 0 0 var(--space-2);
+  color: var(--text-primary);
+}
+.ssup__group-note,
+.ssup__note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
-.ssup__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-  cursor: pointer;
+/* The row opens its conversation in place: a button holds the row's one link-part
+   (its title), and a button aligns its text to the start by hand. */
+.ssup__open {
+  text-align: start;
 }
-.ssup__row-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-.ssup__group-note {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
-}
-.ssup__row-client {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Demoted from primary to tertiary by T-75: the name above is what the
-   operator reads, this is what they quote. */
-.ssup__row-id {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
+
 .ssup__panel-head {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-1);
-  padding-block-end: var(--space-3);
-  border-block-end: thin solid var(--border-default);
   min-inline-size: 0;
 }
 .ssup__panel-client {
-  font-size: var(--fs-body);
-  font-weight: 600;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .ssup__panel-ids {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-.ssup__panel-id {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.ssup__row-time {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.ssup__row-unread {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--on-primary);
-  background: var(--primary);
-  border-radius: var(--radius-pill);
-  padding: 0 var(--space-2);
-  min-inline-size: var(--size-2xs);
-  text-align: center;
-}
-.ssup__row-error {
-  font-size: var(--fs-xs);
-  color: var(--danger);
+  color: var(--text-secondary);
 }
 
-.ssup__back-row {
+.ssup__actions {
   display: flex;
-}
-
-.ssup__status-row {
-  display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.ssup__claim-row {
-  display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.ssup__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
+/* The screen gives the thread its height (K51). */
+.ssup__thread {
+  block-size: calc(var(--center-lg) + var(--center-md));
+}
+.ssup__state {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
   min-block-size: 0;
-}
-
-.ssup__feed {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  overflow-y: auto;
-  flex: 1;
-  min-block-size: 0;
-}
-
-/* Same alignment technique as InvestorSupportView's copy (stake B):
-   align-self on a column flexbox mirrors correctly under [dir="rtl"]
-   with no extra override needed. */
-.ssup__msg {
-  max-inline-size: 85%;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-  align-self: flex-start;
-}
-.ssup__msg--right {
-  align-self: flex-end;
-  background: var(--primary);
-}
-.ssup__msg--right .ssup__msg-body {
-  color: var(--on-primary);
-}
-
-.ssup__msg-body {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-}
-
-.sr-only {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.ssup__composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-block-start: var(--space-2);
-  border-block-start: thin solid var(--border-default);
-}
-
-.ssup__composer-error {
-  font-size: var(--fs-sm);
-  color: var(--danger);
 }
 </style>
