@@ -2662,7 +2662,7 @@ details.ds-timeline__card[open] > summary .ds-timeline__chev { rotate: 180deg; }
 /* the button form of the link: a row that opens a window or does an act in place reads as the one that goes to a screen (start alignment, the whole width, the hit area stretched over the row, the focus outline round the row) */
 button.ds-row__link { appearance: none; box-sizing: border-box; inline-size: 100%; margin: 0; padding: 0; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; }
 /* a control in the trail (a button, a link, a menu) is its own target and stands above the stretched link; the rest of the trail still opens the row */
-.ds-row__trail :is(a, button, select, textarea, summary, label, .ds-input):not(.ds-sr-only) { position: relative; }
+.ds-row__trail :where(a, button, select, textarea, summary, label, .ds-input):not(.ds-sr-only) { position: relative; }
 /* a narrow row: the body keeps a measure of --center-sm and the trail drops under the text, to the end edge, instead of squeezing it */
 .ds-row { flex-wrap: wrap; }
 .ds-row__body { flex: 1 1 var(--center-sm); }
