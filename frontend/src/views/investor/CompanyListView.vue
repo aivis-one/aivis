@@ -50,7 +50,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import CompanyCard from '@/components/shared/CompanyCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -58,7 +59,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
-import { Link2 } from '@/components/ui/icons'
+import { AlertTriangle, Link2 } from '@/components/ui/icons'
 import type { PublicCompanyListResponse } from '@/api/types'
 
 type CompanyListItem = PublicCompanyListResponse['items'][number]
@@ -66,6 +67,11 @@ type CompanyListItem = PublicCompanyListResponse['items'][number]
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+
+useScreenHeader({
+  title: () => t('inv.companyList.title'),
+  lead: () => t('inv.companyList.subtitle'),
+})
 
 const store = useCompanyListStore()
 
@@ -134,37 +140,31 @@ async function retryLoadMore(): Promise<void> {
 
 <template>
   <div class="cl">
-    <header class="cl__header">
-      <h1 class="cl__title">
-        {{ t('inv.companyList.title') }}
-      </h1>
-      <p class="cl__subtitle">
-        {{ t('inv.companyList.subtitle') }}
-      </p>
-    </header>
-
-    <!-- Initial loading: full-page spinner. Only fires when there are
-         no items yet and no error -- a refresh on a non-empty list
-         doesn't blank the existing cards. -->
-    <div v-if="initialLoading" class="cl__center">
-      <CLoader :size="32" />
-    </div>
+    <!-- Initial loading: the placeholder cards of the list that will arrive (K19).
+         Only fires when there are no items yet and no error -- a refresh on a
+         non-empty list doesn't blank the existing cards. -->
+    <section v-if="initialLoading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="cl__grid" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton ds-skeleton--block" />
+      </div>
+    </section>
 
     <!-- First-page error: full-page empty state + Retry. -->
-    <div v-else-if="store.errored" class="cl__center">
-      <CEmptyState :title="t('inv.companyList.errorTitle')" />
-      <CButton variant="primary" @click="retryFirstPage">
-        {{ t('inv.companyList.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="store.errored" tone="danger" :title="t('inv.companyList.errorTitle')">
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="retryFirstPage">
+          {{ t('inv.companyList.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty (successful but zero companies). -->
-    <div v-else-if="isEmpty" class="cl__center">
-      <CEmptyState
-        :title="t('inv.companyList.empty.title')"
-        :description="t('inv.companyList.empty.subtitle')"
-      />
-    </div>
+    <CEmptyState
+      v-else-if="isEmpty"
+      :title="t('inv.companyList.empty.title')"
+      :description="t('inv.companyList.empty.subtitle')"
+    />
 
     <!-- List + sentinel + load-more error banner. -->
     <template v-else>
@@ -174,11 +174,12 @@ async function retryLoadMore(): Promise<void> {
           <button
             v-if="agentShell && agentLink"
             type="button"
-            class="cl__copy"
+            class="ds-button ds-button--ghost"
+            data-size="sm"
             @click="copyLink(company.id)"
           >
-            <Link2 :size="14" />
-            {{ t('agent.link.copyProject') }}
+            <Link2 size="sm" />
+            <span>{{ t('agent.link.copyProject') }}</span>
           </button>
         </div>
       </div>
@@ -190,13 +191,16 @@ async function retryLoadMore(): Promise<void> {
 
       <!-- LoadMore error banner: row-level, doesn't displace the
            already-loaded cards. Retry calls clearLoadMoreError + loadMore. -->
-      <div v-if="store.loadMoreErrored" class="cl__retry">
-        <span class="cl__retry-text">
-          {{ t('inv.companyList.errorTitle') }}
-        </span>
-        <CButton variant="outline" size="sm" @click="retryLoadMore">
-          {{ t('inv.companyList.errorRetry') }}
-        </CButton>
+      <div v-if="store.loadMoreErrored" class="ds-alert ds-alert--danger" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">{{ t('inv.companyList.errorTitle') }}</p>
+          <div class="ds-alert__actions">
+            <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+              {{ t('inv.companyList.errorRetry') }}
+            </CButton>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -207,35 +211,6 @@ async function retryLoadMore(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4);
-}
-
-.cl__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.cl__title {
-  margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.cl__subtitle {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.cl__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
 }
 
 .cl__grid {
@@ -248,7 +223,7 @@ async function retryLoadMore(): Promise<void> {
 
 @media (min-width: 640px) {
   .cl__grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--tile-max), 1fr));
   }
 }
 
@@ -257,55 +232,15 @@ async function retryLoadMore(): Promise<void> {
   flex-direction: column;
   gap: var(--space-2);
 }
-
-.cl__copy {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
+.cl__item > .ds-button {
   align-self: flex-start;
-  min-block-size: var(--size-md);
-  padding: 0 var(--space-2);
-  background: none;
-  border: none;
-  color: var(--primary);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .cl__sentinel {
   /* Non-zero height so IntersectionObserver has something to detect.
-     A 1px sliver is enough -- the rootMargin: '200px 0px' in the
-     composable does the heavy lifting. */
+     The thinnest box the system names is enough -- the rootMargin: '200px 0px'
+     in the composable does the heavy lifting. */
   inline-size: 100%;
-  block-size: 1px;
-}
-
-.cl__retry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-}
-
-.cl__retry-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.cl__subtitle {
-  max-inline-size: var(--maxw-prose);
+  block-size: var(--border-input-width);
 }
 </style>

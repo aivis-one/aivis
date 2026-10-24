@@ -7,10 +7,9 @@
 // their own bottom-bar slot. Replaces the F2.2 stub.
 //
 // SHELL PATTERN.
-//   Top-level tab view. InvestorShell already renders CHeader, so this
-//   view MUST NOT add one (double-header bug that bit BalanceView in
-//   F4.3 B2). Inline page-header block with <h1> + <p>, matching the
-//   MarketView / TransactionsView / BalanceView convention.
+//   Top-level tab view. The frame's header (K25) holds the title and the
+//   line under it, set here with `useScreenHeader`; this view adds no header
+//   of its own.
 //
 // SCOPE (Q1 = c in chat).
 //   Four live tiles: Documents, Notifications, Settings, Support (Ф-2).
@@ -30,7 +29,7 @@
 //   `agentTile` below is a SIGNPOST, not a duplicate action -- it has no
 //   submit logic of its own, reads its label from the exact same
 //   composable (useAgentApplicationStatus) InvestorSettingsView now
-//   also uses, and its click handler just router.pushes to
+//   also uses, and it just links to
 //   /investor/settings, the same screen, where applyForAgent() (the
 //   ONLY call site of submitAgentApplication()) still lives unchanged.
 //   Kept out of the static TILES array below because unlike its
@@ -59,9 +58,9 @@
 //   are visual debt.
 //
 // ACCESSIBILITY.
-//   Tiles are <button type="button"> elements, which are keyboard-
-//   reachable and screen-reader-labelled by their visible title text.
-//   No extra aria-* needed.
+//   Tiles are links (the system's Nav tile, K34: one anchor each), so they
+//   are keyboard-reachable, can be opened in a new tab, and are named by their
+//   visible title text. No extra aria-* needed.
 //
 // SETTINGS REACHABILITY.
 //   Before B6, /investor/settings was effectively orphaned -- the
@@ -71,7 +70,6 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Bell,
@@ -83,7 +81,7 @@ import {
   Settings as SettingsIcon,
   UserPlus,
 } from '@/components/ui/icons'
-import { safeNavigate } from '@/composables/safeNavigate'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
 
 interface Tile {
@@ -95,7 +93,11 @@ interface Tile {
 }
 
 const { t } = useI18n()
-const router = useRouter()
+
+useScreenHeader({
+  title: () => t('inv.more.title'),
+  lead: () => t('inv.more.subtitle'),
+})
 
 // Keeping the tile set as data + a single template v-for so future
 // additions (notifications, referrals, support) are one-line changes
@@ -158,10 +160,6 @@ const TILES: readonly Tile[] = [
   },
 ] as const
 
-function openTile(tile: Tile): void {
-  void safeNavigate(router.push(tile.route), `[InvestorMoreView] to ${tile.route}`)
-}
-
 // ---------------------------------------------------------------------------
 // Agent programme tile (TASK-39 item 5) -- discoverability signpost only.
 // ---------------------------------------------------------------------------
@@ -169,8 +167,8 @@ function openTile(tile: Tile): void {
 // Reads the SAME state machine InvestorSettingsView's "Agent programme"
 // section renders from (see useAgentApplicationStatus.ts for the state
 // table) so this tile's status line can never disagree with what the user
-// sees one tap later. It never submits an application itself -- clicking it
-// just navigates to /investor/settings, where the one real submit control
+// sees one tap later. It never submits an application itself -- it
+// just links to /investor/settings, where the one real submit control
 // (applyForAgent -> submitAgentApplication) lives.
 const { state: agentState, cooldownDaysLeft, fetch: fetchAgentStatus } = useAgentApplicationStatus()
 
@@ -200,10 +198,6 @@ const agentDescKey = computed<string>(() => {
 // appearing a beat after its neighbours.
 const showAgentTile = computed<boolean>(() => agentState.value !== 'loading')
 
-function openAgentTile(): void {
-  void safeNavigate(router.push('/investor/settings'), '[InvestorMoreView] to agent programme')
-}
-
 onMounted(() => {
   void fetchAgentStatus()
 })
@@ -211,24 +205,8 @@ onMounted(() => {
 
 <template>
   <div class="more">
-    <!-- Inline page header, no CHeader (shell renders it). -->
-    <div class="more__header">
-      <h1 class="more__title">
-        {{ t('inv.more.title') }}
-      </h1>
-      <p class="more__subtitle">
-        {{ t('inv.more.subtitle') }}
-      </p>
-    </div>
-
     <div class="ds-navtiles">
-      <button
-        v-for="tile in TILES"
-        :key="tile.id"
-        type="button"
-        class="ds-navtile"
-        @click="openTile(tile)"
-      >
+      <RouterLink v-for="tile in TILES" :key="tile.id" :to="tile.route" class="ds-navtile">
         <span class="ds-navtile__icon">
           <component :is="tile.icon" />
         </span>
@@ -241,13 +219,13 @@ onMounted(() => {
           </span>
         </span>
         <ChevronRight size="sm" class="ds-navtile__go" />
-      </button>
+      </RouterLink>
 
       <!-- TASK-39 item 5: discoverability signpost for the existing
            "become a representative" path -- see the header comment
-           and openAgentTile() above. Not part of the static TILES
-           array because its label reacts to application state. -->
-      <button v-if="showAgentTile" type="button" class="ds-navtile" @click="openAgentTile">
+           above. Not part of the static TILES array because its
+           label reacts to application state. -->
+      <RouterLink v-if="showAgentTile" to="/investor/settings" class="ds-navtile">
         <span class="ds-navtile__icon">
           <UserPlus />
         </span>
@@ -260,45 +238,14 @@ onMounted(() => {
           </span>
         </span>
         <ChevronRight size="sm" class="ds-navtile__go" />
-      </button>
+      </RouterLink>
     </div>
   </div>
 </template>
 
 <style scoped>
 .more {
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* Header -- MarketView / TransactionsView pattern */
-.more__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.more__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.more__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.more__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

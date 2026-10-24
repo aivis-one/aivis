@@ -7,9 +7,8 @@
 //
 // SHELL.
 //   This is a top-level tab view ("Transactions" tab reachable from
-//   the investor tab bar). Shell already renders CHeader, so no
-//   CHeader here -- just an inline page-header block with title +
-//   subtitle, matching MarketView / BalanceView.
+//   the investor tab bar). The frame's header (K25) holds the title, the
+//   line under it and the export action, set here with `useScreenHeader`.
 //
 // CATEGORY TABS.
 //   Four chips map directly to backend prefix filters (an investor has no
@@ -24,7 +23,9 @@
 //   in F4.3 (explicit scope decision).
 //
 // LIST.
-//   Infinite scroll via useInfiniteScroll on a sentinel div. Data
+//   The system's Row list (K23): the lead icon is toned by the direction of the
+//   money, the value carries its sign. Infinite scroll via useInfiniteScroll on
+//   a sentinel div. Data
 //   lives in the Pinia store so tab switches restart pagination
 //   cleanly via the fetch-epoch guard in the store.
 //
@@ -50,6 +51,7 @@ import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { onTablistKeydown } from '@/composables/tablistKeys'
 import {
+  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   CreditCard,
@@ -62,6 +64,7 @@ import {
 import { ApiResponseError } from '@/api/client'
 import { downloadTransactionsExport } from '@/api/transactions'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import TransactionDetailSheet from '@/components/shared/TransactionDetailSheet.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
 import { useToast } from '@/composables/useToast'
@@ -76,6 +79,21 @@ const { t, locale } = useI18n()
 const isCompany = useRoute().meta.shell === 'company'
 const store = useTransactionsStore()
 const { showToast } = useToast()
+
+useScreenHeader({
+  title: () => t(isCompany ? 'comp.operations.title' : 'inv.transactions.title'),
+  lead: () => t(isCompany ? 'comp.operations.subtitle' : 'inv.transactions.subtitle'),
+  actions: () => [
+    {
+      id: 'export',
+      label: t('inv.transactions.export.button'),
+      icon: Download,
+      onClick: () => {
+        void handleExport()
+      },
+    },
+  ],
+})
 // storeToRefs keeps hasMore reactive when destructured -- matches
 // MarketView / productsStore pattern. Passing store.hasMore directly
 // would unwrap to a plain boolean; wrapping in computed(() => ...)
@@ -142,6 +160,14 @@ function amountClass(cents: number): string {
   if (cents > 0) return 'tv__amount--credit'
   if (cents < 0) return 'tv__amount--debit'
   return ''
+}
+
+// The tone of the lead icon says the direction of the money (a second sign: the
+// value carries its sign in the text).
+function toneFor(cents: number): 'success' | 'danger' | undefined {
+  if (cents > 0) return 'success'
+  if (cents < 0) return 'danger'
+  return undefined
 }
 
 function formatDate(iso: string): string {
@@ -235,24 +261,6 @@ onMounted(() => {
 
 <template>
   <div class="tv">
-    <!-- Page header -->
-    <div class="tv__header">
-      <div class="tv__header-row">
-        <div class="tv__header-text">
-          <h1 class="tv__title">
-            {{ t(isCompany ? 'comp.operations.title' : 'inv.transactions.title') }}
-          </h1>
-          <p class="tv__subtitle">
-            {{ t(isCompany ? 'comp.operations.subtitle' : 'inv.transactions.subtitle') }}
-          </p>
-        </div>
-        <CButton variant="outline" size="sm" inline :loading="exporting" @click="handleExport">
-          <Download :size="14" />
-          {{ t('inv.transactions.export.button') }}
-        </CButton>
-      </div>
-    </div>
-
     <!-- Category tabs -->
     <div class="ds-tabs" role="tablist" @keydown="onTablistKeydown">
       <button
@@ -269,50 +277,64 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- Initial load spinner (no items yet, fetching) -->
-    <div v-if="store.loading && !hasItems && !store.errored" class="tv__center">
-      <CLoader :size="28" />
-    </div>
+    <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
+    <section v-if="store.loading && !hasItems && !store.errored" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 5" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" />
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
+    </section>
 
     <!-- First-page error -->
-    <div v-else-if="store.errored && !hasItems" class="tv__center">
-      <CEmptyState
-        :title="t('inv.transactions.errorTitle')"
-        :description="t('inv.transactions.errorDesc')"
-      />
-      <CButton variant="outline" size="sm" @click="store.fetchFirstPage()">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="store.errored && !hasItems"
+      tone="danger"
+      :title="t('inv.transactions.errorTitle')"
+      :description="t('inv.transactions.errorDesc')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="store.fetchFirstPage()">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty state -->
-    <div v-else-if="!store.loading && !hasItems" class="tv__center">
-      <CEmptyState :title="t('inv.transactions.empty')">
-        <template #icon>
-          <CreditCard :size="32" />
-        </template>
-      </CEmptyState>
-    </div>
+    <CEmptyState v-else-if="!store.loading && !hasItems" :title="t('inv.transactions.empty')">
+      <template #icon>
+        <CreditCard />
+      </template>
+    </CEmptyState>
 
-    <!-- List -->
-    <ul v-else class="tv__list">
-      <li v-for="item in store.items" :key="item.id">
-        <button type="button" class="tv__item" @click="openDetail(item)">
-          <div class="tv__item-icon">
-            <component :is="iconFor(item.type)" :size="16" />
-          </div>
-          <div class="tv__item-body">
-            <div class="tv__item-line">
-              <span class="tv__item-type">{{ typeLabel(item.type) }}</span>
-              <span class="tv__amount" :class="amountClass(item.amount_cents)">
-                {{ formatSignedPrice(item.amount_cents, item.currency) }}
-              </span>
-            </div>
-            <div class="tv__item-line tv__item-line--sub">
-              <span class="tv__item-date">{{ formatDate(item.created_at) }}</span>
-            </div>
-          </div>
-        </button>
+    <!-- List: a row opens the detail sheet in place -->
+    <ul v-else class="ds-rows">
+      <li v-for="item in store.items" :key="item.id" class="ds-row">
+        <span class="ds-row__lead" :data-tone="toneFor(item.amount_cents)">
+          <component :is="iconFor(item.type)" size="sm" />
+        </span>
+        <span class="ds-row__body">
+          <a
+            class="ds-row__link"
+            href="#"
+            role="button"
+            @click.prevent="openDetail(item)"
+            @keydown.space.prevent="openDetail(item)"
+          >
+            <span class="ds-row__title">{{ typeLabel(item.type) }}</span>
+          </a>
+          <span class="ds-row__meta">{{ formatDate(item.created_at) }}</span>
+        </span>
+        <span class="ds-row__trail">
+          <span class="ds-row__value" :class="amountClass(item.amount_cents)">
+            {{ formatSignedPrice(item.amount_cents, item.currency) }}
+          </span>
+        </span>
       </li>
     </ul>
 
@@ -327,13 +349,20 @@ onMounted(() => {
       list treatment. Tapping Retry clears the pause flag in the
       store and re-fires loadMore explicitly.
     -->
-    <div v-if="hasItems && store.loadMoreErrored && !store.loading" class="tv__loadmore-error">
-      <span class="tv__loadmore-error-text">
-        {{ t('inv.transactions.errorTitle') }}
-      </span>
-      <CButton variant="outline" size="sm" @click="retryLoadMore">
-        {{ t('common.retry') }}
-      </CButton>
+    <div
+      v-if="hasItems && store.loadMoreErrored && !store.loading"
+      class="ds-alert ds-alert--danger"
+      role="alert"
+    >
+      <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+      <div class="ds-alert__content">
+        <p class="ds-alert__text">{{ t('inv.transactions.errorTitle') }}</p>
+        <div class="ds-alert__actions">
+          <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+            {{ t('common.retry') }}
+          </CButton>
+        </div>
+      </div>
     </div>
 
     <!-- Detail sheet -->
@@ -349,133 +378,10 @@ onMounted(() => {
 .tv {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-/* Page header */
-.tv__header {
-  padding: var(--space-4) var(--space-4) var(--space-2);
-}
-.tv__header-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: var(--space-3);
 }
-.tv__header-text {
-  min-inline-size: 0;
-}
-.tv__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-.tv__subtitle {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0;
-}
 
-/* Center block for loading / empty / error */
-.tv__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-6) var(--space-4);
-}
-
-/* List */
-.tv__list {
-  list-style: none;
-  margin: 0;
-  padding: 0 var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.tv__item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background var(--dur-fast) var(--ease-standard);
-}
-.tv__item:hover,
-.tv__item:focus-visible {
-  border-color: var(--primary);
-}
-
-/* A7: `outline: none` was removed here. The only indicator this row had was a
-   border colour it SHARES with :hover, so keyboard focus looked exactly like
-   the mouse passing over it. The global ring now applies. */
-
-.tv__item-icon {
-  flex-shrink: 0;
-  inline-size: var(--size-lg);
-  block-size: var(--size-lg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-}
-
-.tv__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.tv__item-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.tv__item-line--sub {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.tv__item-type {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tv__item-date {
-  color: var(--text-tertiary);
-}
-
-.tv__amount {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  white-space: nowrap;
-}
+/* The sign of the money on the value (K23: credit --success, debit --danger). */
 .tv__amount--credit {
   color: var(--success);
 }
@@ -486,39 +392,6 @@ onMounted(() => {
 .tv__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
-}
-
-/* loadMore error banner -- shown under the sentinel when page > 1
-   failed. Retry button resets the store pause flag and re-fires
-   loadMore. Matches BalanceView balance-error banner styling for
-   consistency across investor lists. */
-.tv__loadmore-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: var(--space-3) var(--space-4) 0;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--danger-subtle);
-  color: var(--danger);
-  font-size: var(--fs-xs);
-}
-.tv__loadmore-error-text {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.tv__subtitle {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

@@ -62,7 +62,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CBackLink, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import ProductCard from '@/components/shared/ProductCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useProductsStore } from '@/stores/products'
@@ -121,6 +122,21 @@ const headerTitle = computed<string>(() => {
   return t('inv.productsByCompany.title')
 })
 
+// The frame's header holds the company name and the back control: one step back
+// to where the person came from (the company overview most commonly, which
+// restores its scroll for free); a deep link goes to the company overview of the
+// current companyId, or the catalogue when the id is empty.
+useScreenHeader({
+  title: headerTitle,
+  back: () => {
+    if (window.history.state?.back) return true
+    const id = companyId.value
+    return id
+      ? { name: companyOverviewRouteName.value, params: { id } }
+      : { name: companiesListRouteName.value }
+  },
+})
+
 // ---------------------------------------------------------------------------
 // Lifecycle: protective guard + filter pinning
 // ---------------------------------------------------------------------------
@@ -170,47 +186,10 @@ function onRetry(): void {
   void productsStore.fetchFirstPage()
 }
 
-// iter 2.7 batch B2: inline back-link handler. Prefers router.back()
-// so the originating screen (CompanyOverviewView most commonly)
-// restores scroll/state for free; falls back to the company overview
-// for the current companyId when there's no prior history (deep-link).
-function goBack(): void {
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  const id = companyId.value
-  if (!id) {
-    // Defensive: an empty companyId means the deep-link is malformed.
-    // onMounted's guard already redirected, but if we somehow hit this
-    // path, send the user to the catalogue rather than a broken overview.
-    void safeNavigate(
-      router.push({ name: companiesListRouteName.value }),
-      '[ProductsByCompanyView] back fallback to companies list (no id)',
-    )
-    return
-  }
-  void safeNavigate(
-    router.push({ name: companyOverviewRouteName.value, params: { id } }),
-    '[ProductsByCompanyView] back fallback to company overview',
-  )
-}
 </script>
 
 <template>
   <div class="pbc">
-    <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
-         The company name (resolved by headerTitle) lives in the h1;
-         the back-link goes to company overview, mirroring the previous
-         CHeader back's history-back default with a deep-link fallback.
-         B3: button shape extracted to CBackLink. -->
-    <div class="pbc__page-header">
-      <CBackLink :label="t('inv.productsByCompany.backLink')" @click="goBack" />
-      <h1 class="pbc__page-title">
-        {{ headerTitle }}
-      </h1>
-    </div>
-
     <!-- Grid (visible whenever we have items) -->
     <div v-if="productsStore.items.length > 0" class="pbc__grid">
       <ProductCard
@@ -221,29 +200,34 @@ function goBack(): void {
       />
     </div>
 
-    <!-- Initial load spinner -->
-    <div v-else-if="productsStore.loading" class="pbc__center">
-      <CLoader :size="28" />
-    </div>
+    <!-- Initial load: the placeholder cards of the list that will arrive (K19) -->
+    <section v-else-if="productsStore.loading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="pbc__grid" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton ds-skeleton--block" />
+      </div>
+    </section>
 
     <!-- Error state -->
-    <div v-else-if="productsStore.error" class="pbc__center">
-      <CEmptyState
-        :title="t('inv.productsByCompany.errorTitle')"
-        :description="t('inv.productsByCompany.errorDesc')"
-      />
-      <CButton variant="outline" size="sm" @click="onRetry">
-        {{ t('inv.productsByCompany.errorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="productsStore.error"
+      tone="danger"
+      :title="t('inv.productsByCompany.errorTitle')"
+      :description="t('inv.productsByCompany.errorDesc')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="onRetry">
+          {{ t('inv.productsByCompany.errorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty (filter set, company has no active products) -->
-    <div v-else class="pbc__center">
-      <CEmptyState
-        :title="t('inv.productsByCompany.empty.title')"
-        :description="t('inv.productsByCompany.empty.subtitle')"
-      />
-    </div>
+    <CEmptyState
+      v-else
+      :title="t('inv.productsByCompany.empty.title')"
+      :description="t('inv.productsByCompany.empty.subtitle')"
+    />
 
     <!-- Infinite-scroll sentinel (only when we already have items). -->
     <div v-if="productsStore.items.length > 0" ref="sentinelRef" class="pbc__sentinel">
@@ -258,27 +242,10 @@ function goBack(): void {
   flex-direction: column;
 }
 
-/* iter 2.7 batch B2 -- inline page-header (back-link + title) replaces
-   the previous view-CHeader. No hero on this view, so the title lives
-   inside a header block at the top. */
-.pbc__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4) var(--space-2);
-}
-.pbc__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
 .pbc__grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-4);
-  padding: var(--space-4);
 }
 
 /* Two-column grid for wider viewports -- matches MarketView's old
@@ -296,20 +263,9 @@ function goBack(): void {
   }
 }
 
-.pbc__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-  padding: var(--space-4);
-}
-
 .pbc__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
 }
 </style>

@@ -52,8 +52,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDownToLine, CreditCard, ListChecks, Wallet } from '@/components/ui/icons'
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  CreditCard,
+  ListChecks,
+  Wallet,
+} from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useDashboardStore } from '@/stores/dashboard'
 import { listPaymentHistory } from '@/api/payments'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -67,6 +74,8 @@ const PER_PAGE = 20
 const router = useRouter()
 const { t, locale } = useI18n()
 const dashboardStore = useDashboardStore()
+
+useScreenHeader({ title: () => t('inv.balance.title') })
 
 // -- Payment history local state --
 const items = ref<PaymentResponse[]>([])
@@ -181,17 +190,13 @@ onMounted(() => {
 
 <template>
   <div class="bv">
-    <div class="bv__header">
-      <h1 class="bv__title">
-        {{ t('inv.balance.title') }}
-      </h1>
-    </div>
-
-    <!-- The buyer account -->
-    <section class="bv__card bv__balance">
-      <h2 class="bv__card-title">
-        {{ t('inv.balance.active') }}
-      </h2>
+    <!-- The buyer account: a summary card (K07) -->
+    <section class="ds-card" aria-labelledby="bv-active">
+      <header class="ds-card__head">
+        <h2 id="bv-active" class="ds-card__title">
+          {{ t('inv.balance.active') }}
+        </h2>
+      </header>
 
       <div
         v-if="
@@ -199,114 +204,130 @@ onMounted(() => {
           dashboardStore.activeBalance.confirmed === 0 &&
           dashboardStore.activeBalance.frozen === 0
         "
-        class="bv__balance-loading"
+        class="ds-card__body"
       >
         <CLoader :size="20" />
       </div>
 
       <template v-else>
-        <div class="bv__balance-main">
-          {{ formatPrice(dashboardStore.activeBalance.confirmed) }}
+        <div class="ds-card__body bv__body">
+          <p class="ds-card__figure">
+            {{ formatPrice(dashboardStore.activeBalance.confirmed) }}
+          </p>
+
+          <dl v-if="hasFrozen" class="ds-kv">
+            <div class="ds-kv__row">
+              <dt>{{ t('inv.balance.frozen') }}</dt>
+              <dd>{{ formatPrice(dashboardStore.activeBalance.frozen) }}</dd>
+            </div>
+          </dl>
+
+          <div v-if="dashboardStore.error" class="ds-alert ds-alert--danger" role="alert">
+            <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+            <div class="ds-alert__content">
+              <p class="ds-alert__text">{{ t('inv.balance.refreshFailed') }}</p>
+              <div class="ds-alert__actions">
+                <CButton variant="outline" size="sm" inline @click="reload">
+                  {{ t('common.retry') }}
+                </CButton>
+              </div>
+            </div>
+          </div>
+
+          <p class="bv__note">
+            {{ t('inv.balance.accountNote') }}
+          </p>
         </div>
 
-        <div v-if="hasFrozen" class="bv__balance-frozen">
-          <span class="bv__balance-frozen-label">
-            {{ t('inv.balance.frozen') }}
-          </span>
-          <span class="bv__balance-frozen-value">
-            {{ formatPrice(dashboardStore.activeBalance.frozen) }}
-          </span>
-        </div>
-
-        <div v-if="dashboardStore.error" class="bv__balance-error">
-          <span>{{ t('inv.balance.refreshFailed') }}</span>
-          <CButton variant="outline" size="sm" @click="reload">
-            {{ t('common.retry') }}
+        <footer class="ds-card__foot bv__actions">
+          <CButton variant="primary" @click="goDeposit">
+            <ArrowDownToLine size="sm" />
+            {{ t('inv.balance.deposit') }}
           </CButton>
-        </div>
-
-        <p class="bv__note">
-          {{ t('inv.balance.accountNote') }}
-        </p>
-
-        <CButton variant="primary" class="bv__deposit" @click="goDeposit">
-          <ArrowDownToLine :size="16" />
-          {{ t('inv.balance.deposit') }}
-        </CButton>
-        <CButton variant="outline" class="bv__deposit" @click="goOperations">
-          <ListChecks :size="16" />
-          {{ t('inv.balance.allOperations') }}
-        </CButton>
+          <CButton variant="outline" @click="goOperations">
+            <ListChecks size="sm" />
+            {{ t('inv.balance.allOperations') }}
+          </CButton>
+        </footer>
       </template>
     </section>
 
     <!-- The holder: accruals and payouts, no balance -->
-    <section class="bv__card bv__holder">
-      <div class="bv__holder-head">
-        <Wallet :size="16" />
-        <span>{{ t('inv.balance.holder.title') }}</span>
+    <section class="ds-card ds-card--flat" aria-labelledby="bv-holder">
+      <header class="ds-card__head">
+        <h2 id="bv-holder" class="ds-card__title bv__holder-title">
+          <Wallet size="sm" />
+          <span>{{ t('inv.balance.holder.title') }}</span>
+        </h2>
+      </header>
+      <div class="ds-card__body bv__body">
+        <p class="bv__note">
+          {{ t('inv.balance.holder.rule') }}
+        </p>
+        <p class="bv__note">
+          {{ t('inv.balance.holder.small') }}
+        </p>
       </div>
-      <p class="bv__note">
-        {{ t('inv.balance.holder.rule') }}
-      </p>
-      <p class="bv__note">
-        {{ t('inv.balance.holder.small') }}
-      </p>
     </section>
 
     <!-- Payment history -->
-    <section class="bv__history">
-      <h2 class="bv__card-title bv__history-title">
+    <section class="bv__history" aria-labelledby="bv-history">
+      <h2 id="bv-history" class="bv__section-title">
         {{ t('inv.balance.history') }}
       </h2>
 
-      <!-- Initial load spinner (no items yet, fetching) -->
-      <div v-if="loadingHistory && items.length === 0 && !historyError" class="bv__history-center">
-        <CLoader :size="24" />
+      <!-- Initial load: the placeholder rows of the list that will arrive (K19) -->
+      <div v-if="loadingHistory && items.length === 0 && !historyError" aria-busy="true">
+        <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+        <div class="ds-rows" aria-hidden="true">
+          <div v-for="n in 3" :key="n" class="ds-skeleton-row">
+            <span class="ds-skeleton ds-skeleton--avatar" />
+            <span class="ds-skeleton-stack">
+              <span class="ds-skeleton ds-skeleton--title" />
+              <span class="ds-skeleton ds-skeleton--text" />
+            </span>
+          </div>
+        </div>
       </div>
 
       <!-- Error (first-page failure) -->
-      <div v-else-if="historyError && items.length === 0" class="bv__history-center">
-        <CEmptyState
-          :title="t('inv.balance.historyError.title')"
-          :description="t('inv.balance.historyError.desc')"
-        />
-        <CButton variant="outline" size="sm" @click="fetchFirstPage">
-          {{ t('common.retry') }}
-        </CButton>
-      </div>
+      <CEmptyState
+        v-else-if="historyError && items.length === 0"
+        tone="danger"
+        :title="t('inv.balance.historyError.title')"
+        :description="t('inv.balance.historyError.desc')"
+      >
+        <template #actions>
+          <CButton variant="outline" size="sm" inline @click="fetchFirstPage">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
       <!-- Empty state -->
-      <div v-else-if="!loadingHistory && items.length === 0" class="bv__history-center">
-        <CEmptyState :title="t('inv.balance.historyEmpty')">
-          <template #icon>
-            <CreditCard :size="32" />
-          </template>
-        </CEmptyState>
-      </div>
+      <CEmptyState
+        v-else-if="!loadingHistory && items.length === 0"
+        :title="t('inv.balance.historyEmpty')"
+      >
+        <template #icon>
+          <CreditCard />
+        </template>
+      </CEmptyState>
 
       <!-- List -->
-      <ul v-else class="bv__list">
-        <li v-for="item in items" :key="item.id" class="bv__item">
-          <div class="bv__item-icon">
-            <CreditCard :size="16" />
-          </div>
-          <div class="bv__item-body">
-            <div class="bv__item-line">
-              <span class="bv__item-type">
-                {{ typeLabel(item.payment_type) }}
-              </span>
-              <span class="bv__item-amount">
-                {{ formatPrice(item.amount_cents, item.currency) }}
-              </span>
-            </div>
-            <div class="bv__item-line bv__item-line--sub">
-              <span class="bv__item-date">
-                {{ formatDateTime(item.created_at, locale) }}
-              </span>
-              <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
-            </div>
-          </div>
+      <ul v-else class="ds-rows">
+        <li v-for="item in items" :key="item.id" class="ds-row">
+          <span class="ds-row__lead"><CreditCard size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ typeLabel(item.payment_type) }}</span>
+            <span class="ds-row__meta">{{ formatDateTime(item.created_at, locale) }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value bv__amount">
+              {{ formatPrice(item.amount_cents, item.currency) }}
+            </span>
+            <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
+          </span>
         </li>
       </ul>
 
@@ -322,202 +343,54 @@ onMounted(() => {
 .bv {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
+  gap: var(--space-4);
 }
 
-/* Page header (inline, not CHeader -- shell already renders CHeader) */
-.bv__header {
-  padding: var(--space-4) var(--space-4) 0;
-}
-.bv__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-/* Card base */
-.bv__card {
-  padding: var(--space-4-lg);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  margin: var(--space-4) var(--space-4) 0;
-}
-
-.bv__card-title {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  margin: 0 0 var(--space-3);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* Active balance */
-.bv__balance {
+.bv__body {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bv__actions {
   flex-direction: column;
 }
 
-.bv__balance-loading {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-2) 0;
-}
-
-.bv__balance-main {
-  font-size: var(--fs-4xl);
-  font-weight: 700;
-  color: var(--accent);
-  line-height: 1.1;
-  margin-block-end: var(--space-2);
-  word-break: break-word;
-}
-
-.bv__balance-frozen {
-  display: flex;
+.bv__holder-title {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-block-start: var(--space-2);
-  margin-block-start: var(--space-1);
-  border-block-start: thin solid var(--border-default);
+  gap: var(--space-2);
+}
+
+.bv__note {
+  margin: 0;
   font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.bv__balance-frozen-label {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-.bv__balance-frozen-value {
-  font-weight: 600;
+  line-height: var(--lh-normal);
   color: var(--text-secondary);
 }
 
-.bv__balance-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-block-start: var(--space-3);
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--danger-subtle);
-  color: var(--danger);
-  font-size: var(--fs-xs);
-}
-
-.bv__deposit {
-  margin-block-start: var(--space-4);
-}
-
-/* History */
+/* A section heading inside the screen */
 .bv__history {
-  padding: var(--space-4-lg) var(--space-4) 0;
-}
-
-.bv__history-title {
-  padding: 0 var(--space-1);
-}
-
-.bv__history-center {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: var(--space-3);
-  padding: var(--space-6) var(--space-4);
 }
-
-.bv__list {
-  list-style: none;
+.bv__section-title {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.bv__item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-}
-
-.bv__item-icon {
-  flex-shrink: 0;
-  inline-size: var(--size-lg);
-  block-size: var(--size-lg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
-}
-
-.bv__item-body {
-  flex: 1;
-  min-inline-size: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.bv__item-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.bv__item-line--sub {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.bv__item-type {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  text-transform: capitalize;
-}
-.bv__item-amount {
-  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
   font-weight: 700;
-  color: var(--success);
-  white-space: nowrap;
+  color: var(--text-primary);
 }
-.bv__item-date {
-  color: var(--text-tertiary);
+
+/* A payment is money in: the value carries the credit colour (K23). */
+.bv__amount {
+  color: var(--success);
 }
 
 .bv__sentinel {
   display: flex;
   justify-content: center;
-  padding: var(--space-4) 0 0;
   min-block-size: var(--size-md);
-}
-
-
-/* The holder card: the same card shell, words only -- no figure. */
-.bv__holder-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.bv__note {
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-  color: var(--text-secondary);
 }
 </style>

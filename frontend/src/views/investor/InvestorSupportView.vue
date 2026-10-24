@@ -4,11 +4,10 @@
 // =============================================================================
 //
 // One conversation: feed + composer. Reached from the Support tile in
-// InvestorMoreView -> /investor/support. No CHeader (InvestorShell
-// renders it, same paradigm as every neighbour); a CBackLink above an
-// inline <h1> since this is a detail screen reached from "More", not
-// a tab-bar top level (contrast InvestorDocsView, which dropped its
-// back-link when it was promoted to a tab).
+// InvestorMoreView -> /investor/support. The frame's header holds the title,
+// the back control and the refresh action (this is a detail screen reached
+// from "More", not a tab-bar top level); the conversation is the system's
+// chat thread and composer (K51).
 //
 // TASK-39 item 4: also mounted at /agent/support (the Support row of
 // Settings) and /company/support (a row inside
@@ -30,9 +29,7 @@
 //   More tab) and wrong for company (no More tab; this screen is
 //   reached from a Settings row instead). Fixed below by reading
 //   route.meta.shell (getShell) to pick the Settings route of the shell /
-//   (company-settings for a company), and by switching the label to the generic
-//   t('common.back') (same key NotificationsInboxView's CBackLink
-//   uses) instead of a "to more" phrase that doesn't hold for company.
+//   (company-settings for a company); the back control is the frame's.
 //
 // STATE IS THE STORE'S, EXCEPT ONE LOCAL ID.
 //   `knownThreadId` is the only piece of state this component owns:
@@ -99,20 +96,20 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { RefreshCw } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CLoader, CTextarea } from '@/components/ui'
-import { safeNavigate } from '@/composables/safeNavigate'
+import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { getShell } from '@/router/helpers'
+import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
 import { useAuthStore } from '@/stores/auth'
 import type { SupportActionError } from '@/stores/support'
 import type { SupportMessageResponse } from '@/api/support'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
-const router = useRouter()
 const support = useSupportStore()
 const auth = useAuthStore()
 
@@ -148,6 +145,10 @@ const chronologicalMessages = computed<SupportMessageResponse[]>(() =>
 const composerError = computed<SupportActionError | null>(
   () => support.threadError ?? support.sendError,
 )
+
+function sentAt(message: SupportMessageResponse): string | null {
+  return message.created_at ? formatDateTime(message.created_at, locale.value) : null
+}
 
 function isMine(message: SupportMessageResponse): boolean {
   return myUserId.value !== null && message.sender === myUserId.value
@@ -232,20 +233,27 @@ const backFallbackRouteName = computed<string>(() => {
   return 'investor-settings'
 })
 
-function goBack(): void {
-  // Same history-aware pattern as CBackLink's other consumers
-  // (InstallmentView etc.): prefer router.back() so the screen this
-  // was reached from restores its scroll for free, fall back to a
-  // push only for a deep-linked entry.
-  if (window.history.state?.back) {
-    router.back()
-    return
-  }
-  void safeNavigate(
-    router.push({ name: backFallbackRouteName.value }),
-    '[InvestorSupportView] back',
-  )
-}
+// Same history-aware pattern as the other drill-down screens: one step back so
+// the screen this was reached from restores its scroll for free, the shell's
+// Settings only for a deep-linked entry.
+useScreenHeader({
+  title: () => t('inv.support.title'),
+  back: () =>
+    window.history.state?.back ? true : { name: backFallbackRouteName.value },
+  actions: () =>
+    hasThread.value
+      ? [
+          {
+            id: 'refresh',
+            label: t('inv.support.refresh'),
+            icon: RefreshCw,
+            onClick: () => {
+              if (!support.messagesLoading) retryFeed()
+            },
+          },
+        ]
+      : [],
+})
 
 onMounted(() => {
   void boot()
@@ -254,106 +262,96 @@ onMounted(() => {
 
 <template>
   <div class="isup">
-    <div class="isup__back-row">
-      <CBackLink :label="t('common.back')" @click="goBack" />
-    </div>
-
-    <header class="isup__header">
-      <h1 class="isup__title">
-        {{ t('inv.support.title') }}
-      </h1>
-    </header>
-
     <!-- INIT: determining whether a request already exists -->
-    <div v-if="support.threadsLoading" class="isup__center">
-      <CLoader :size="32" />
-    </div>
+    <CLoader v-if="support.threadsLoading" />
 
     <!-- INIT error: never falls back to the invite -- a network -->
     <!-- failure must not look like "you have no history yet". -->
-    <div v-else-if="support.threadsError" class="isup__center">
-      <CEmptyState
-        :title="t('inv.support.initErrorTitle')"
-        :description="errorMessage(support.threadsError)"
-      />
-      <CButton variant="primary" inline @click="retryInit">
-        {{ t('inv.support.initErrorRetry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="support.threadsError"
+      tone="danger"
+      :title="t('inv.support.initErrorTitle')"
+      :description="errorMessage(support.threadsError)"
+    >
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="retryInit">
+          {{ t('inv.support.initErrorRetry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
-    <template v-else>
-      <div class="isup__body">
-        <div v-if="hasThread" class="isup__toolbar">
-          <CButton
-            variant="outline"
-            size="sm"
-            inline
-            :disabled="support.messagesLoading"
-            :aria-label="t('inv.support.refresh')"
-            @click="retryFeed"
-          >
-            <RefreshCw :size="16" />
-          </CButton>
-        </div>
+    <!-- The conversation: the feed and the composer (K51) -->
+    <section v-else class="ds-thread isup__thread" :aria-label="t('inv.support.title')">
+      <div v-if="support.messagesLoading || support.messagesError || showInvite" class="isup__state">
+        <CLoader v-if="support.messagesLoading" :size="24" />
 
-        <div v-if="support.messagesLoading" class="isup__center">
-          <CLoader :size="24" />
-        </div>
+        <CEmptyState
+          v-else-if="support.messagesError"
+          tone="danger"
+          :title="t('inv.support.feedErrorTitle')"
+          :description="errorMessage(support.messagesError)"
+        >
+          <template #actions>
+            <CButton variant="outline" size="sm" inline @click="retryFeed">
+              {{ t('inv.support.feedErrorRetry') }}
+            </CButton>
+          </template>
+        </CEmptyState>
 
-        <div v-else-if="support.messagesError" class="isup__center">
-          <CEmptyState
-            :title="t('inv.support.feedErrorTitle')"
-            :description="errorMessage(support.messagesError)"
-          />
-          <CButton variant="outline" size="sm" inline @click="retryFeed">
-            {{ t('inv.support.feedErrorRetry') }}
-          </CButton>
-        </div>
-
-        <div v-else-if="showInvite" class="isup__center">
-          <CEmptyState :title="t('inv.support.invite')" />
-        </div>
-
-        <div v-else class="isup__feed">
-          <div
-            v-for="message in chronologicalMessages"
-            :key="message.id"
-            class="isup__msg"
-            :class="{ 'isup__msg--mine': isMine(message) }"
-          >
-            <span class="isup__msg-sender sr-only">
-              {{ isMine(message) ? t('inv.support.sender.me') : t('inv.support.sender.operator') }}
-            </span>
-            <p class="isup__msg-body">
-              {{ message.body }}
-            </p>
-          </div>
-        </div>
+        <CEmptyState v-else :title="t('inv.support.invite')" />
       </div>
 
-      <div class="isup__composer">
-        <div v-if="composerError" class="isup__composer-error">
-          {{ errorMessage(composerError) }}
+      <ul v-else class="ds-thread__feed" role="log" aria-live="polite" tabindex="0">
+        <li
+          v-for="message in chronologicalMessages"
+          :key="message.id"
+          class="ds-message"
+          :data-from="isMine(message) ? 'own' : 'other'"
+        >
+          <span v-if="isMine(message)" class="ds-sr-only">{{ t('inv.support.sender.me') }}</span>
+          <span v-else class="ds-message__author">{{ t('inv.support.sender.operator') }}</span>
+          <p class="ds-message__bubble">
+            {{ message.body }}
+          </p>
+          <time
+            v-if="sentAt(message)"
+            class="ds-message__time"
+            :datetime="message.created_at ?? undefined"
+          >
+            {{ sentAt(message) }}
+          </time>
+        </li>
+      </ul>
+
+      <form class="ds-composer" @submit.prevent="handleSend">
+        <div class="ds-field ds-composer__input">
+          <label class="ds-sr-only" for="isup-message">{{ t('inv.support.placeholder') }}</label>
+          <textarea
+            id="isup-message"
+            v-model="composerText"
+            class="ds-input"
+            rows="2"
+            maxlength="4000"
+            :placeholder="t('inv.support.placeholder')"
+            :disabled="support.sending"
+            :aria-invalid="composerError ? 'true' : undefined"
+            :aria-describedby="composerError ? 'isup-message-error' : undefined"
+          />
+          <p v-if="composerError" id="isup-message-error" class="ds-field__error">
+            <AlertTriangle size="sm" />
+            <span>{{ errorMessage(composerError) }}</span>
+          </p>
         </div>
-        <CTextarea
-          v-model="composerText"
-          :placeholder="t('inv.support.placeholder')"
-          :aria-label="t('inv.support.placeholder')"
-          :disabled="support.sending"
-          maxlength="4000"
-          :rows="2"
-          size="compact"
-        />
         <CButton
           variant="primary"
+          inline
           :loading="support.sending"
           :disabled="composerText.trim() === '' || support.sending"
-          @click="handleSend"
         >
           {{ t('inv.support.send') }}
         </CButton>
-      </div>
-    </template>
+      </form>
+    </section>
   </div>
 </template>
 
@@ -361,124 +359,19 @@ onMounted(() => {
 .isup {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  /* Composer must stay reachable without the page itself scrolling
-     under the shell chrome -- match InstallmentView's full-height
-     detail-screen convention rather than InvestorEventsView's plain
-     list flow. */
-  min-block-size: 0;
-  flex: 1;
-}
-
-.isup__back-row {
-  display: flex;
-}
-
-.isup__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.isup__title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.isup__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-md);
-  padding: var(--space-5) var(--space-2);
-  flex: 1;
-}
-
-.isup__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
   min-block-size: 0;
 }
 
-.isup__toolbar {
-  display: flex;
-  justify-content: flex-end;
+/* The screen gives the thread its height (K51). */
+.isup__thread {
+  block-size: calc(var(--center-lg) + var(--center-md));
 }
 
-.isup__feed {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  overflow-y: auto;
-  flex: 1;
+/* A state (loading, error, nothing yet) stands where the feed will be. */
+.isup__state {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
   min-block-size: 0;
-}
-
-/* Bubble alignment via align-self, not left/right: a column flexbox's
-   cross-axis start/end already follows the container's direction, so
-   this mirrors correctly under [dir="rtl"] (ar.json) with no extra
-   override -- same principle CTabBar's own RTL rule exists to
-   preserve, applied here without needing a rule of its own. */
-/* No design-system maxw token fits a chat bubble: --maxw-prose (680px)
-   is a reading-column ceiling that would do nothing on a phone-width
-   screen (same as CEmptyState's own use of it), and --maxw-form
-   (360px) is semantically a form width, not a message width. A
-   relative cap is the standard messenger convention and scales with
-   whatever container this ends up in, mobile or desktop. */
-.isup__msg {
-  max-inline-size: 85%;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--bg-subtle);
-  align-self: flex-start;
-}
-.isup__msg--mine {
-  align-self: flex-end;
-  background: var(--primary);
-}
-.isup__msg--mine .isup__msg-body {
-  color: var(--on-primary);
-}
-
-.isup__msg-body {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-}
-
-/* Visually hidden but still in the accessibility tree -- same
-   technique as CButton.vue's .c-btn__label--sr, kept local here
-   since that class is private to CButton's own scoped style. */
-.sr-only {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.isup__composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-block-start: var(--space-2);
-  border-block-start: thin solid var(--border-default);
-}
-
-.isup__composer-error {
-  font-size: var(--fs-sm);
-  color: var(--danger);
 }
 </style>
