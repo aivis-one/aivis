@@ -18,7 +18,6 @@
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Users,
@@ -32,14 +31,12 @@ import type { Component } from 'vue'
 import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { useStaffRights } from '@/composables/useStaffRights'
 import { useAuthStore } from '@/stores/auth'
 import { QUEUES, useStaffQueuesStore } from '@/stores/staffQueues'
 import type { QueueKey, QueueSpec } from '@/stores/staffQueues'
 
 const { t } = useI18n()
-const router = useRouter()
 const authStore = useAuthStore()
 const queues = useStaffQueuesStore()
 const { current } = useStaffRights()
@@ -92,14 +89,6 @@ function subOf(key: QueueKey): string | undefined {
   return queues.queues[key].status === 'error' ? t('staff.home.loadFailed') : undefined
 }
 
-function go(path: string): void {
-  void safeNavigate(router.push(path), `[StaffDashboardView] to ${path}`)
-}
-
-function goUsers(): void {
-  go('/staff/users')
-}
-
 function reload(): void {
   void queues.loadAll((key) => current().can(key))
 }
@@ -136,7 +125,7 @@ onMounted(reload)
           :value="queues.users.status === 'error' ? '—' : String(queues.users.count)"
           :label="t('staff.users.stat')"
           :sub="queues.users.status === 'error' ? t('staff.home.loadFailed') : undefined"
-          @click="goUsers"
+          to="/staff/users"
         >
           <template #icon>
             <span class="ds-lead"><Users /></span>
@@ -149,7 +138,7 @@ onMounted(reload)
           :value="valueOf(q.key)"
           :label="t(q.labelKey)"
           :sub="subOf(q.key)"
-          @click="go(q.path)"
+          :to="q.path"
         >
           <template #icon>
             <span class="ds-lead" :data-tone="ICONS[q.key].tone">

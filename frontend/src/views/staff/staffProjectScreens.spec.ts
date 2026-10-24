@@ -11,10 +11,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { id: 'proj-1' }, query: {} }),
-  useRouter: () => ({ push: vi.fn() }),
-}))
+vi.mock('vue-router', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    useRoute: () => ({ params: { id: 'proj-1' }, query: {} }),
+    useRouter: () => ({ push: vi.fn() }),
+    // CStatCard draws a tile with `to` as a RouterLink: an anchor here.
+    RouterLink: defineComponent({
+      props: { to: { type: [String, Object], required: true } },
+      setup:
+        (props, { slots }) =>
+        () =>
+          h('a', { href: String(props.to) }, slots.default?.()),
+    }),
+  }
+})
 vi.mock('@/composables/safeNavigate', () => ({ safeNavigate: vi.fn() }))
 vi.mock('@/api/admin', () => ({
   fetchDashboardStats: vi.fn(),
