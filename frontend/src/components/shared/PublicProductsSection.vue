@@ -57,7 +57,7 @@
 //   20+ shows the first 20 and offers a path to the rest.
 //
 // SELF-HIDE CONTRACT (R1 §1.6.1).
-//   - loading           -> render (spinner inside)
+//   - loading           -> render (skeleton cards inside)
 //   - errored           -> render (error + retry inside)
 //   - success + empty   -> DON'T render at all
 //   - success + items   -> render (grid + maybe-CTA)
@@ -71,7 +71,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CButton, CEmptyState } from '@/components/ui'
 import ProductCard from '@/components/shared/ProductCard.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProductsStore } from '@/stores/products'
@@ -233,14 +233,23 @@ function onRetry(): void {
 <template>
   <section v-if="shouldRender" class="pps">
     <header class="pps__head">
-      <h2 class="pps__title">
+      <h2 class="ds-section-title">
         {{ t('public.companyOverview.sectionProducts') }}
       </h2>
     </header>
 
-    <!-- Initial loading -->
-    <div v-if="initialLoading" class="ds-empty">
-      <CLoader :size="24" />
+    <!-- Initial loading: a placeholder grid of cards (K19) -->
+    <div v-if="initialLoading" class="pps__grid" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div v-for="n in 3" :key="n" class="ds-card ds-card--media" aria-hidden="true">
+        <span class="ds-skeleton ds-skeleton--block" />
+        <div class="ds-card__content">
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Error -->
@@ -288,15 +297,6 @@ function onRetry(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.pps__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 
 .pps__grid {

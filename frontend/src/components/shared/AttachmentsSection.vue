@@ -11,7 +11,7 @@
 //   Per R2 §7.1 the section "hides when empty". The parent view does
 //   NOT wrap this component in v-if -- the component decides itself
 //   whether to render. The decision tree:
-//     - loading           -> render (spinner inside the section)
+//     - loading           -> render (skeleton rows inside the section)
 //     - errored           -> render (error + retry inside the section)
 //     - success + empty   -> DON'T render at all (return <!---->)
 //     - success + items   -> render (header + grouped list)
@@ -62,7 +62,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
+import { CButton, CEmptyState, CSelect } from '@/components/ui'
 import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { downloadAttachment } from '@/api/attachments'
 import { useAttachmentsStore } from '@/stores/attachments'
@@ -293,7 +293,7 @@ function formatBytes(bytes: number): string {
   -->
   <section v-if="shouldRender" class="ats">
     <header class="ats__head">
-      <h2 class="ats__title">
+      <h2 class="ds-section-title">
         {{ t('inv.companyOverview.sectionDocuments') }}
       </h2>
       <!-- A4: the section heading beside it is a heading, not a label. -->
@@ -306,8 +306,16 @@ function formatBytes(bytes: number): string {
       />
     </header>
 
-    <div v-if="loading" class="ds-empty">
-      <CLoader :size="24" />
+    <div v-if="loading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" /><span class="ds-skeleton-stack"
+            ><span class="ds-skeleton ds-skeleton--title" /><span
+              class="ds-skeleton ds-skeleton--text"
+          /></span>
+        </div>
+      </div>
     </div>
 
     <CEmptyState
@@ -335,7 +343,6 @@ function formatBytes(bytes: number): string {
             :description="att.description"
             :meta="`${att.original_filename} · ${formatBytes(att.file_size_bytes)}`"
             :icon="mimeIcon(att.mime_type)"
-            :href="`/api/v1/companies/${companyId}/attachments/${att.id}/download`"
             :download="() => downloadAttachment(companyId, att.id)"
             @failed="onDownloadFailed"
           />
@@ -356,15 +363,6 @@ function formatBytes(bytes: number): string {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-}
-
-.ats__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 
 /* The select claims its own width; the title absorbs the rest. */

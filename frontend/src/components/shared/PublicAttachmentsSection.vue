@@ -22,7 +22,7 @@
 //   its own wiring end-to-end.
 //
 // SELF-HIDING CONTRACT (R2 §7.2, mirrors AttachmentsSection).
-//   - loading             -> render (spinner inside the section)
+//   - loading             -> render (skeleton rows inside the section)
 //   - errored             -> render (error + retry inside the section)
 //   - success + empty     -> DON'T render at all (return <!---->)
 //   - success + items     -> render (header + grouped list)
@@ -53,7 +53,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-import { CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
+import { CButton, CEmptyState, CSelect } from '@/components/ui'
 import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { downloadPublicAttachment, listPublicAttachments } from '@/api/attachments'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
@@ -302,7 +302,7 @@ function attachmentHref(att: AttachmentResponse): string {
   -->
   <section v-if="shouldRender" class="ats">
     <header class="ats__head">
-      <h2 class="ats__title">
+      <h2 class="ds-section-title">
         {{ t('public.companyOverview.sectionDocuments') }}
       </h2>
       <!-- A4: the section heading beside it is a heading, not a label. -->
@@ -315,8 +315,16 @@ function attachmentHref(att: AttachmentResponse): string {
       />
     </header>
 
-    <div v-if="loading" class="ds-empty">
-      <CLoader :size="24" />
+    <div v-if="loading" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 3" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" /><span class="ds-skeleton-stack"
+            ><span class="ds-skeleton ds-skeleton--title" /><span
+              class="ds-skeleton ds-skeleton--text"
+          /></span>
+        </div>
+      </div>
     </div>
 
     <CEmptyState
@@ -365,15 +373,6 @@ function attachmentHref(att: AttachmentResponse): string {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-}
-
-.ats__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 
 /* The select claims its own width; the title absorbs the rest. */

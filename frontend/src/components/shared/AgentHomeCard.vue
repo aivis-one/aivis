@@ -33,7 +33,7 @@ onMounted(() => {
 
 <template>
   <section class="ahc">
-    <h2 class="ahc__title">
+    <h2 class="ds-section-title">
       {{ t('agent.home.title') }}
     </h2>
 
@@ -99,14 +99,5 @@ onMounted(() => {
 .ahc {
   display: grid;
   gap: var(--space-3);
-}
-
-/* The section's heading, in the display face. */
-.ahc__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>

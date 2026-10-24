@@ -64,7 +64,7 @@ onMounted(() => {
 
 <template>
   <section v-if="gifts.length > 0" class="gifts">
-    <h2 class="gifts__title">
+    <h2 class="ds-section-title">
       {{ t('inv.portfolio.gifts.title') }}
     </h2>
     <ul class="ds-rows">
@@ -108,14 +108,5 @@ onMounted(() => {
 .gifts {
   display: grid;
   gap: var(--space-2);
-}
-
-/* The section's heading, in the display face. */
-.gifts__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>

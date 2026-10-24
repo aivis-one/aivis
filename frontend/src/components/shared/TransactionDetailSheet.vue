@@ -41,7 +41,7 @@ import { useI18n } from 'vue-i18n'
 import { Copy } from '@/components/ui/icons'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
-import { CEmptyState, CLoader } from '@/components/ui'
+import { CEmptyState } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime, formatPrice, formatSignedPrice } from '@/utils/format'
@@ -178,8 +178,9 @@ function onClose(): void {
 
 <template>
   <CBottomSheet :open="open" :title="t('inv.transactions.detail.title')" @close="onClose">
-    <div v-if="loading" class="ds-empty">
-      <CLoader :size="24" />
+    <div v-if="loading" class="ds-loader ds-loader--centered" role="status">
+      <span class="ds-loader__ring" aria-hidden="true" />
+      <span>{{ t('common.loading') }}</span>
     </div>
 
     <CEmptyState
@@ -256,6 +257,8 @@ function onClose(): void {
 }
 .tds__amount {
   font-size: var(--fs-2xl);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--text-primary);
   line-height: var(--lh-tight);
