@@ -82,7 +82,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
-import { CBackLink, CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
@@ -100,7 +100,10 @@ const myOperatorId = computed<string | null>(() => auth.user?.id ?? null)
 
 // The queue's refresh is the screen's one title-side action, so the frame's header
 // carries it (an icon button, named by its label); the open conversation has none.
+// The conversation is a state of this screen, not a route, so its way back is the
+// screen's own handler, drawn by the header as its back button.
 useScreenHeader({
+  back: () => (openThreadId.value === null ? undefined : { handler: closeThread }),
   actions: () =>
     openThreadId.value === null
       ? [
@@ -292,7 +295,7 @@ onMounted(() => {
 
       <div v-else class="ssup__groups">
         <section v-if="poolRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">
+          <h2 class="ds-section-title">
             {{ t('staff.support.groupPool') }}
           </h2>
           <!-- Pool rows never carry an unread count, and that is a
@@ -300,7 +303,7 @@ onMounted(() => {
                count is attached only to threads the operator takes part
                in, and nobody takes part in an unclaimed one. Said on
                screen because its absence is otherwise read as a bug. -->
-          <p class="ssup__group-note">{{ t('staff.support.poolNoUnread') }}</p>
+          <p class="ds-note">{{ t('staff.support.poolNoUnread') }}</p>
           <ul class="ds-rows">
             <li v-for="row in poolRows" :key="row.id" class="ds-row ssup__row">
               <span class="ds-row__body">
@@ -338,7 +341,7 @@ onMounted(() => {
         </section>
 
         <section v-if="mineRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">
+          <h2 class="ds-section-title">
             {{ t('staff.support.groupMine') }}
           </h2>
           <ul class="ds-rows">
@@ -361,7 +364,7 @@ onMounted(() => {
         </section>
 
         <section v-if="foreignRows.length > 0" class="ssup__group">
-          <h2 class="ssup__group-title">
+          <h2 class="ds-section-title">
             {{ t('staff.support.groupForeign') }}
           </h2>
           <ul class="ds-rows">
@@ -380,12 +383,6 @@ onMounted(() => {
 
     <!-- =========================== CONVERSATION =========================== -->
     <template v-else>
-      <!-- The conversation is a state of this screen, not a route (stake A), so its
-           way back is the screen's own: the back button (K01 ghost with the arrow). -->
-      <div>
-        <CBackLink :label="t('staff.support.backToQueue')" @click="closeThread" />
-      </div>
-
       <CEmptyState v-if="selectedThread === null" :title="t('staff.support.empty')" />
       <!-- The row left the queue mid-view (a colleague's claim
            changed visibility, or a refresh dropped it). Reading is
@@ -395,7 +392,7 @@ onMounted(() => {
 
       <template v-else>
         <div class="ssup__panel-head">
-          <h2 class="ssup__panel-client">{{ clientName(selectedThread) }}</h2>
+          <h2 class="ds-section-title ssup__panel-client">{{ clientName(selectedThread) }}</h2>
           <p class="ssup__panel-ids">
             <span v-if="!clientNameIsIdentifier(selectedThread)">
               {{ selectedThread.client }}
@@ -435,7 +432,7 @@ onMounted(() => {
         </CAlert>
 
         <div v-if="isPool" class="ssup__actions">
-          <p class="ssup__note">{{ t('staff.support.readOnlyHint') }}</p>
+          <p class="ds-note">{{ t('staff.support.readOnlyHint') }}</p>
           <CButton
             variant="primary"
             size="sm"
@@ -461,9 +458,7 @@ onMounted(() => {
 
         <!-- The feed and the composer (K51) -->
         <section class="ds-thread ssup__thread" :aria-label="clientName(selectedThread)">
-          <div v-if="support.staffMessagesLoading" class="ssup__state">
-            <CLoader :size="24" />
-          </div>
+          <CLoader v-if="support.staffMessagesLoading" centered />
 
           <CEmptyState
             v-else-if="support.staffMessagesError"
@@ -574,31 +569,12 @@ onMounted(() => {
   display: grid;
   gap: var(--space-2);
 }
-.ssup__group-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.ssup__group-note,
-.ssup__note {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
 .ssup__panel-head {
   display: grid;
   gap: var(--space-1);
   min-inline-size: 0;
 }
 .ssup__panel-client {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 .ssup__panel-ids {
@@ -621,11 +597,5 @@ onMounted(() => {
 /* The screen gives the thread its height (K51). */
 .ssup__thread {
   block-size: calc(var(--center-lg) + var(--center-md));
-}
-.ssup__state {
-  flex: 1 1 auto;
-  display: grid;
-  place-items: center;
-  min-block-size: 0;
 }
 </style>

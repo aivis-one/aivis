@@ -292,7 +292,7 @@ onMounted(load)
         <span class="ds-row__trail">
           <CBadge :variant="statusVariant(p.status)" :text="statusLabel(p.status)" />
           <CActionMenu
-            v-if="rowActions(p).length"
+            v-if="rowActions(p).length > 1"
             :label="t('common.actions', { title: p.name })"
             icon-key="more"
             icon-only
@@ -300,6 +300,15 @@ onMounted(load)
             :items="rowActions(p)"
             @select="(value) => onRowAction(p, value)"
           />
+          <button
+            v-else-if="canEdit"
+            type="button"
+            class="ds-button ds-button--secondary"
+            data-size="sm"
+            @click="openEdit(p)"
+          >
+            <span>{{ t('common.edit') }}</span>
+          </button>
         </span>
       </li>
     </ul>

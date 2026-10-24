@@ -79,13 +79,11 @@ onMounted(load)
 
 <template>
   <div class="verification">
-    <p class="verification__text">
+    <p class="ds-note verification__text">
       {{ t('staff.platform.verification.description') }}
     </p>
 
-    <div v-if="loading" class="verification__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="loading" centered />
 
     <template v-else>
       <!-- The mode (K05: a fieldset with a legend, one radio per mode) -->
@@ -129,15 +127,7 @@ onMounted(load)
   align-content: start;
 }
 
-.verification__center {
-  display: flex;
-  justify-content: center;
-}
-
 .verification__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
 }
 </style>

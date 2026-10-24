@@ -94,16 +94,16 @@ const version = __APP_VERSION__
 <template>
   <div class="staff-settings">
     <!-- Profile -->
-    <div class="staff-settings__profile">
+    <section class="staff-settings__profile" aria-labelledby="staff-settings-name">
       <CAvatar :name="userName" :size="56" />
-      <div class="staff-settings__name">
+      <h2 id="staff-settings-name" class="ds-section-title">
         {{ userName }}
-      </div>
+      </h2>
       <div class="staff-settings__email">
         {{ userEmail }}
       </div>
       <CBadge variant="primary" :text="roleLine" />
-    </div>
+    </section>
 
     <!-- Language -->
     <CSelect
@@ -116,7 +116,7 @@ const version = __APP_VERSION__
 
     <!-- Account -->
     <section class="staff-settings__section">
-      <h2 class="staff-settings__heading">
+      <h2 class="ds-section-title">
         {{ t('staff.settings.account') }}
       </h2>
       <TwoFactorSection tPrefix="staff.settings.actions" />
@@ -150,7 +150,7 @@ const version = __APP_VERSION__
 
     <!-- About (K49) -->
     <section class="staff-settings__section">
-      <h2 class="staff-settings__heading">
+      <h2 class="ds-section-title">
         {{ t('staff.settings.about') }}
       </h2>
       <dl class="ds-kv">
@@ -175,12 +175,6 @@ const version = __APP_VERSION__
   gap: var(--space-2);
   text-align: center;
 }
-.staff-settings__name {
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
 .staff-settings__email {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
@@ -189,12 +183,5 @@ const version = __APP_VERSION__
 .staff-settings__section {
   display: grid;
   gap: var(--space-3);
-}
-.staff-settings__heading {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>

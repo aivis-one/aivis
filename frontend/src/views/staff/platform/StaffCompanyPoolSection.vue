@@ -108,9 +108,7 @@ onMounted(load)
 
 <template>
   <div class="scpool">
-    <div v-if="loading" class="scpool__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="loading" centered />
 
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
       <template #actions>
@@ -121,7 +119,7 @@ onMounted(load)
     </CEmptyState>
 
     <template v-else-if="pool">
-      <p class="scpool__hint">{{ t('staff.platform.pool.hint') }}</p>
+      <p class="ds-note scpool__hint">{{ t('staff.platform.pool.hint') }}</p>
       <!-- The pool's facts (K49) -->
       <dl class="ds-kv">
         <div class="ds-kv__row">
@@ -150,11 +148,11 @@ onMounted(load)
           <dd>{{ formatNumber(pool.remaining, locale) }}</dd>
         </div>
       </dl>
-      <p class="scpool__hint">{{ t('staff.platform.pool.fixedNote') }}</p>
+      <p class="ds-note scpool__hint">{{ t('staff.platform.pool.fixedNote') }}</p>
     </template>
 
     <template v-else>
-      <p class="scpool__hint">{{ t('staff.platform.pool.none') }}</p>
+      <p class="ds-note scpool__hint">{{ t('staff.platform.pool.none') }}</p>
       <div v-if="canCreate">
         <CButton variant="primary" size="sm" inline @click="openCreate">
           {{ t('staff.platform.pool.create') }}
@@ -196,19 +194,7 @@ onMounted(load)
   align-content: start;
 }
 
-.scpool__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-3);
-}
-
 .scpool__hint {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
 }
 </style>

@@ -176,9 +176,7 @@ onMounted(loadProducts)
       {{ t('staff.gifts.limit') }}
     </CAlert>
 
-    <div v-if="productsLoading" class="gifts__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="productsLoading" centered />
     <CEmptyState v-else-if="productsError" tone="danger" :title="t('common.error')">
       <template #actions>
         <CButton variant="secondary" size="sm" inline @click="loadProducts">
@@ -227,10 +225,10 @@ onMounted(loadProducts)
 
     <!-- The gifts granted in this session (K23 rows) -->
     <section v-if="granted.length" class="gifts__list" :aria-label="t('staff.gifts.sessionTitle')">
-      <h2 class="gifts__list-title">
+      <h2 class="ds-section-title">
         {{ t('staff.gifts.sessionTitle') }}
       </h2>
-      <p class="gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
+      <p class="ds-note gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
       <ul class="ds-rows">
         <li v-for="entry in granted" :key="entry.gift.id" class="ds-row">
           <span class="ds-row__lead"><Gift size="sm" /></span>
@@ -299,15 +297,6 @@ onMounted(loadProducts)
   align-content: start;
 }
 
-.gifts__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-3);
-}
-
 .gifts__form {
   display: grid;
   gap: var(--space-3);
@@ -319,18 +308,7 @@ onMounted(loadProducts)
   gap: var(--space-3);
 }
 
-.gifts__list-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
 .gifts__list-note {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
 }
 </style>

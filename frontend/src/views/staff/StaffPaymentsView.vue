@@ -203,13 +203,11 @@ onBeforeUnmount(() => {
 
     <!-- The queue of top-ups in their hour -->
     <section class="staff-pay__section pay-queue" :aria-label="t('staff.payments.queue.title')">
-      <h2 class="staff-pay__title">
+      <h2 class="ds-section-title staff-pay__title">
         {{ t('staff.payments.queue.title') }}
         <CBadge v-if="!queueLoading && !queueError" variant="warning" :text="String(queueTotal)" />
       </h2>
-      <div v-if="queueLoading" class="staff-pay__center staff-pay__center--short">
-        <CLoader :size="24" />
-      </div>
+      <CLoader v-if="queueLoading" centered />
       <CAlert v-else-if="queueError" tone="danger">
         {{ t('staff.payments.queue.error') }}
         <template #actions>
@@ -218,7 +216,7 @@ onBeforeUnmount(() => {
           </CButton>
         </template>
       </CAlert>
-      <p v-else-if="!queue.length" class="staff-pay__note">
+      <p v-else-if="!queue.length" class="ds-note">
         {{ t('staff.payments.queue.empty') }}
       </p>
       <ul v-else class="ds-rows pay-list">
@@ -246,14 +244,14 @@ onBeforeUnmount(() => {
           </span>
         </li>
       </ul>
-      <p v-if="queueTotal > QUEUE_WINDOW" class="staff-pay__note">
+      <p v-if="queueTotal > QUEUE_WINDOW" class="ds-note">
         {{ t('staff.payments.queue.more', { n: QUEUE_WINDOW }) }}
       </p>
     </section>
 
     <!-- All payments -->
     <section class="staff-pay__section">
-      <h2 class="staff-pay__title">
+      <h2 class="ds-section-title staff-pay__title">
         {{ t('staff.payments.listTitle') }}
       </h2>
 
@@ -343,7 +341,7 @@ onBeforeUnmount(() => {
       <p class="ds-dialog__text">
         {{ t('staff.payments.reverseConfirm') }}
       </p>
-      <p v-if="reverseTarget" class="staff-pay__amount">
+      <p v-if="reverseTarget" class="ds-amount" data-size="sm" data-tone="danger">
         {{ formatCents(reverseTarget.amount_cents, reverseTarget.currency) }}
       </p>
       <CInput
@@ -379,35 +377,5 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.staff-pay__note {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.staff-pay__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-.staff-pay__center--short {
-  min-block-size: var(--center-sm);
-}
-
-.staff-pay__amount {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: var(--danger);
 }
 </style>

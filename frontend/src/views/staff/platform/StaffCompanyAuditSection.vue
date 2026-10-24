@@ -98,7 +98,7 @@ onMounted(loadFeed)
 
 <template>
   <div class="scau">
-    <h2 class="scau__title">
+    <h2 class="ds-section-title">
       {{ t('staff.platform.audit.title') }}
     </h2>
 
@@ -141,14 +141,6 @@ onMounted(loadFeed)
   display: grid;
   gap: var(--space-3);
   align-content: start;
-}
-
-.scau__title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 
 /* The event's data is a free-form blob shown verbatim: a mono block (D11). */

@@ -903,9 +903,7 @@ onMounted(loadUsers)
       :title="detailUser && !detailLoading ? t('staff.userDetail.title') : undefined"
       @close="showDetail = false"
     >
-      <div v-if="detailLoading" class="staff-users__center">
-        <CLoader :size="24" />
-      </div>
+      <CLoader v-if="detailLoading" centered />
       <template v-else-if="detailUser">
         <dl class="ds-kv">
           <div class="ds-kv__row">
@@ -984,7 +982,7 @@ onMounted(loadUsers)
                has re-submitted at least once -- R1 §3 "история re-submits
                если есть". -->
           <div v-if="detailUser.kyc_applications_history.length > 1" class="detail__block">
-            <h4 class="detail__label">
+            <h4 class="ds-label">
               {{ t('staff.userDetail.kyc.historyTitle') }}
             </h4>
             <dl class="ds-kv kyc-history__list">
@@ -1004,13 +1002,13 @@ onMounted(loadUsers)
                purpose -- approving without looking is what these
                exist to prevent. -->
           <div v-if="canDoKycApprove && detailUser.latest_application_id" class="detail__block">
-            <h4 class="detail__label">
+            <h4 class="ds-label">
               {{ t('staff.userDetail.kyc.documents.title') }}
             </h4>
-            <p v-if="kycDocumentsLoading" class="detail__note">
+            <p v-if="kycDocumentsLoading" class="ds-note detail__note">
               {{ t('common.loading') }}
             </p>
-            <p v-else-if="kycDocuments.length === 0" class="detail__note">
+            <p v-else-if="kycDocuments.length === 0" class="ds-note detail__note">
               {{ t('staff.userDetail.kyc.documents.empty') }}
             </p>
             <template v-else>
@@ -1035,7 +1033,7 @@ onMounted(loadUsers)
                   </span>
                 </li>
               </ul>
-              <p class="detail__note">
+              <p class="ds-note detail__note">
                 {{ t('staff.userDetail.kyc.documents.ttlNotice', { seconds: kycDocumentTtl }) }}
               </p>
             </template>
@@ -1099,7 +1097,7 @@ onMounted(loadUsers)
               :text="t('staff.userDetail.offDuty')"
             />
           </h3>
-          <p class="detail__note">
+          <p class="ds-note detail__note">
             {{ t('staff.rights.presetHint') }}
           </p>
           <div
@@ -1359,15 +1357,6 @@ onMounted(loadUsers)
   gap: var(--space-2);
 }
 
-.staff-users__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-
 /* Detail modal */
 .detail__section,
 .detail__block {
@@ -1385,18 +1374,7 @@ onMounted(loadUsers)
   font-weight: 700;
   color: var(--text-primary);
 }
-.detail__label {
-  margin: 0;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
 .detail__note {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
 }
 </style>

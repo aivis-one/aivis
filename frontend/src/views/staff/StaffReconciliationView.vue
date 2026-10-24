@@ -83,9 +83,7 @@ onMounted(run)
       {{ t('staff.reconciliation.hint') }}
     </CAlert>
 
-    <div v-if="loading" class="recon__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="loading" centered extent="page" />
 
     <CEmptyState v-else-if="errorText" tone="danger" :title="errorText">
       <template #actions>
@@ -158,15 +156,6 @@ onMounted(run)
   display: grid;
   gap: var(--space-4);
   align-content: start;
-}
-
-.recon__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
 }
 
 .recon__summary {

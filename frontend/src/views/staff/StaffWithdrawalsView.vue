@@ -277,7 +277,7 @@ onMounted(loadWithdrawals)
         {{ formatCents(confirmTarget.amount_cents) }}
       </p>
       <template v-if="confirmTarget">
-        <p class="staff-wd__label">{{ t('staff.withdrawals.payoutDetails') }}</p>
+        <p class="ds-label">{{ t('staff.withdrawals.payoutDetails') }}</p>
         <dl class="ds-kv">
           <div
             v-for="line in payoutLines(confirmTarget.payout_details_snapshot)"
@@ -346,14 +346,5 @@ onMounted(loadWithdrawals)
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--text-primary);
-}
-
-.staff-wd__label {
-  margin: 0;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--text-secondary);
 }
 </style>

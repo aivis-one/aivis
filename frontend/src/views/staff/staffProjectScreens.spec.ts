@@ -295,7 +295,13 @@ describe('a project: products', () => {
   /** The acts of one product's row (the items of its Action menu), by their text. */
   function buttonsOf(wrapper: ReturnType<typeof mount>, name: string): string[] {
     const row = wrapper.findAll('.scprod__item').find((li) => li.text().includes(name))!
-    return row.findAll('[role="menuitem"]').map((b) => b.text())
+    const items = row.findAll('[role="menuitem"]').map((b) => b.text())
+    if (items.length) return items
+    // A one-act row (an archived product) shows that act as a Button, not a menu
+    return row
+      .findAll('.ds-row__trail button')
+      .map((b) => b.text())
+      .filter(Boolean)
   }
 
   /** Open a product row's Action menu and pick the item with this text. */
@@ -347,6 +353,9 @@ describe('a project: products', () => {
       'common.edit',
     ])
     expect(buttonsOf(wrapper, 'Gamma')).toEqual(['common.edit'])
+    // ...and that one act is a Button of the row, with no menu around it
+    const gamma = wrapper.findAll('.scprod__item').find((li) => li.text().includes('Gamma'))!
+    expect(gamma.find('.ds-menu__button').exists()).toBe(false)
     wrapper.unmount()
   })
 

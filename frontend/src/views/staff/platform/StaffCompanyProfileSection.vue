@@ -267,9 +267,7 @@ function formatPrice(cents: number): string {
 <template>
   <div class="scp">
     <!-- Loading -->
-    <div v-if="loading" class="scp__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="loading" centered />
 
     <!-- Error -->
     <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -334,7 +332,7 @@ function formatPrice(cents: number): string {
 
       <!-- Description (FP-25 self-hide when absent) -->
       <section v-if="company.description" class="scp__section">
-        <h2 class="scp__section-title">
+        <h2 class="ds-section-title">
           {{ t('staff.platform.profile.description') }}
         </h2>
         <p class="scp__description">
@@ -347,7 +345,7 @@ function formatPrice(cents: number): string {
         v-if="company.logo_url || company.promo_video_url || company.presentation_url"
         class="scp__section"
       >
-        <h2 class="scp__section-title">
+        <h2 class="ds-section-title">
           {{ t('staff.platform.profile.links') }}
         </h2>
         <ul class="ds-rows">
@@ -390,7 +388,7 @@ function formatPrice(cents: number): string {
 
       <!-- The division of the parts: fixed, read only (K49) -->
       <section class="scp__section">
-        <h2 class="scp__section-title">
+        <h2 class="ds-section-title">
           {{ t('staff.platform.profile.distribution.title') }}
         </h2>
         <dl class="ds-kv">
@@ -499,25 +497,9 @@ function formatPrice(cents: number): string {
   align-content: start;
 }
 
-.scp__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-
 .scp__section {
   display: grid;
   gap: var(--space-3);
-}
-.scp__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 .scp__description {
   margin: 0;

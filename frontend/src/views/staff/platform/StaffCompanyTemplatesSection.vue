@@ -246,9 +246,7 @@ onMounted(loadTemplates)
       :title="detail && !detailLoading && !detailError ? detail.title : undefined"
       @close="showDetail = false"
     >
-      <div v-if="detailLoading" class="sct__center">
-        <CLoader :size="24" />
-      </div>
+      <CLoader v-if="detailLoading" centered />
 
       <CAlert v-else-if="detailError" tone="danger">
         {{ t('staff.platform.templates.detailError') }}
@@ -267,13 +265,13 @@ onMounted(loadTemplates)
 
         <!-- storage_prefix hint (MinIO deep-link reference) -->
         <div class="sct__block">
-          <span class="sct__label">{{ t('staff.platform.templates.storagePrefix') }}</span>
+          <span class="ds-label">{{ t('staff.platform.templates.storagePrefix') }}</span>
           <code class="sct__code">{{ detail.storage_prefix }}</code>
         </div>
 
         <!-- asset_files list (if any) -->
         <div v-if="detail.asset_files.length" class="sct__block">
-          <span class="sct__label">{{ t('staff.platform.templates.assetFiles') }}</span>
+          <span class="ds-label">{{ t('staff.platform.templates.assetFiles') }}</span>
           <ul class="sct__assets-list">
             <li v-for="f in detail.asset_files" :key="f">
               <code class="sct__code">{{ f }}</code>
@@ -283,7 +281,7 @@ onMounted(loadTemplates)
 
         <!-- HTML body as source text (NOT rendered) -->
         <div class="sct__block">
-          <span class="sct__label">{{ t('staff.platform.templates.htmlSource') }}</span>
+          <span class="ds-label">{{ t('staff.platform.templates.htmlSource') }}</span>
           <pre class="sct__code sct__html-pre">{{ detail.html_content }}</pre>
         </div>
 
@@ -309,15 +307,6 @@ onMounted(loadTemplates)
   gap: var(--space-2);
 }
 
-.sct__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
-  gap: var(--space-4);
-}
-
 .sct__detail-meta {
   display: flex;
   align-items: center;
@@ -330,13 +319,6 @@ onMounted(loadTemplates)
 .sct__block {
   display: grid;
   gap: var(--space-2);
-}
-.sct__label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--text-secondary);
 }
 .sct__assets-list {
   display: grid;

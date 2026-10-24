@@ -779,16 +779,16 @@ onMounted(() => {
                 type="button"
                 class="ds-button ds-button--ghost ds-button--icon"
                 data-size="sm"
-                :aria-label="t('common.edit')"
+                :aria-label="`${t('common.edit')}: ${item.title}`"
                 @click="openEdit(item)"
               >
                 <Pencil />
               </button>
               <button
                 type="button"
-                class="ds-button ds-button--danger ds-button--icon"
+                class="ds-button ds-button--ghost ds-button--icon"
                 data-size="sm"
-                :aria-label="t('common.delete')"
+                :aria-label="`${t('common.delete')}: ${item.title}`"
                 @click="openDelete(item)"
               >
                 <Trash2 />

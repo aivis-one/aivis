@@ -203,10 +203,10 @@ onMounted(reload)
 
     <!-- History -->
     <section class="scpr__history">
-      <h2 class="scpr__history-title">
+      <h2 class="ds-section-title">
         {{ t('staff.platform.price.historyTitle') }}
       </h2>
-      <p class="scpr__history-caption">
+      <p class="ds-note scpr__history-caption">
         {{ t('staff.platform.price.historyCaption') }}
       </p>
 
@@ -227,9 +227,8 @@ onMounted(reload)
         <ul class="ds-rows price-history">
           <li v-for="row in history" :key="row.id" class="ds-row price-history__row">
             <span class="ds-row__body">
-              <span
-                class="ds-row__title"
-                :aria-label="`${t('staff.platform.price.colPrice')} ${formatPrice(row.price_per_unit_cents)}`"
+              <span class="ds-row__title"
+                ><span class="ds-sr-only">{{ t('staff.platform.price.colPrice') }} </span
                 >{{ formatPrice(row.price_per_unit_cents) }}</span
               >
               <span class="ds-row__meta"
@@ -295,18 +294,7 @@ onMounted(reload)
   gap: var(--space-3);
 }
 
-.scpr__history-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
 .scpr__history-caption {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
 }
 </style>

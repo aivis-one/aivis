@@ -117,9 +117,7 @@ onMounted(reload)
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="staff-dash__center">
-      <CLoader />
-    </div>
+    <CLoader v-if="loading" centered extent="page" />
 
     <template v-else>
       <!-- A failed read is said, once, with the way to read again -->
@@ -167,15 +165,6 @@ onMounted(reload)
 <style scoped>
 .staff-dash {
   display: grid;
-  gap: var(--space-4);
-}
-
-.staff-dash__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
   gap: var(--space-4);
 }
 </style>

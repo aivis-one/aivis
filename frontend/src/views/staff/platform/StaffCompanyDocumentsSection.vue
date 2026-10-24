@@ -234,7 +234,7 @@ onMounted(loadAttachments)
 
       <template v-else>
         <section v-for="(group, g) in grouped" :key="group.category" class="scd__group">
-          <h2 :id="`scd-group-${g}`" class="scd__group-title">
+          <h2 :id="`scd-group-${g}`" class="ds-section-title scd__group-title">
             {{ group.category }}
           </h2>
 
@@ -294,16 +294,16 @@ onMounted(loadAttachments)
                   type="button"
                   class="ds-button ds-button--ghost ds-button--icon"
                   data-size="sm"
-                  :aria-label="t('common.edit')"
+                  :aria-label="`${t('common.edit')}: ${att.title}`"
                   @click="openEdit(att)"
                 >
                   <Pencil />
                 </button>
                 <button
                   type="button"
-                  class="ds-button ds-button--danger ds-button--icon"
+                  class="ds-button ds-button--ghost ds-button--icon"
                   data-size="sm"
-                  :aria-label="t('common.delete')"
+                  :aria-label="`${t('common.delete')}: ${att.title}`"
                   @click="openDelete(att)"
                 >
                   <Trash2 />
@@ -365,11 +365,6 @@ onMounted(loadAttachments)
   gap: var(--space-2);
 }
 .scd__group-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
   word-break: break-all;
 }
 
