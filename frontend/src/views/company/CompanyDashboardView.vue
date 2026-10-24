@@ -40,7 +40,7 @@ import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/
 import { tOrRaw } from '@/utils/i18n'
 
 // The share of the gross receipts that forms the project's pool, in percent.
-const POOL_PERCENT = 15
+const POOL_PERCENT = 10
 
 const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
