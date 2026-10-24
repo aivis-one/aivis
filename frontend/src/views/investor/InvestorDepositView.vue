@@ -49,30 +49,31 @@
 //     about a fault that does not exist is the failure mode being
 //     avoided here.
 //   - Submit failures -> inline under the field; the invoice stays.
-//   - Copy fail -> toast; the address is still visible and selectable.
+//   - Copy fail -> the block's status line; the address is still visible
+//     and selectable.
+//
+// The invoice is the system's Invoice and QR block (K43): its fields, the QR as an
+// image with the pad the system draws (white in both themes, because camera
+// scanners expect dark modules on white regardless of the host UI theme), the
+// address as text, the Copy button and its status line. The network choice is the
+// Segmented control (K31). The title and the back control are the frame's header (K25).
 //
 // QR generation:
-//   `qrcode` renders an inline SVG string. Forced light background
-//   (white fill, black modules) because camera scanners expect that
-//   contrast regardless of the host UI theme.
+//   `qrcode` renders an SVG string with its defaults (black modules on white), which
+//   the screen shows as an image; the image's size is the system's.
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
-import { ArrowLeft, Copy, ShieldAlert } from '@/components/ui/icons'
-import { CBackLink, CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
+import { AlertTriangle, ArrowLeft, Check, Copy, Info } from '@/components/ui/icons'
+import { CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiNetworkError, ApiResponseError, ApiTimeoutError } from '@/api/client'
-import {
-  createInvoice,
-  getCurrentInvoice,
-  getInvoice,
-  submitInvoiceTxid,
-} from '@/api/payments'
+import { createInvoice, getCurrentInvoice, getInvoice, submitInvoiceTxid } from '@/api/payments'
 import type { InvoiceResponse } from '@/api/types'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateTime } from '@/utils/format'
 
@@ -100,8 +101,15 @@ const TERMINAL = ['confirmed', 'expired', 'stalled']
 const router = useRouter()
 const route = useRoute()
 const { t, locale } = useI18n()
-const { showToast } = useToast()
 const authStore = useAuthStore()
+
+// Prefer router.back() -- restores BalanceView scroll/state. Fallback to the
+// balance only when vue-router has no prior entry (user deep-linked straight to
+// /investor/balance/deposit).
+useScreenHeader({
+  title: () => t('inv.deposit.title'),
+  back: () => (window.history.state?.back ? true : { name: 'investor-balance' }),
+})
 
 const loading = ref(true)
 // `unavailable` is not `errored`. It is the deployment saying it cannot
@@ -111,7 +119,7 @@ const unavailable = ref(false)
 // The two read differently and the first is the person's to fix.
 const unavailableReason = ref<'offline' | 'service'>('service')
 const invoice = ref<InvoiceResponse | null>(null)
-const qrSvg = ref<string | null>(null)
+const qrSrc = ref<string | null>(null)
 
 // The network the person picked for a new invoice. An open invoice sets it to
 // its own network when the screen finds one.
@@ -159,17 +167,17 @@ const expiresDisplay = computed(() =>
   invoice.value?.expires_at ? formatDateTime(invoice.value.expires_at, locale.value) : null,
 )
 
+// The library's defaults are black modules on white -- the contrast camera
+// scanners need; a theme-matching dark QR fails on most wallet cameras. The pad
+// round it is the system's (white in both themes).
 async function generateQr(value: string): Promise<string | null> {
   try {
-    return await QRCode.toString(value, {
+    const svg = await QRCode.toString(value, {
       type: 'svg',
       margin: 0,
-      width: 240,
-      // Forced light palette -- camera scanners need high contrast,
-      // theme-matching dark QRs fail on most wallet cameras.
-      color: { dark: '#000000', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     })
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
   } catch {
     return null
   }
@@ -198,7 +206,7 @@ function isOffline(err: unknown): boolean {
 
 async function showInvoice(next: InvoiceResponse | null): Promise<void> {
   invoice.value = next
-  qrSvg.value = next?.address ? await generateQr(next.address) : null
+  qrSrc.value = next?.address ? await generateQr(next.address) : null
 }
 
 async function load(): Promise<void> {
@@ -363,36 +371,52 @@ async function submitTxid(): Promise<void> {
 
 function startOver(): void {
   invoice.value = null
-  qrSvg.value = null
+  qrSrc.value = null
   txidInput.value = ''
   txidError.value = ''
   txidNotice.value = ''
 }
+
+// The Copy button and its status line (K43): the label turns to "Copied" with a
+// check for three seconds; a failure is written into the status.
+const COPIED_MS = 3000
+const copied = ref(false)
+const copyStatus = ref('')
+let copiedTimer: ReturnType<typeof setTimeout> | null = null
 
 async function copyAddress(): Promise<void> {
   const value = invoice.value?.address
   if (!value) return
   try {
     await navigator.clipboard.writeText(value)
-    showToast(t('inv.deposit.copied'), 'success')
+    copyStatus.value = t('inv.deposit.copied')
+    copied.value = true
+    if (copiedTimer !== null) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => {
+      copied.value = false
+      copyStatus.value = ''
+      copiedTimer = null
+    }, COPIED_MS)
   } catch {
-    showToast(t('inv.deposit.copyError'), 'error')
+    copyStatus.value = t('inv.deposit.copyError')
   }
 }
 
+onBeforeUnmount(() => {
+  if (copiedTimer !== null) clearTimeout(copiedTimer)
+})
+
+function toSupport(): void {
+  void safeNavigate(router.push({ name: 'investor-support' }), '[InvestorDepositView] to support')
+}
+
+// The not-available state's own button: same rule as the header's back control.
 function goBack(): void {
-  // Prefer router.back() -- restores BalanceView scroll/state.
-  // Fallback to explicit push only when vue-router has no prior entry
-  // (user deep-linked straight to /investor/balance/deposit).
   if (window.history.state?.back) {
     router.back()
     return
   }
   void safeNavigate(router.push({ name: 'investor-balance' }), '[InvestorDepositView] to balance')
-}
-
-function toSupport(): void {
-  void safeNavigate(router.push({ name: 'investor-support' }), '[InvestorDepositView] to support')
 }
 
 onMounted(load)
@@ -401,208 +425,225 @@ onMounted(load)
 <template>
   <div class="dv">
     <!-- Loading -->
-    <div v-if="loading" class="dv__center">
-      <CLoader :size="28" />
-    </div>
+    <CLoader v-if="loading" />
 
     <!-- Temporarily unavailable: unreachable, unconfigured, or a network
          this deployment's service does not serve. Deliberately not
          worded as an error -- see the script header. -->
-    <template v-else-if="unavailable">
-      <div class="dv__center">
-        <CEmptyState
-          :title="t('inv.deposit.unavailable.title')"
-          :description="
-            unavailableReason === 'offline'
-              ? t('inv.deposit.unavailable.offline')
-              : t('inv.deposit.unavailable.desc')
-          "
-        />
-        <div class="dv__error-actions">
-          <CButton variant="outline" size="sm" inline @click="goBack">
-            <ArrowLeft :size="16" />
-            {{ t('inv.deposit.backToBalance') }}
-          </CButton>
-          <CButton variant="primary" size="sm" inline @click="load">
-            {{ t('common.retry') }}
-          </CButton>
-        </div>
-      </div>
-    </template>
+    <CEmptyState
+      v-else-if="unavailable"
+      :title="t('inv.deposit.unavailable.title')"
+      :description="
+        unavailableReason === 'offline'
+          ? t('inv.deposit.unavailable.offline')
+          : t('inv.deposit.unavailable.desc')
+      "
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="goBack">
+          <ArrowLeft size="sm" />
+          {{ t('inv.deposit.backToBalance') }}
+        </CButton>
+        <CButton variant="primary" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <template v-else>
-      <div class="dv__page-header">
-        <CBackLink :label="t('inv.deposit.backLink')" @click="goBack" />
-        <h1 class="dv__page-title">
-          {{ t('inv.deposit.title') }}
-        </h1>
-      </div>
+      <!-- No invoice open: ask for an amount. The service will not
+           open one without it (invoice_amount_cents >= 1). -->
+      <section v-if="!invoice" class="ds-card">
+        <p class="ds-card__body">
+          {{ t('inv.deposit.amountIntro') }}
+        </p>
 
-      <div class="dv__body">
-        <!-- No invoice open: ask for an amount. The service will not
-             open one without it (invoice_amount_cents >= 1). -->
-        <section v-if="!invoice" class="dv__card">
-          <p class="dv__hint">
-            {{ t('inv.deposit.amountIntro') }}
-          </p>
+        <!-- The network the money will be sent on: one of three (K31). -->
+        <fieldset class="ds-segmented">
+          <legend class="ds-sr-only">{{ t('inv.deposit.network') }}</legend>
+          <label v-for="n in NETWORKS" :key="n.id" class="ds-segmented__option">
+            <input
+              v-model="network"
+              class="ds-segmented__input"
+              type="radio"
+              name="deposit-network"
+              :value="n.id"
+            />
+            {{ t(`inv.deposit.networks.${n.key}.name`) }}
+          </label>
+        </fieldset>
+        <p class="ds-card__body">
+          {{ t(`inv.deposit.networks.${networkKey(network)}.warning`) }}
+        </p>
 
-          <!-- The network the money will be sent on: one of three. -->
-          <div class="dv__networks" role="radiogroup" :aria-label="t('inv.deposit.network')">
-            <button
-              v-for="n in NETWORKS"
-              :key="n.id"
-              type="button"
-              role="radio"
-              class="dv__network"
-              :class="{ 'dv__network--active': network === n.id }"
-              :aria-checked="network === n.id"
-              @click="network = n.id"
-            >
-              {{ t(`inv.deposit.networks.${n.key}.name`) }}
-            </button>
+        <p v-if="minimumAmount" class="ds-card__body">
+          {{ t('inv.deposit.minimum', { amount: minimumAmount }) }}
+        </p>
+        <CInput
+          v-model="amountInput"
+          type="text"
+          inputmode="decimal"
+          :label="t('inv.deposit.amountLabel')"
+          :error="amountError"
+          :placeholder="t('inv.deposit.amountPlaceholder')"
+        />
+        <CButton variant="primary" :loading="creating" :disabled="creating" @click="create">
+          {{ t('inv.deposit.createCta') }}
+        </CButton>
+      </section>
+
+      <!-- The open invoice: the Invoice and QR block (K43) -->
+      <section
+        v-else
+        class="ds-invoice"
+        aria-labelledby="dv-invoice"
+        :data-state="!isTerminal && !qrSrc ? 'unavailable' : undefined"
+      >
+        <h2 id="dv-invoice" class="ds-sr-only">{{ t('inv.deposit.title') }}</h2>
+
+        <!-- Network + amount + deadline -->
+        <dl class="ds-invoice__fields">
+          <div class="ds-invoice__field">
+            <dt>{{ t('inv.deposit.network') }}</dt>
+            <dd>{{ t(`inv.deposit.networks.${shownNetworkKey}.name`) }}</dd>
           </div>
-          <p class="dv__hint">
-            {{ t(`inv.deposit.networks.${networkKey(network)}.warning`) }}
-          </p>
+          <div class="ds-invoice__field">
+            <dt>{{ t('inv.deposit.amountLabel') }}</dt>
+            <dd>{{ amountDisplay }} {{ t('inv.deposit.coin') }}</dd>
+          </div>
+          <div v-if="expiresDisplay" class="ds-invoice__field">
+            <dt>{{ t('inv.deposit.expiresAt') }}</dt>
+            <dd>{{ expiresDisplay }}</dd>
+          </div>
+        </dl>
 
-          <p v-if="minimumAmount" class="dv__hint">
-            {{ t('inv.deposit.minimum', { amount: minimumAmount }) }}
-          </p>
-          <CInput
-            v-model="amountInput"
-            type="text"
-            inputmode="decimal"
-            :label="t('inv.deposit.amountLabel')"
-            :error="amountError"
-            :placeholder="t('inv.deposit.amountPlaceholder')"
-          />
-          <CButton
-            variant="primary"
-            class="dv__cta"
-            :loading="creating"
-            :disabled="creating"
-            @click="create"
+        <!-- Terminal statuses. Each is its own message: "confirmed"
+             and "stalled" have nothing in common for the user. -->
+        <template v-if="isTerminal">
+          <div
+            class="ds-alert"
+            :class="status === 'confirmed' ? 'ds-alert--success' : 'ds-alert--warning'"
+            :role="status === 'confirmed' ? 'status' : 'alert'"
           >
-            {{ t('inv.deposit.createCta') }}
-          </CButton>
-        </section>
-
-        <template v-else>
-          <!-- Network + amount + deadline -->
-          <section class="dv__card">
-            <div class="dv__row">
-              <span class="dv__row-label">{{ t('inv.deposit.network') }}</span>
-              <span class="dv__row-value">{{
-                t(`inv.deposit.networks.${shownNetworkKey}.name`)
-              }}</span>
-            </div>
-            <div class="dv__row">
-              <span class="dv__row-label">{{ t('inv.deposit.amountLabel') }}</span>
-              <span class="dv__row-value">{{ amountDisplay }} {{ t('inv.deposit.coin') }}</span>
-            </div>
-            <div v-if="expiresDisplay" class="dv__row">
-              <span class="dv__row-label">{{ t('inv.deposit.expiresAt') }}</span>
-              <span class="dv__row-value">{{ expiresDisplay }}</span>
-            </div>
-          </section>
-
-          <!-- Terminal statuses. Each is its own message: "confirmed"
-               and "stalled" have nothing in common for the user. -->
-          <section v-if="isTerminal" class="dv__card dv__terminal">
-            <p class="dv__terminal-title">
-              {{ t(`inv.deposit.status.${status}`) }}
-            </p>
-            <p v-if="status === 'confirmed'" class="dv__hint">
-              <!-- credited, not invoiced: the service credits what
-                   actually arrived, which may be less -- and may be
-                   zero for a dust transfer. Zero is a legitimate
-                   outcome, so it is shown rather than suppressed. -->
-              {{ t('inv.deposit.creditedAmount', { amount: creditedDisplay ?? '0.00' }) }}
-              <span v-if="invoice.underpaid"> {{ t('inv.deposit.underpaid') }}</span>
-            </p>
-            <CButton variant="primary" class="dv__cta" @click="startOver">
-              {{ t('inv.deposit.newDeposit') }}
-            </CButton>
-          </section>
-
-          <template v-else>
-            <!-- QR + address -->
-            <section class="dv__card dv__qr-section">
-              <div v-if="qrSvg" class="dv__qr" v-html="qrSvg" />
-              <div v-else class="dv__qr dv__qr--fallback">
-                <span>{{ t('inv.deposit.qrUnavailable') }}</span>
-              </div>
-
-              <div class="dv__address">
-                {{ invoice.address }}
-              </div>
-
-              <CButton variant="primary" class="dv__cta" @click="copyAddress">
-                <Copy :size="16" />
-                {{ t('inv.deposit.copy') }}
-              </CButton>
-            </section>
-
-            <!-- TXID submission. Only `created` accepts one. -->
-            <section class="dv__card">
-              <p class="dv__hint">
-                {{ t('inv.deposit.txidIntro') }}
-              </p>
-
-              <template v-if="acceptsTxid">
-                <CInput
-                  v-model="txidInput"
-                  :label="t('inv.deposit.txidLabel')"
-                  :error="txidError"
-                  :placeholder="t('inv.deposit.txidPlaceholder')"
-                />
-                <p
-                  v-if="invoice.attempts_remaining != null"
-                  class="dv__attempts"
-                >
-                  {{ t('inv.deposit.attemptsRemaining', { n: invoice.attempts_remaining }) }}
-                </p>
-                <CButton
-                  variant="primary"
-                  class="dv__cta"
-                  :loading="submitting"
-                  :disabled="submitting"
-                  @click="submitTxid"
-                >
-                  {{ t('inv.deposit.txidCta') }}
-                </CButton>
-              </template>
-
-              <!-- awaiting_confirmations / attempts_exhausted -->
-              <p v-else class="dv__notice">
+            <span class="ds-alert__icon" aria-hidden="true">
+              <Check v-if="status === 'confirmed'" size="sm" />
+              <AlertTriangle v-else size="sm" />
+            </span>
+            <div class="ds-alert__content">
+              <p class="ds-alert__title">
                 {{ t(`inv.deposit.status.${status}`) }}
               </p>
-
-              <p v-if="txidNotice" class="dv__notice">{{ txidNotice }}</p>
-              <p v-if="!acceptsTxid && txidError" class="dv__error">{{ txidError }}</p>
-            </section>
-          </template>
+              <p v-if="status === 'confirmed'" class="ds-alert__text">
+                <!-- credited, not invoiced: the service credits what
+                     actually arrived, which may be less -- and may be
+                     zero for a dust transfer. Zero is a legitimate
+                     outcome, so it is shown rather than suppressed. -->
+                {{ t('inv.deposit.creditedAmount', { amount: creditedDisplay ?? '0.00' }) }}
+                <span v-if="invoice.underpaid"> {{ t('inv.deposit.underpaid') }}</span>
+              </p>
+            </div>
+          </div>
+          <CButton variant="primary" @click="startOver">
+            {{ t('inv.deposit.newDeposit') }}
+          </CButton>
         </template>
 
-        <!-- Security warning. Still the only realistic mitigation at
-             the UI layer for a cross-network transfer. -->
-        <section class="dv__card dv__warning">
-          <ShieldAlert :size="16" class="dv__warning-icon" />
-          <p class="dv__warning-text">
+        <template v-else>
+          <!-- QR + address -->
+          <div class="ds-invoice__qr">
+            <img v-if="qrSrc" :src="qrSrc" :alt="invoice.address ?? ''" />
+            <p class="ds-invoice__qr-note">{{ t('inv.deposit.qrUnavailable') }}</p>
+          </div>
+
+          <p id="dv-address" class="ds-invoice__address" dir="ltr">
+            {{ invoice.address }}
+          </p>
+
+          <CButton
+            variant="primary"
+            inline
+            class="ds-invoice__copy"
+            :data-state="copied ? 'copied' : undefined"
+            @click="copyAddress"
+          >
+            <Check v-if="copied" size="sm" />
+            <Copy v-else size="sm" />
+            {{ copied ? t('inv.deposit.copied') : t('inv.deposit.copy') }}
+          </CButton>
+          <p class="ds-invoice__status" role="status">{{ copyStatus }}</p>
+        </template>
+      </section>
+
+      <!-- TXID submission. Only `created` accepts one. -->
+      <section v-if="invoice && !isTerminal" class="ds-card">
+        <p class="ds-card__body">
+          {{ t('inv.deposit.txidIntro') }}
+        </p>
+
+        <template v-if="acceptsTxid">
+          <CInput
+            v-model="txidInput"
+            :label="t('inv.deposit.txidLabel')"
+            :error="txidError"
+            :placeholder="t('inv.deposit.txidPlaceholder')"
+          />
+          <p v-if="invoice.attempts_remaining != null" class="dv__attempts">
+            {{ t('inv.deposit.attemptsRemaining', { n: invoice.attempts_remaining }) }}
+          </p>
+          <CButton
+            variant="primary"
+            :loading="submitting"
+            :disabled="submitting"
+            @click="submitTxid"
+          >
+            {{ t('inv.deposit.txidCta') }}
+          </CButton>
+        </template>
+
+        <!-- awaiting_confirmations / attempts_exhausted -->
+        <div v-else class="ds-alert ds-alert--info" role="status">
+          <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ t(`inv.deposit.status.${status}`) }}</p>
+          </div>
+        </div>
+
+        <div v-if="txidNotice" class="ds-alert ds-alert--info" role="status">
+          <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ txidNotice }}</p>
+          </div>
+        </div>
+        <div v-if="!acceptsTxid && txidError" class="ds-alert ds-alert--danger" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ txidError }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Security warning. Still the only realistic mitigation at
+           the UI layer for a cross-network transfer. -->
+      <div class="ds-alert ds-alert--warning" role="alert">
+        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+        <div class="ds-alert__content">
+          <p class="ds-alert__text">
             {{ t(`inv.deposit.networks.${shownNetworkKey}.warning`) }}
           </p>
-        </section>
+        </div>
+      </div>
 
-        <!-- After verification, a deposit by bank goes through support. -->
-        <section v-if="showBankLine" class="dv__card">
-          <p class="dv__hint">
-            {{ t('inv.deposit.bankLine') }}
-          </p>
-          <CButton variant="outline" size="sm" @click="toSupport">
+      <!-- After verification, a deposit by bank goes through support. -->
+      <section v-if="showBankLine" class="ds-card">
+        <p class="ds-card__body">
+          {{ t('inv.deposit.bankLine') }}
+        </p>
+        <div class="ds-card__foot">
+          <CButton variant="outline" size="sm" inline @click="toSupport">
             {{ t('inv.deposit.bankCta') }}
           </CButton>
-        </section>
-      </div>
+        </div>
+      </section>
     </template>
   </div>
 </template>
@@ -611,171 +652,10 @@ onMounted(load)
 .dv {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-.dv__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: calc(100vh - 120px);
-  min-block-size: calc(100dvh - 120px);
-  padding: var(--space-5);
-}
-
-.dv__error-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.dv__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4) var(--space-2);
-}
-.dv__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.dv__body {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-}
-
-.dv__card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--bg-subtle);
-  border-radius: var(--radius-md);
-}
-
-.dv__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.dv__row-label {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.dv__row-value {
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-}
-
-.dv__networks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.dv__network {
-  min-block-size: var(--tap-min);
-  padding: var(--space-2) var(--space-3);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.dv__network--active {
-  border-color: var(--primary);
-  background: var(--primary-subtle);
-  color: var(--primary);
-}
-
-.dv__hint {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.dv__cta {
-  margin-block-start: var(--space-1);
-}
-
-.dv__qr-section {
-  align-items: center;
-}
-.dv__qr {
-  inline-size: 240px;
-  max-inline-size: 100%;
-  padding: var(--space-3);
-  background: var(--neutral-0);
-  border-radius: var(--radius-sm);
-}
-.dv__qr--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  font-size: var(--fs-sm);
-  color: var(--text-tertiary);
-}
-
-.dv__address {
-  inline-size: 100%;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  word-break: break-all;
-  text-align: center;
 }
 
 .dv__attempts {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.dv__notice {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.dv__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
-.dv__terminal-title {
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.dv__warning {
-  flex-direction: row;
-  align-items: flex-start;
-  gap: var(--space-2);
-  background: var(--warning-subtle);
-}
-.dv__warning-icon {
-  flex-shrink: 0;
-  color: var(--warning);
-}
-.dv__warning-text {
   margin: 0;
   font-size: var(--fs-xs);
   color: var(--text-secondary);
