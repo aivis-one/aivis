@@ -66,6 +66,10 @@ REGISTER = {
                               "and register, which it sits between in the funnel. Measured: "
                               ".auth-form caps at var(--maxw-form) and .auth-content centres it with "
                               "align-items:center, identical to LoginView's registered treatment.",
+    "agent-welcome": "a centred card on the design system's auth shell (K33), one stacked column; "
+                     "the auth shell itself sets the widths, so the screen adds none.",
+    "company-welcome": "a centred card on the design system's auth shell (K33), one stacked column "
+                       "with the agreement to accept; the auth shell itself sets the widths.",
     "password-reset-confirm": "a centred auth card at --maxw-form (360px), same treatment as its "
                               "request sibling above -- .auth-form capped at var(--maxw-form), "
                               "centred by .auth-content's align-items:center. The new-password pair "

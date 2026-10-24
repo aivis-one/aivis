@@ -10,10 +10,12 @@ drawn by the design system's own shell (K25: `.ds-shell`, `.ds-header`,
 
 FOUR THINGS ARE EASY TO UNDO BY ACCIDENT, AND EACH IS ASSERTED HERE:
 
-1. ONE SOURCE. Exactly one `@media (min-width: 880px)` block in the whole of
-   frontend/src sets `--tab-bar-height`, and it is in styles/variables.css. The
-   cabinet's layout components own no media query at all, and no second shell
-   or menu component exists beside AppShell and AppNav.
+1. ONE SOURCE. The frame's tiers live in the design system's own stylesheet
+   (the copy under styles/ds/) and nowhere else: no `@media (min-width: 880px)`
+   block in the rest of frontend/src touches the frame (`.ds-shell`, `.ds-nav`,
+   `.ds-header` or a tab-bar height). The cabinet's layout components own no
+   media query at all, and no second shell or menu component exists beside
+   AppShell and AppNav.
 
 2. THE STOREFRONT HAS NO MENU, AND AppShell SAYS SO IN ONE PLACE. A route with
    no `meta.shell` gets the nav-less variant (`ds-shell--navless`) and AppNav is
@@ -64,25 +66,25 @@ def run(root: str) -> tuple[bool, list[str]]:
     problems: list[str] = []
     notes: list[str] = []
 
-    # 1 - one source for the tier block
+    # 1 - one source for the frame's tiers: the design system's copy under styles/ds
+    ds_dir = os.path.join(src, "styles", "ds")
     tier = []
     for dirpath, dirnames, names in os.walk(src):
-        dirnames[:] = [d for d in dirnames if d != "node_modules"]
+        dirnames[:] = [d for d in dirnames if d != "node_modules"
+                       and os.path.abspath(os.path.join(dirpath, d)) != os.path.abspath(ds_dir)]
         for name in sorted(names):
             if not name.endswith((".vue", ".css")):
                 continue
             path = os.path.join(dirpath, name)
             for condition, _whole, body in media_blocks(_css_of(path)):
-                if "880px" in condition and "tab-bar-height" in body:
+                if "880px" in condition and re.search(r"\.ds-(shell|nav|header)\b|tab-bar-height", body):
                     tier.append(path)
-    if len(tier) != 1:
-        problems.append("the 880 tier block must exist exactly ONCE in frontend/src; found %d: %s"
-                        % (len(tier), [os.path.relpath(p, root) for p in tier]))
-    elif os.path.abspath(tier[0]) != os.path.abspath(variables_css):
-        problems.append("the tier block is in %s, not styles/variables.css"
-                        % os.path.relpath(tier[0], root))
+    if tier:
+        problems.append("the frame's 880 tier belongs to the design system alone; a block in "
+                        "frontend/src outside styles/ds touches it: %s"
+                        % [os.path.relpath(p, root) for p in tier])
     else:
-        notes.append("one tier block, in frontend/src/styles/variables.css")
+        notes.append("the frame's tiers are the design system's alone (no 880 frame block outside styles/ds)")
 
     # the layout components own no media query at all, and the old wrappers are gone
     for name in sorted(os.listdir(layout)):
@@ -165,8 +167,9 @@ def selftest(root: str) -> list[str]:
           "<AppNav", "the menu drawn without its gate")
     plant("components/layout/AppShell.vue", "route.meta.shell === 'staff' ? 'wide'",
           "route.meta.shell === 'staff' ? undefined", "staff's wide measure silently removed")
-    plant("styles/variables.css", "@media (min-width: 880px) {\n  .ds-shell {",
-          "@media (min-width: 900px) {\n  .ds-shell {", "the tier block moved off 880")
+    plant("styles/global.css", "button.ds-navtile {",
+          "@media (min-width: 880px) {\n  .ds-shell { --_bar: 0; }\n}\n\nbutton.ds-navtile {",
+          "a frame tier block written outside the design system")
     plant("components/layout/AppNav.vue", "</template>",
           "</template>\n\n<style scoped>\n@media (min-width: 880px) {\n  .ds-nav { --tab-bar-height: 0; }\n}\n</style>",
           "a second 880 tier block in the menu")
