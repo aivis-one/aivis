@@ -117,13 +117,17 @@ def run(root: str) -> tuple[bool, list[str]]:
 
 def _run_on(text: str) -> bool:
     """run() against a throwaway root holding only this profile."""
+    import shutil
     import tempfile
 
-    root = tempfile.mkdtemp()
+    root = tempfile.mkdtemp(prefix="comms_profile-", dir=os.path.dirname(os.path.abspath(__file__)))
     os.makedirs(os.path.join(root, "comms-profile"))
     with open(os.path.join(root, PROFILE), "w", encoding="utf-8") as handle:
         handle.write(text)
-    ok, _ = run(root)
+    try:
+        ok, _ = run(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
     return ok
 
 

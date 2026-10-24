@@ -251,7 +251,7 @@ def selftest(root: str) -> list[str]:
     ok, _ = run(root)
     assert ok, "the real tree does not pass its own ref-truthiness check"
 
-    base = tempfile.mkdtemp()
+    base = tempfile.mkdtemp(prefix="reftruth-", dir=os.path.dirname(os.path.abspath(__file__)))
     try:
         shutil.copytree(os.path.join(root, "frontend", "src"),
                         os.path.join(base, "frontend", "src"))
@@ -315,7 +315,7 @@ def selftest(root: str) -> list[str]:
 
     # last plant -- nothing to read at all. A check that says PASS here is the
     # failure mode the runner's header is about.
-    empty = tempfile.mkdtemp()
+    empty = tempfile.mkdtemp(prefix="reftruth-empty-", dir=os.path.dirname(os.path.abspath(__file__)))
     try:
         os.makedirs(os.path.join(empty, "frontend", "src"))
         open(os.path.join(empty, "frontend", "src", "empty.ts"), "w").write("\n")

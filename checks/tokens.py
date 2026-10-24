@@ -108,10 +108,11 @@ def run(root: str) -> tuple[bool, list[str]]:
 
 
 def selftest(root: str) -> list[str]:
+    import shutil
     import tempfile
 
     out = []
-    d = tempfile.mkdtemp()
+    d = tempfile.mkdtemp(prefix="tokens-", dir=os.path.dirname(os.path.abspath(__file__)))
     probe = os.path.join(d, "Probe.vue")
     open(probe, "w", encoding="utf-8").write(
         "<script setup lang=\"ts\">const x = 1</script>\n"
@@ -121,7 +122,10 @@ def selftest(root: str) -> list[str]:
         ".b { color: var(--not-declared-anywhere); }\n"
         ".c { gap: var(--also-missing, 8px); }\n"
         "</style>\n")
-    declared, uses = scan([probe])
+    try:
+        declared, uses = scan([probe])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
     assert "--local" in declared, "a locally declared token was not collected"
     painting = [u for u in uses if u[4] != "script"]
     bad = {u[2] for u in painting if u[2] not in declared and not u[3]}

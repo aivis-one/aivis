@@ -64,3 +64,6 @@ Thumbs.db
 .claude/
 /docs/
 checks/ds-copies-*/
+
+# -- Check fixtures: a --selftest builds its throwaway tree in checks/<name>-XXXX and removes it --
+/checks/*-*/

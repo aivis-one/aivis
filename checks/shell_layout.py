@@ -141,7 +141,7 @@ def selftest(root: str) -> list[str]:
     import tempfile
 
     out = []
-    base = tempfile.mkdtemp()
+    base = tempfile.mkdtemp(prefix="shell_layout-", dir=os.path.dirname(os.path.abspath(__file__)))
     shutil.copytree(os.path.join(root, "frontend", "src"),
                     os.path.join(base, "frontend", "src"))
     ok, _ = run(base)

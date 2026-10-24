@@ -288,7 +288,7 @@ def selftest(root: str) -> list[str]:
     assert restored, "the selftest left the register broken"
 
     # plant 4 -- the DERIVATION, in a throwaway copy of the tree
-    base = tempfile.mkdtemp()
+    base = tempfile.mkdtemp(prefix="preauth-", dir=os.path.dirname(os.path.abspath(__file__)))
     try:
         shutil.copytree(os.path.join(root, "frontend", "src"),
                         os.path.join(base, "frontend", "src"))

@@ -267,7 +267,7 @@ def selftest(root: str) -> list[str]:
     out: list[str] = []
 
     def case(plant, expect_ok: bool, what: str, must_report: int = 0) -> None:
-        tmp = tempfile.mkdtemp(prefix="deploy-addresses-")
+        tmp = tempfile.mkdtemp(prefix="deploy-addresses-", dir=os.path.dirname(os.path.abspath(__file__)))
         try:
             _clean_tree(root, tmp)
             plant(tmp)
@@ -335,7 +335,7 @@ def selftest(root: str) -> list[str]:
 
     # --built
     def built(files: dict[str, str], expect: list[str], expect_ok: bool, what: str) -> None:
-        tmp = tempfile.mkdtemp(prefix="deploy-addresses-built-")
+        tmp = tempfile.mkdtemp(prefix="deploy-addresses-built-", dir=os.path.dirname(os.path.abspath(__file__)))
         try:
             for rel, text in files.items():
                 _write(tmp, rel, text)

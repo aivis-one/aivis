@@ -205,7 +205,7 @@ def selftest(root: str) -> list[str]:
     import shutil
     import tempfile
 
-    base = tempfile.mkdtemp()
+    base = tempfile.mkdtemp(prefix="routes-", dir=os.path.dirname(os.path.abspath(__file__)))
     try:
         shutil.copytree(os.path.join(root, "frontend", "src"),
                         os.path.join(base, "frontend", "src"))
