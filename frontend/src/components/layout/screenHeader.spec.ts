@@ -83,16 +83,16 @@ describe('the back of the header', () => {
     one.unmount()
   })
 
-  it('gives the function a getter returns or a ref holds, and undefined when the getter returns nothing', () => {
+  it('gives the { handler } a getter returns or a ref holds, and undefined when the getter returns nothing', () => {
     const handler = (): void => {}
     const open = ref(true)
-    const w = mount(screen({ back: () => (open.value ? handler : undefined) }))
-    expect(backType()).toBe('function')
+    const w = mount(screen({ back: () => (open.value ? { handler } : undefined) }))
+    expect(backType()).toBe('object')
     open.value = false
     expect(backType()).toBe('undefined')
     w.unmount()
-    const held = mount(screen({ back: ref(handler) }))
-    expect(backType()).toBe('function')
+    const held = mount(screen({ back: ref({ handler }) }))
+    expect(backType()).toBe('object')
     held.unmount()
   })
 })

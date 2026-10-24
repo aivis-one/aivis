@@ -37,6 +37,12 @@ describe('CLoader', () => {
     expect(w.text()).toBe('Loading...')
   })
 
+  it('shows the centred block its own text when one is given', () => {
+    expect(mountLoader({ centered: true, text: 'Loading the documents' }).text()).toBe(
+      'Loading the documents',
+    )
+  })
+
   it('gives the centred block a page extent when asked, and ignores extent on the bare form', () => {
     expect(mountLoader({ centered: true, extent: 'page' }).attributes('data-extent')).toBe('page')
     expect(mountLoader({ extent: 'page' }).attributes('data-extent')).toBeUndefined()

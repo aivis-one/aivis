@@ -1,4 +1,4 @@
-// The text field (K02/K03): the hint under the control, tied to it by aria-describedby.
+// The text field (K03): the hint under the control, tied to it by aria-describedby.
 
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'

@@ -46,9 +46,12 @@ describe('AppHeader back control', () => {
     owner.unmount()
   })
 
-  it('is a button calling the handler a getter returns', async () => {
+  it('is a button calling the handler of { handler }', async () => {
     const close = vi.fn()
-    const { header, owner } = await mountHeader({ title: 'Thread', back: () => close })
+    const { header, owner } = await mountHeader({
+      title: 'Thread',
+      back: () => ({ handler: close }),
+    })
     const back = header.find('.ds-header__lead button.ds-button')
     expect(back.exists()).toBe(true)
     expect(header.find('.ds-header__lead a.ds-button').exists()).toBe(false)

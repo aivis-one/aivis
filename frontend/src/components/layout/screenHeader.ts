@@ -9,7 +9,7 @@
 //   useScreenHeader({
 //     title: () => t('inv.portfolio.title'),     // the h1, in the cabinet's language
 //     lead: () => t('inv.portfolio.subtitle'),   // the line under the title (K25 lead line)
-//     back: { name: 'investor-portfolio' },      // a route, `true` for "one step back", or a handler
+//     back: { name: 'investor-portfolio' },      // a route, `true` for "one step back", or { handler }
 //     actions: () => [{ id: 'edit', label: t('common.edit'), icon: Pencil, onClick: edit }],
 //   })
 //
@@ -29,8 +29,10 @@ import { computed, getCurrentScope, onScopeDispose, shallowRef, toValue } from '
 import type { Component, MaybeRefOrGetter } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 
-/** What a function back calls when the control is pressed. */
-export type BackHandler = () => void
+/** A back that calls the screen's own handler; the control is then a button. */
+export interface BackHandler {
+  handler: () => void
+}
 
 /** One icon button of the screen's own, in the header's action row. */
 export interface HeaderAction {
@@ -49,10 +51,10 @@ export interface ScreenHeaderSpec {
   /** The line under the title (K25 lead line). */
   lead?: MaybeRefOrGetter<string | undefined>
   /**
-   * The back control: a route to open, `true` for one step back, or a handler the
-   * control calls (it is then a button). A handler is given as a getter that returns
-   * it, `back: () => (open.value ? closeThread : undefined)`, or as a ref holding it:
-   * a bare function would be read as the getter itself.
+   * The back control: a route to open, `true` for one step back, or `{ handler }`, a
+   * handler the control calls (it is then a button), as a value or from a getter:
+   * `back: () => (open.value ? { handler: closeThread } : undefined)`. A bare function
+   * is refused by the type, since it would be read as the getter itself.
    */
   back?: MaybeRefOrGetter<RouteLocationRaw | true | BackHandler | undefined>
   actions?: MaybeRefOrGetter<HeaderAction[] | undefined>

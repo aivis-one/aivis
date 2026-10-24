@@ -14,6 +14,8 @@ withDefaults(
     size?: number
     centered?: boolean
     extent?: 'page'
+    /** The centred form's visible text, saying what loads (K20); common.loading when unset. */
+    text?: string
   }>(),
   { size: 32 },
 )
@@ -29,7 +31,7 @@ const { t } = useI18n()
     :data-extent="extent === 'page' ? 'page' : undefined"
   >
     <span class="ds-loader__ring" aria-hidden="true" />
-    <span>{{ t('common.loading') }}</span>
+    <span>{{ text ?? t('common.loading') }}</span>
   </div>
   <span v-else class="ds-loader" role="status" :data-size="size <= 24 ? 'sm' : undefined">
     <span class="ds-loader__ring" aria-hidden="true" />

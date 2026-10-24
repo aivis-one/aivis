@@ -33,6 +33,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { tabsFor } from '@/router/tabs'
 import { formatPrice } from '@/utils/format'
 import { useCurrentScreenHeader } from './screenHeader'
+import type { BackHandler } from './screenHeader'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -69,9 +70,12 @@ const homeLabel = computed(() => `${t('app.name')}, ${t('tab.home')}`)
 // ---------------------------------------------------------------------------
 // The back control
 // ---------------------------------------------------------------------------
+function isHandler(back: unknown): back is BackHandler {
+  return typeof back === 'object' && back !== null && 'handler' in back
+}
 const backTarget = computed(() => {
   const back = header.value.back
-  return back === true || typeof back === 'function' ? undefined : back
+  return back === true || isHandler(back) ? undefined : back
 })
 
 function goBack(): void {
@@ -82,12 +86,12 @@ function goBack(): void {
   }
 }
 
-// A route target is a link and goes by itself; `true` is one step back; a function is
-// the screen's own handler and the control a button calling it.
+// A route target is a link and goes by itself; `true` is one step back; `{ handler }`
+// is the screen's own handler and the control a button calling it.
 const onBack = computed(() => {
   const back = header.value.back
   if (back === true) return goBack
-  return typeof back === 'function' ? back : undefined
+  return isHandler(back) ? back.handler : undefined
 })
 
 // ---------------------------------------------------------------------------

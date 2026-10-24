@@ -11,7 +11,7 @@ const props = withDefaults(
     label?: string
     placeholder?: string
     error?: string
-    // K02: a line of help under the control (ds-field__hint), tied to it by aria-describedby.
+    // K03: a line of help under the control (ds-field__hint), tied to it by aria-describedby.
     hint?: string
     type?: string
     autocomplete?: string
