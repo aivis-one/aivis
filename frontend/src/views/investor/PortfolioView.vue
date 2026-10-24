@@ -4,9 +4,9 @@
 // =============================================================================
 //
 // Investor portfolio screen. Rendered by InvestorShell (and AgentShell
-// for the agent-side duplicate) at /investor/portfolio. Shell already
-// paints CHeader + CTabBar -- this view is a plain content column,
-// matching the CompanyListView top-level-tab pattern.
+// for the agent-side duplicate) at /investor/portfolio. The frame's header
+// (K25) holds the title and the line under it -- this view is a plain content
+// column, matching the CompanyListView top-level-tab pattern.
 //
 // Data source:
 //   usePortfolioStore (B1). `fetchPortfolio()` populates positions[].
@@ -16,8 +16,8 @@
 //   per-purchase list instead.
 //
 // Hero card:
-//   A gradient full-width card with total value + three stat
-//   columns (Products, Units, Profit%). Total value is current value
+//   The system's brand card (K07): total value + three stats
+//   (Products, Units, Profit%). Total value is current value
 //   across all positions; profit% is a CLIENT-side calc
 //   `(current - paid) / paid * 100`. See TD-F11d comment below:
 //   backend does not emit profit yet, and switching to a server-side
@@ -25,10 +25,10 @@
 //   so this number is an estimate until the backend settles it.
 //
 // Position cards:
-//   One card per company position (PortfolioPositionResponse). Tap
-//   routes to CompanyPositionView via role-aware route name. Visual
-//   shows the company name + per-company
-//   profit%, followed by three stats (Units / Avg. price / Value).
+//   One interactive card (K07) per company position (PortfolioPositionResponse);
+//   its title is the one link, to CompanyPositionView by a role-aware route
+//   name. It shows the company name + per-company profit%, followed by three
+//   facts (Units / Avg. price / Value) as a key-value list (K49).
 //
 // Empty state:
 //   CTA to companies catalogue. If the investor has zero companies
@@ -43,7 +43,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Building, CalendarClock, ChevronRight, Store } from '@/components/ui/icons'
+import { CalendarClock, ChevronRight, Store } from '@/components/ui/icons'
 import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import PendingGifts from '@/components/shared/PendingGifts.vue'
@@ -143,16 +143,6 @@ const marketRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-companies' : 'investor-companies',
 )
 
-function openPosition(p: PortfolioPositionResponse): void {
-  void safeNavigate(
-    router.push({
-      name: positionRouteName.value,
-      params: { id: p.company_id },
-    }),
-    '[PortfolioView] to company position',
-  )
-}
-
 function goMarket(): void {
   void safeNavigate(
     router.push({ name: marketRouteName.value }),
@@ -191,114 +181,105 @@ onMounted(() => {
     </ul>
 
     <!-- Initial load spinner (no positions yet, fetching) -->
-    <div
-      v-if="store.positionsLoading && !store.positionsLoaded && !store.positionsErrored"
-      class="pv__center"
-    >
-      <CLoader :size="28" />
-    </div>
+    <CLoader v-if="store.positionsLoading && !store.positionsLoaded && !store.positionsErrored" />
 
     <!-- Error (first load failed) -->
-    <div v-else-if="store.positionsErrored && !store.positionsLoaded" class="pv__center">
-      <CEmptyState :title="t('inv.portfolio.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="store.fetchPortfolio()">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="store.positionsErrored && !store.positionsLoaded"
+      tone="danger"
+      :title="t('inv.portfolio.errorTitle')"
+    >
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="store.fetchPortfolio()">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty state -->
-    <div v-else-if="!store.positionsLoading && !hasPositions" class="pv__center">
-      <CEmptyState
-        :title="t('inv.portfolio.empty.title')"
-        :description="t('inv.portfolio.empty.description')"
-      />
-      <CButton variant="primary" size="sm" @click="goMarket">
-        <Store :size="16" />
-        {{ t('inv.portfolio.empty.cta') }}
-      </CButton>
-    </div>
+    <CEmptyState
+      v-else-if="!store.positionsLoading && !hasPositions"
+      :title="t('inv.portfolio.empty.title')"
+      :description="t('inv.portfolio.empty.description')"
+    >
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="goMarket">
+          <Store size="sm" />
+          {{ t('inv.portfolio.empty.cta') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Populated: hero + position list -->
     <template v-else>
-      <!-- Hero card -->
-      <div class="pv__hero">
-        <div class="pv__hero-label">
+      <!-- Hero card: the brand card (K07); a figure on it takes --on-primary with its sign in the text -->
+      <article class="ds-card ds-card--brand">
+        <p class="ds-card__label">
           {{ t('inv.portfolio.totalValue') }}
-        </div>
-        <div class="pv__hero-value">
+        </p>
+        <p class="ds-card__figure">
           {{ formatPrice(totalCurrentValue) }}
-        </div>
+        </p>
         <div class="pv__hero-row">
-          <div class="pv__hero-stat">
-            <div class="pv__hero-stat-label">
+          <div>
+            <p class="ds-card__label">
               {{ t('inv.portfolio.products') }}
-            </div>
-            <div class="pv__hero-stat-value">
+            </p>
+            <p class="ds-card__delta">
               {{ formatNumber(productsCount, locale) }}
-            </div>
+            </p>
           </div>
-          <div class="pv__hero-stat">
-            <div class="pv__hero-stat-label">
+          <div>
+            <p class="ds-card__label">
               {{ t('inv.portfolio.units') }}
-            </div>
-            <div class="pv__hero-stat-value">
+            </p>
+            <p class="ds-card__delta">
               {{ formatNumber(totalUnits, locale) }}
-            </div>
+            </p>
           </div>
-          <div v-if="totalProfitPercent !== null" class="pv__hero-stat">
-            <div class="pv__hero-stat-label">
+          <div v-if="totalProfitPercent !== null">
+            <p class="ds-card__label">
               {{ t('inv.portfolio.profit') }}
-            </div>
-            <div class="pv__hero-stat-value" :class="profitClass(totalProfitPercent)">
+            </p>
+            <p class="ds-card__delta">
               {{ formatProfitPercent(totalProfitPercent) }}
-            </div>
+            </p>
           </div>
         </div>
-      </div>
+      </article>
 
-      <!-- Position cards -->
+      <!-- Position cards: the title is the one link -->
       <ul class="pv__list">
         <li v-for="p in store.positions" :key="p.company_id">
-          <button type="button" class="pv__item" @click="openPosition(p)">
-            <div class="pv__item-head">
-              <span class="pv__item-company">
-                <Building :size="16" class="pv__item-company-icon" />
-                <span class="pv__item-company-name">{{ p.company_name }}</span>
+          <article class="ds-card ds-card--interactive">
+            <header class="ds-card__head">
+              <h3 class="ds-card__title">
+                <RouterLink
+                  class="ds-card__link"
+                  :to="{ name: positionRouteName, params: { id: p.company_id } }"
+                >
+                  {{ p.company_name }}
+                </RouterLink>
+              </h3>
+              <span class="pv__profit" :class="profitClass(positionProfitPercent(p))">
+                {{ formatProfitPercent(positionProfitPercent(p)) }}
               </span>
-              <span class="pv__item-head-right">
-                <span class="pv__profit" :class="profitClass(positionProfitPercent(p))">
-                  {{ formatProfitPercent(positionProfitPercent(p)) }}
-                </span>
-                <ChevronRight :size="16" class="pv__item-chev" />
-              </span>
-            </div>
-            <div class="pv__item-stats">
-              <div class="pv__item-stat">
-                <div class="pv__item-stat-label">
-                  {{ t('inv.portfolio.position.units') }}
-                </div>
-                <div class="pv__item-stat-value">
-                  {{ formatNumber(p.total_units, locale) }}
-                </div>
+            </header>
+            <dl class="ds-kv">
+              <div class="ds-kv__row">
+                <dt>{{ t('inv.portfolio.position.units') }}</dt>
+                <dd>{{ formatNumber(p.total_units, locale) }}</dd>
               </div>
-              <div class="pv__item-stat">
-                <div class="pv__item-stat-label">
-                  {{ t('inv.portfolio.position.avgPrice') }}
-                </div>
-                <div class="pv__item-stat-value">
-                  {{ formatPrice(p.avg_price_cents) }}
-                </div>
+              <div class="ds-kv__row">
+                <dt>{{ t('inv.portfolio.position.avgPrice') }}</dt>
+                <dd>{{ formatPrice(p.avg_price_cents) }}</dd>
               </div>
-              <div class="pv__item-stat">
-                <div class="pv__item-stat-label">
-                  {{ t('inv.portfolio.position.value') }}
-                </div>
-                <div class="pv__item-stat-value">
-                  {{ formatPrice(p.current_value_cents) }}
-                </div>
+              <div class="ds-kv__row">
+                <dt>{{ t('inv.portfolio.position.value') }}</dt>
+                <dd>{{ formatPrice(p.current_value_cents) }}</dd>
               </div>
-            </div>
-          </button>
+            </dl>
+          </article>
         </li>
       </ul>
     </template>
@@ -307,56 +288,14 @@ onMounted(() => {
 
 <style scoped>
 .pv {
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.pv__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
-  padding: var(--space-5);
-}
-
-/* Hero card */
-.pv__hero {
-  padding: var(--space-4-lg);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: var(--on-primary);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.pv__hero-label {
-  font-size: var(--fs-xs);
-  opacity: 0.9;
-}
-.pv__hero-value {
-  font-size: var(--fs-3xl);
-  font-weight: 700;
-  line-height: 1.1;
-}
 .pv__hero-row {
   display: flex;
   gap: var(--space-5);
-  margin-block-start: var(--space-1);
-}
-.pv__hero-stat-label {
-  font-size: var(--fs-xs);
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin-block-end: var(--space-1);
-}
-.pv__hero-stat-value {
-  font-size: var(--fs-body);
-  font-weight: 700;
 }
 
 /* Position cards */
@@ -368,95 +307,11 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-3);
 }
-.pv__item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  padding: var(--space-4) var(--space-4);
-  border-radius: var(--radius-md);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  transition: border-color var(--dur-fast);
-}
-.pv__item:hover {
-  border-color: var(--primary);
-}
-.pv__item:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
 
-.pv__item-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-/* The ellipsis belongs to the NAME TEXT, never to this flex container. On the
-   container it is INERT -- text-overflow acts on inline content in a BLOCK, not
-   on a flex container's anonymous text item -- so at 390 the name was cut dead
-   at 263px with 283px hidden and NO ellipsis, while overflow:hidden crushed the
-   non-shrinking icon to zero width instead. Identical mechanism and identical
-   repair to .lb__nametext in LeaderboardView, whose fix landed on one file and
-   left this twin untouched. Found by the 2026-08-19 sweep; renders in BOTH the
-   investor and agent cabinets, phone tier only. */
-.pv__item-company {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-inline-size: 0;
-}
-.pv__item-company-icon {
-  flex-shrink: 0;
-}
-.pv__item-company-name {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pv__item-head-right {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-.pv__item-chev {
-  color: var(--text-tertiary);
-}
-
-.pv__item-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-}
-.pv__item-stat-label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  margin-block-end: var(--space-1);
-}
-.pv__item-stat-value {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* Profit chip */
+/* Profit: the sign is written in the text, the colour repeats it (the cards stand
+   on the card ground; the hero, on the primary colour, takes the card's own colour). */
 .pv__profit {
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   font-weight: 700;
 }
@@ -467,32 +322,11 @@ onMounted(() => {
   color: var(--danger);
 }
 
-/* A6: --success and --danger are tuned against --bg-page. `.pv__hero` is a
-   saturated azure gradient carrying --on-primary, and on it these two measure
-   1.35 / 1.08 in light and 1.04 / 1.23 in dark -- the figure telling an
-   investor whether they are up or down was effectively invisible on the one
-   panel that leads the screen, in BOTH themes and BOTH directions.
-   formatProfitPercent() already prefixes an explicit + or -, so the direction
-   is carried by the text and nothing is lost by taking the panel's own colour
-   here. (WCAG 1.4.1 wants that anyway: not by colour alone.)
-   The list rows below the hero sit on --bg-page and keep green and red. */
-.pv__hero .pv__profit--up,
-.pv__hero .pv__profit--down {
-  color: var(--on-primary);
-}
-
-/* TILE CEILING — a grid authored `repeat(N, 1fr)` keeps N columns at every
-   width, so on a 1016px desktop it stretches its contents to fill: measured,
-   a stat tile reached 316px and an action button 497px. Past a point the extra
-   room should be whitespace, not wider furniture.
-
-   The COLUMN COUNT IS DELIBERATELY UNCHANGED. Only the ceiling is added, so
-   nothing reflows and no set of related figures can wrap into a ragged 2+1.
-   An earlier attempt used auto-fit and did exactly that: the cap, not a lack
-   of room, was what pushed the third tile onto its own line. Mobile-first, so
+/* TILE CEILING — past a point the extra room should be whitespace, not wider
+   furniture. Only the ceiling is added, so nothing reflows. Mobile-first, so
    this is a min-width and the phone is untouched. */
 @media (min-width: 880px) {
-  .pv__item-stats {
+  .pv__list {
     max-inline-size: calc(3 * var(--tile-max));
   }
 }

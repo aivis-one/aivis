@@ -22,15 +22,13 @@
 //   downloaded; only a required, unsigned row offers "Sign".
 //
 // LAYOUT.
-//   Top: inline page-header (h1 title, no back-link) -- iter 2.7
-//   batch B2 dropped the view-CHeader in favour of the single-shell-
-//   header paradigm. As a top-level tab the view has no originating
-//   screen to navigate back to; the shell's CHeader covers brand
-//   identity, the inline <h1> labels the tab.
-//   Body: list of .doc-item rows. Icon + title + meta + status badge
-//   (signed / pending). Tap opens the detail modal.
+//   The title is the frame's header (K25, `useScreenHeader`). As a top-level
+//   tab the view has no originating screen to navigate back to.
+//   Body: the system's document rows (K44 on the Row list, K23): icon + title
+//   + meta + status badge (signed / pending). The row's link is the document's
+//   own static file; a tap opens it in the detail window instead.
 //
-// DETAIL MODAL (CModal, B5-post hardening).
+// DETAIL WINDOW (the system's Document viewer, K36, placement modal; B5-post hardening).
 //   B4 rendered the legal HTML via v-html after stripping the doc
 //   chrome with DOMParser. That gave the mounted node full access to
 //   the SPA origin (localStorage, auth token), which is unacceptable
@@ -74,11 +72,13 @@
 //   valid state, rendered with a short CEmptyState. Not an error.
 // =============================================================================
 
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FileText } from '@/components/ui/icons'
+import { AlertTriangle, Download, FileText, X } from '@/components/ui/icons'
 
-import { CButton, CEmptyState, CLoader, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { useScreenHeader } from '@/components/layout/screenHeader'
+import { useDialog } from '@/composables/useDialog'
 import { ApiResponseError } from '@/api/client'
 import { getDocumentByType, listDocuments, signDocument } from '@/api/documents'
 import { useToast } from '@/composables/useToast'
@@ -88,6 +88,8 @@ import type { DocumentResponse } from '@/api/types'
 const { t } = useI18n()
 const { showToast } = useToast()
 const authStore = useAuthStore()
+
+useScreenHeader({ title: () => t('inv.docs.title') })
 
 // Strict token for both doc.type and doc.language. Backend currently
 // emits plain identifiers (privacy_policy, terms_of_service, en, ru,
@@ -204,6 +206,10 @@ const signing = ref<boolean>(false)
 
 const modalOpen = computed<boolean>(() => viewingDoc.value !== null)
 
+// Escape, focus containment and focus restore for the window.
+const dialogEl = ref<HTMLElement | null>(null)
+const titleId = useId()
+
 // Monotonic per-view counter, same pattern as useCertificateBlob:
 // a second openDoc() call while the first fetch is still in flight
 // must not publish the losing result, and must revoke the losing
@@ -285,6 +291,8 @@ function closeModal(): void {
   _revokeBlob()
 }
 
+useDialog(modalOpen, dialogEl, () => closeModal())
+
 onUnmounted(() => {
   _revokeBlob()
 })
@@ -326,8 +334,8 @@ async function onSign(): Promise<void> {
 // Display helpers
 // ---------------------------------------------------------------------------
 
-function statusClass(doc: DocumentResponse): string {
-  return doc.is_signed ? 'docs__status--signed' : 'docs__status--pending'
+function statusVariant(doc: DocumentResponse): 'success' | 'warning' {
+  return doc.is_signed ? 'success' : 'warning'
 }
 
 function statusLabel(doc: DocumentResponse): string {
@@ -351,122 +359,157 @@ function metaLabel(doc: DocumentResponse): string {
 
 <template>
   <div class="docs">
-    <!-- iter 2.7 batch B2: inline page-header replaces view-CHeader.
-         No back-link: this is a top-level tab reached via CTabBar,
-         not a drill-down with originating context. Same paradigm as
-         InvestorMoreView / InvestorSettingsView. -->
-    <div class="docs__page-header">
-      <h1 class="docs__page-title">
-        {{ t('inv.docs.title') }}
-      </h1>
-    </div>
-
-    <!-- First-load spinner -->
-    <div v-if="loading && documents.length === 0" class="docs__center">
-      <CLoader :size="32" />
-    </div>
+    <!-- First load: the placeholder rows of the list that will arrive (K19) -->
+    <section v-if="loading && documents.length === 0" aria-busy="true">
+      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+      <div class="ds-rows" aria-hidden="true">
+        <div v-for="n in 4" :key="n" class="ds-skeleton-row">
+          <span class="ds-skeleton ds-skeleton--avatar" />
+          <span class="ds-skeleton-stack">
+            <span class="ds-skeleton ds-skeleton--title" />
+            <span class="ds-skeleton ds-skeleton--text" />
+          </span>
+        </div>
+      </div>
+    </section>
 
     <!-- Error state -->
-    <div v-else-if="errored" class="docs__center">
-      <CEmptyState :title="t('inv.docs.errorTitle')" />
-      <CButton variant="outline" size="sm" @click="fetchDocuments">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.docs.errorTitle')">
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="fetchDocuments">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty state -->
-    <div v-else-if="documents.length === 0" class="docs__center">
-      <CEmptyState
-        :title="t('inv.docs.empty.title')"
-        :description="t('inv.docs.empty.description')"
-      />
-    </div>
+    <CEmptyState
+      v-else-if="documents.length === 0"
+      :title="t('inv.docs.empty.title')"
+      :description="t('inv.docs.empty.description')"
+    />
 
-    <!-- List -->
-    <ul v-else class="docs__list">
-      <li v-for="doc in documents" :key="doc.id">
-        <button type="button" class="docs__item" @click="openDoc(doc)">
-          <div class="docs__icon">
-            <FileText :size="16" />
-          </div>
-          <div class="docs__body">
-            <div class="docs__title">
-              {{ doc.title }}
-            </div>
-            <div class="docs__meta">
-              {{ metaLabel(doc) }}
-            </div>
-          </div>
-          <span v-if="showsStatus(doc)" class="docs__status" :class="statusClass(doc)">
-            {{ statusLabel(doc) }}
-          </span>
-        </button>
+    <!-- List (K44): a row's link is the document's own file; a tap opens the window -->
+    <ul v-else class="ds-rows">
+      <li v-for="doc in documents" :key="doc.id" class="ds-row ds-docrow">
+        <span class="ds-row__lead"><FileText size="sm" /></span>
+        <span class="ds-row__body">
+          <a
+            v-if="fileUrl(doc)"
+            class="ds-row__link"
+            :href="fileUrl(doc) ?? undefined"
+            @click.prevent="openDoc(doc)"
+          >
+            <span class="ds-row__title">{{ doc.title }}</span>
+            <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
+          </a>
+          <template v-else>
+            <span class="ds-row__title">{{ doc.title }}</span>
+            <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
+          </template>
+        </span>
+        <span v-if="showsStatus(doc)" class="ds-row__trail">
+          <CBadge :variant="statusVariant(doc)" :text="statusLabel(doc)" />
+        </span>
       </li>
     </ul>
 
-    <!-- Detail modal -->
-    <CModal :open="modalOpen" @close="closeModal">
-      <div v-if="viewingDoc" class="docs-modal">
-        <h2 class="docs-modal__title">
-          {{ viewingDoc.title }}
-        </h2>
+    <!-- Detail window: the Document viewer (K36), placement modal -->
+    <Teleport to="body">
+      <div v-if="modalOpen" class="ds-docviewer" data-variant="modal" @click.self="closeModal">
+        <div
+          ref="dialogEl"
+          class="ds-docviewer__dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          tabindex="-1"
+        >
+          <div class="ds-docviewer__head">
+            <h2 :id="titleId" class="ds-docviewer__title">{{ viewingDoc?.title }}</h2>
+            <button
+              type="button"
+              class="ds-button ds-button--ghost ds-button--icon"
+              data-size="sm"
+              :aria-label="t('inv.docs.modal.close')"
+              @click="closeModal"
+            >
+              <X size="sm" />
+            </button>
+          </div>
 
-        <!-- Loading body -->
-        <div v-if="viewLoading" class="docs-modal__center">
-          <CLoader :size="24" />
-          <div class="docs-modal__hint">
-            {{ t('inv.docs.modal.loading') }}
+          <div
+            class="ds-docviewer__body"
+            tabindex="0"
+            role="region"
+            :aria-labelledby="titleId"
+            :aria-busy="viewLoading ? 'true' : undefined"
+          >
+            <!-- Loading body -->
+            <template v-if="viewLoading">
+              <CLoader :size="24" />
+              <p class="ds-docviewer__status">
+                {{ t('inv.docs.modal.loading') }}
+              </p>
+            </template>
+
+            <!-- Error body -->
+            <div v-else-if="viewError" class="ds-alert ds-alert--danger" role="alert">
+              <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+              <div class="ds-alert__content">
+                <p class="ds-alert__title">{{ t('inv.docs.modal.errorTitle') }}</p>
+                <div class="ds-alert__actions">
+                  <CButton variant="outline" size="sm" inline @click="retryModalBody">
+                    {{ t('inv.docs.modal.errorRetry') }}
+                  </CButton>
+                </div>
+              </div>
+            </div>
+
+            <!--
+              Loaded body. Rendered in a sandboxed iframe via blob URL,
+              mirroring CertificateSheet.vue. `sandbox=""` (empty value)
+              forbids scripts, forms, same-origin access, navigation,
+              and storage. Legal documents are static text -- none of
+              those are needed. See TD-F11b.
+            -->
+            <iframe
+              v-else-if="viewBlobUrl"
+              :src="viewBlobUrl"
+              sandbox=""
+              class="ds-docviewer__frame"
+              :title="viewingDoc?.title"
+            />
+          </div>
+
+          <!-- Footer actions. Hidden while loading so the user does not
+               tap "Sign" on a document body that has not rendered yet. -->
+          <div v-if="viewingDoc && !viewLoading && !viewError" class="ds-docviewer__actions">
+            <a
+              v-if="fileUrl(viewingDoc)"
+              class="ds-button ds-button--secondary"
+              :href="fileUrl(viewingDoc) ?? undefined"
+              :download="`${viewingDoc.type}.${viewingDoc.language}.html`"
+            >
+              <Download size="sm" />
+              <span>{{ t('inv.docs.modal.download') }}</span>
+            </a>
+            <CButton
+              v-if="needsSigning(viewingDoc)"
+              variant="primary"
+              inline
+              :loading="signing"
+              @click="onSign"
+            >
+              {{ signing ? t('inv.docs.modal.signing') : t('inv.docs.modal.sign') }}
+            </CButton>
+            <CButton v-else variant="outline" inline @click="closeModal">
+              {{ t('inv.docs.modal.close') }}
+            </CButton>
           </div>
         </div>
-
-        <!-- Error body -->
-        <div v-else-if="viewError" class="docs-modal__center">
-          <CEmptyState :title="t('inv.docs.modal.errorTitle')" />
-          <CButton variant="outline" size="sm" @click="retryModalBody">
-            {{ t('inv.docs.modal.errorRetry') }}
-          </CButton>
-        </div>
-
-        <!--
-          Loaded body. Rendered in a sandboxed iframe via blob URL,
-          mirroring CertificateSheet.vue. `sandbox=""` (empty value)
-          forbids scripts, forms, same-origin access, navigation,
-          and storage. Legal documents are static text -- none of
-          those are needed. See TD-F11b.
-        -->
-        <iframe
-          v-else-if="viewBlobUrl"
-          :src="viewBlobUrl"
-          sandbox=""
-          class="docs-modal__iframe"
-          :title="viewingDoc.title"
-        />
-
-        <!-- Footer actions. Hidden while loading so the user does not
-             tap "Sign" on a document body that has not rendered yet. -->
-        <div v-if="!viewLoading && !viewError" class="docs-modal__actions">
-          <a
-            v-if="fileUrl(viewingDoc)"
-            class="docs-modal__download"
-            :href="fileUrl(viewingDoc) ?? undefined"
-            :download="`${viewingDoc.type}.${viewingDoc.language}.html`"
-          >
-            {{ t('inv.docs.modal.download') }}
-          </a>
-          <CButton
-            v-if="needsSigning(viewingDoc)"
-            variant="primary"
-            :loading="signing"
-            @click="onSign"
-          >
-            {{ signing ? t('inv.docs.modal.signing') : t('inv.docs.modal.sign') }}
-          </CButton>
-          <CButton v-else variant="outline" @click="closeModal">
-            {{ t('inv.docs.modal.close') }}
-          </CButton>
-        </div>
       </div>
-    </CModal>
+    </Teleport>
   </div>
 </template>
 
@@ -474,177 +517,5 @@ function metaLabel(doc: DocumentResponse): string {
 .docs {
   display: flex;
   flex-direction: column;
-  padding-block-end: var(--space-5);
-}
-
-/* iter 2.7 batch B2 -- inline page-header replaces the previous
-   view-CHeader. Title-only (no back-link): this is a top-level tab.
-   Same paradigm as InvestorMoreView's .more__header / InvestorSettings'
-   .sett__page-title. Class name `docs__page-title` chosen so it does
-   not clash with `docs__title` already used for individual document
-   item titles in the list. */
-.docs__page-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-4) var(--space-2);
-}
-.docs__page-title {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.docs__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  min-block-size: var(--center-md);
-  padding: var(--space-5);
-}
-
-.docs__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  list-style: none;
-  margin: 0;
-}
-
-.docs__item {
-  appearance: none;
-  background: none;
-  border: none;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: start;
-  inline-size: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition:
-    border-color var(--dur-base) var(--ease-standard),
-    background var(--dur-base) var(--ease-standard);
-}
-.docs__item:hover {
-  border-color: var(--primary-hover);
-  background: var(--bg-subtle);
-}
-
-.docs__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--size-lg);
-  block-size: var(--size-lg);
-  border-radius: var(--radius-sm);
-  background: var(--primary-subtle);
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.docs__body {
-  flex: 1;
-  min-inline-size: 0;
-}
-.docs__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.docs__meta {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-}
-
-.docs__status {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.docs__status--signed {
-  background: var(--success-subtle);
-  color: var(--success);
-}
-.docs__status--pending {
-  background: var(--warning-subtle);
-  color: var(--warning);
-}
-
-/* Modal */
-.docs-modal__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-  padding-inline-end: var(--space-6);
-}
-
-.docs-modal__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-md);
-  padding: var(--space-4) 0;
-}
-.docs-modal__hint {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.docs-modal__iframe {
-  inline-size: 100%;
-  block-size: 55vh;
-  block-size: 55dvh;
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-}
-
-.docs-modal__download {
-  align-self: center;
-  margin-inline-end: auto;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--primary);
-  text-decoration: none;
-}
-.docs-modal__download:hover {
-  text-decoration: underline;
-}
-
-.docs-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-  padding-block-start: var(--space-3);
-  border-block-start: thin solid var(--border-default);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.docs-modal__hint {
-  max-inline-size: var(--maxw-prose);
 }
 </style>
