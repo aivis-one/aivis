@@ -15,6 +15,7 @@ Files: `components.css` (all styles, tokens only), `components.js` (the behaviou
 4. Sizes are `data-size="sm|md|lg"` (md when absent), the heights 32, 38 and 44 of `--control-height-*`; they serve buttons and text fields alike. At a viewport of 480 or less every interactive part is at least `--touch-min` high and fields are 16 px text.
 5. A text a screen shows, and every `aria-label`, comes from the translation tables (English and Russian); the English strings in `markup/` are examples.
 6. Status words are `danger` and `info` (with `success` and `warning`) in the badge, the alert and the toast (the progress carries success, warning and danger).
+7. Two text parts are shared, not components: `.ds-section-title` is the heading of a section inside a screen (an `h2` or `h3` at the h4 role: `--font-display`, `--fs-h4`, 700, `--text-primary`) and `.ds-note` is a quiet small line (`--fs-sm`, `--text-secondary`; `.ds-note--xs` takes `--fs-xs`); both stand on the surface, the page and the card ground (`../tokens/type-recipe.json` names their roles). Markup: `markup/text-parts.html`.
 
 ## K01 Button
 
@@ -301,6 +302,8 @@ Look: no AIVIS source holds an action menu (map K26 MISSING; the cabinet's langu
 
 Addition, the single-choice listbox. The same menu button pattern with `button[aria-haspopup="listbox"]` and `ul[role="listbox"]` of `button[role="option"][aria-selected]`; the chosen option carries the check `.ds-menu__tick` and the tint (never colour alone), a flag slot `.ds-menu__flag` may stand first, and `components.js` sets `aria-selected` on a pick, writes the option's `.ds-menu__label` into the button's `.ds-menu__value` and emits `ds-menu-select`. The list opens on the chosen option. The languages come from the shared setting, never from a list written in a screen. Markup: `markup/action-menu.html`.
 
+Additions (batch 5). The labelled trigger serves a two-item share menu (copy the link, share it). An icon-only trigger, `button.ds-button.ds-button--ghost.ds-button--icon.ds-menu__button` with the `more` icon and an `aria-label` naming the object ("Actions for <title>"), serves the acts of a row; it sits at the end of the row's trail above the stretched link (K23) in a `data-align="end"` menu, its icon is drawn at `--icon-size-md` (the three dots are too light at the small size) and does not turn when the menu opens. Markup: `markup/action-menu.html`.
+
 ## K32 Stepper and schedule list
 
 Markup: `markup/stepper.html`. `ol.ds-stepper` of `li.ds-step[data-state=done|current|upcoming|problem]`; the step in progress also has `aria-current="step"`. A marker holds a check (done), a triangle (problem) or the number, and `.ds-step__meta` says the state in words, so a state is never colour alone; the marker is `aria-hidden`. `data-orientation="horizontal"` lays the steps in a row from 640 up, below it they stack. The connector is decoration (`--border-default`, `--success` after a done step). The schedule list is `ol.ds-schedule` of `li.ds-schedule__item`: a title (`.ds-schedule__num`), a Badge with the state in words, and optionally a `dl` of stats and a foot line that the screen fills; `aria-current="step"` marks the current item, `data-status="problem"` tints an item that needs attention (`--danger-subtle`, a `--danger` border).
@@ -342,6 +345,8 @@ Markup: `markup/document-row.html`. A Row list row (`li.ds-row.ds-docrow`) whose
 | unavailable | `aria-disabled`, no link, a dashed border on `--bg-subtle`, the meta says in text that the file is not uploaded yet; the row keeps full opacity (the Row list's 0.55 for aria-disabled would put that text at 2.39 by day and 3.33 by night) |
 
 Look: an icon box, a title, the description, the file name and size and a download icon, on the Row list; the download is a real link, not a button.
+
+Addition (batch 5). A file the app fetches by its own handler has no address to open: the row holds `button.ds-row__link[type=button]` (title and meta inside it) in place of the link, with no `href` or `download`. The app sets `data-state="downloading"` and `aria-busy="true"` on the row at the click and ignores a second activation, then `data-state="downloaded"` or none, and the word of the state goes into `.ds-docrow__status`. Markup: `markup/document-row.html`.
 
 ## The Booking card (KN1)
 

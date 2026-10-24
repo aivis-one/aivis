@@ -1687,7 +1687,12 @@
     "ds-menu-open",
     "ds-menu-close"
    ],
-   "listbox": "single choice: button[aria-haspopup=\"listbox\"], ul[role=listbox] of button[role=option][aria-selected]; the chosen option carries the check, a flag slot may stand first"
+   "listbox": "single choice: button[aria-haspopup=\"listbox\"], ul[role=listbox] of button[role=option][aria-selected]; the chosen option carries the check, a flag slot may stand first",
+   "trigger": [
+    "labelled Button (the share icon before its word, the chevron after it)",
+    "icon-only (a ghost icon button with the more icon, named by aria-label, for the acts of a row or an object; no chevron, the icon does not turn; the icon is drawn at --icon-size-md because the three dots are too light at the small size)"
+   ],
+   "size_of_list": "two items (a share menu: copy the link, share it) up to seven"
   },
   "sizes": [
    "the trigger is a Button (sm 32, md 38, lg 44); items --size-xl high, --touch-min at the 480 width"
@@ -1724,6 +1729,7 @@
    "--fs-body",
    "--fs-sm",
    "--icon-secondary",
+   "--icon-size-md",
    "--lh-snug",
    "--lh-tight",
    "--primary",
@@ -1743,9 +1749,9 @@
    "--touch-min",
    "--z-menu"
   ],
-  "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. The listbox follows the menu's keys and opens on the chosen option; the chosen option is marked by the check icon and the tint, not by colour alone. The languages come from the shared setting, never from a list written in a screen.",
+  "accessibility": "The menu button pattern. The trigger is a button with aria-haspopup=\"menu\", aria-expanded and aria-controls (the list id); the list is ul role=\"menu\" named by the button (aria-labelledby), each action a button role=\"menuitem\" inside li role=\"none\", a rule is li role=\"separator\". Enter, Space and Down open and focus the first item, Up opens on the last; in the list Up and Down move and wrap, Home and End go to the ends, a typed letter moves to the next item that starts with it, Escape closes and returns the focus to the button, Tab closes, a click outside closes; an item with aria-disabled stays in the list and is skipped. The menu never acts itself: ds-menu-select carries the item value and the app acts. At the 480 width every item is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. The listbox follows the menu's keys and opens on the chosen option; the chosen option is marked by the check icon and the tint, not by colour alone. The languages come from the shared setting, never from a list written in a screen. An icon-only trigger has no visible word, so aria-label is required and names the object; the icon is aria-hidden; it keeps aria-haspopup, aria-expanded and aria-controls; the open state is the --bg-subtle ground, as the labelled trigger, and the icon does not turn. In a linked row it stands in the trail above the stretched link (K23).",
   "purpose": "Offer a short list of actions for one object: the share actions of a hub link (A-2) and the row actions of a staff list (S-2).",
-  "usage": "Use for three to seven actions that do not fit on the row. A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The trigger is a Button with the share icon before its word and the chevron after it. A language list is this listbox variant.",
+  "usage": "Use for three to seven actions that do not fit on the row. Two actions that are the two ways to hand one object on (copy its link, share it) are a two-item share menu, with the labelled trigger. The acts of a row that are too many for its trail are the menu behind an icon-only trigger, put at the end of the trail; its accessible name says what it is for (\"Actions for <the row's title>\"). Two ordinary acts stay Buttons (K01). A destructive action takes the danger item and the app asks for confirmation. A choice of a value is a select or a combobox, not this menu. The labelled trigger is a Button with the share icon before its word and the chevron after it. A language list is this listbox variant.",
   "notes": "No AIVIS source holds an action menu (map K26: MISSING; the cabinet language picker is a listbox), so the look is built from the system: the surface, border, radius and shadow of the combobox list, the row hover tint of the Row list. The open trigger takes --bg-subtle and the chevron turns, as the accordion chevron does."
  },
  {
@@ -1892,6 +1898,10 @@
    "calls": [
     "AivisDS.docrow.done(row)",
     "AivisDS.docrow.fail(row)"
+   ],
+   "control": [
+    "a real link (a with href and download)",
+    "a button (button.ds-row__link[type=button]: the file is fetched by the app's own handler, so the row has no address of its own to open)"
    ]
   },
   "sizes": [
@@ -1904,7 +1914,8 @@
    "focus",
    "downloading",
    "downloaded",
-   "unavailable (aria-disabled, no link, full opacity: its text carries the state)"
+   "unavailable (aria-disabled, no link, full opacity: its text carries the state)",
+   "downloading from a button: the pointer shows progress (cursor: progress) and the row carries aria-busy=\"true\""
   ],
   "tokens": [
    "--bg-subtle",
@@ -1920,9 +1931,9 @@
    "--text-secondary",
    "--touch-min"
   ],
-  "accessibility": "A Row list row whose title and meta sit inside ONE real link (a with href and download), so the link name carries the file type and size in text (\"Signed agreement PDF, 218 KB, English\"). The trailing icon is decorative. The state is also said in words in a status element (role=\"status\") filled from data-msg-downloading, data-msg-downloaded and data-msg-failed on the row. An unavailable row has no link and says in text that the file is not there yet (aria-disabled=\"true\"). Focus is the Row list outline around the row. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "accessibility": "A Row list row whose title and meta sit inside ONE real link (a with href and download), so the link name carries the file type and size in text (\"Signed agreement PDF, 218 KB, English\"). The trailing icon is decorative. The state is also said in words in a status element (role=\"status\") filled from data-msg-downloading, data-msg-downloaded and data-msg-failed on the row. An unavailable row has no link and says in text that the file is not there yet (aria-disabled=\"true\"). Focus is the Row list outline around the row. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. A row whose file the app fetches by its own handler holds a button in place of the link, with the same title and meta inside it, so its name carries the file type and size (\"Signed agreement PDF, 218 KB, English\"); it has no href and no download, so it is never offered as a link to open in a new tab or to copy. The app sets data-state=\"downloading\" and aria-busy=\"true\" on the row when the click starts, ignores a second activation while the state is downloading, then sets data-state=\"downloaded\" or removes the state, and says the state in words in .ds-docrow__status (role=\"status\"). components.js reacts to the same click and emits ds-docrow-download with a null href.",
   "purpose": "Download a file listed in a screen: attachments of a company, documents of a staff or an investor, the signed agreement of a booking.",
-  "usage": "Use it for any file a screen lists. The file type and size come from the file, formatted in the page language. A file that is not uploaded yet is the unavailable row, never a dead link. In the cabinet the href is the file's route and the app handles the click (an API call for a short-lived presigned link, then a navigation: frontend/src/api/attachments.ts), then calls AivisDS.docrow.done or .fail; nothing calls done for a plain download link, so the app does.",
+  "usage": "Use it for any file a screen lists. The file type and size come from the file, formatted in the page language. A file that is not uploaded yet is the unavailable row, never a dead link. In the cabinet the href is the file's route and the app handles the click (an API call for a short-lived presigned link, then a navigation: frontend/src/api/attachments.ts), then calls AivisDS.docrow.done or .fail; nothing calls done for a plain download link, so the app does. A file the browser cannot open from an address (it needs the session, or the address is short-lived) is the button form; a file that has an address of its own is the link.",
   "notes": "An icon box, a title, the description, the file name and size, a download icon; the download is a real link, not a button; on the Row list (K23)."
  },
  {

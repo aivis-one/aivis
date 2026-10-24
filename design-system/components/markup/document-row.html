@@ -14,3 +14,13 @@
     <span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span>
   </li>
 </ul>
+
+<!-- K44 addition (batch 5): a file the app fetches by its own handler. The row holds button.ds-row__link[type=button] (title and meta inside it, so the name carries the type and size) in place of the link: no href, no download.
+     The app sets data-state="downloading" and aria-busy="true" on the li at the click, ignores a second activation while it is downloading, then data-state="downloaded" (or none on failure) and the word of the state in .ds-docrow__status. -->
+<ul class="ds-rows">
+  <li class="ds-row ds-docrow" data-msg-downloading="Downloading" data-msg-downloaded="Downloaded" data-msg-failed="The download failed">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+    <span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English</span></button></span>
+    <span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status"></span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span>
+  </li>
+</ul>

@@ -332,5 +332,31 @@
    "weight": "400 700",
    "file": "fonts/noto-sans-arabic-latin.woff2"
   }
- ]
+ ],
+ "parts": {
+  "ds-section-title": {
+   "role": "h4",
+   "family": "display",
+   "tokens": [
+    "--font-display",
+    "--fs-h4",
+    "--lh-snug",
+    "--text-primary"
+   ],
+   "weight": 700,
+   "use": "the heading of a section inside a screen (an h2 or an h3 at the h4 role)"
+  },
+  "ds-note": {
+   "role": "small",
+   "family": "body",
+   "tokens": [
+    "--font-body",
+    "--fs-sm",
+    "--lh-snug",
+    "--text-secondary"
+   ],
+   "weight": 400,
+   "use": "a quiet small line under a figure or a heading; ds-note--xs is the caption role (--fs-xs)"
+  }
+ }
 }

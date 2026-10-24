@@ -39,6 +39,10 @@
   white-space: nowrap;
   border: 0;
 }
+/* the text parts of a screen (not components): a section heading at the h4 role and a quiet small line; tokens only, the roles of tokens/type-recipe.json */
+.ds-section-title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); }
+.ds-note { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-snug); color: var(--text-secondary); }
+.ds-note--xs { font-size: var(--fs-xs); }
 
 /* ===== K01 Button ===== */
 .ds-button {
@@ -2179,8 +2183,8 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 /* ===== K26 Action menu (the menu button pattern) ===== */
 .ds-menu { position: relative; display: inline-flex; }
 .ds-menu__button[aria-expanded="true"] { background: var(--bg-subtle); border-color: var(--border-input-hover); }
-.ds-menu__button .ds-icon:last-child { transition: rotate var(--dur-fast) var(--ease-standard); }
-.ds-menu__button[aria-expanded="true"] .ds-icon:last-child { rotate: 180deg; }
+.ds-menu__button:not(.ds-button--icon) .ds-icon:last-child { transition: rotate var(--dur-fast) var(--ease-standard); }
+.ds-menu__button[aria-expanded="true"]:not(.ds-button--icon) .ds-icon:last-child { rotate: 180deg; }
 .ds-menu__list {
   position: absolute;
   z-index: var(--z-menu);
@@ -2741,3 +2745,9 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
 @media (max-width: 480px) {
   button.ds-timeline__title { min-block-size: var(--touch-min); }
 }
+
+/* ===== K44 Document row, addition: a file the app fetches by its own handler (the button form of the row link); the pointer says the file is on its way ===== */
+.ds-docrow[data-state="downloading"] .ds-row__link { cursor: progress; }
+
+/* ===== K26 Action menu, addition: the icon-only trigger draws its icon at the medium icon size (the three dots of the more icon are too light at the small one) ===== */
+.ds-menu__button.ds-button--icon .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }

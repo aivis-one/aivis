@@ -78,7 +78,7 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </head>
 <body>
 <header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a></div></div></div>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -242,6 +242,62 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </div>
 </div></div>
 <figure class="phone-wrap"><iframe class="phone" title="Stat tile: a pending figure on a phone" data-src="components-6.html?fragment=r6d" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+</div></section>
+<section class="blk" id="r10"><div class="wrap"><h2>The text parts, the Action menu (K26) and the Document row (K44) additions</h2>
+<p class="lead">The section title and the note (shared text parts, not components); the Action menu as a two-item share menu and with an icon-only trigger; the Document row whose file the app fetches by its own handler.</p>
+<div class="cols"><div class="stack" data-frag="r10a"><div class="padded desk"><h3>Section title and note</h3>
+<div class="stack">
+<h2 class="ds-section-title">Your holdings</h2>
+<p class="ds-note">Figures are updated every morning.</p>
+<p class="ds-note ds-note--xs">The smaller form: a date, an attempt count, a caption.</p>
+<div class="ds-card ds-card--flat"><h2 class="ds-section-title">On the card ground</h2><p class="ds-note">The quiet line stands on the card ground too (6.49 by day).</p></div>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Section title and note on a phone" data-src="components-6.html?fragment=r10a" height="420"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r11a"><div class="padded desk"><h3>Action menu: share menu and icon-only trigger</h3>
+<h4 class="lbl-s">a two-item share menu (copy, share)</h4>
+<div class="menu-room">
+<div class="ds-menu">
+  <button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="m6-b" aria-haspopup="menu" aria-expanded="true" aria-controls="m6-l"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share"/></svg> Share <svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></button>
+  <ul class="ds-menu__list" role="menu" id="m6-l" aria-labelledby="m6-b">
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="copy" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg> Copy link</button></li>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="share" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share"/></svg> Share</button></li>
+  </ul>
+</div>
+</div>
+<h4 class="lbl-s">an icon-only trigger for the acts of a row (named by aria-label)</h4>
+<div class="menu-room">
+<ul class="ds-rows"><li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Agreement of sale</span><span class="ds-row__meta">PDF, 218 KB</span></span><div class="ds-row__trail">
+<div class="ds-menu" data-align="end">
+  <button type="button" class="ds-button ds-button--ghost ds-button--icon ds-menu__button" data-size="sm" id="m6-r" aria-haspopup="menu" aria-expanded="false" aria-controls="m6-rl" aria-label="Actions for Agreement of sale"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-more"/></svg></button>
+  <ul class="ds-menu__list" role="menu" id="m6-rl" aria-labelledby="m6-r" hidden>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="publish" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-eye"/></svg> Publish</button></li>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="edit" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-pencil"/></svg> Edit</button></li>
+  </ul>
+</div></div></li>
+<li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#doc"><span class="ds-row__title">Open row with a menu open</span></a><span class="ds-row__meta">The trigger above the stretched link</span></span><div class="ds-row__trail">
+<div class="ds-menu" data-align="end">
+  <button type="button" class="ds-button ds-button--ghost ds-button--icon ds-menu__button" data-size="sm" id="m6-r2" aria-haspopup="menu" aria-expanded="true" aria-controls="m6-rl2" aria-label="Actions for Open row"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-more"/></svg></button>
+  <ul class="ds-menu__list" role="menu" id="m6-rl2" aria-labelledby="m6-r2">
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="edit" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-pencil"/></svg> Edit</button></li>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item ds-menu__item--danger" data-value="delete" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-trash2"/></svg> Delete</button></li>
+  </ul>
+</div></div></li></ul>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Action menu: share menu and icon-only trigger on a phone" data-src="components-6.html?fragment=r11a" height="800"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r12a"><div class="padded desk"><h3>Document row with a button</h3>
+<ul class="ds-rows">
+  <li class="ds-row ds-docrow" data-msg-downloading="Downloading" data-msg-downloaded="Downloaded" data-msg-failed="The download failed"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English</span></button></span><span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status"></span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+  <li class="ds-row ds-docrow" data-state="downloading" aria-busy="true"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English</span></button></span><span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status">Downloading</span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+  <li class="ds-row ds-docrow" data-state="downloaded"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF, 218 KB, English</span></button></span><span class="ds-row__trail"><span class="ds-docrow__status ds-sr-only" role="status">Downloaded</span><span class="ds-docrow__state"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span></span></li>
+  <li class="ds-row ds-docrow" data-state="unavailable" aria-disabled="true"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Signed agreement</span><span class="ds-row__meta">PDF. Not uploaded yet</span></span></li>
+</ul>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Document row with a button on a phone" data-src="components-6.html?fragment=r12a" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>

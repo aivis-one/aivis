@@ -30,3 +30,28 @@
     <li role="none"><button type="button" role="option" class="ds-menu__item" aria-selected="false" data-value="ru" tabindex="-1"><span class="ds-menu__label">Russian</span><svg class="ds-icon ds-menu__tick" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></button></li>
   </ul>
 </div>
+
+<!-- K26 additions (batch 5). A two-item share menu (the labelled trigger, copy the link and share it), and an icon-only trigger for the acts of a row: a ghost icon button with the more icon and an aria-label naming the object;
+     it stands at the end of the row's trail (above the stretched link, K23), data-align="end", and its icon does not turn. -->
+<div class="ds-menu">
+  <button type="button" class="ds-button ds-button--secondary ds-menu__button" data-size="sm" id="am2-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="am2-list"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share"/></svg>Share<svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></button>
+  <ul class="ds-menu__list" role="menu" id="am2-list" aria-labelledby="am2-btn" hidden>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="copy-link" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-link"/></svg>Copy link</button></li>
+    <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="share" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share"/></svg>Share</button></li>
+  </ul>
+</div>
+<ul class="ds-rows">
+  <li class="ds-row">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span>
+    <span class="ds-row__body"><span class="ds-row__title">Agreement of sale</span><span class="ds-row__meta">PDF, 218 KB</span></span>
+    <div class="ds-row__trail">
+      <div class="ds-menu" data-align="end">
+        <button type="button" class="ds-button ds-button--ghost ds-button--icon ds-menu__button" data-size="sm" id="am3-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="am3-list" aria-label="Actions for Agreement of sale"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-more"/></svg></button>
+        <ul class="ds-menu__list" role="menu" id="am3-list" aria-labelledby="am3-btn" hidden>
+          <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="publish" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-eye"/></svg>Publish</button></li>
+          <li role="none"><button type="button" role="menuitem" class="ds-menu__item" data-value="edit" tabindex="-1"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-pencil"/></svg>Edit</button></li>
+        </ul>
+      </div>
+    </div>
+  </li>
+</ul>
