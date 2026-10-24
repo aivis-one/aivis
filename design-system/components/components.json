@@ -261,7 +261,8 @@
     "interactive"
    ],
    "brand": "ds-card--brand: a summary on the primary colour; text --on-primary, quiet text --on-primary-muted, the sign of a figure written in the text",
-   "media": "ds-card--media: a cover (.ds-card__media, an img or the fallback with an icon), a chip on the photo (.ds-card__tag) and .ds-card__content"
+   "media": "ds-card--media: a cover (.ds-card__media, an img or the fallback with an icon), a chip on the photo (.ds-card__tag) and .ds-card__content",
+   "figure_tone": "data-tone=\"success|danger\" on .ds-card__delta (a profit or a loss in the head of a card); not on the brand card"
   },
   "sizes": [
    "sm",
@@ -283,6 +284,7 @@
    "--center-lg",
    "--center-md",
    "--center-sm",
+   "--danger",
    "--dur-fast",
    "--ease-standard",
    "--focus-offset",
@@ -315,12 +317,13 @@
    "--space-4",
    "--space-5",
    "--space-6",
+   "--success",
    "--text-on-scrim",
    "--text-primary",
    "--text-secondary",
    "--tracking-tight"
   ],
-  "accessibility": "An interactive card holds exactly one link in its title; the link stretches over the card and takes the focus outline for the whole card. No click handler on the container. The title is a heading whose level fits the page. The brand card's text is --on-primary (8.48 day, 5.85 night) and its quiet text --on-primary-muted (6.63 day, 4.51 night on --primary); a Button inside takes the --on-primary border. A chip on a photo is --text-on-scrim over --scrim-strong (7.63 on a white photo). A cover that only decorates has alt=\"\".",
+  "accessibility": "An interactive card holds exactly one link in its title; the link stretches over the card and takes the focus outline for the whole card. No click handler on the container. The title is a heading whose level fits the page. The brand card's text is --on-primary (8.48 day, 5.85 night) and its quiet text --on-primary-muted (6.63 day, 4.51 night on --primary); a Button inside takes the --on-primary border. A chip on a photo is --text-on-scrim over --scrim-strong (7.63 on a white photo). A cover that only decorates has alt=\"\". A toned delta outside the brand card is a second sign: the sign and the words say the same; --success and --danger stand on the surface and the card ground in both themes (5.1 or better).",
   "purpose": "A bounded group of related content.",
   "usage": "The decorative tick is placed by elements/README.md and is not part of this component; a card keeps --border-subtle. The brand card is for a summary; a figure on it takes --on-primary with its sign written, never --success or --danger. The media card is for a cover and its content.",
   "notes": ""
@@ -842,18 +845,22 @@
   "name": "Row list",
   "status": "built",
   "markup": "markup/row-list.html",
-  "class_root": ".ds-rows, .ds-row, .ds-lead",
+  "class_root": ".ds-rows, .ds-row, .ds-lead, .ds-thumb",
   "variants": {
    "row": [
     "plain",
-    "linked (one a.ds-row__link stretched over the row)"
+    "linked (one a.ds-row__link stretched over the row)",
+    "linked from a button (button.ds-row__link: the same look, start alignment, whole width and stretched hit area as the anchor form)"
    ],
    "slots": [
-    "lead",
+    "lead (an icon box, or a thumbnail: .ds-thumb)",
     "body (title, meta)",
-    "trail (value, badge, chevron)"
+    "trail (value, badge, chevron, or controls: a button, a link, a menu)"
    ],
-   "tone": "data-tone=\"success|warning|danger|accent|neutral\" on .ds-row__lead (and on .ds-lead, the same box outside a row); the primary tint without it"
+   "tone": "data-tone=\"success|warning|danger|accent|neutral\" on .ds-row__lead (and on .ds-lead, the same box outside a row); the primary tint without it",
+   "narrow": "a row too narrow for the text and the trail drops the trail under the text, to the end edge (the body keeps --center-sm as its measure)",
+   "thumbnail": ".ds-thumb: a square image in the lead slot (--size-xl; data-size=\"lg\" is --size-4xl), object-fit cover, a fallback that holds an icon",
+   "figure_tone": "data-tone=\"success|danger\" on .ds-row__value (a credit or a debit, a profit or a loss) and on .ds-row__title (a danger title); the same attribute on a K49 dd and on a K07 .ds-card__delta"
   },
   "sizes": [
    "one size (touch-min on a phone)"
@@ -863,7 +870,8 @@
    "hover (linked rows)",
    "pressed (linked rows)",
    "focus (outline around the row)",
-   "disabled (aria-disabled)"
+   "disabled (aria-disabled)",
+   "button form: the same states as the anchor form"
   ],
   "tokens": [
    "--accent-subtle",
@@ -873,6 +881,7 @@
    "--border-default",
    "--border-input-hover",
    "--border-subtle",
+   "--center-sm",
    "--danger",
    "--danger-subtle",
    "--danger-subtle-text",
@@ -885,15 +894,18 @@
    "--font-mono",
    "--fs-sm",
    "--fs-xs",
+   "--icon-secondary",
    "--lh-snug",
    "--primary-subtle",
    "--primary-subtle-text",
    "--radius-md",
    "--size-3xl",
+   "--size-4xl",
    "--size-xl",
    "--space-1",
    "--space-2",
    "--space-3",
+   "--success",
    "--success-subtle",
    "--success-subtle-text",
    "--text-primary",
@@ -903,9 +915,9 @@
    "--warning-subtle-text",
    "--z-content"
   ],
-  "accessibility": "A ul of li. A linked row holds one anchor on its title; its ::after stretches the hit area over the whole row (the row, not the 26 px anchor, is the touch target); the focus outline is drawn around the row at --focus-offset. Title text-primary, meta text-tertiary on the white --bg-surface of the row only (decided by the owner, 2026-10-17; a row never takes a fill); the figure is mono and tabular. A disabled row has aria-disabled=\"true\" and no link. The chevron is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The tone is a second sign: the row's title and meta say the same in words. The tinted text stands on its tinted ground (--*-subtle-text on --*-subtle).",
+  "accessibility": "A ul of li. A linked row holds one control on its title, an anchor where it goes to a screen or a button (button.ds-row__link, type=\"button\") where it opens a window or does an act in place; its ::after stretches the hit area over the whole row (the row, not the 26 px anchor, is the touch target); the focus outline is drawn around the row at --focus-offset. Title text-primary, meta text-tertiary on the white --bg-surface of the row only (decided by the owner, 2026-10-17; a row never takes a fill); the figure is mono and tabular. A disabled row has aria-disabled=\"true\" and no link. The chevron is aria-hidden. At the 480 width and below every interactive part is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. The tone is a second sign: the row's title and meta say the same in words. The tinted text stands on its tinted ground (--*-subtle-text on --*-subtle). A control in the trail (a button, a link, a menu) is positioned above the stretched link, so it is reached first and is its own target; the rest of the trail still opens the row. A thumbnail is decoration when the title says the same (alt=\"\"), else its image has a description. A toned figure or title is a second sign: the sign (+ or -) and the words say the same; --success stands on the surface, the page and the card ground at 5.55 or better by day and 8.54 by night, --danger at 6.92 and 5.1 (tokens/contrast.json).",
   "purpose": "A list of records one under another: transactions, documents, notifications, referrals.",
-  "usage": "Use for a list read top to bottom with one main fact per row and an optional status; use a table (K24) when the reader compares columns. Do not put two links or a button inside a linked row.",
+  "usage": "Use for a list read top to bottom with one main fact per row and an optional status; use a table (K24) when the reader compares columns. A row that opens a window or does an act in place uses the button form. Do not put a second link in the body of a linked row; the trail may hold the controls of the row's own acts (a button, a menu), which are reached above the stretched link. A trail that is wider than the row drops under the text. A figure that is a credit or a debit, a profit or a loss takes the tone on the value; a destructive row takes it on the title, together with the lead's tone.",
   "notes": "No tick (rule 3 of the tick: a list of rows is not a list of cards)."
  },
  {
@@ -2290,7 +2302,8 @@
    "layout": [
     "inline (default)",
     "stacked (.ds-kv--stacked)"
-   ]
+   ],
+   "tone": "data-tone=\"success|danger\" on a dd paints the value --success or --danger"
   },
   "sizes": [
    "one size"
@@ -2301,6 +2314,7 @@
   "tokens": [
    "--border-default",
    "--border-subtle",
+   "--danger",
    "--font-mono",
    "--fs-body",
    "--fs-sm",
@@ -2308,10 +2322,11 @@
    "--space-1",
    "--space-2",
    "--space-4",
+   "--success",
    "--text-primary",
    "--text-secondary"
   ],
-  "accessibility": "A dl with a div around each dt and dd, which the accessibility tree reads as pairs. The values are text in the mono face with tabular figures.",
+  "accessibility": "A dl with a div around each dt and dd, which the accessibility tree reads as pairs. The values are text in the mono face with tabular figures. A toned value is a second sign: the sign and the words say the same; --success and --danger stand on the surface and the card ground in both themes (5.1 or better).",
   "purpose": "One pair per row: a term at the start and its value at the end.",
   "usage": "Use it for a price breakdown, a balance line, the fields of an invoice or the details of a transaction inside a Card or a Dialog. The Booking card (KN1) and the Invoice block (K43) keep their own facts lists.",
   "notes": ""

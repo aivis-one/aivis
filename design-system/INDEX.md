@@ -18,7 +18,7 @@ One tree. Every file exists once. Open this file first; every folder below has o
 | `components/icons/` | The icon set: `icons.svg` the sprite of 97 icons in style P1, `icons.json` the key inventory, `STYLE-P1.md` the drawing rules |
 | `elements/` | The decorative elements: the lattice pattern, the line mark, the divider ornament and the cube hexagon as masks, in a day and a night file where the line weight differs, `README.md` how each is built and placed (the grid fit, the fades, the card tick) and the usage rules |
 | `reference/` | The documents an agent builds from: `conventions.md` the decided values with their sources, `refusals.md` every "never" with its replacement, reason and source, `build-screen.md` and `build-component.md` the order of work |
-| `examples/` | `components-1.html`, `components-2.html`, `components-3.html`, `components-4.html` and `components-5.html`: every component of `components/` in use (batches 1, 2, 3 and 4, and the pieces added for the cabinets in `components-5.html`), in every state, day and night, desktop and the 480 phone width; `foundations.html` and `elements.html`: colours with contrast, type, spacing, widths, radii, shadows, motion, day and night side by side, and the icons at 16, 24 and 48 pixels; the decorative elements on a site screen, a cabinet screen and a phone, in both themes |
+| `examples/` | `components-1.html`, `components-2.html`, `components-3.html`, `components-4.html`, `components-5.html` and `components-6.html`: every component of `components/` in use (batches 1, 2, 3 and 4, the pieces added for the cabinets in `components-5.html`, and the pieces the cabinets' screens still needed in `components-6.html`), in every state, day and night, desktop and the 480 phone width; `foundations.html` and `elements.html`: colours with contrast, type, spacing, widths, radii, shadows, motion, day and night side by side, and the icons at 16, 24 and 48 pixels; the decorative elements on a site screen, a cabinet screen and a phone, in both themes |
 
 ## Build a page from the system
 
@@ -40,7 +40,7 @@ Read `reference/conventions.md`, `reference/refusals.md` and `reference/build-sc
 | a font face | the file in `fonts/` and its line in `fonts/fonts.css` | `tokens/type-recipe.json` |
 | a brand file | `brand/` | - |
 | a decorative element | `elements/<name>.svg` and its row in `elements/README.md` | a tile in `examples/elements.html` |
-| a component | its rules in `components/components.css`, its entry in `components/components.json`, its section in `components/components.md` and `components/markup/<name>.html` | a block in `examples/components-1.html`, `examples/components-2.html`, `examples/components-3.html`, `examples/components-4.html` or `examples/components-5.html` with every state, day and night, desktop and phone |
+| a component | its rules in `components/components.css`, its entry in `components/components.json`, its section in `components/components.md` and `components/markup/<name>.html` | a block in `examples/components-1.html`, `examples/components-2.html`, `examples/components-3.html`, `examples/components-4.html`, `examples/components-5.html` or `examples/components-6.html` with every state, day and night, desktop and phone |
 
 ## The rules in short
 

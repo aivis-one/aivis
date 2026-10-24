@@ -2648,3 +2648,37 @@ details.ds-timeline__card[open] > summary .ds-timeline__chev { rotate: 180deg; }
   .ds-menu__item, .ds-menu__button .ds-icon:last-child, .ds-barchart__bar { transition: none; }
   .ds-docrow[data-state="downloading"] .ds-docrow__state .ds-icon { animation: none; }
 }
+
+/* =====================================================================================================
+   Batch 5 additions: the pieces the cabinets' screens need that the first four batches lack.
+   Same rules as batch 1: tokens only, logical properties, the focus is an outline outside the part, nothing mirrored.
+   ===================================================================================================== */
+
+/* ===== K23 Row list, additions: the button form of the link, the controls of the trail, the narrow row, the thumbnail, the tone of a figure and a title ===== */
+/* the button form of the link: a row that opens a window or does an act in place reads as the one that goes to a screen (start alignment, the whole width, the hit area stretched over the row, the focus outline round the row) */
+button.ds-row__link { appearance: none; box-sizing: border-box; inline-size: 100%; margin: 0; padding: 0; border: 0; background: none; font: inherit; text-align: start; cursor: pointer; }
+/* a control in the trail (a button, a link, a menu) is its own target and stands above the stretched link; the rest of the trail still opens the row */
+.ds-row__trail :is(a, button, input, select, textarea, summary, label) { position: relative; }
+/* a narrow row: the body keeps a measure of --center-sm and the trail drops under the text, to the end edge, instead of squeezing it */
+.ds-row { flex-wrap: wrap; }
+.ds-row__body { flex: 1 1 var(--center-sm); }
+.ds-row__trail { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; margin-inline-start: auto; }
+/* the thumbnail: a square image in the lead slot of a row or at the start of a reorder item (K39); the fallback holds an icon */
+.ds-thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  inline-size: var(--size-xl);
+  block-size: var(--size-xl);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--icon-secondary);
+}
+.ds-thumb[data-size="lg"] { inline-size: var(--size-4xl); block-size: var(--size-4xl); }
+.ds-thumb > img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+/* the tone of a figure or a title: the sign and the words say the same; --success and --danger stand on the surface, the page and the card ground in both themes (4.5 or better) */
+:is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="success"] { color: var(--success); }
+:is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="danger"] { color: var(--danger); }

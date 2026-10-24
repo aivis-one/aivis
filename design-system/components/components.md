@@ -58,6 +58,8 @@ Markup: `markup/text-field.html`. A field is `.ds-field` (label, control, hint, 
 
 Additions. The brand card `ds-card--brand` is a summary on the primary colour: a gradient from `--primary` to `--primary-hover`, the title and figures in `--on-primary`, the quiet text (`.ds-card__label`, the body) in `--on-primary-muted`, a Button inside with the `--on-primary` border; a figure on it takes `--on-primary` with its sign written in the text, never `--success` or `--danger` (1.35 and 1.08 on the day primary). Parts for a figure: `.ds-card__label`, `.ds-card__figure` (mono), `.ds-card__delta`. The media card `ds-card--media` has a cover on top: `.ds-card__media` (an `img` that covers; `--fallback` with a centred icon on `--bg-subtle`; `data-size="sm|lg"` changes its height), `.ds-card__tag` (a chip on the photo, on `--scrim-strong`) and `.ds-card__content` (the padded body). Markup: `markup/card.html`.
 
+Addition (batch 5). `data-tone="success|danger"` on `.ds-card__delta` paints a profit or a loss in the head of a card (not on the brand card, whose figures take `--on-primary`). Markup: `markup/card.html`.
+
 ## K08 Badge
 
 A status label with text, one size, radius `--radius-sm`. Variants: neutral (no modifier), `success`, `warning`, `danger`, `info`; no accent badge (its colours equal the warning badge's), a mark such as "Public" takes the neutral badge; one size and the subtle style only (the owner's answer of 2026-10-17). Each uses the status subtle ground with its subtle text; amber and grey text are never set on the card ground, which this pairing respects. Markup: `markup/badge.html`.
@@ -178,6 +180,8 @@ Markup: `markup/row-list.html`. `ul.ds-rows` of `li.ds-row`: `.ds-row__lead` (an
 
 Addition. The tone of the lead icon: `data-tone="success|warning|danger|accent|neutral"` on `.ds-row__lead` (the primary tint without it); `span.ds-lead` is the same box outside a row. The tone is a second sign: the title and meta of the row say the same in words. Markup: `markup/row-list.html`.
 
+Additions (batch 5). The button form: `button.ds-row__link[type=button]` on the title, for a row that opens a window or does an act in place; it is drawn as the anchor form is (start alignment, the whole width, no border or ground, the hit area stretched over the row, the focus outline round the row). A control in the trail (a button, a link, a menu such as K26) is positioned above the stretched link and is its own target; the rest of the trail still opens the row. A narrow row: the body keeps `--center-sm` as its measure and the trail drops under the text, to the end edge, when the row is too narrow for both, so nothing overflows at 375. The thumbnail: `.ds-thumb` is a square image (`--size-xl`; `data-size="lg"` is `--size-4xl`; `object-fit: cover`, `--bg-subtle` ground, `--border-subtle` border) that stands in the lead slot where `.ds-row__lead` stands, or at the start of a reorder item (K39); without an image it holds an icon of the set; `alt=""` when the title says the same. The tone of a figure and a title: `data-tone="success|danger"` on `.ds-row__value` or `.ds-row__title` paints it `--success` or `--danger` (a credit or a debit, a profit or a loss, a danger title); the same attribute works on a K49 `dd` and on a K07 `.ds-card__delta` (not on the brand card). Both colours stand on the surface, the page and the card ground at 5.1 or better in both themes (`../tokens/contrast.json`); the tone is a second sign, the sign and the words say the same. Markup: `markup/row-list.html`.
+
 ## K24 Table
 
 Markup: `markup/table.html`. `.ds-table-wrap` (a `role="region"` named by the caption, `tabindex="0"`, scrolls sideways) around `table.ds-table`: `caption.ds-table__caption` (visible), `th scope="col"`, the first cell of a row `th scope="row"`, numbers `.ds-table__num` (end-aligned, mono). A link in a cell is `a.ds-table__link`. States: rest, row hover (`--bg-subtle`), link rest, hover and focus, disabled row (`aria-disabled="true"` on the `tr`), focus of the scroll region. The header is `--text-secondary` on `--bg-subtle` (the card ground, where secondary stands).
@@ -209,6 +213,8 @@ The tile is wide (decided by the owner, 2026-10-17): the icon at the start, the 
 ## K49 Key-value list
 
 `dl.ds-kv` of `div.ds-kv__row` each holding a `dt` (the term, at the start) and a `dd` (the value, at the end, mono and tabular). `ds-kv__row--total` closes a breakdown with a rule above and the bolder pair; `ds-kv--stacked` puts the term over the value for a narrow column. The Booking card (KN1) and the Invoice block (K43) keep their own facts lists. Markup: `markup/key-value.html`.
+
+Addition (batch 5). `data-tone="success|danger"` on a `dd` paints the value `--success` or `--danger`, a second sign beside the sign and the words. Markup: `markup/key-value.html`.
 
 ## Tokens used, batch 2
 

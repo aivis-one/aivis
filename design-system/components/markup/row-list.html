@@ -23,3 +23,39 @@
   <li class="ds-row"><span class="ds-row__lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Deposit</span><span class="ds-row__meta">12 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value">+500.00</span></span></li>
   <li class="ds-row"><span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Withdrawal</span><span class="ds-row__meta">10 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value">-120.00</span></span></li>
 </ul>
+
+<!-- K23 additions (batch 5).
+     The button form: button.ds-row__link[type=button] on the title, for a row that opens a window or does an act in place; it looks and aligns as the anchor form does and its hit area is the whole row.
+     Controls in the trail (a button, a link, a menu) stand above the stretched link and are their own targets; the rest of the trail opens the row. A trail that does not fit drops under the text, to the end edge.
+     The thumbnail: span.ds-thumb (data-size="lg" for 56 pixels) in the lead slot, an img with alt="" when the title says the same, or an icon as the fallback.
+     The tone of a figure or a title: data-tone="success|danger" on .ds-row__value or .ds-row__title; the sign and the words say the same. -->
+<ul class="ds-rows">
+  <li class="ds-row">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-wallet"/></svg></span>
+    <span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Deposit of 500.00</span></button><span class="ds-row__meta">12 Oct 2026, USDT</span></span>
+    <span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg></span>
+    <span class="ds-row__body"><a class="ds-row__link" href="/support/12"><span class="ds-row__title">Where is my payout?</span></a><span class="ds-row__meta">Anna Weber, 12 Oct 2026</span></span>
+    <span class="ds-row__trail"><span class="ds-badge ds-badge--warning">Waiting</span><button type="button" class="ds-button ds-button--secondary" data-size="sm">Claim</button></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-thumb"><img src="cover.jpg" alt=""></span>
+    <span class="ds-row__body"><a class="ds-row__link" href="/news/9"><span class="ds-row__title">The lounge opens in January</span></a><span class="ds-row__meta">News, 9 Oct 2026</span></span>
+    <span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-thumb"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-image"/></svg></span>
+    <span class="ds-row__body"><span class="ds-row__title">No cover yet</span></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg></span>
+    <span class="ds-row__body"><span class="ds-row__title">Withdrawal</span><span class="ds-row__meta">10 Oct 2026</span></span>
+    <span class="ds-row__trail"><span class="ds-row__value" data-tone="danger">-120.00</span></span>
+  </li>
+  <li class="ds-row">
+    <span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-out"/></svg></span>
+    <span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title" data-tone="danger">Deactivate the account</span></button></span>
+  </li>
+</ul>

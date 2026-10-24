@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIVIS components, batch 5 additions for the cabinets</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../tokens/tokens-dark.css">
+<link rel="stylesheet" href="../components/components.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-page); color: var(--text-primary); font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal); }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); margin: 0; }
+code { font-family: var(--font-mono); font-size: 0.875em; }
+.wrap { max-inline-size: var(--maxw-wide); margin-inline: auto; padding-inline: var(--space-gutter-mobile); }
+header.top { padding-block: var(--space-6) var(--space-4); border-block-end: thin solid var(--border-default); }
+header.top h1 { font-size: var(--fs-h1); }
+header.top p { color: var(--text-secondary); margin-block: var(--space-2) 0; max-inline-size: var(--maxw-prose); }
+.toolbar { position: sticky; inset-block-start: 0; z-index: 70; background: var(--bg-page); border-block-end: thin solid var(--border-subtle); padding-block: var(--space-3); }
+.toolbar .wrap { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); align-items: center; }
+.toolbar .grp { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.toolbar .lbl { font-size: var(--fs-sm); color: var(--text-secondary); }
+.toolbar a { color: var(--primary); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+.toolbar a:hover { text-decoration: underline; }
+.toolbar a:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+section.blk { scroll-margin-block-start: 4rem; padding-block: var(--space-7); border-block-end: thin solid var(--border-subtle); }
+section.blk h2 { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
+section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--space-2); }
+.lead { color: var(--text-secondary); max-inline-size: var(--maxw-prose); margin-block: 0 var(--space-4); }
+.note { color: var(--text-secondary); font-size: var(--fs-sm); max-inline-size: var(--maxw-prose); margin-block: var(--space-3) 0; }
+.cols { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); align-items: start; }
+.cols-s { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); align-items: start; }
+.opt { border: thin solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-page); color: var(--text-primary); padding: var(--space-4); display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.opt > h4 { font-size: var(--fs-body); }
+.opt .tag { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); }
+.stack { display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.padded { padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
+.desk { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; }
+.phone { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; max-inline-size: 30rem; }
+.phone-wrap { display: grid; gap: var(--space-2); justify-items: center; margin: 0; min-inline-size: 0; }
+.phone-wrap figcaption { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); text-align: center; }
+.announce { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; min-block-size: 1.5em; }
+.lbl-s { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); margin: 0; }
+.menu-room { min-block-size: calc(var(--center-lg) + var(--size-4xl)); }
+.specimen { block-size: 34rem; overflow: auto; border: thin solid var(--border-default); border-radius: var(--radius-lg); }
+.photo-row { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+@media (max-width: 480px) { .toolbar { position: static; } }
+footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-size: var(--fs-sm); }
+/* simulated states, drawn only so every state is visible at once */
+.ds-menu__item.sim-hover { background: var(--bg-subtle); }
+.ds-menu__item.sim-pressed { background: var(--bg-inset); box-shadow: var(--shadow-inset-hex); }
+.sim-focus { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-row.sim-hover { border-color: var(--border-default); }
+.ds-row.sim-pressed { border-color: var(--border-input-hover); }
+.ds-row.sim-focus { z-index: 1; }
+.ds-button.sim-hover { background: var(--_bg-hover); }
+.ds-barchart__bar.sim-hover { fill: var(--primary-hover); }
+.frag-sources { display: none; }
+.ds-checkbox.sim-hover .ds-checkbox__input + .ds-checkbox__box { border-color: var(--border-input-hover); }
+.ds-checkbox.sim-cbfocus .ds-checkbox__input + .ds-checkbox__box { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-header__figure.sim-hover { border-color: var(--primary); }
+.ds-header__figure.sim-hover .ds-header__figure-amount { color: var(--primary); }
+.ds-stat.sim-hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
+.ds-subnav__link.sim-hover { color: var(--text-primary); box-shadow: inset 0 calc(var(--border-input-width) * -2) 0 var(--border-default); }
+
+
+/* batch 5: simulated states, drawn only so every state is visible at once */
+.ds-card.sim-focus { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-card--interactive.sim-hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
+.ds-timeline__title.sim-hover { color: var(--primary); }
+.ds-menu__button.sim-hover { background: var(--bg-subtle); }
+.ds-input.sim-hover { border-color: var(--border-input-hover); }
+.ds-reorder__item.sim-hover { border-color: var(--border-default); }
+.frame-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.narrow { max-inline-size: var(--center-lg); }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a></div></div></div>
+<section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
+<p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
+<div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
+<h4 class="lbl-s">button form (opens a window in place), rest, hover, focus</h4>
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-wallet"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Deposit of 500.00</span></button><span class="ds-row__meta">12 Oct 2026, USDT</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row sim-hover"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-wallet"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Withdrawal of 120.00</span></button><span class="ds-row__meta">Hover</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row sim-focus"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-wallet"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Sign out on this device</span></button><span class="ds-row__meta">Focus</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-wallet"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#anchor"><span class="ds-row__title">The anchor form, for comparison</span></a><span class="ds-row__meta">Goes to a screen</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+</ul>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Row link as a button on a phone" data-src="components-6.html?fragment=r1a" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r1b"><div class="padded desk"><h3>Controls in the trail</h3>
+<h4 class="lbl-s">controls in the trail of a linked row (each is its own target)</h4>
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#thread"><span class="ds-row__title">Where is my payout?</span></a><span class="ds-row__meta">Anna Weber, 12 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-badge ds-badge--warning">Waiting</span><button type="button" class="ds-button ds-button--secondary" data-size="sm">Claim</button></span></li>
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#thread"><span class="ds-row__title">Document upload failed</span></a><span class="ds-row__meta">Mine</span></span><span class="ds-row__trail"><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close the request"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+</ul>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Controls in the trail on a phone" data-src="components-6.html?fragment=r1b" height="420"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r1c"><div class="padded desk"><h3>Narrow row</h3>
+<h4 class="lbl-s">a narrow row: the trail drops under the text (this column is narrow)</h4>
+<div class="narrow"><ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#t"><span class="ds-row__title">Deposit from the card of the company</span></a><span class="ds-row__meta">12 Oct 2026, USDT</span></span><span class="ds-row__trail"><span class="ds-row__value" data-tone="success">+1,200.00</span><span class="ds-badge ds-badge--success">Paid</span><button type="button" class="ds-button ds-button--secondary" data-size="sm">Receipt</button></span></li>
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Short title</span><span class="ds-row__meta">Fits on one line</span></span><span class="ds-row__trail"><span class="ds-row__value">40.00</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+</ul></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Narrow row on a phone" data-src="components-6.html?fragment=r1c" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r1d"><div class="padded desk"><h3>Thumbnail</h3>
+<h4 class="lbl-s">the thumbnail in the lead slot (default and large), and the fallback</h4>
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-thumb"><img data-photo="grey" alt=""></span><span class="ds-row__body"><a class="ds-row__link" href="#post"><span class="ds-row__title">The lounge opens in January</span></a><span class="ds-row__meta">News, 9 Oct 2026</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-thumb" data-size="lg"><img data-photo="white" alt=""></span><span class="ds-row__body"><a class="ds-row__link" href="#post"><span class="ds-row__title">Large thumbnail</span></a><span class="ds-row__meta">56 pixels</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-thumb"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-image"/></svg></span><span class="ds-row__body"><span class="ds-row__title">No cover yet</span><span class="ds-row__meta">The fallback holds an icon</span></span></li>
+</ul>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Thumbnail on a phone" data-src="components-6.html?fragment=r1d" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r1e"><div class="padded desk"><h3>Tone of a figure and a title</h3>
+<h4 class="lbl-s">the tone of a figure and a title</h4>
+<ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Deposit</span><span class="ds-row__meta">12 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value" data-tone="success">+500.00</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Withdrawal</span><span class="ds-row__meta">10 Oct 2026</span></span><span class="ds-row__trail"><span class="ds-row__value" data-tone="danger">-120.00</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-out"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title" data-tone="danger">Deactivate the account</span></button><span class="ds-row__meta">Asks to confirm</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+</ul>
+<dl class="ds-kv">
+  <div class="ds-kv__row"><dt>Units</dt><dd>4</dd></div>
+  <div class="ds-kv__row"><dt>Missing amount</dt><dd data-tone="danger">-42.00</dd></div>
+  <div class="ds-kv__row"><dt>Refund</dt><dd data-tone="success">+42.00</dd></div>
+</dl>
+<article class="ds-card"><header class="ds-card__head"><h3 class="ds-card__title">Brenner Logistik GmbH</h3><p class="ds-card__delta" data-tone="success">+380.00</p></header><div class="ds-card__body">A profit in the head of a card.</div></article>
+<article class="ds-card ds-card--flat"><header class="ds-card__head"><h3 class="ds-card__title">Flat card</h3><p class="ds-card__delta" data-tone="danger">-96.00</p></header><div class="ds-card__body">A loss on the card ground.</div></article>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Tone of a figure and a title on a phone" data-src="components-6.html?fragment=r1e" height="900"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+</div></section>
+<footer class="end"><div class="wrap">Sample data throughout.</div></footer>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var frag = qs.get('fragment');
+  if (frag) {
+    var el = document.querySelector('[data-frag="' + frag + '"]');
+    var clone = el ? el.cloneNode(true) : null;
+    Array.prototype.slice.call(document.body.children).forEach(function (c) { if (c.tagName !== 'SCRIPT') c.remove(); });
+    if (clone) { document.body.insertBefore(clone, document.body.firstChild); }
+  } else {
+    document.querySelectorAll('iframe[data-src]').forEach(function (f) { f.src = f.getAttribute('data-src'); });
+  }
+  if (qs.get('theme')) document.documentElement.setAttribute('data-theme', qs.get('theme'));
+  fetch('../components/icons/icons.svg').then(function (r) { return r.text(); }).then(function (t) {
+    document.body.insertAdjacentHTML('afterbegin', t);
+  });
+  /* sample photos: flat grounds, white, mid-grey and black, so the text on the photo is measured against the three that bracket any photo */
+  var grounds = { white: '#ffffff', grey: '#808080', black: '#000000' };
+  document.querySelectorAll('img[data-photo]').forEach(function (i) {
+    var c = grounds[i.getAttribute('data-photo')] || grounds.grey;
+    var cv = document.createElement('canvas'); cv.width = 4; cv.height = 3;
+    var cx = cv.getContext('2d'); cx.fillStyle = c; cx.fillRect(0, 0, 4, 3);
+    i.src = cv.toDataURL();
+  });
+  function frames() { return Array.prototype.slice.call(document.querySelectorAll('iframe[data-src]')); }
+  function press(attr, val) { document.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+  function applyTo(doc, theme, dir) { try { doc.documentElement.setAttribute('data-theme', theme); doc.documentElement.setAttribute('dir', dir); } catch (e) {} }
+  var state = { theme: document.documentElement.getAttribute('data-theme') || 'light', dir: 'ltr' };
+  function apply() {
+    applyTo(document, state.theme, state.dir);
+    frames().forEach(function (f) { if (f.contentDocument) applyTo(f.contentDocument, state.theme, state.dir); });
+    press('data-theme-set', state.theme); press('data-dir-set', state.dir);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-theme-set]'); if (t) { state.theme = t.getAttribute('data-theme-set'); apply(); }
+    var d = e.target.closest('[data-dir-set]'); if (d) { state.dir = d.getAttribute('data-dir-set'); apply(); }
+  });
+  frames().forEach(function (f) { f.addEventListener('load', apply); });
+})();
+</script>
+<script src="../components/components.js"></script>
+</body>
+</html>
