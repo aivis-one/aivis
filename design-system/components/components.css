@@ -2682,3 +2682,11 @@ button.ds-row__link { appearance: none; box-sizing: border-box; inline-size: 100
 /* the tone of a figure or a title: the sign and the words say the same; --success and --danger stand on the surface, the page and the card ground in both themes (4.5 or better) */
 :is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="success"] { color: var(--success); }
 :is(.ds-row__value, .ds-row__title, .ds-kv dd, .ds-card:not(.ds-card--brand) .ds-card__delta)[data-tone="danger"] { color: var(--danger); }
+
+/* ===== K39 Reorder list, addition: the trailing actions of an item (icon buttons of the item's own acts; a thumbnail may stand before the body) ===== */
+.ds-reorder__trail { display: flex; align-items: center; gap: var(--space-1); flex: none; }
+
+/* ===== K29 Date picker, addition: the date-and-time field is drawn the same way ===== */
+.ds-input[type="datetime-local"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color-scheme: light; }
+[data-theme="dark"] .ds-input[type="datetime-local"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-input[type="datetime-local"] { color-scheme: dark; } }

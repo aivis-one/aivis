@@ -240,6 +240,8 @@ Markup: `markup/date-picker.html`. The browser's own date input, drawn as a Text
 
 Addition. The time input is drawn the same way: `.ds-input[type="time"]` in the mono face with tabular figures, and the browser's picker follows the theme. Markup: `markup/date-picker.html`.
 
+Addition (batch 5). The date-and-time field is drawn the same way: `.ds-input[type="datetime-local"]` in the mono face with tabular figures, and the browser's picker follows the theme; the period is its `min` and `max` (`YYYY-MM-DDTHH:MM`), also written in the hint. Markup: `markup/date-picker.html`.
+
 ## K30 File input
 
 Markup: `markup/file-input.html`. `.ds-field.ds-file` holds the visible label, the control (`label.ds-button.ds-button--secondary.ds-file__pick` around the real `input.ds-file__input[type=file]`), the hint with the limits as text (JPG or PNG, up to 8 MB: never only in `accept`) and `ul.ds-file__list`. The page fills `data-accept`, `data-max-size` (bytes) and the messages (`data-msg-type`, `data-msg-size` with `{name}` and `{max}`, `data-msg-ready`, `data-msg-done`, `data-label-remove` with `{name}`). A file that fails the type or the size check is listed as an error item whose message is a `role="alert"` paragraph with an icon. An item (`li.ds-file__item[data-state]`: selected, uploading, done, error) has a thumb (a local preview for an image, an icon otherwise), the name, a status line (size and state, `--text-tertiary` on the white item), a remove button named "Remove <name>", and for uploading a Progress (`role=progressbar` named by the file) set through `AivisDS.file.progress(item, pct)`, `.done(item)` and `.fail(item, message)`. A field without `multiple` keeps one file. States: rest, hover, focus, selected, uploading, done, error, disabled (`data-disabled`). The item takes the Row list's look.
@@ -251,6 +253,8 @@ Markup: `markup/combobox.html`. The ARIA 1.2 combobox: `input.ds-combobox__input
 ## K39 Reorder list
 
 Markup: `markup/reorder-list.html`. `ol.ds-reorder` named by a heading; each `li.ds-reorder__item` has two buttons (`.ds-reorder__move[data-dir]`, names from `data-label-up` and `data-label-down` with `{name}`), a position figure (`aria-hidden`) and the title and meta; the button that cannot move is disabled. A move keeps the focus on the same button (or the other when this one is now at an end), marks the row `data-moved` until the focus leaves it and writes the polite status (`data-msg-moved` with `{name}`, `{n}`, `{total}`) into the element `data-live` names. No drag is built. The look: a small button pair at the start, 1 px border, `--radius-sm`, a `--text-secondary` glyph, primary on hover, on the Row list's surface. States: rest, hover, pressed, focus, moved, first and last, disabled row. The move button border is `--border-input`, the system's outlined-button border (decided by the owner, 2026-10-17), 3.03 by day and 3.01 by night against white; `--border-default` (1.57) is not used.
+
+Addition (batch 5). The trailing actions slot: `.ds-reorder__trail` is the last child of an item and holds the icon buttons of the item's own acts (`button.ds-button.ds-button--ghost.ds-button--icon[data-size="sm"]`, each named by `aria-label` with the act and the item); a thumbnail (`.ds-thumb`, K23) may stand between the position figure and the body. Markup: `markup/reorder-list.html`.
 
 ## K35 Structured payout form
 

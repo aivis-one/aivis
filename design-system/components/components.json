@@ -1209,10 +1209,11 @@
   "name": "Date picker",
   "status": "built",
   "markup": "markup/date-picker.html",
-  "class_root": ".ds-input[type=date]",
+  "class_root": ".ds-input[type=date], .ds-input[type=time], .ds-input[type=datetime-local]",
   "variants": {
    "input": "the browser's own date input, drawn as a Text field (mono figures); the period is its min and max",
-   "time": "input type=\"time\", drawn the same way (the mono face, the browser's picker follows the theme)"
+   "time": "input type=\"time\", drawn the same way (the mono face, the browser's picker follows the theme)",
+   "datetime": "input type=\"datetime-local\", drawn the same way (the mono face, the browser's picker follows the theme): one field for a date and a time, as an event's start or end"
   },
   "sizes": [
    "the Text field's: sm 32, md 38 (default), lg 44"
@@ -1229,9 +1230,9 @@
   "tokens": [
    "--font-mono"
   ],
-  "accessibility": "A real input type=date with a visible label bound by for and id. The allowed period is its min and max attributes and is also written in the hint, linked by aria-describedby. An invalid value sets aria-invalid=\"true\" and shows a message with an icon and text, linked by aria-describedby, as the Text field. The picker that opens and its keys are the browser's own; color-scheme follows the theme, so the browser's picker is dark by night. Fields are 16 px text at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Every Text field rule of K03 holds.",
+  "accessibility": "A real input type=date with a visible label bound by for and id. The allowed period is its min and max attributes and is also written in the hint, linked by aria-describedby. An invalid value sets aria-invalid=\"true\" and shows a message with an icon and text, linked by aria-describedby, as the Text field. The picker that opens and its keys are the browser's own; color-scheme follows the theme, so the browser's picker is dark by night. Fields are 16 px text at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Every Text field rule of K03 holds. The datetime-local input takes the same rules: a visible label, min and max as the period (also in the hint), aria-invalid with a message, the browser's own picker and keys.",
   "purpose": "Choosing one calendar date: a document date, a filter's from and to.",
-  "usage": "One input per date; a period is two inputs, the second with min set from the first by the screen. A date typed in a locale format is a text field.",
+  "usage": "One input per date; a period is two inputs, the second with min set from the first by the screen. A date typed in a locale format is a text field. A date and a time that belong together (an event's start) are one datetime-local input; a date alone or a time alone keeps its own input.",
   "notes": "The cabinet uses the native date input in 4 places; the value is set in the mono family for figures. The native input is decided by the owner, 2026-10-17."
  },
  {
@@ -1593,12 +1594,13 @@
   "name": "Reorder list",
   "status": "built",
   "markup": "markup/reorder-list.html",
-  "class_root": ".ds-reorder, .ds-reorder__item, .ds-reorder__move",
+  "class_root": ".ds-reorder, .ds-reorder__item, .ds-reorder__move, .ds-reorder__trail",
   "variants": {
    "order": "an ordered list (ol) with a position figure",
    "events": [
     "ds-reorder-change"
-   ]
+   ],
+   "trail": "a trailing actions slot (.ds-reorder__trail, the last child of the item): icon buttons of the item's own acts (Edit, Delete); a thumbnail (.ds-thumb, K23) may stand before the body"
   },
   "sizes": [
    "rows --size-lg or taller; move buttons --size-sm by --size-xs (the cabinet's), --touch-min at the 480 width"
@@ -1640,9 +1642,9 @@
    "--text-tertiary",
    "--touch-min"
   ],
-  "accessibility": "An ol named by a visible heading (aria-labelledby); each row has a Move up and a Move down button whose accessible name includes the row's title (\"Move Prototype review up\", from data-label-up and data-label-down); the button that cannot move is disabled. After a move the focus stays on the same button (or the other one when this one is now at an end), the row carries data-moved until the focus leaves it, and a polite status (data-live names its element, text from data-msg-moved with {name}, {n} and {total}) says where the row went. The position figure is aria-hidden: the ol already gives the order. Keyboard operation is the buttons' own (Tab, Enter, Space). The component fires ds-reorder-change with the new order of the rows' data-id and never saves it. Buttons are at least --touch-min square at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
+  "accessibility": "An ol named by a visible heading (aria-labelledby); each row has a Move up and a Move down button whose accessible name includes the row's title (\"Move Prototype review up\", from data-label-up and data-label-down); the button that cannot move is disabled. After a move the focus stays on the same button (or the other one when this one is now at an end), the row carries data-moved until the focus leaves it, and a polite status (data-live names its element, text from data-msg-moved with {name}, {n} and {total}) says where the row went. The position figure is aria-hidden: the ol already gives the order. Keyboard operation is the buttons' own (Tab, Enter, Space). The component fires ds-reorder-change with the new order of the rows' data-id and never saves it. Buttons are at least --touch-min square at the 480 width. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. The trail holds ghost icon buttons (K01), each named by aria-label with the act and the item (\"Edit Pilot launch\"); they are not part of the move keys and stay in the tab order after the item's own move buttons. They are at least --touch-min square at the 480 width.",
   "purpose": "Putting a short list in order: roadmap steps, attachments, documents.",
-  "usage": "Use for lists of up to a few dozen rows. A pointer drag is not built (the cabinet has none): buttons only. A list that sorts itself is not this component.",
+  "usage": "Use for lists of up to a few dozen rows. A pointer drag is not built (the cabinet has none): buttons only. A list that sorts itself is not this component. An item's own acts (edit, delete) go in the trail as icon buttons; three or more acts are an action menu (K26) in the trail.",
   "notes": "A pair of small up and down buttons at the start of the row, 1 px border, --radius-sm, a --text-secondary glyph, primary on hover; the rest of the row takes the Row list's surface. The move button border is --border-input, the system's outlined-button border (3.03 and 3.01 against white), not --border-default."
  },
  {
