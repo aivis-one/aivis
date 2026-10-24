@@ -67,31 +67,32 @@ onMounted(() => {
     <h2 class="gifts__title">
       {{ t('inv.portfolio.gifts.title') }}
     </h2>
-    <div v-for="gift in gifts" :key="gift.id" class="gifts__item">
-      <Gift :size="20" class="gifts__icon" />
-      <div class="gifts__body">
-        <div class="gifts__units">
-          {{ t('inv.portfolio.gifts.units', { units: formatNumber(gift.units, locale) }) }}
-        </div>
-        <div class="gifts__date">
-          {{ formatDate(gift.created_at, locale) }}
-        </div>
-      </div>
-      <div class="gifts__actions">
-        <CButton variant="outline" size="sm" @click="certificateId = gift.id">
-          {{ t('inv.portfolio.gifts.certificate') }}
-        </CButton>
-        <CButton
-          variant="primary"
-          size="sm"
-          :loading="accepting === gift.id"
-          :disabled="accepting !== null"
-          @click="accept(gift)"
-        >
-          {{ t('inv.portfolio.gifts.accept') }}
-        </CButton>
-      </div>
-    </div>
+    <ul class="ds-rows">
+      <li v-for="gift in gifts" :key="gift.id" class="ds-row">
+        <span class="ds-row__lead"><Gift size="sm" /></span>
+        <span class="ds-row__body">
+          <span class="ds-row__title">
+            {{ t('inv.portfolio.gifts.units', { units: formatNumber(gift.units, locale) }) }}
+          </span>
+          <span class="ds-row__meta">{{ formatDate(gift.created_at, locale) }}</span>
+        </span>
+        <span class="ds-row__trail">
+          <CButton variant="outline" size="sm" inline @click="certificateId = gift.id">
+            {{ t('inv.portfolio.gifts.certificate') }}
+          </CButton>
+          <CButton
+            variant="primary"
+            size="sm"
+            inline
+            :loading="accepting === gift.id"
+            :disabled="accepting !== null"
+            @click="accept(gift)"
+          >
+            {{ t('inv.portfolio.gifts.accept') }}
+          </CButton>
+        </span>
+      </li>
+    </ul>
 
     <AgreementSheet
       :open="certificateId !== null"
@@ -105,52 +106,16 @@ onMounted(() => {
 
 <style scoped>
 .gifts {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
-  padding: 0 var(--space-4) var(--space-3);
 }
 
+/* The section's heading, in the display face. */
 .gifts__title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-}
-
-.gifts__item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--primary-subtle);
-}
-
-.gifts__icon {
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.gifts__body {
-  flex: 1;
-  min-inline-size: 0;
-}
-.gifts__units {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.gifts__date {
-  margin-block-start: var(--space-1);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.gifts__actions {
-  display: flex;
-  gap: var(--space-2);
 }
 </style>

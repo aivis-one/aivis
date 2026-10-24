@@ -25,6 +25,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
+import { CCheckbox } from '@/components/ui'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
@@ -106,48 +107,45 @@ const openTitle = computed(() =>
 </script>
 
 <template>
-  <section class="pt">
-    <h2 class="pt__title">
-      {{ t('inv.terms.title') }}
-    </h2>
+  <section class="ds-card ds-card--flat">
+    <div class="ds-card__head">
+      <h2 class="ds-card__title">
+        {{ t('inv.terms.title') }}
+      </h2>
+    </div>
 
     <ul v-if="digest.length > 0" class="pt__list">
-      <li v-for="row in digest" :key="row.heading" class="pt__row">
-        <span class="pt__heading">{{ row.heading }}.</span>
+      <li v-for="row in digest" :key="row.heading" class="ds-card__body">
+        <strong>{{ row.heading }}.</strong>
         {{ row.line }}
       </li>
     </ul>
-    <p v-else-if="digestFailed" class="pt__hint">
+    <p v-else-if="digestFailed" class="ds-card__body">
       {{ t('inv.terms.digestFailed') }}
     </p>
 
-    <p class="pt__hint">
+    <div>
       <a
+        class="ds-button ds-button--ghost"
+        data-size="sm"
         :href="docUrl('pre_purchase_disclosure')"
         target="_blank"
         rel="noopener"
         @click.prevent="openDoc = 'pre_purchase_disclosure'"
         >{{ t('inv.terms.readFull') }}</a
       >
-    </p>
+    </div>
 
-    <label class="pt__accept">
-      <input
-        type="checkbox"
-        :checked="modelValue"
-        @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
-      />
-      <span>
-        {{ t('inv.terms.acceptPrefix') }}
-        <a
-          :href="docUrl('buyer_agreement')"
-          target="_blank"
-          rel="noopener"
-          @click.prevent="openDoc = 'buyer_agreement'"
-          >{{ t('inv.terms.agreementLink') }}</a
-        >
-      </span>
-    </label>
+    <CCheckbox :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
+      {{ t('inv.terms.acceptPrefix') }}
+      <a
+        :href="docUrl('buyer_agreement')"
+        target="_blank"
+        rel="noopener"
+        @click.prevent="openDoc = 'buyer_agreement'"
+        >{{ t('inv.terms.agreementLink') }}</a
+      >
+    </CCheckbox>
 
     <LegalDocModal
       :open="openDoc !== null"
@@ -160,67 +158,17 @@ const openTitle = computed(() =>
 </template>
 
 <style scoped>
-.pt {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-page);
-}
-
-.pt__title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
+/* The short form of the sheet: one line per section, the section's name in the
+   text colour. */
 .pt__list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.pt__row {
-  font-size: var(--fs-xs);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.pt__heading {
-  font-weight: 600;
+.pt__list strong {
   color: var(--text-primary);
-}
-
-.pt__hint {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.pt a {
-  color: var(--primary);
-  text-decoration: underline;
-}
-
-.pt__accept {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-.pt__accept input[type='checkbox'] {
-  flex: none;
-  inline-size: 1rem;
-  block-size: 1rem;
-  margin: calc((1.5 * var(--fs-sm) - 1rem) / 2) 0 0;
 }
 </style>

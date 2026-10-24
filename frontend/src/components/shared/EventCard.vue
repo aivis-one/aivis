@@ -7,14 +7,15 @@
 // the dashboard widget and the full /investor/events screen render the
 // same event consistently (no duplicated event markup):
 //
-//   variant="compact"  -- dashboard "Upcoming events" widget. A tight
-//                         row: date badge + title + time + location.
-//                         The whole card is one click target; the
-//                         parent navigates to the events screen.
-//   variant="full"     -- /investor/events list. Adds the cover image
-//                         and a description preview, plus an explicit
-//                         "open link" affordance when the event has a
-//                         url.
+//   variant="compact"  -- dashboard "Upcoming events" widget. A row of the
+//                         Row list (K23): calendar icon + title + date, time
+//                         and location. The whole row is one click target
+//                         (the title's button stretches over it); the parent
+//                         navigates to the events screen.
+//   variant="full"     -- /investor/events list. A media card (K07): the
+//                         cover with the date on it, the title, time and
+//                         location, a description preview, plus an explicit
+//                         "open link" affordance when the event has a url.
 //
 // NAVIGATION-AGNOSTIC, AND ONLY `compact` IS A CLICK TARGET.
 //   compact emits @click with the event and the parent decides what a
@@ -35,7 +36,7 @@
 // FP-25 SELF-HIDE.
 //   cover, description, location, and url are all optional on
 //   EventResponse -- each renders only when present. A full card with
-//   no cover falls back to a calendar-icon tile (same pattern as
+//   no cover falls back to the media card's icon tile (same pattern as
 //   CompanyCard's fallback) so the grid stays visually even.
 //
 // LOCALE-AWARE DATES.
@@ -46,8 +47,7 @@
 
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CalendarDays, MapPin, ChevronRight, ExternalLink } from '@/components/ui/icons'
-import { resolveCoverImage } from '@/utils/format'
+import { CalendarDays, ChevronRight, ExternalLink } from '@/components/ui/icons'
 import type { EventResponse } from '@/api/types'
 
 const props = withDefaults(
@@ -62,7 +62,9 @@ defineEmits<{ click: [event: EventResponse] }>()
 
 const { t, locale } = useI18n()
 
-const coverImage = computed(() => resolveCoverImage({ cover_url: props.event.cover_url }))
+// The cover is a picture that covers the media part of the card (K07); without one
+// the fallback tile with the calendar icon.
+const coverSrc = computed(() => props.event.cover_url ?? null)
 
 const day = computed<string>(() => fmtDate({ day: 'numeric' }))
 const month = computed<string>(() => fmtDate({ month: 'short' }))
@@ -77,6 +79,11 @@ const time = computed<string>(() => {
   }
 })
 
+// "1 Sep, 15:00, Dubai": the date, the time and the place, one line.
+const meta = computed<string>(() =>
+  [`${day.value} ${month.value}`, time.value, props.event.location].filter(Boolean).join(', '),
+)
+
 function fmtDate(opts: Intl.DateTimeFormatOptions): string {
   try {
     return new Date(props.event.starts_at).toLocaleDateString(locale.value, opts)
@@ -87,242 +94,70 @@ function fmtDate(opts: Intl.DateTimeFormatOptions): string {
 </script>
 
 <template>
-  <!-- Compact: dashboard widget row. Whole card emits @click. -->
-  <button
-    v-if="variant === 'compact'"
-    type="button"
-    class="event-card event-card--compact"
-    @click="$emit('click', event)"
-  >
-    <div class="event-card__badge">
-      <span class="event-card__day">{{ day }}</span>
-      <span class="event-card__mon">{{ month }}</span>
-    </div>
-    <div class="event-card__body">
-      <div class="event-card__title">
-        {{ event.title }}
-      </div>
-      <div class="event-card__meta">
-        <span class="event-card__time">{{ time }}</span>
-        <span v-if="event.location" class="event-card__loc">
-          <MapPin :size="16" />
-          {{ event.location }}
-        </span>
-      </div>
-    </div>
-    <ChevronRight :size="16" class="event-card__chev" />
-  </button>
+  <!-- Compact: dashboard widget row (K23). The whole row emits @click: the title is
+       a button whose area stretches over the row. -->
+  <ul v-if="variant === 'compact'" class="ds-rows">
+    <li class="ds-row">
+      <span class="ds-row__lead"><CalendarDays size="sm" /></span>
+      <span class="ds-row__body">
+        <button
+          type="button"
+          class="ds-row__link event-card--compact"
+          @click="$emit('click', event)"
+        >
+          <span class="ds-row__title">{{ event.title }}</span>
+        </button>
+        <span class="ds-row__meta">{{ meta }}</span>
+      </span>
+      <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+    </li>
+  </ul>
 
-  <!-- Full: list card. Cover + description + optional external link.
+  <!-- Full: list card (K07 media). Cover + description + optional external link.
        Not a click target -- see the note at the top of this file. -->
-  <div v-else class="event-card event-card--full">
-    <div
-      class="event-card__cover"
-      :class="{ 'event-card__cover--fallback': !coverImage }"
-      :style="{ backgroundImage: coverImage ?? undefined }"
-    >
-      <CalendarDays v-if="!coverImage" :size="32" />
-      <div class="event-card__cover-badge">
-        <span class="event-card__day">{{ day }}</span>
-        <span class="event-card__mon">{{ month }}</span>
-      </div>
+  <div v-else class="ds-card ds-card--media event-card--full">
+    <div class="ds-card__media" :class="{ 'ds-card__media--fallback': !coverSrc }">
+      <img v-if="coverSrc" :src="coverSrc" alt="" loading="lazy" />
+      <CalendarDays v-else />
+      <span class="ds-card__tag">{{ day }} {{ month }}</span>
     </div>
 
-    <div class="event-card__body">
-      <div class="event-card__title event-card__title--full">
+    <div class="ds-card__content">
+      <h3 class="ds-card__title">
         {{ event.title }}
-      </div>
+      </h3>
 
-      <div class="event-card__meta">
-        <span class="event-card__time">{{ time }}</span>
-        <span v-if="event.location" class="event-card__loc">
-          <MapPin :size="16" />
-          {{ event.location }}
-        </span>
-      </div>
+      <p class="ds-card__body">{{ meta }}</p>
 
-      <p v-if="event.description" class="event-card__desc">
+      <p v-if="event.description" class="ds-card__body event-card__desc">
         {{ event.description }}
       </p>
 
-      <a
-        v-if="event.url"
-        :href="event.url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="event-card__link"
-      >
-        <ExternalLink :size="16" />
-        {{ t('inv.events.eventCard.openUrl') }}
-      </a>
+      <div v-if="event.url">
+        <a
+          :href="event.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="ds-button ds-button--ghost event-card__link"
+          data-size="sm"
+        >
+          <ExternalLink size="sm" />
+          {{ t('inv.events.eventCard.openUrl') }}
+        </a>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.event-card__badge,
-.event-card__cover-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
-  color: var(--accent);
-}
-.event-card__day {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: 1;
-}
-.event-card__mon {
-  font-size: var(--fs-3xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.event-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-  flex: 1;
-}
-.event-card__title {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
+/* The card, its cover, the date chip, the row and the link are the system's. What
+   is left is the description's two-line preview, capped at the reading measure
+   (--maxw-prose is a ceiling: on a phone it does nothing). */
+.event-card__desc {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.event-card__title--full {
-  font-size: var(--fs-body);
-}
-.event-card__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-.event-card__loc {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-.event-card__desc {
-  margin: var(--space-1) 0 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.event-card__link {
-  /* A5: 81.8 x 21 measured -- a 21px-tall touch target. The painted link must
-     stay inline with the card text, so the HIT AREA is expanded past it.
-     ⚠ NEITHER SWEEP CAUGHT THIS. Reaching /investor/events by router.push does
-     not render the event cards, so the sweep measured a page with no cards on
-     it; a direct page load shows eight of these failing. A route visited by
-     client-side navigation is not always the page a user loads. */
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-block-start: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
-  inline-size: fit-content;
-}
-
-.event-card__link::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-
-/* Compact variant: single clickable row. */
-.event-card--compact {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  inline-size: 100%;
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  border: thin solid var(--border-default);
-  background: var(--bg-page);
-  text-align: start;
-  cursor: pointer;
-}
-.event-card--compact .event-card__badge {
-  inline-size: var(--size-3xl);
-  block-size: var(--size-3xl);
-}
-.event-card__chev {
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-/* Full variant: cover on top, body below. NOT a click target, so it paints
-   NO cursor:pointer, NO :hover lift and NO :active depress -- the card does
-   not emit and no call site listens. Do not restore any of the three without
-   restoring the listener with them. */
-.event-card--full {
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-.event-card__cover {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  inline-size: 100%;
-  background-size: cover;
-  background-position: center;
-  background-color: var(--bg-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
-}
-.event-card__cover--fallback {
-  background-image: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-surface) 100%);
-}
-.event-card__cover-badge {
-  position: absolute;
-  inset-block-start: var(--space-2);
-  inset-inline-start: var(--space-2);
-  inline-size: var(--size-2xl);
-  block-size: var(--size-2xl);
-  background: var(--bg-page);
-  box-shadow: var(--shadow-1);
-}
-.event-card--full .event-card__body {
-  padding: var(--space-4);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.event-card__desc {
   max-inline-size: var(--maxw-prose);
 }
 </style>

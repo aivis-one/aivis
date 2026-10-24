@@ -27,40 +27,13 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <button type="button" class="logout-link" :disabled="busy" @click="signOut">
+  <button
+    type="button"
+    class="ds-button ds-button--ghost"
+    data-size="sm"
+    :disabled="busy"
+    @click="signOut"
+  >
     {{ t('auth.logout') }}
   </button>
 </template>
-
-<style scoped>
-.logout-link {
-  position: relative;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--primary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* The painted box keeps its size; the hit area is raised to the tap minimum. */
-.logout-link::after {
-  content: '';
-  position: absolute;
-  inset-inline-start: 50%;
-  inset-block-start: 50%;
-  transform: translate(-50%, -50%);
-  inline-size: max(100%, var(--tap-min));
-  block-size: max(100%, var(--tap-min));
-}
-
-.logout-link:hover:not(:disabled) {
-  text-decoration: underline;
-}
-
-.logout-link:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-</style>

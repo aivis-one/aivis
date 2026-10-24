@@ -8,7 +8,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Coins, Copy, Trophy, UserPlus } from '@/components/ui/icons'
 
-import { CButton, CLoader } from '@/components/ui'
+import { CButton, CStatCard } from '@/components/ui'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -37,47 +37,59 @@ onMounted(() => {
       {{ t('agent.home.title') }}
     </h2>
 
-    <div class="ahc__tiles">
-      <button type="button" class="ahc__tile" @click="go('agent-commissions')">
-        <Coins :size="16" class="ahc__icon ahc__icon--accent" />
-        <CLoader v-if="agentStore.commissionSummaryLoading" :size="16" />
-        <span v-else class="ahc__value">
-          {{
-            agentStore.commissionSummaryError ? '—' : formatPrice(agentStore.monthCommissionCents)
-          }}
-        </span>
-        <span class="ahc__label">{{ t('agent.home.monthCommission') }}</span>
-      </button>
+    <!-- Each tile opens its section of Partners (K46, the button form) -->
+    <div class="ds-stats">
+      <CStatCard
+        :label="t('agent.home.monthCommission')"
+        :value="
+          agentStore.commissionSummaryLoading
+            ? '…'
+            : agentStore.commissionSummaryError
+              ? '—'
+              : formatPrice(agentStore.monthCommissionCents)
+        "
+        @click="go('agent-commissions')"
+      >
+        <template #icon>
+          <span class="ds-lead" data-tone="accent"><Coins size="sm" /></span>
+        </template>
+      </CStatCard>
 
-      <button type="button" class="ahc__tile" @click="go('agent-leaderboard')">
-        <Trophy :size="16" class="ahc__icon ahc__icon--gold" />
-        <CLoader v-if="agentStore.leaderboardLoading" :size="16" />
-        <span v-else class="ahc__value">
-          {{
-            agentStore.leaderboardError || agentStore.myRank === null
+      <CStatCard
+        :label="t('agent.home.rank')"
+        :value="
+          agentStore.leaderboardLoading
+            ? '…'
+            : agentStore.leaderboardError || agentStore.myRank === null
               ? '—'
               : `#${agentStore.myRank}`
-          }}
-        </span>
-        <span class="ahc__label">{{ t('agent.home.rank') }}</span>
-      </button>
+        "
+        @click="go('agent-leaderboard')"
+      >
+        <template #icon>
+          <span class="ds-lead" data-tone="warning"><Trophy size="sm" /></span>
+        </template>
+      </CStatCard>
 
-      <button type="button" class="ahc__tile" @click="go('agent-referrals')">
-        <UserPlus :size="16" class="ahc__icon ahc__icon--teal" />
-        <CLoader v-if="agentStore.statsLoading" :size="16" />
-        <span v-else class="ahc__value">
-          {{
-            agentStore.statsError || !agentStore.stats
+      <CStatCard
+        :label="t('agent.home.registrations')"
+        :value="
+          agentStore.statsLoading
+            ? '…'
+            : agentStore.statsError || !agentStore.stats
               ? '—'
               : formatNumber(agentStore.stats.total_registrations, locale)
-          }}
-        </span>
-        <span class="ahc__label">{{ t('agent.home.registrations') }}</span>
-      </button>
+        "
+        @click="go('agent-referrals')"
+      >
+        <template #icon>
+          <span class="ds-lead" data-tone="success"><UserPlus size="sm" /></span>
+        </template>
+      </CStatCard>
     </div>
 
-    <CButton v-if="link" variant="primary" class="ahc__copy" @click="copy()">
-      <Copy :size="16" />
+    <CButton v-if="link" variant="primary" @click="copy()">
+      <Copy size="sm" />
       {{ t('agent.link.copy') }}
     </CButton>
   </section>
@@ -85,77 +97,16 @@ onMounted(() => {
 
 <style scoped>
 .ahc {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-3);
 }
 
+/* The section's heading, in the display face. */
 .ahc__title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
-}
-
-.ahc__tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-3);
-}
-
-.ahc__tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  min-block-size: 92px;
-  background: var(--bg-surface);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-
-.ahc__tile:active {
-  background: var(--bg-surface);
-}
-
-.ahc__icon--accent {
-  color: var(--accent);
-}
-
-.ahc__icon--gold {
-  color: var(--warning);
-}
-
-.ahc__icon--teal {
-  color: var(--success);
-}
-
-.ahc__value {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.ahc__label {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.ahc__copy {
-  align-self: stretch;
-}
-
-@media (min-width: 880px) {
-  .ahc__tiles {
-    max-inline-size: calc(3 * var(--tile-max));
-  }
-  .ahc__copy {
-    align-self: flex-start;
-  }
 }
 </style>

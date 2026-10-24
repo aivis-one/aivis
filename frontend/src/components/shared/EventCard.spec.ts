@@ -135,46 +135,34 @@ function maskComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
 }
 
-/** Body of the FIRST rule whose selector list contains `selector` as a whole
- *  token, or null. Bounded to one rule: an unbounded scan would swallow the
- *  next rule and report properties that are not in this one. */
-function ruleBody(selector: string): string | null {
-  const style = /<style[^>]*>([\s\S]*)<\/style>/.exec(sfc)
-  if (!style) return null
-  const css = maskComments(style[1])
-  const re = /([^{}]+)\{([^{}]*)\}/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(css)) !== null) {
-    if (
-      m[1]
-        .split(',')
-        .map((s) => s.trim())
-        .includes(selector)
-    )
-      return m[2]
-  }
-  return null
-}
-
+// The paint half now stands on the system's classes: the full card is `ds-card`
+// WITHOUT `ds-card--interactive` (the system paints the pointer, the hover and the
+// press only on the interactive card), and the compact row's button is the Row
+// list's `ds-row__link`, which the system paints as pressable. The SFC's own
+// <style> must stay free of any cursor, hover or press rule.
 describe('EventCard — the full variant paints nothing pressable', () => {
   it('the rules under test actually exist (guard: a typo must not pass as absence)', () => {
-    expect(ruleBody('.event-card--full')).not.toBeNull()
-    expect(ruleBody('.event-card--compact')).not.toBeNull()
+    const w = mount(EventCard, { props: { event, variant: 'full' } })
+    expect(w.get('.event-card--full').classes()).toContain('ds-card')
+    const c = mount(EventCard, { props: { event, variant: 'compact' } })
+    expect(c.get('button.event-card--compact').classes()).toContain('ds-row__link')
   })
 
-  it('.event-card--full has no cursor', () => {
-    expect(ruleBody('.event-card--full')).not.toMatch(/cursor/)
+  it('the full card is not the system’s interactive card', () => {
+    const w = mount(EventCard, { props: { event, variant: 'full' } })
+    expect(w.get('.event-card--full').classes()).not.toContain('ds-card--interactive')
   })
 
-  it('.event-card--full has no :hover rule', () => {
-    expect(ruleBody('.event-card--full:hover')).toBeNull()
+  it('the SFC style has no cursor, no :hover rule and no :active rule', () => {
+    const style = /<style[^>]*>([\s\S]*)<\/style>/.exec(sfc)
+    const css = maskComments(style ? style[1] : '')
+    expect(css).not.toMatch(/cursor/)
+    expect(css).not.toMatch(/:hover/)
+    expect(css).not.toMatch(/:active/)
   })
 
-  it('.event-card--full has no :active rule', () => {
-    expect(ruleBody('.event-card--full:active')).toBeNull()
-  })
-
-  it('compact KEEPS cursor:pointer — the fix must not flatten both variants', () => {
-    expect(ruleBody('.event-card--compact')).toMatch(/cursor:\s*pointer/)
+  it('compact KEEPS the pressable row — the fix must not flatten both variants', () => {
+    const w = mount(EventCard, { props: { event, variant: 'compact' } })
+    expect(w.get('button.event-card--compact').classes()).toContain('ds-row__link')
   })
 })

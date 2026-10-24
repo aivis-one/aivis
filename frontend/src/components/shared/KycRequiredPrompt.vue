@@ -21,51 +21,17 @@ function toVerification(): void {
 </script>
 
 <template>
-  <CModal :open="open" @close="close">
-    <div class="kyc-prompt">
-      <h3 class="kyc-prompt__title">
-        {{ t(`kyc.prompt.${action}`) }}
-      </h3>
-      <p class="kyc-prompt__text">
-        {{ t('kyc.prompt.text') }}
-      </p>
-      <div class="kyc-prompt__actions">
-        <CButton variant="outline" size="sm" @click="close">
-          {{ t('kyc.prompt.later') }}
-        </CButton>
-        <CButton variant="primary" size="sm" @click="toVerification">
-          {{ t('kyc.prompt.go') }}
-        </CButton>
-      </div>
+  <CModal :open="open" :title="t(`kyc.prompt.${action}`)" @close="close">
+    <p class="ds-dialog__text">
+      {{ t('kyc.prompt.text') }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton variant="outline" size="sm" inline @click="close">
+        {{ t('kyc.prompt.later') }}
+      </CButton>
+      <CButton variant="primary" size="sm" inline @click="toVerification">
+        {{ t('kyc.prompt.go') }}
+      </CButton>
     </div>
   </CModal>
 </template>
-
-<style scoped>
-.kyc-prompt {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.kyc-prompt__title {
-  margin: 0;
-  padding-inline-end: var(--space-5);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.kyc-prompt__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.kyc-prompt__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-</style>

@@ -4,9 +4,10 @@
 //                       (iter 2.5 R2 §5.5; replaces CertificateSheet)
 // =============================================================================
 //
-// Bottom-sheet that renders a document HTML (per-Purchase agreement OR
-// per-investor-company ownership certificate) in a sandboxed iframe
-// and exposes two actions on it: "Close" and "Download". There is no
+// The design system's Document sheet and viewer (K36), placement sheet: it renders
+// a document HTML (per-Purchase agreement OR per-investor-company ownership
+// certificate) in a sandboxed iframe and exposes two actions on it: "Close" and
+// "Download". There is no
 // "send to my e-mail": a document is read and downloaded in the cabinet.
 //
 // Generic over the document surface via the `mode` prop. The two
@@ -71,19 +72,20 @@
 //   Hands the reader THE SAME BLOB the iframe shows, as a file: no new
 //   request, nothing regenerated, no PDF (owner's decision: no PDF in
 //   any form). The button exists only in the loaded branch, so there is
-//   always a blob behind it. The anchor is synthesised the way
-//   api/attachments.ts downloads, with one difference: the URL is NOT
-//   revoked after the click -- it is still on screen, and the sheet's
-//   own close / unmount path (useAgreementBlob) owns its lifetime. The
-//   file name comes from utils/documentFilename.ts.
+//   always a blob behind it. It is a real link (a.ds-button with
+//   `download`), and the URL is NOT revoked after the click -- it is
+//   still on screen, and the sheet's own close / unmount path
+//   (useAgreementBlob) owns its lifetime. The file name comes from
+//   utils/documentFilename.ts.
 //
 // =============================================================================
 
-import { computed, watch } from 'vue'
+import { computed, ref, toRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import CBottomSheet from '@/components/ui/CBottomSheet.vue'
-import { CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CLoader } from '@/components/ui'
+import { AlertTriangle, X } from '@/components/ui/icons'
+import { useDialog } from '@/composables/useDialog'
 import { fetchAgreementBlob, fetchOwnershipCertificateBlob } from '@/api/agreements'
 import { useAgreementBlob } from '@/composables/useAgreementBlob'
 import { documentFilename } from '@/utils/documentFilename'
@@ -182,100 +184,114 @@ async function onRetry(): Promise<void> {
   }
 }
 
-function onSave(): void {
-  if (!blobUrl.value || !props.id) return
-  const anchor = document.createElement('a')
-  anchor.href = blobUrl.value
-  anchor.download = isOwnership
+// The file the save link hands over: the blob the frame shows, named by
+// utils/documentFilename.ts.
+const fileName = computed<string>(() =>
+  isOwnership
     ? documentFilename({ mode: 'ownership', companyName: props.companyName })
     : documentFilename({
         mode: 'agreement',
-        purchaseId: props.id,
+        purchaseId: props.id ?? '',
         legalBasis: props.legalBasis,
         companyName: props.companyName,
-      })
-  anchor.rel = 'noopener'
-  anchor.click()
-}
+      }),
+)
 
+// Escape, focus containment and focus restore.
+const titleId = useId()
+const dialogEl = ref<HTMLElement | null>(null)
+useDialog(toRef(props, 'open'), dialogEl, onClose)
 </script>
 
 <template>
-  <CBottomSheet :open="open" :title="sheetTitle" @close="onClose">
-    <div class="ags">
-      <!-- Loading -->
-      <div v-if="loading && !errored" class="ags__center">
-        <CLoader :size="28" />
-        <div class="ags__loading-hint">
-          {{ t('inv.agreement.loading') }}
+  <Teleport to="body">
+    <div v-if="open" class="ds-docviewer" data-variant="sheet" @click.self="onClose">
+      <div
+        ref="dialogEl"
+        class="ds-docviewer__dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="titleId"
+        tabindex="-1"
+      >
+        <div class="ds-docviewer__head">
+          <h2 :id="titleId" class="ds-docviewer__title">{{ sheetTitle }}</h2>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="t('common.close')"
+            @click="onClose"
+          >
+            <X size="sm" />
+          </button>
         </div>
-      </div>
 
-      <!-- Error -->
-      <div v-else-if="errored" class="ags__center">
-        <CEmptyState :title="t('inv.agreement.errorTitle')" />
-        <CButton variant="outline" size="sm" @click="onRetry">
-          {{ t('inv.agreement.errorRetry') }}
-        </CButton>
-      </div>
+        <div
+          class="ds-docviewer__body"
+          tabindex="0"
+          role="region"
+          :aria-labelledby="titleId"
+          :aria-busy="loading && !errored ? 'true' : undefined"
+        >
+          <!-- Loading -->
+          <template v-if="loading && !errored">
+            <CLoader />
+            <p class="ds-docviewer__status" role="status">
+              {{ t('inv.agreement.loading') }}
+            </p>
+          </template>
 
-      <!-- Loaded -->
-      <template v-else-if="blobUrl">
-        <!--
-          sandbox="" MUST stay present. Removing it, or relaxing it
-          to sandbox="allow-same-origin", would let any scripting in
-          the document HTML read the SPA's localStorage + JWT. See
-          TD-F11b in AIVIS-Frontend.md.
-        -->
-        <iframe :src="blobUrl" sandbox="" class="ags__iframe" :title="sheetTitle" />
+          <!-- Error -->
+          <div v-else-if="errored" class="ds-alert ds-alert--danger" role="alert">
+            <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+            <div class="ds-alert__content">
+              <p class="ds-alert__text">{{ t('inv.agreement.errorTitle') }}</p>
+              <div class="ds-alert__actions">
+                <button
+                  type="button"
+                  class="ds-button ds-button--secondary"
+                  data-size="sm"
+                  @click="onRetry"
+                >
+                  {{ t('inv.agreement.errorRetry') }}
+                </button>
+              </div>
+            </div>
+          </div>
 
-        <div class="ags__actions">
-          <CButton variant="outline" size="sm" @click="onClose">
+          <!--
+            sandbox="" MUST stay present. Removing it, or relaxing it
+            to sandbox="allow-same-origin", would let any scripting in
+            the document HTML read the SPA's localStorage + JWT. See
+            TD-F11b in AIVIS-Frontend.md.
+          -->
+          <iframe
+            v-else-if="blobUrl"
+            :src="blobUrl"
+            sandbox=""
+            class="ds-docviewer__frame"
+            :title="sheetTitle"
+          />
+        </div>
+
+        <!-- The save is a real link to the very blob the frame shows (it exists only
+             in the loaded state, so there is always a blob behind it). -->
+        <div class="ds-docviewer__actions">
+          <button type="button" class="ds-button ds-button--secondary" @click="onClose">
             {{ t('inv.agreement.close') }}
-          </CButton>
-          <CButton variant="primary" size="sm" @click="onSave">
+          </button>
+          <a
+            v-if="blobUrl && !loading && !errored"
+            class="ds-button ds-button--primary"
+            :href="blobUrl"
+            :download="fileName"
+            rel="noopener"
+          >
             {{ t('inv.agreement.save') }}
-          </CButton>
+          </a>
         </div>
-      </template>
+      </div>
     </div>
-  </CBottomSheet>
+  </Teleport>
 </template>
-
-<style scoped>
-.ags {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-block-size: var(--center-lg);
-}
-
-.ags__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-block-size: var(--center-lg);
-}
-
-.ags__loading-hint {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.ags__iframe {
-  inline-size: 100%;
-  block-size: 60vh;
-  block-size: 60dvh;
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--paper); /* document HTML expects a white canvas */
-}
-
-.ags__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-</style>

@@ -51,73 +51,26 @@ function next(): void {
 </script>
 
 <template>
-  <CModal :open="open" @close="finish">
-    <div class="intro">
-      <div class="intro__dots" aria-hidden="true">
-        <span
-          v-for="(c, i) in CARDS"
-          :key="c"
-          class="intro__dot"
-          :class="{ 'intro__dot--on': i === step }"
-        />
-      </div>
-      <h3 class="intro__title">
-        {{ t(`intro.${card}.title`) }}
-      </h3>
-      <p class="intro__text">
-        {{ t(`intro.${card}.text`) }}
-      </p>
-      <div class="intro__actions">
-        <CButton v-if="!last" variant="outline" size="sm" @click="finish">
-          {{ t('intro.skip') }}
-        </CButton>
-        <CButton variant="primary" size="sm" @click="next">
-          {{ last ? t('intro.start') : t('intro.next') }}
-        </CButton>
-      </div>
+  <CModal :open="open" :title="t(`intro.${card}.title`)" @close="finish">
+    <!-- Step dots (K32); their spoken position needs a line of the translation tables. -->
+    <ol class="ds-dots" aria-hidden="true">
+      <li
+        v-for="(c, i) in CARDS"
+        :key="c"
+        class="ds-dots__dot"
+        :aria-current="i === step ? 'step' : undefined"
+      />
+    </ol>
+    <p class="ds-dialog__text">
+      {{ t(`intro.${card}.text`) }}
+    </p>
+    <div class="ds-dialog__actions">
+      <CButton v-if="!last" variant="outline" size="sm" inline @click="finish">
+        {{ t('intro.skip') }}
+      </CButton>
+      <CButton variant="primary" size="sm" inline @click="next">
+        {{ last ? t('intro.start') : t('intro.next') }}
+      </CButton>
     </div>
   </CModal>
 </template>
-
-<style scoped>
-.intro {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.intro__dots {
-  display: flex;
-  gap: var(--space-1);
-}
-.intro__dot {
-  inline-size: var(--space-2);
-  block-size: var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--border-default);
-}
-.intro__dot--on {
-  background: var(--primary);
-}
-
-.intro__title {
-  margin: 0;
-  padding-inline-end: var(--space-5);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.intro__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.intro__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-</style>

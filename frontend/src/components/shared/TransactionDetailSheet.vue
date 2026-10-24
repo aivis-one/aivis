@@ -25,8 +25,8 @@
 //        "Trigger Tranche Number") so no future backend addition
 //        renders as a raw identifier.
 //   Values get minimal formatting: *_cents keys run through
-//   formatPrice, *_id values are shown as-is, tx_hash gets the
-//   truncate + copy treatment, anything else is stringified.
+//   formatPrice, *_id values are shown as-is, tx_hash is shown whole as
+//   a copyable value (K53), anything else is stringified.
 //
 // OWNERSHIP.
 //   Backend 404s for events owned by another user. The sheet
@@ -117,20 +117,17 @@ function formatValue(key: string, value: unknown): string {
   return String(value)
 }
 
-function truncateHash(value: string): string {
-  // Middle-truncate so both the prefix (network marker) and the
-  // checksum tail remain visible. Threshold 18 keeps short hashes
-  // intact on desktop.
-  if (value.length <= 18) return value
-  return `${value.slice(0, 8)}…${value.slice(-6)}`
-}
+// The line under a copyable value says what happened, in words (K53).
+const copyStatus = ref('')
 
 async function copyValue(value: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(value)
-    showToast(t('inv.transactions.detail.copied'), 'success')
+    copyStatus.value = t('inv.transactions.detail.copied')
+    showToast(copyStatus.value, 'success')
   } catch {
-    showToast(t('inv.transactions.detail.copyError'), 'error')
+    copyStatus.value = t('inv.transactions.detail.copyError')
+    showToast(copyStatus.value, 'error')
   }
 }
 
@@ -181,13 +178,15 @@ function onClose(): void {
 
 <template>
   <CBottomSheet :open="open" :title="t('inv.transactions.detail.title')" @close="onClose">
-    <div v-if="loading" class="tds__center">
+    <div v-if="loading" class="ds-empty">
       <CLoader :size="24" />
     </div>
 
-    <div v-else-if="errored" class="tds__center">
-      <CEmptyState :title="t('inv.transactions.detail.loadError')" />
-    </div>
+    <CEmptyState
+      v-else-if="errored"
+      tone="danger"
+      :title="t('inv.transactions.detail.loadError')"
+    />
 
     <div v-else-if="txn" class="tds">
       <!-- Summary header -->
@@ -203,68 +202,63 @@ function onClose(): void {
         </div>
       </div>
 
-      <!-- Details key-value -->
-      <div v-if="hasDetails" class="tds__details">
-        <div v-for="[key, value] in detailEntries" :key="key" class="tds__row">
-          <span class="tds__key">{{ keyLabel(key) }}</span>
-          <span class="tds__value">
-            <template v-if="key === 'tx_hash' && typeof value === 'string'">
-              <span class="tds__hash" :title="value">
-                {{ truncateHash(value) }}
-              </span>
-              <button
-                class="tds__copy"
-                type="button"
-                :aria-label="t('inv.transactions.detail.copy')"
-                @click="copyValue(value)"
-              >
-                <Copy :size="16" />
-              </button>
-            </template>
+      <!-- Details: a key-value list (K49); the hash is a copyable value (K53) -->
+      <dl v-if="hasDetails" class="ds-kv">
+        <div v-for="[key, value] in detailEntries" :key="key" class="ds-kv__row">
+          <dt>{{ keyLabel(key) }}</dt>
+          <dd>
+            <div v-if="key === 'tx_hash' && typeof value === 'string'" class="ds-copy">
+              <div class="ds-copy__box">
+                <p class="ds-copy__value">{{ value }}</p>
+                <button
+                  type="button"
+                  class="ds-button ds-button--ghost ds-button--icon ds-copy__button"
+                  data-size="sm"
+                  :aria-label="t('inv.transactions.detail.copy')"
+                  @click="copyValue(value)"
+                >
+                  <Copy size="sm" />
+                </button>
+              </div>
+              <p class="ds-copy__status" role="status" aria-live="polite">{{ copyStatus }}</p>
+            </div>
             <template v-else>
               {{ formatValue(key, value) }}
             </template>
-          </span>
+          </dd>
         </div>
-      </div>
+      </dl>
     </div>
   </CBottomSheet>
 </template>
 
 <style scoped>
 .tds {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-4-lg);
 }
 
-.tds__center {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-5) 0;
-}
-
-/* Summary */
+/* Summary: the type, the amount (credit or debit coloured, the sign in the text)
+   and the date, centred. */
 .tds__summary {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  justify-items: center;
   gap: var(--space-2);
   text-align: center;
-  padding: var(--space-1) 0 var(--space-2);
+  padding-block: var(--space-1) var(--space-2);
 }
 .tds__type {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-wide);
 }
 .tds__amount {
   font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.1;
+  line-height: var(--lh-tight);
   word-break: break-word;
 }
 .tds__amount--credit {
@@ -276,72 +270,5 @@ function onClose(): void {
 .tds__date {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-}
-
-/* Details table */
-.tds__details {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-block-start: thin solid var(--border-default);
-}
-.tds__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-  font-size: var(--fs-sm);
-}
-.tds__key {
-  color: var(--text-secondary);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.tds__value {
-  color: var(--text-primary);
-  text-align: end;
-  font-family: inherit;
-  word-break: break-word;
-  min-inline-size: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
-.tds__hash {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-primary);
-  user-select: all;
-}
-
-.tds__copy {
-  background: none;
-  border: none;
-  padding: var(--space-1);
-  color: var(--text-tertiary);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-.tds__copy:hover {
-  color: var(--primary);
-  background: var(--bg-subtle);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.tds__summary {
-  max-inline-size: var(--maxw-prose);
 }
 </style>

@@ -35,105 +35,80 @@ const baseUrl = import.meta.env.BASE_URL
 
 function toSupport(): void {
   emit('close')
-  void safeNavigate(router.push({ name: 'investor-support' }), '[IntegratorApplicationModal] support')
+  void safeNavigate(
+    router.push({ name: 'investor-support' }),
+    '[IntegratorApplicationModal] support',
+  )
 }
 </script>
 
 <template>
-  <CModal :open="open" @close="emit('close')">
-    <div class="iam">
-      <template v-if="sent">
-        <h3 class="iam__title">
-          {{ t('inv.settings.agent.modal.sentTitle') }}
-        </h3>
-        <p class="iam__text">
-          {{ t('inv.settings.agent.modal.sentText') }}
-        </p>
-        <CButton variant="primary" @click="toSupport">
-          {{ t('inv.settings.agent.modal.toSupport') }}
-        </CButton>
-      </template>
+  <CModal
+    :open="open"
+    :title="sent ? t('inv.settings.agent.modal.sentTitle') : t('inv.settings.agent.modal.title')"
+    @close="emit('close')"
+  >
+    <template v-if="sent">
+      <p class="ds-dialog__text">
+        {{ t('inv.settings.agent.modal.sentText') }}
+      </p>
+      <CButton variant="primary" @click="toSupport">
+        {{ t('inv.settings.agent.modal.toSupport') }}
+      </CButton>
+    </template>
 
-      <template v-else>
-        <h3 class="iam__title">
-          {{ t('inv.settings.agent.modal.title') }}
-        </h3>
-        <p class="iam__text">
-          {{ t('inv.settings.agent.modal.what') }}
-        </p>
-        <ul class="iam__list">
-          <li>{{ t('inv.settings.agent.modal.pointLink') }}</li>
-          <li>{{ t('inv.settings.agent.modal.pointCommission') }}</li>
-          <li>{{ t('inv.settings.agent.modal.pointWithdrawal') }}</li>
-        </ul>
-        <p class="iam__links">
-          <a
-            :href="`${baseUrl}legal/${docLang}/agent_integrator_agreement.html`"
-            @click.prevent="reading = true"
-            >{{ t('inv.settings.agent.modal.readAgreement') }}</a
-          >
-          <a :href="faqUrl" target="_blank" rel="noopener">{{
-            t('inv.settings.agent.modal.readFaq')
-          }}</a>
-        </p>
-        <CButton variant="primary" :loading="submitting" @click="emit('submit')">
-          {{ t('inv.settings.agent.modal.submit') }}
-        </CButton>
-      </template>
+    <template v-else>
+      <p class="ds-dialog__text">
+        {{ t('inv.settings.agent.modal.what') }}
+      </p>
+      <ul class="iam__list">
+        <li>{{ t('inv.settings.agent.modal.pointLink') }}</li>
+        <li>{{ t('inv.settings.agent.modal.pointCommission') }}</li>
+        <li>{{ t('inv.settings.agent.modal.pointWithdrawal') }}</li>
+      </ul>
+      <div class="ds-dialog__actions">
+        <a
+          class="ds-button ds-button--ghost"
+          data-size="sm"
+          :href="`${baseUrl}legal/${docLang}/agent_integrator_agreement.html`"
+          @click.prevent="reading = true"
+          >{{ t('inv.settings.agent.modal.readAgreement') }}</a
+        >
+        <a
+          class="ds-button ds-button--ghost"
+          data-size="sm"
+          :href="faqUrl"
+          target="_blank"
+          rel="noopener"
+          >{{ t('inv.settings.agent.modal.readFaq') }}</a
+        >
+      </div>
+      <CButton variant="primary" :loading="submitting" @click="emit('submit')">
+        {{ t('inv.settings.agent.modal.submit') }}
+      </CButton>
+    </template>
 
-      <LegalDocModal
-        :open="reading"
-        :title="t('agent.link.agreementTitle')"
-        :lang="docLang"
-        type="agent_integrator_agreement"
-        @close="reading = false"
-      />
-    </div>
+    <LegalDocModal
+      :open="reading"
+      :title="t('agent.link.agreementTitle')"
+      :lang="docLang"
+      type="agent_integrator_agreement"
+      @close="reading = false"
+    />
   </CModal>
 </template>
 
 <style scoped>
-.iam {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.iam__title {
-  margin: 0;
-  padding-inline-end: var(--space-5);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.iam__text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
+/* The dialog body has no list of its own (NEED): plain bullets, set from tokens
+   in the dialog text's own size and colour. */
 .iam__list {
   margin: 0;
   padding-inline-start: var(--space-5);
-  display: flex;
-  flex-direction: column;
+  list-style: disc;
+  display: grid;
   gap: var(--space-1);
   font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
   color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.iam__links {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--fs-sm);
-}
-
-.iam__links a {
-  color: var(--primary);
 }
 </style>
