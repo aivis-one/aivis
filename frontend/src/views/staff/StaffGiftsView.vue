@@ -232,7 +232,7 @@ onMounted(loadProducts)
       </h2>
       <p class="gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
       <ul class="ds-rows">
-        <li v-for="entry in granted" :key="entry.gift.id" class="ds-row">
+        <li v-for="entry in granted" :key="entry.gift.id" class="ds-row gifts__row">
           <span class="ds-row__lead"><Gift size="sm" /></span>
           <span class="ds-row__body">
             <span class="ds-row__title">
@@ -241,7 +241,7 @@ onMounted(loadProducts)
             </span>
             <span class="ds-row__meta">{{ entry.product }}</span>
           </span>
-          <span class="ds-row__trail">
+          <span class="ds-row__trail gifts__trail">
             <CBadge
               :variant="statusVariant(entry.gift.status)"
               :text="statusLabel(entry.gift.status)"
@@ -332,5 +332,20 @@ onMounted(loadProducts)
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   max-inline-size: var(--maxw-prose);
+}
+
+/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
+   text keeps a floor of its own width (the system's trail does not shrink). */
+.gifts__row {
+  flex-wrap: wrap;
+}
+.gifts__row .ds-row__body {
+  flex: 1 1 var(--center-sm);
+}
+.gifts__trail {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }
 </style>

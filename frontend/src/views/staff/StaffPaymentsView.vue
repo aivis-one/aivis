@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
               {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
             </span>
           </span>
-          <span class="ds-row__trail">
+          <span class="ds-row__trail pay-item__trail">
             <span class="ds-row__value">{{ formatCents(item.amount_cents, item.currency) }}</span>
             <CBadge variant="warning" :text="timeLeftLabel(item)" />
             <button
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
                 {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
               </span>
             </span>
-            <span class="ds-row__trail">
+            <span class="ds-row__trail pay-item__trail">
               <span class="ds-row__value">{{ formatCents(item.amount_cents, item.currency) }}</span>
               <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
               <button
@@ -409,5 +409,20 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--danger);
+}
+
+/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
+   text keeps a floor of its own width (the system's trail does not shrink). */
+.pay-item {
+  flex-wrap: wrap;
+}
+.pay-item .ds-row__body {
+  flex: 1 1 var(--center-sm);
+}
+.pay-item__trail {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }
 </style>

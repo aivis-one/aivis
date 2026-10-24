@@ -235,7 +235,7 @@ onMounted(loadWithdrawals)
               {{ t('staff.withdrawals.reason') }}: {{ item.rejection_reason }}
             </span>
           </span>
-          <span class="ds-row__trail">
+          <span class="ds-row__trail wd-item__trail">
             <span class="ds-row__value">{{ formatCents(item.amount_cents) }}</span>
             <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
             <template v-if="item.status === 'pending'">
@@ -355,5 +355,20 @@ onMounted(loadWithdrawals)
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+/* On a narrow row the trail drops under the text instead of squeezing it: the row wraps, and the
+   text keeps a floor of its own width (the system's trail does not shrink). */
+.wd-item {
+  flex-wrap: wrap;
+}
+.wd-item .ds-row__body {
+  flex: 1 1 var(--center-sm);
+}
+.wd-item__trail {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
 }
 </style>
