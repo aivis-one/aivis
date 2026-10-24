@@ -188,7 +188,7 @@ useScreenHeader({
 
 <template>
   <!-- Loading -->
-  <div v-if="loading" class="ds-empty" aria-busy="true">
+  <div v-if="loading" aria-busy="true">
     <CLoader />
   </div>
 

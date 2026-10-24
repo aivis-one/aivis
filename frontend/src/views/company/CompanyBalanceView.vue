@@ -30,12 +30,11 @@ import {
   ChevronDown,
   CreditCard,
   ListChecks,
-  ShieldAlert,
 } from '@/components/ui/icons'
 
 import { useRouter } from 'vue-router'
 
-import { CBadge, CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CAlert, CBadge, CBottomSheet, CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { createWithdrawal, listMyWithdrawals } from '@/api/withdrawals'
 import { getPayoutDetails, updatePayoutDetails } from '@/api/users'
@@ -354,7 +353,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+  <div v-if="initialLoading" aria-busy="true">
     <CLoader />
   </div>
 
@@ -429,7 +428,7 @@ onMounted(() => {
 
     <!-- Withdrawal history -->
     <section class="cbal__section" aria-labelledby="cbal-history">
-      <h2 id="cbal-history" class="cbal__section-title">
+      <h2 id="cbal-history" class="ds-section-title">
         {{ t('comp.balance.withdrawals.title') }}
       </h2>
 
@@ -462,7 +461,7 @@ onMounted(() => {
 
     <!-- Payout details: saved by the withdrawal request -->
     <section class="cbal__section" aria-labelledby="cbal-payout">
-      <h2 id="cbal-payout" class="cbal__section-title">
+      <h2 id="cbal-payout" class="ds-section-title">
         {{ t('comp.balance.payout.title') }}
       </h2>
 
@@ -493,15 +492,12 @@ onMounted(() => {
       :aria-busy="withdrawSubmitting || undefined"
       @submit.prevent="submitWithdraw"
     >
-      <div v-if="withdrawError" class="ds-alert ds-alert--danger" role="alert">
-        <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
-        <div class="ds-alert__content">
-          <p class="ds-alert__text">{{ withdrawError }}</p>
-        </div>
-      </div>
+      <CAlert v-if="withdrawError" tone="danger">{{ withdrawError }}</CAlert>
 
       <fieldset class="ds-payout__group" :disabled="withdrawSubmitting">
-        <legend class="ds-sr-only">{{ t('comp.balance.withdrawals.form.title') }}</legend>
+        <legend class="ds-payout__legend">
+          {{ t('comp.balance.withdrawals.form.groupPayee') }}
+        </legend>
         <div class="ds-payout__grid">
           <div class="ds-field">
             <label class="ds-field__label" :for="networkId">
@@ -540,7 +536,14 @@ onMounted(() => {
               <span>{{ t(walletErrorKey) }}</span>
             </p>
           </div>
+        </div>
+      </fieldset>
 
+      <fieldset class="ds-payout__group" :disabled="withdrawSubmitting">
+        <legend class="ds-payout__legend">
+          {{ t('comp.balance.withdrawals.form.groupAmount') }}
+        </legend>
+        <div class="ds-payout__grid">
           <div class="ds-field ds-payout__wide">
             <label class="ds-field__label" :for="amountId">
               {{ t('comp.balance.withdrawals.form.amountLabel') }}
@@ -613,14 +616,6 @@ onMounted(() => {
 .cbal__section {
   display: grid;
   gap: var(--space-3);
-}
-.cbal__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 
 /* The load-more sentinel the scroll observer watches. */

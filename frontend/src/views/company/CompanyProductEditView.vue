@@ -3,7 +3,7 @@
 // Product detail (readonly, editing via Staff).
 
 import { useI18n } from 'vue-i18n'
-import { CBadge } from '@/components/ui'
+import { CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 
 const { t } = useI18n()
@@ -13,7 +13,5 @@ useScreenHeader({ title: () => t('nav.comp.product_edit') })
 </script>
 
 <template>
-  <div class="ds-empty">
-    <CBadge text="F5.2" />
-  </div>
+  <CEmptyState :title="t('nav.comp.product_edit')" />
 </template>

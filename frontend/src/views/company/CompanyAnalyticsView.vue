@@ -269,8 +269,20 @@ const rangeCaption = computed<string>(() => {
   const start = longMonthLabel(first.month)
   const end = longMonthLabel(last.month)
   // For a single month, just show that month rather than "X — X".
-  if (start === end) return start
-  return t('comp.analytics.chart.range', { start, end })
+  const range = start === end ? start : t('comp.analytics.chart.range', { start, end })
+  // K37: the range line names the peak in words, so the darker bar is never the
+  // only mark of it.
+  if (!peakMonth.value) return range
+  const peak = t('comp.analytics.chart.peak', { month: longMonthLabel(peakMonth.value) })
+  return `${range}, ${peak}`
+})
+
+/** The month of the highest bar (the first one on a tie), or '' when nothing sold. */
+const peakMonth = computed<string>(() => {
+  const peak = salesByMonth.value.find(
+    (m) => m.revenue_cents > 0 && m.revenue_cents === maxRevenue.value,
+  )
+  return peak ? peak.month : ''
 })
 
 /**
@@ -319,7 +331,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+  <div v-if="initialLoading" aria-busy="true">
     <CLoader />
   </div>
 
@@ -377,7 +389,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
     </div>
 
     <!-- Sales by month: the bar chart with its text alternative (K37) -->
-    <CEmptyState v-if="!hasChartData" framed :description="t('comp.analytics.chart.empty')" />
+    <p v-if="!hasChartData" class="ds-barchart__empty">{{ t('comp.analytics.chart.empty') }}</p>
 
     <figure v-else class="ds-barchart">
       <div class="ds-barchart__head">
@@ -414,6 +426,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
             :y="100 - barHeightPercent(entry)"
             width="8"
             :height="barHeightPercent(entry)"
+            :data-peak="entry.revenue_cents === maxRevenue ? '' : undefined"
           />
         </svg>
         <ul class="ds-barchart__labels" aria-hidden="true">
@@ -423,7 +436,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
         </ul>
       </div>
       <details class="ds-barchart__alt" open>
-        <summary>{{ t('comp.analytics.chart.title') }}</summary>
+        <summary>{{ t('comp.analytics.chart.table') }}</summary>
         <div
           class="ds-table-wrap"
           role="region"
@@ -456,7 +469,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
     <!-- B2: sales by product breakdown -->
     <section class="canl__section" aria-labelledby="canl-products">
-      <h2 id="canl-products" class="canl__section-title">
+      <h2 id="canl-products" class="ds-section-title">
         {{ t('comp.analytics.byProduct.title') }}
       </h2>
 
@@ -486,13 +499,5 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 .canl__section {
   display: grid;
   gap: var(--space-3);
-}
-.canl__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 </style>

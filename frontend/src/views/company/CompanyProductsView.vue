@@ -20,10 +20,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { Info, Package } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState } from '@/components/ui'
+import { Package } from '@/components/ui/icons'
+import { CAlert, CBadge, CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
-import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { listMyProducts } from '@/api/products'
 import type { OwnProductResponse } from '@/api/products'
 import { formatPrice } from '@/utils/format'
@@ -90,7 +89,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <CListSkeleton v-if="loading && items.length === 0" />
+  <div v-if="loading && items.length === 0" class="cprods__grid" aria-busy="true">
+    <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
+    <div v-for="n in 3" :key="n" class="ds-card ds-card--media" aria-hidden="true">
+      <span class="ds-skeleton ds-skeleton--block" />
+      <div class="ds-card__content">
+        <span class="ds-skeleton ds-skeleton--title" /><span
+          class="ds-skeleton ds-skeleton--text"
+        />
+      </div>
+    </div>
+  </div>
 
   <CEmptyState
     v-else-if="error !== null"
@@ -113,12 +122,7 @@ onMounted(() => {
 
   <template v-else>
     <!-- Product editing is staff-only: the line that was a toast on a tap stands above the cards -->
-    <div class="ds-alert ds-alert--info" role="status">
-      <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
-      <div class="ds-alert__content">
-        <p class="ds-alert__text">{{ t('comp.products.editViaSupport') }}</p>
-      </div>
-    </div>
+    <CAlert tone="info">{{ t('comp.products.editViaSupport') }}</CAlert>
 
     <!-- The project's products as the system's media cards (K07) -->
     <div class="cprods__grid">

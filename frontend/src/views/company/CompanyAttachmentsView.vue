@@ -57,7 +57,6 @@ import {
   Upload,
 } from '@/components/ui/icons'
 import {
-  CLoader,
   CButton,
   CBadge,
   CEmptyState,
@@ -71,6 +70,7 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import CActionMenu from '@/components/ui/CActionMenu.vue'
 import type { ActionMenuItem } from '@/components/ui/CActionMenu.vue'
 import CFileField from '@/components/ui/CFileField.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { downloadAttachment } from '@/api/attachments'
@@ -424,9 +424,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
 </script>
 
 <template>
-  <div v-if="loading" class="ds-empty" aria-busy="true">
-    <CLoader />
-  </div>
+  <CListSkeleton v-if="loading" />
 
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.attachments.errorTitle')">
     <template #actions>
@@ -459,7 +457,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
         class="catt__group"
         :aria-labelledby="`catt-group-${g}`"
       >
-        <h2 :id="`catt-group-${g}`" class="catt__group-title">
+        <h2 :id="`catt-group-${g}`" class="ds-section-title catt__group-title">
           {{ group.category }}
         </h2>
 
@@ -512,14 +510,16 @@ function onRowAction(att: AttachmentResponse, value: string): void {
               </span>
             </div>
 
-            <CActionMenu
-              :label="att.title"
-              icon-key="more"
-              icon-only
-              align="end"
-              :items="rowActions(att)"
-              @select="(value) => onRowAction(att, value)"
-            />
+            <div class="ds-reorder__trail">
+              <CActionMenu
+                :label="t('common.actions', { title: att.title })"
+                icon-key="more"
+                icon-only
+                align="end"
+                :items="rowActions(att)"
+                @select="(value) => onRowAction(att, value)"
+              />
+            </div>
           </li>
         </ol>
       </section>
@@ -590,6 +590,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
       :label="t('comp.attachments.fieldFile')"
       :button-label="t('comp.attachments.chooseFile')"
       :accept="FILE_ACCEPT"
+      :hint="t('comp.attachments.fileHint')"
       removable
       @select="(file) => (selectedFile = file)"
       @remove="selectedFile = null"
@@ -599,6 +600,7 @@ function onRowAction(att: AttachmentResponse, value: string): void {
       :label="t('comp.attachments.fieldReplaceFile')"
       :button-label="t('comp.attachments.chooseFile')"
       :accept="FILE_ACCEPT"
+      :hint="t('comp.attachments.fileHint')"
       :current="editingOriginal?.original_filename"
       :current-meta="editingOriginal ? formatBytes(editingOriginal.file_size_bytes) : undefined"
       :busy="replacing"
@@ -648,13 +650,8 @@ function onRowAction(att: AttachmentResponse, value: string): void {
   display: grid;
   gap: var(--space-3);
 }
+/* A category name is the user's own text: it wraps anywhere. */
 .catt__group-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 </style>

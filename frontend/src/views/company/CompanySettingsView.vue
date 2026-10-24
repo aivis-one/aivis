@@ -472,7 +472,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" class="ds-empty" aria-busy="true">
+  <div v-if="initialLoading" aria-busy="true">
     <CLoader />
   </div>
 
@@ -663,7 +663,7 @@ onMounted(() => {
 
     <!-- Media links -->
     <section v-if="mediaLinks.length > 0" class="cset__section" aria-labelledby="cset-links">
-      <h2 id="cset-links" class="cset__section-title">
+      <h2 id="cset-links" class="ds-section-title">
         {{ t('comp.settings.links.title') }}
       </h2>
       <ul class="ds-rows">
@@ -684,7 +684,7 @@ onMounted(() => {
 
     <!-- Actions -->
     <section class="cset__section" aria-labelledby="cset-actions">
-      <h2 id="cset-actions" class="cset__section-title">
+      <h2 id="cset-actions" class="ds-section-title">
         {{ t('comp.settings.actions.title') }}
       </h2>
       <TwoFactorSection tPrefix="comp.settings.actions" />
@@ -826,15 +826,7 @@ onMounted(() => {
 /* A section: its heading over its rows, on the frame's rhythm. */
 .cset__section {
   display: grid;
-  gap: var(--space-2);
-}
-.cset__section-title {
-  margin: 0 0 var(--space-1);
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
+  gap: var(--space-3);
 }
 
 /* The description keeps its line breaks. */

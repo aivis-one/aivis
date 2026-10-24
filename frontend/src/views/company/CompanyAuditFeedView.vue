@@ -54,8 +54,8 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { History, ShieldAlert } from '@/components/ui/icons'
-import { CEmptyState, CLoader, CButton } from '@/components/ui'
+import { History } from '@/components/ui/icons'
+import { CAlert, CEmptyState, CLoader, CButton } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useInfiniteScroll } from '@/composables/usePagination'
@@ -241,17 +241,14 @@ onMounted(() => {
       <CLoader v-if="loading" :size="24" />
     </div>
 
-    <div v-if="loadMoreErrored && !loading" class="ds-alert ds-alert--danger" role="alert">
-      <span class="ds-alert__icon" aria-hidden="true"><ShieldAlert size="sm" /></span>
-      <div class="ds-alert__content">
-        <p class="ds-alert__text">{{ t('comp.auditFeed.list.loadMoreError') }}</p>
-        <div class="ds-alert__actions">
-          <CButton variant="outline" size="sm" inline @click="retryLoadMore">
-            {{ t('common.retry') }}
-          </CButton>
-        </div>
-      </div>
-    </div>
+    <CAlert v-if="loadMoreErrored && !loading" tone="danger">
+      {{ t('comp.auditFeed.list.loadMoreError') }}
+      <template #actions>
+        <CButton variant="outline" size="sm" inline @click="retryLoadMore">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CAlert>
   </template>
 </template>
 

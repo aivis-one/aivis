@@ -96,7 +96,7 @@ onMounted(() => {
 
 <template>
   <AuthShell>
-    <div v-if="checking" class="ds-empty" aria-busy="true">
+    <div v-if="checking" aria-busy="true">
       <CLoader />
     </div>
 

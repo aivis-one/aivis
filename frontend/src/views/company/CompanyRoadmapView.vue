@@ -40,19 +40,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon } from '@/components/ui/icons'
-import {
-  CAvatar,
-  CLoader,
-  CButton,
-  CBadge,
-  CEmptyState,
-  CModal,
-  CInput,
-  CTextarea,
-  CSelect,
-} from '@/components/ui'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CSelect } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import CFileField from '@/components/ui/CFileField.vue'
+import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import {
@@ -504,9 +495,7 @@ async function handleCoverRemove(): Promise<void> {
 
 <template>
   <!-- Loading -->
-  <div v-if="loading" class="ds-empty" aria-busy="true">
-    <CLoader />
-  </div>
+  <CListSkeleton v-if="loading" />
 
   <!-- Error -->
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.roadmap.errorTitle')">
@@ -558,7 +547,7 @@ async function handleCoverRemove(): Promise<void> {
         </div>
         <span class="ds-reorder__pos" aria-hidden="true">{{ idx + 1 }}</span>
 
-        <CAvatar v-if="item.cover_url" :name="item.title" :url="item.cover_url" />
+        <span v-if="item.cover_url" class="ds-thumb"><img :src="item.cover_url" alt="" /></span>
 
         <div class="ds-reorder__body">
           <span class="ds-reorder__meta">
@@ -587,24 +576,26 @@ async function handleCoverRemove(): Promise<void> {
           <span v-if="item.post" class="ds-reorder__meta">{{ item.post.title }}</span>
         </div>
 
-        <button
-          type="button"
-          class="ds-button ds-button--ghost ds-button--icon"
-          data-size="sm"
-          :aria-label="`${t('common.edit')}: ${item.title}`"
-          @click="openEdit(item)"
-        >
-          <Pencil size="sm" />
-        </button>
-        <button
-          type="button"
-          class="ds-button ds-button--ghost ds-button--icon"
-          data-size="sm"
-          :aria-label="`${t('common.delete')}: ${item.title}`"
-          @click="openDelete(item)"
-        >
-          <Trash2 size="sm" />
-        </button>
+        <div class="ds-reorder__trail">
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="`${t('common.edit')}: ${item.title}`"
+            @click="openEdit(item)"
+          >
+            <Pencil size="sm" />
+          </button>
+          <button
+            type="button"
+            class="ds-button ds-button--ghost ds-button--icon"
+            data-size="sm"
+            :aria-label="`${t('common.delete')}: ${item.title}`"
+            @click="openDelete(item)"
+          >
+            <Trash2 size="sm" />
+          </button>
+        </div>
       </li>
     </ol>
   </template>
@@ -705,6 +696,7 @@ async function handleCoverRemove(): Promise<void> {
         coverPreviewUrl ? t('comp.roadmap.cover.replace') : t('comp.roadmap.cover.upload')
       "
       accept="image/png,image/jpeg,image/webp"
+      :hint="t('comp.roadmap.cover.hint')"
       :current="coverPreviewUrl ? t('comp.roadmap.cover.label') : undefined"
       :preview="coverPreviewUrl || undefined"
       :busy="coverUploading || coverRemoving"

@@ -16,12 +16,11 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
-  Info,
   Map as MapIcon,
   Newspaper,
 } from '@/components/ui/icons'
 
-import { CIconBox } from '@/components/ui'
+import { CAlert, CIconBox } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 
@@ -92,10 +91,5 @@ onMounted(() => {
     </RouterLink>
   </nav>
 
-  <div class="ds-alert ds-alert--info" role="status">
-    <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
-    <div class="ds-alert__content">
-      <p class="ds-alert__text">{{ t('comp.publications.hint') }}</p>
-    </div>
-  </div>
+  <CAlert tone="info">{{ t('comp.publications.hint') }}</CAlert>
 </template>

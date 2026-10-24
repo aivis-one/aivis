@@ -135,7 +135,7 @@ onMounted(() => {
   </ul>
 
   <!-- The summary is loading -->
-  <div v-if="summaryLoading" class="ds-empty" aria-busy="true">
+  <div v-if="summaryLoading" aria-busy="true">
     <CLoader />
   </div>
 
@@ -212,7 +212,7 @@ onMounted(() => {
 
     <!-- Recent operations, and the way to all of them -->
     <section class="dash__recent" aria-labelledby="dash-recent">
-      <h2 id="dash-recent" class="dash__recent-title">
+      <h2 id="dash-recent" class="ds-section-title">
         {{ t('comp.dashboard.recent.title') }}
       </h2>
 
@@ -259,13 +259,5 @@ onMounted(() => {
 }
 .dash__all {
   justify-self: start;
-}
-.dash__recent-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
 }
 </style>
