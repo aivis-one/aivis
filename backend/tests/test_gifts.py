@@ -88,6 +88,13 @@ async def _setup(client: AsyncClient, admin_token: str) -> tuple[str, str]:
         headers=auth_headers(admin_token),
     )
     assert activated.status_code == 200, activated.text
+    # A new company is hidden too; a gift is granted only in an active one.
+    company = await client.patch(
+        f"/api/v1/staff/companies/{company_id}",
+        json={"status": "active"},
+        headers=auth_headers(admin_token),
+    )
+    assert company.status_code == 200, company.text
     return company_id, product.json()["id"]
 
 
