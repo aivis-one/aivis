@@ -170,6 +170,23 @@ async def _load_sale(db_session: AsyncSession, sale_id: UUID) -> Purchase:
     ).scalar_one()
 
 
+@pytest.fixture
+async def committed_rows(db_session: AsyncSession):
+    """Rows a test committed; deleted at its end, in the order appended.
+
+    The test database is shared by the whole run and S-02 counts all of it:
+    an active Purchase committed without its ledger pairing would stay behind
+    for every later test (test_consistency.py deletes its orphan the same
+    way). A test appends only after its commit succeeded.
+    """
+    rows: list[object] = []
+    yield rows
+    for row in rows:
+        await db_session.delete(row)
+        await db_session.flush()
+    await db_session.commit()
+
+
 # ---------------------------------------------------------------------------
 # 2: the fields reach the agreement context
 # ---------------------------------------------------------------------------
@@ -180,6 +197,7 @@ async def test_agreement_context_carries_the_four_fields(
     client: AsyncClient,
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    committed_rows: list[object],
 ) -> None:
     _, inv_id, sale_id = await _first_investor_purchase(client, db_session)
     sale = await _load_sale(db_session, sale_id)
@@ -194,6 +212,7 @@ async def test_agreement_context_carries_the_four_fields(
     expected_bonus = await bonus_parts_of(sale.id, db_session)
     assert expected_bonus >= bonus.units
     await db_session.commit()
+    committed_rows.append(bonus)
 
     async def _html(_prefix: str) -> str:
         return (
@@ -440,20 +459,23 @@ async def test_ownership_history_rows_carry_type_and_instalment_month(
     client: AsyncClient,
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    committed_rows: list[object],
 ) -> None:
     company, inv_id, sale_id = await _first_investor_purchase(client, db_session)
     sale = await _load_sale(db_session, sale_id)
-    _, tranches = await _plan_with_tranches(db_session, sale, 4)
+    plan, tranches = await _plan_with_tranches(db_session, sale, 4)
     paid = await _add_purchase(
         db_session, sale, legal_basis=PurchaseLegalBasis.INSTALLMENT_TRANCHE,
         status=PurchaseStatus.ACTIVE, units=1, paid_cents=10_000,
     )
     tranches[1].purchase_id = paid.id
-    await _add_purchase(
+    bonus = await _add_purchase(
         db_session, sale, legal_basis=PurchaseLegalBasis.GIFT,
         status=PurchaseStatus.ACTIVE, units=2, source_purchase_id=sale.id,
     )
     await db_session.commit()
+    # Tranches first: they point at the paid purchase.
+    committed_rows.extend([*tranches, plan, paid, bonus])
 
     data = await load_ownership_data(
         company_id=UUID(company["id"]), user_id=inv_id, session=db_session

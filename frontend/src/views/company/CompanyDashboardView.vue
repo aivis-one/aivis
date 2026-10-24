@@ -40,7 +40,7 @@ import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/
 import { tOrRaw } from '@/utils/i18n'
 import { useThemedLogo } from '@/composables/useThemedLogo'
 
-// The share of the gross receipts that forms the project's pool, in percent.
+// Passed to the tile's note as {percent}, which no locale's note text carries, so it prints nowhere; the tile shows a constant zero until its content is chosen.
 const POOL_PERCENT = 10
 
 const { t, locale } = useI18n()
@@ -166,7 +166,7 @@ onMounted(() => {
         <template #icon><Wallet /></template>
       </CStatCard>
 
-      <!-- The project's pool: a share of the gross receipts, zero until a sale -->
+      <!-- The pool tile: a constant zero (poolCents) until its content is chosen -->
       <CStatCard
         :label="t('comp.dashboard.pool.title')"
         :value="formatPrice(poolCents)"
