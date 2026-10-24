@@ -425,7 +425,7 @@ onMounted(load)
 <template>
   <div class="dv">
     <!-- Loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Temporarily unavailable: unreachable, unconfigured, or a network
          this deployment's service does not serve. Deliberately not

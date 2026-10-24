@@ -472,9 +472,7 @@ onMounted(() => {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" aria-busy="true">
-    <CLoader />
-  </div>
+  <CLoader v-if="initialLoading" centered extent="page" />
 
   <!-- Error -->
   <CEmptyState

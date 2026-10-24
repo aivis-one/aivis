@@ -146,7 +146,7 @@ onMounted(load)
 <template>
   <div class="ipd">
     <!-- Loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Not found (missing or not owned -- backend does not distinguish) -->
     <CEmptyState

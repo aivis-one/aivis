@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/icons'
 import type { Component } from 'vue'
 
-import { CAvatar, CButton, CEmptyState, CLoader } from '@/components/ui'
+import { CAvatar, CButton, CEmptyState, CStatCard } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
@@ -134,13 +134,8 @@ onMounted(() => {
     </li>
   </ul>
 
-  <!-- The summary is loading -->
-  <div v-if="summaryLoading" aria-busy="true">
-    <CLoader />
-  </div>
-
   <!-- The summary failed: only its blocks give way, with a retry in their place -->
-  <CEmptyState v-else-if="summaryFailed" tone="danger" :title="t('comp.dashboard.errorTitle')">
+  <CEmptyState v-if="summaryFailed" tone="danger" :title="t('comp.dashboard.errorTitle')">
     <template #actions>
       <CButton variant="outline" size="sm" inline @click="loadAll">
         {{ t('comp.dashboard.errorRetry') }}
@@ -149,69 +144,64 @@ onMounted(() => {
   </CEmptyState>
 
   <template v-else>
-    <!-- Five figures, each a link to the screen that holds its detail -->
+    <!-- Five figures, each a link to the screen that holds its detail; they wait as pending figures -->
     <div class="ds-stats">
       <!-- Balance -> the balance screen -->
-      <div class="ds-stat ds-stat--interactive">
-        <span class="ds-stat__icon"><Wallet /></span>
-        <p class="ds-stat__label">
-          <RouterLink class="ds-stat__link" to="/company/balance">
-            {{ t('comp.dashboard.balance.title') }}
-          </RouterLink>
-        </p>
-        <p class="ds-stat__value">{{ formatPrice(passiveConfirmed) }}</p>
-        <p v-if="hasFrozen" class="ds-stat__sub">
-          {{ t('comp.dashboard.balance.frozen') }}: {{ formatPrice(passiveFrozen) }}
-        </p>
-      </div>
+      <CStatCard
+        :label="t('comp.dashboard.balance.title')"
+        :value="formatPrice(passiveConfirmed)"
+        :sub="
+          hasFrozen
+            ? `${t('comp.dashboard.balance.frozen')}: ${formatPrice(passiveFrozen)}`
+            : undefined
+        "
+        :pending="summaryLoading"
+        to="/company/balance"
+      >
+        <template #icon><Wallet /></template>
+      </CStatCard>
 
       <!-- The project's pool: a share of the gross receipts, zero until a sale -->
-      <div class="ds-stat ds-stat--interactive">
-        <span class="ds-stat__icon"><Layers /></span>
-        <p class="ds-stat__label">
-          <RouterLink class="ds-stat__link" to="/company/analytics">
-            {{ t('comp.dashboard.pool.title') }}
-          </RouterLink>
-        </p>
-        <p class="ds-stat__value">{{ formatPrice(poolCents) }}</p>
-        <p class="ds-stat__sub">
-          {{ t('comp.dashboard.pool.note', { percent: POOL_PERCENT }) }}
-        </p>
-      </div>
+      <CStatCard
+        :label="t('comp.dashboard.pool.title')"
+        :value="formatPrice(poolCents)"
+        :sub="t('comp.dashboard.pool.note', { percent: POOL_PERCENT })"
+        :pending="summaryLoading"
+        to="/company/analytics"
+      >
+        <template #icon><Layers /></template>
+      </CStatCard>
 
-      <div class="ds-stat ds-stat--interactive">
-        <span class="ds-stat__icon"><TrendingUp /></span>
-        <p class="ds-stat__label">
-          <RouterLink class="ds-stat__link" to="/company/analytics">
-            {{ t('comp.dashboard.metrics.revenue') }}
-          </RouterLink>
-        </p>
-        <p class="ds-stat__value">{{ formatPrice(partSales) }}</p>
-      </div>
+      <CStatCard
+        :label="t('comp.dashboard.metrics.revenue')"
+        :value="formatPrice(partSales)"
+        :pending="summaryLoading"
+        to="/company/analytics"
+      >
+        <template #icon><TrendingUp /></template>
+      </CStatCard>
 
-      <div class="ds-stat ds-stat--interactive">
-        <span class="ds-stat__icon"><Package /></span>
-        <p class="ds-stat__label">
-          <RouterLink class="ds-stat__link" to="/company/analytics">
-            {{ t('comp.dashboard.metrics.optionsSold') }}
-          </RouterLink>
-        </p>
-        <p class="ds-stat__value">{{ formatNumber(partsSold, locale) }}</p>
-      </div>
+      <CStatCard
+        :label="t('comp.dashboard.metrics.optionsSold')"
+        :value="formatNumber(partsSold, locale)"
+        :pending="summaryLoading"
+        to="/company/analytics"
+      >
+        <template #icon><Package /></template>
+      </CStatCard>
 
-      <div class="ds-stat ds-stat--interactive">
-        <span class="ds-stat__icon"><Layers /></span>
-        <p class="ds-stat__label">
-          <RouterLink class="ds-stat__link" to="/company/products">
-            {{ t('comp.dashboard.metrics.products') }}
-          </RouterLink>
-        </p>
-        <p class="ds-stat__value">{{ formatNumber(productsCount, locale) }}</p>
-      </div>
+      <CStatCard
+        :label="t('comp.dashboard.metrics.products')"
+        :value="formatNumber(productsCount, locale)"
+        :pending="summaryLoading"
+        to="/company/products"
+      >
+        <template #icon><Layers /></template>
+      </CStatCard>
     </div>
 
     <!-- Recent operations, and the way to all of them -->
-    <section class="dash__recent" aria-labelledby="dash-recent">
+    <section v-if="!summaryLoading" class="dash__recent" aria-labelledby="dash-recent">
       <h2 id="dash-recent" class="ds-section-title">
         {{ t('comp.dashboard.recent.title') }}
       </h2>

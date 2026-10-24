@@ -493,11 +493,11 @@ onMounted(() => {
 <template>
   <div class="sett">
     <!-- Profile card -->
-    <section class="ds-card sett__profile" :aria-label="fullName">
+    <section class="ds-card sett__profile" aria-labelledby="sett-name">
       <CAvatar :url="avatarUrl" :name="fullName" :size="56" />
-      <p class="ds-section-title">
+      <h2 id="sett-name" class="ds-section-title">
         {{ fullName }}
-      </p>
+      </h2>
       <p v-if="email" class="ds-note sett__email">
         {{ email }}
       </p>

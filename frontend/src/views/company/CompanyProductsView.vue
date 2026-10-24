@@ -94,9 +94,10 @@ onMounted(() => {
     <div v-for="n in 3" :key="n" class="ds-card ds-card--media" aria-hidden="true">
       <span class="ds-skeleton ds-skeleton--block" />
       <div class="ds-card__content">
-        <span class="ds-skeleton ds-skeleton--title" /><span
-          class="ds-skeleton ds-skeleton--text"
-        />
+        <span class="ds-skeleton-stack">
+          <span class="ds-skeleton ds-skeleton--title" />
+          <span class="ds-skeleton ds-skeleton--text" />
+        </span>
       </div>
     </div>
   </div>
@@ -133,7 +134,10 @@ onMounted(() => {
         </div>
         <div class="ds-card__content">
           <h2 class="ds-card__title">{{ item.name }}</h2>
-          <p class="ds-card__body">{{ packPrice(item) }}</p>
+          <p class="ds-card__price">
+            <span class="ds-card__price-figure">{{ packPrice(item) }}</span>
+            <span class="ds-card__price-unit">/ {{ t('inv.pack') }}</span>
+          </p>
           <div>
             <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
           </div>

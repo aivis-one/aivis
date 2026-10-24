@@ -175,7 +175,7 @@ onMounted(loadProduct)
 <template>
   <div class="pd">
     <!-- Loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Not found / error -->
     <CEmptyState

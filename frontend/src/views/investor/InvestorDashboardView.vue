@@ -438,7 +438,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Loading -->
-      <CLoader v-if="postsLoading && posts.length === 0 && !postsErrored" :size="24" />
+      <CLoader v-if="postsLoading && posts.length === 0 && !postsErrored" centered />
 
       <!-- Error -->
       <CEmptyState
@@ -489,7 +489,7 @@ onBeforeUnmount(() => {
       </h2>
 
       <!-- Loading -->
-      <CLoader v-if="eventsLoading && events.length === 0 && !eventsErrored" :size="24" />
+      <CLoader v-if="eventsLoading && events.length === 0 && !eventsErrored" centered />
 
       <!-- Error (does NOT hide -- a failed fetch must not look like
            "no events"; offer a retry instead) -->

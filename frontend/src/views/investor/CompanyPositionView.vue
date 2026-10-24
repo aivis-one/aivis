@@ -321,7 +321,11 @@ onUnmounted(() => {
 <template>
   <div class="cp">
     <!-- Initial load -->
-    <CLoader v-if="currentLoading && currentDetail === null && !currentErrored" />
+    <CLoader
+      v-if="currentLoading && currentDetail === null && !currentErrored"
+      centered
+      extent="page"
+    />
 
     <!-- Error (covers both backend failure and 404 no-position) -->
     <CEmptyState

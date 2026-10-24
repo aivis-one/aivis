@@ -69,9 +69,7 @@ onMounted(() => {
 
 <template>
   <AuthShell>
-    <div v-if="checking" aria-busy="true">
-      <CLoader />
-    </div>
+    <CLoader v-if="checking" centered extent="page" />
 
     <!-- The agreement document is not published: nothing can be accepted -->
     <template v-else-if="status === 'missing'">

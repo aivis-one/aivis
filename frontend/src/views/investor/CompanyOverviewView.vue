@@ -249,7 +249,7 @@ function onRoadmapPostClick(postId: string): void {
 <template>
   <div class="co">
     <!-- Initial loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- 404: company doesn't exist or is non-active. -->
     <CEmptyState v-else-if="notFound" :title="t('inv.companyOverview.notFound')">

@@ -188,9 +188,7 @@ useScreenHeader({
 
 <template>
   <!-- Loading -->
-  <div v-if="loading" aria-busy="true">
-    <CLoader />
-  </div>
+  <CLoader v-if="loading" centered extent="page" />
 
   <!-- Error -->
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.faq.errorTitle')">

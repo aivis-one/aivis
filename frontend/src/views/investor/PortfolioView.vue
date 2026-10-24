@@ -182,7 +182,11 @@ onMounted(() => {
     </ul>
 
     <!-- Initial load spinner (no positions yet, fetching) -->
-    <CLoader v-if="store.positionsLoading && !store.positionsLoaded && !store.positionsErrored" />
+    <CLoader
+      v-if="store.positionsLoading && !store.positionsLoaded && !store.positionsErrored"
+      centered
+      extent="page"
+    />
 
     <!-- Error (first load failed) -->
     <CEmptyState

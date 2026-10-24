@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// Stub — will be replaced with full implementation in F5.2.
 // Product detail (readonly, editing via Staff).
 
 import { useI18n } from 'vue-i18n'

@@ -396,7 +396,7 @@ onMounted(load)
 <template>
   <div class="iv">
     <!-- Loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Product load error -->
     <CEmptyState

@@ -78,9 +78,7 @@ onMounted(() => {
 
 <template>
   <!-- The link -->
-  <div v-if="agreement === 'loading'" aria-busy="true">
-    <CLoader :size="24" />
-  </div>
+  <CLoader v-if="agreement === 'loading'" centered extent="page" />
 
   <section v-else-if="link" class="ds-card" aria-labelledby="partners-link-title">
     <header class="ds-card__head">

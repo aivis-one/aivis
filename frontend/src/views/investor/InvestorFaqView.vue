@@ -224,7 +224,7 @@ useScreenHeader({
 <template>
   <div class="faq">
     <!-- Loading -->
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Error -->
     <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.faq.errorTitle')">

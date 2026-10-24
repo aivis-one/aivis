@@ -58,7 +58,7 @@ onMounted(load)
 
 <template>
   <div class="post">
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <CEmptyState
       v-else-if="errored || !post"

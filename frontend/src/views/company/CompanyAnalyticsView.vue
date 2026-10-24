@@ -331,9 +331,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
 
 <template>
   <!-- Initial loading -->
-  <div v-if="initialLoading" aria-busy="true">
-    <CLoader />
-  </div>
+  <CLoader v-if="initialLoading" centered extent="page" />
 
   <!-- Error -->
   <CEmptyState v-else-if="errored" tone="danger" :title="t('comp.analytics.errorTitle')">
@@ -426,7 +424,7 @@ function unitsLabelFor(entry: SalesByProductEntry): string {
             :y="100 - barHeightPercent(entry)"
             width="8"
             :height="barHeightPercent(entry)"
-            :data-peak="entry.revenue_cents === maxRevenue ? '' : undefined"
+            :data-peak="entry.month === peakMonth ? '' : undefined"
           />
         </svg>
         <ul class="ds-barchart__labels" aria-hidden="true">

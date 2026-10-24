@@ -67,7 +67,7 @@ onMounted(load)
 
 <template>
   <div class="evd">
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <CEmptyState v-else-if="errored" tone="danger" :title="t('inv.events.errorTitle')">
       <template #actions>

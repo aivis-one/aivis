@@ -343,7 +343,7 @@ onMounted(load)
 
 <template>
   <div class="pv">
-    <CLoader v-if="loading" />
+    <CLoader v-if="loading" centered extent="page" />
 
     <CEmptyState
       v-else-if="errored || !product"

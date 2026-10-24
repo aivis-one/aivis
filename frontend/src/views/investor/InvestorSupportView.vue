@@ -262,7 +262,7 @@ onMounted(() => {
 <template>
   <div class="isup">
     <!-- INIT: determining whether a request already exists -->
-    <CLoader v-if="support.threadsLoading" />
+    <CLoader v-if="support.threadsLoading" centered extent="page" />
 
     <!-- INIT error: never falls back to the invite -- a network -->
     <!-- failure must not look like "you have no history yet". -->
@@ -285,7 +285,7 @@ onMounted(() => {
         v-if="support.messagesLoading || support.messagesError || showInvite"
         class="isup__state"
       >
-        <CLoader v-if="support.messagesLoading" :size="24" />
+        <CLoader v-if="support.messagesLoading" centered />
 
         <CEmptyState
           v-else-if="support.messagesError"
