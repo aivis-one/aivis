@@ -4,7 +4,9 @@
 //
 // The cabinet offers English and Russian only; every key exists in both. In the
 // staff texts and in the public project overview a part is a "part" -- never an
-// option, equity, profit, dividend or revenue -- and a project is a "project".
+// option, equity, dividend or revenue -- and a project is a "project". "Share" and
+// "profit" are the words of the co-ownership model (a share in the right, the
+// distributable profit) and are not forbidden.
 // And the money check names its checks by codes with a hyphen (S-01, IS-07):
 // the message path must resolve them.
 // =============================================================================
@@ -47,13 +49,13 @@ describe('the locale files', () => {
 describe('the words of the staff and public texts', () => {
   // The words a part must never be called. \boption(s)\b does not match
   // "optional"; a project's own name or a ruling's number is not in these keys.
-  const FORBIDDEN_EN = /\boptions?\b|\bequity\b|\bdividends?\b|\bprofit\b|\brevenue\b|\bshares?\b/i
-  const FORBIDDEN_RU = /опцион(?!ально)|акци[яий]|дивиденд|прибыл|выручк/i
+  const FORBIDDEN_EN = /\boptions?\b|\bequity\b|\bdividends?\b|\brevenue\b/i
+  const FORBIDDEN_RU = /опцион(?!ально)|акци[яий]|дивиденд|выручк/i
 
   const inScope = ([key]: [string, string]) =>
     key.startsWith('staff.') || key.startsWith('public.companyOverview.stats.')
 
-  it('never call a part an option, equity, a share, profit, a dividend or revenue (English)', () => {
+  it('never call a part an option, equity, a dividend or revenue (English)', () => {
     expect(
       EN.filter(inScope)
         .filter(([, v]) => FORBIDDEN_EN.test(v))

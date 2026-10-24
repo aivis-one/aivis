@@ -12,7 +12,7 @@
 
 ## 2. What the Cabinet is {#ct-h2}
 
-2.1. The Cabinet is the place where you register, pass identity verification, buy parts of the projects of {company.name} and see what you hold: the entry in the Company's register, your accruals and payments, and your documents. It is not a subscription service, and nothing in it is sold by subscription.
+2.1. The Cabinet is the place where you register, pass identity verification, buy parts of the projects of {company.name} and see what you hold: your parts, as the entry in the Company's register that expresses your share in the exclusive right to the project, your accruals and payments, and your documents. It is not a subscription service, and nothing in it is sold by subscription.
 
 2.2. Agreements and transactions are downloadable in the Cabinet. The Cabinet records the documents you accept, with the version and the time.
 

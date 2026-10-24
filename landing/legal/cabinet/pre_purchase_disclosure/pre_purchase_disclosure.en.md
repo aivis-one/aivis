@@ -6,31 +6,31 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 ## 1. What you buy {#pp-h1}
 
-1.1. You buy parts of one project of {company.name}. What the Company sells you is an existing right that it owns: a share of the pool of the project's gross receipts. Gross receipts are all money received from customers for the project's product, before any deduction.
+1.1. You buy parts of one project of {company.name}. A part is one billionth (1/1,000,000,000) of the exclusive right to the project, and all the parts of a project together equal 100 percent of the right. The Company will own the right while the schedule for the project is unsigned and owns it from the signing, and sells parts of a project only after that. What the Company sells you is a share in an existing right that it owns: you become a co-owner of the right in the amount of your parts, and your income is your share of the project's distributable profit. Gross receipts are all money received from customers for the project's product, before any deduction.
 
-1.2. Your right is an entry in the Company's register of the project's IP. Your Cabinet holds the proof of the entry.
+1.2. Your right is your share in the exclusive right, expressed by an entry in the Company's register of the project's IP, a digital system in the Cabinet. Your Cabinet holds the proof of the entry.
 
-1.3. A part is not a share of profit, not a share or equity in the Company, not an option and not a fund. No profit is computed.
+1.3. A part is not a share or equity in the Company, not an option and not a fund. By the buyer agreement you pass the management of the right to the Company: licensing it, running the product, protecting the right and, after the buy-out, selling the project's IP. You have no vote.
 
-## 2. The pool and the commission {#pp-h2}
+## 2. The distributable profit {#pp-h2}
 
-2.1. The holders of a project's parts share a fixed pool of 10 percent of its gross receipts. The Company's service commission is 10 percent of the pool, on top: the pool is 11.11 percent of gross receipts, of which 1.11 percent goes to the Company and 10 percent to all parts.
+2.1. The holders and the Company, as co-owners, share a project's distributable profit in proportion to their parts. The distributable profit is the project's gross receipts less the project's direct costs from a closed list: payment-system and bank fees; hosting, servers and AI models that directly serve the project's product; third-party licences inside the product; taxes on the project's revenue, such as VAT; direct support of the product's customers. There are no other deductions. The Company takes no commission: it earns from the project only as the holder of its own parts.
 
-2.2. Your share is 10 percent of the project's gross receipts x your parts / 1,000,000,000.
+2.2. Your share is the project's distributable profit x your parts / 1,000,000,000.
 
-2.3. Example. Gross receipts of 100,000 for a quarter: the pool is 11,111, the Company's commission 1,111, all parts 10,000, and 1 percent of the parts 100.
+2.3. Example, with figures chosen for illustration only. Gross receipts of 100,000 for a quarter and direct costs by the list of 20,000: the distributable profit is 80,000, and 1 percent of the parts receives 800.
 
-2.4. The pool may only be raised, from 10 percent up, and the commission may only be lowered, from 10 percent down, by the Company alone. The Company announces every such change in the Cabinet, with its date, before it applies. Any other change applies to parts already sold only with the holder's consent.
+2.4. If the direct costs of a quarter exceed the gross receipts, the distributable profit of that quarter is zero: you bear no loss, and the loss is not carried forward to a later quarter. Development, salaries and marketing of the project are not deductions. A change to what this sheet promises about the profit, the closed list of direct costs or the payment calendar applies to parts already sold only with the holder's consent.
 
 ## 3. The risks {#pp-h3}
 
-3.1. A project's pool is zero until its product sells. Until then you receive nothing from the pool.
+3.1. A project's distributable profit is zero until its product sells. Until then you receive nothing from the profit.
 
 3.2. A project may not reach revenue. It may not reach the cutoff of 25,000 USD a month of gross receipts, and it may not be formed into a company of its own working under the licence.
 
-3.3. The Company holds every part that is not yet sold or given. The pool income of those parts is directed to developing the projects.
+3.3. The Company holds every part that is not yet sold or given. The share of the distributable profit that falls to those parts is directed to developing the projects.
 
-3.4. The money from selling parts is never gross receipts. It goes to the project's budget by its roadmap and business-financial model, less the selling cost.
+3.4. The money from selling parts is never gross receipts and does not enter the distributable profit. It goes to the project's budget by its roadmap and business-financial model, less the selling cost.
 
 ## 4. The selling cost {#pp-h4}
 
@@ -46,7 +46,7 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 6.1. The Company pays the holders itself, as the one debtor. It pays quarterly, and only after the 14 days of withdrawal. An amount under 10 USD is carried forward to the next quarter.
 
-6.2. The Company may sell a project's IP only after it has bought back every holder's share. Before the buy-out the project is revalued at the decision, and you are told in the Cabinet 30 days before the sale. The buy-out binds every holder, you included: your share then passes to the Company at a price not below its value on that fresh revaluation, and you are paid for it, to your account in the Cabinet, at the end of the notice.
+6.2. The Company may sell a project's IP only after it has bought back every holder's share in the right. Before the buy-out the project is revalued at the decision, and you are told in the Cabinet 30 days before the sale. The buy-out binds every holder, you included: your share then passes to the Company at a price not below its value on that fresh revaluation, and you are paid for it, to your account in the Cabinet, at the end of the notice.
 
 ## 7. The index {#pp-h7}
 
@@ -58,10 +58,10 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 8.1. Every buyer is treated as a consumer.
 
-8.2. You may withdraw within 14 days of the purchase, through support. On withdrawal the full price goes back to your single account in the Cabinet, and the bonus parts of that purchase are cancelled; you agree to this refund to your account. On your request, support refunds the account out by the means by which you paid, less the network fee for USDT. A part joins the pool only when the money paid for it can no longer be recalled, that is after those 14 days.
+8.2. You may withdraw within 14 days of the purchase, through support. On withdrawal the full price goes back to your single account in the Cabinet, and the bonus parts of that purchase are cancelled; you agree to this refund to your account. On your request, support refunds the account out by the means by which you paid, less the network fee for USDT. A part joins the distribution of the profit only when the money paid for it can no longer be recalled, that is after those 14 days.
 
 8.3. Disputes go to the state courts of Georgia in Tbilisi, unless mandatory law where you live gives you the right to go to another forum, and your protection as a consumer at your home is kept.
 
 8.4. If you are unhappy with a purchase, an accrual or a payment, write to support in the Cabinet. If support does not settle it, write to the Company at its address at the top of this sheet.
 
-8.5. With each payment you receive a statement of your accruals and payments. It is the Company's report to you after the sale.
+8.5. With each payment you receive a calculation of your share (the revenue, the direct costs by the list, the distributable profit and your share) and a statement of your accruals and payments. It is the Company's report to you after the sale.

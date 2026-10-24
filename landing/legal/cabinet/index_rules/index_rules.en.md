@@ -4,9 +4,9 @@ These rules describe the index project "AIVIS Projects Index" of **{company.name
 
 ## 1. The Index {#ir-h1}
 
-1.1. The Company owns the intellectual property of each of its projects. The AIVIS Projects Index (the "Index") is the index of the Company's projects. It is kept in the Cabinet as a project of its own, with its own account, description and published information, apart from the Company's account.
+1.1. The Company is a co-owner of the exclusive right to each of its projects together with the holders of the parts it sells, and sells parts of a project only after the schedule for the project is signed. The AIVIS Projects Index (the "Index") is the index of the Company's projects. It is kept in the Cabinet as a project of its own, with its own account, description and published information, apart from the Company's account.
 
-1.2. Each project of the Company has 1,000,000,000 parts, of which 10 percent, 100,000,000 parts, is its index part. The Index holds the index part of every project in it.
+1.2. Each project of the Company has 1,000,000,000 parts, of which 10 percent, 100,000,000 parts, is its index part. The Index holds the index part of every project in it; the Company is the co-owner of that index part (clause 2.2).
 
 1.3. A part of the Index is called a unit (the "Unit"). The Index has 10,000,000,000 Units, for 100 places of projects. The number is fixed and no Unit is ever added.
 
@@ -20,9 +20,9 @@ These rules describe the index project "AIVIS Projects Index" of **{company.name
 
 2.1. One Unit is 0.01 part of every project in the Index. When all 100 places of the Index are filled, one Unit is one part in sum (100 x 0.01).
 
-2.2. A Unit, like a part of a project, is an existing right owned by the Company: the right to a share of the income of the index parts of the projects in the Index.
+2.2. A Unit, like a part of a project, is a share in an existing right that the Company owns: here, the right to the index parts of the projects in the Index. The Company is the co-owner of each project's index part, and a holder of Units holds, through the register of the Cabinet, a share in the right to the index parts.
 
-2.3. The holders of a project's parts share a fixed pool of 10 percent of the project's gross receipts, and the index part of a project receives its share of that pool as any other part does. A holder of X Units receives the income of the index part of every project in the Index x X / 10,000,000,000. This is the same income as holding those projects' parts directly: 0.01 x X parts of every project in the Index.
+2.3. The holders of a project's parts and the Company share the project's distributable profit in proportion to their parts, and the index part of a project receives its share of that profit as any other part does. A holder of X Units receives the income of the index part of every project in the Index x X / 10,000,000,000. This is the same income as holding those projects' parts directly: 0.01 x X parts of every project in the Index.
 
 ## 3. The value of the Index and the price of a Unit {#ir-h3}
 
@@ -40,7 +40,7 @@ These rules describe the index project "AIVIS Projects Index" of **{company.name
 
 5.1. A further project joins the Index only by a schedule that the Company signs with the project's author. The project joins at its own current valuation.
 
-5.2. The Company may sell a project's intellectual property only after it has bought back the shares of all holders of that project, the index part included, at a price not below the value of the share on the revaluation of the project made at the decision to sell. Every holder is told in the Cabinet 30 days before the sale, and the price is paid to his account at the end of that notice. The price of the index part is paid to the holders of Units in proportion to their Units, and the place of that project in the Index is freed for a further project.
+5.2. The Company may sell a project's intellectual property only after it has bought back the shares in the right of all holders of that project, the index part included, at a price not below the value of the share on the revaluation of the project made at the decision to sell. Every holder is told in the Cabinet 30 days before the sale, and the price is paid to his account at the end of that notice. The price of the index part is paid to the holders of Units in proportion to their Units, and the place of that project in the Index is freed for a further project.
 
 5.3. If a project is closed, its index part leaves the Index, the value of the Index falls by it, and nothing is paid for it.
 

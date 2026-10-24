@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Updated 23 October 2026
+Updated 25 October 2026
 
 ## 1. In short
 
@@ -56,7 +56,7 @@ We handle the following data, grouped by where you meet us. Each group names the
 
 ### 4.5. The Cabinet: your purchases and your register entry
 
-4.5.1. When you buy, we record what you bought, in what quantity, for what price, with the buyer agreement you accepted, and we enter you in the Company's register of the project's IP as a holder. We use the entry to prove your right, to count your share of the pool and to show you your accruals and payments. The basis is the buyer agreement. We keep the entry and this record as section 8 says; the basis for keeping them after the share ends is our legitimate interest in proving the right and every payment.
+4.5.1. When you buy, we record what you bought, in what quantity, for what price, with the buyer agreement you accepted, and we enter you in the Company's register of the project's IP, in which the exclusive right to the project is expressed in parts, as a holder and a co-owner of the right in the amount of your parts. We use the entry to prove your right, to count your share of the project's distributable profit and to show you your accruals and payments. The basis is the buyer agreement. We keep the entry and this record as section 8 says; the basis for keeping them after the share ends is our legitimate interest in proving the right and every payment.
 
 ### 4.6. The Cabinet: payments out
 

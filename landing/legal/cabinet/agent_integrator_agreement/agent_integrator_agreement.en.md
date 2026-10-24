@@ -76,7 +76,7 @@ the natural person whose verification (KYC) is passed, whose application the Com
 
 7.2. The Company's support credits the bonus Parts by hand from the bonus fund of the project, 14 percent of its Parts, after the 14 days in which the buyer may withdraw from the purchase.
 
-7.3. The Agent-Integrator holds his bonus Parts on the terms of the buyer agreement, and the Company enters him in the register of the project as their holder. Bonus Parts carry the same share of the pool of the project's gross receipts as any other Part.
+7.3. The Agent-Integrator holds his bonus Parts on the terms of the buyer agreement, and the Company enters him in the register of the project as their holder. Bonus Parts carry the same share of the project's distributable profit as any other Part.
 
 ## 8. The 14-day hold and payouts {#ai-h8}
 

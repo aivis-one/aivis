@@ -2,20 +2,20 @@
   "_note": "The register of every legal document: the public documents (scope site) and, when they exist, the cabinet's (scope cabinet). Each build prints the edition line from labels.edition with the document's date; a public document missing here refuses the build and fails the check. A new edition of a document: raise its edition and set its date here, nowhere else.",
   "labels": {"edition": {"en": "Updated %D", "ru": "Обновлено %D"}, "related": {"en": "Related documents", "ru": "Связанные документы"}},
   "documents": [
-    {"id": "privacy", "scope": "site", "title": {"en": "Privacy Policy", "ru": "Политика конфиденциальности"}, "edition": 4, "date": "2026-10-23"},
+    {"id": "privacy", "scope": "site", "title": {"en": "Privacy Policy", "ru": "Политика конфиденциальности"}, "edition": 5, "date": "2026-10-25"},
     {"id": "terms", "scope": "site", "title": {"en": "Terms of Use of the Site", "ru": "Условия использования сайта"}, "edition": 3, "date": "2026-10-23"},
     {"id": "imprint", "scope": "site", "title": {"en": "Company Details", "ru": "Реквизиты компании"}, "edition": 3, "date": "2026-10-23"},
     {"id": "cookies", "scope": "site", "title": {"en": "Cookie and Local Storage Notice", "ru": "Уведомление о cookie и локальном хранилище"}, "edition": 4, "date": "2026-10-23"},
     {"id": "licence", "scope": "site", "title": {"en": "Course licence (CC BY-NC-ND 4.0)", "ru": "Лицензия на курсы (CC BY-NC-ND 4.0)"}, "edition": 2, "date": "2026-10-14"},
-    {"id": "cabinet_terms", "scope": "cabinet", "roles": ["investor", "agent", "company"], "title": {"en": "Cabinet User Agreement", "ru": "Пользовательское соглашение кабинета"}, "edition": 2, "date": "2026-10-24"},
-    {"id": "privacy_policy", "scope": "cabinet", "roles": ["investor", "agent", "company"], "title": {"en": "Privacy Policy", "ru": "Политика конфиденциальности"}, "edition": 4, "date": "2026-10-23"},
-    {"id": "buyer_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Buyer Agreement", "ru": "Договор покупателя"}, "edition": 1, "date": "2026-10-24"},
-    {"id": "pre_purchase_disclosure", "scope": "cabinet", "roles": [], "title": {"en": "Pre-Purchase Disclosure Sheet", "ru": "Лист раскрытия перед покупкой"}, "edition": 1, "date": "2026-10-24"},
-    {"id": "agent_integrator_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Agent-Integrator Agreement", "ru": "Договор агента-интегратора"}, "edition": 1, "date": "2026-10-23"},
+    {"id": "cabinet_terms", "scope": "cabinet", "roles": ["investor", "agent", "company"], "title": {"en": "Cabinet User Agreement", "ru": "Пользовательское соглашение кабинета"}, "edition": 3, "date": "2026-10-25"},
+    {"id": "privacy_policy", "scope": "cabinet", "roles": ["investor", "agent", "company"], "title": {"en": "Privacy Policy", "ru": "Политика конфиденциальности"}, "edition": 5, "date": "2026-10-25"},
+    {"id": "buyer_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Buyer Agreement", "ru": "Договор покупателя"}, "edition": 2, "date": "2026-10-25"},
+    {"id": "pre_purchase_disclosure", "scope": "cabinet", "roles": [], "title": {"en": "Pre-Purchase Disclosure Sheet", "ru": "Лист раскрытия перед покупкой"}, "edition": 2, "date": "2026-10-25"},
+    {"id": "agent_integrator_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Agent-Integrator Agreement", "ru": "Договор агента-интегратора"}, "edition": 2, "date": "2026-10-25"},
     {"id": "aml_policy", "scope": "cabinet", "roles": [], "title": {"en": "AML and Screening Policy", "ru": "Политика по противодействию отмыванию денег и проверке (AML)"}, "edition": 2, "date": "2026-10-24"},
-    {"id": "company_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Company Agreement", "ru": "Договор компании"}, "edition": 1, "date": "2026-10-24"},
+    {"id": "company_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Company Agreement", "ru": "Договор компании"}, "edition": 2, "date": "2026-10-25"},
     {"id": "kyc_notice", "scope": "cabinet", "roles": [], "title": {"en": "Identity Verification (KYC) Notice", "ru": "Уведомление о проверке личности (KYC)"}, "edition": 2, "date": "2026-10-24"},
-    {"id": "index_rules", "scope": "cabinet", "roles": [], "title": {"en": "Index Rules", "ru": "Правила индекса"}, "edition": 1, "date": "2026-10-24"},
+    {"id": "index_rules", "scope": "cabinet", "roles": [], "title": {"en": "Index Rules", "ru": "Правила индекса"}, "edition": 2, "date": "2026-10-25"},
     {"id": "licence_agreement", "scope": "cabinet", "roles": [], "title": {"en": "Licence purchase agreement", "ru": "Договор на покупку лицензии"}, "edition": 1, "date": "2026-10-14"}
   ]
 }

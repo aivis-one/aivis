@@ -936,8 +936,7 @@
   },
   "intro": {
     "what": {
-      "title": "Was AIVIS.ONE ist",
-      "text": "AIVIS.ONE verkauft Teile von Projekten des geistigen Eigentums. Ein Teil ist ein Anteil an 15 Prozent der Bruttoeinnahmen des Projekts, der Verkauf eines bestehenden Rechts; er wird auf Ihren Namen in das Register der Gesellschaft eingetragen."
+      "title": "Was AIVIS.ONE ist"
     },
     "where": {
       "title": "Wo Sie sind",
@@ -1079,10 +1078,6 @@
       "hint": "Das Projekt veröffentlicht Beiträge, Fahrplan und Dokumente selbst, ohne Freigabe."
     },
     "dashboard": {
-      "pool": {
-        "title": "Projekt-Pool",
-        "note": "Der Anteil des Projekts an den Bruttoeinnahmen aus dem Verkauf seines Produkts: {percent} % der Bruttoeinnahmen. Er bleibt null, bis das Produkt verkauft wird."
-      },
       "metrics": {
         "revenue": "Verkäufe von Anteilen",
         "optionsSold": "Verkaufte Anteile"

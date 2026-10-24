@@ -16,13 +16,13 @@ the company for which the Company's staff have opened an account in the Cabinet 
 
 1.2. Through the Project Account the Account Holder publishes the project's posts, roadmap and documents.
 
-1.3. The intellectual property of the project is the Company's. The seller of the parts of the project is the Company.
+1.3. The Company will own the intellectual property of the project, the exclusive right to the computer program and the other works of the project, while the schedule for the project is unsigned, and owns it from the signing of the schedule. The parts of the project are shares in that right, and the Company sells them only after the schedule for the project is signed. The holders of the parts are co-owners of the right together with the Company. The seller of the parts of the project is the Company.
 
 1.4. This agreement and the documents accepted in the Project Account are downloadable in the Cabinet.
 
 ## 2. The parts of the project {#ca-h2}
 
-2.1. The project has 1,000,000,000 parts. The number is fixed and no part is ever added.
+2.1. The project has 1,000,000,000 parts, all together 100 percent of the project's exclusive right. The number is fixed and no part is ever added.
 
 2.2. The parts are divided as follows: 25 percent for sale, 10 percent index fund, 14 percent bonus fund, and 51 percent reserve and the Company's own. The Project Account shows this division and does not change it.
 
@@ -34,9 +34,9 @@ the company for which the Company's staff have opened an account in the Cabinet 
 
 3.3. The project's value is never below 1,000,000 USD, which is its base until another valuation is made. News, work done or a deal move the price only through such a revaluation.
 
-## 4. The pool and the money of the project {#ca-h4}
+## 4. The profit and the money of the project {#ca-h4}
 
-4.1. The holders of the project's parts share a fixed pool of 10 percent of the project's gross receipts. Gross receipts are all money received from customers for the project's product, before any deduction. Until the project's product sells, its pool is zero.
+4.1. The co-owners of the project's right, the holders of its parts and the Company, share the project's distributable profit in proportion to their parts. Gross receipts are all money received from customers for the project's product, before any deduction. The distributable profit is the gross receipts less the project's direct costs from a closed list: payment-system and bank fees; hosting, servers and AI models that directly serve the project's product; third-party licences inside the product; taxes on the project's revenue (for example VAT); direct support of the product's customers. There are no other deductions, and the Company takes no commission. Until the project's product sells, the distributable profit is zero.
 
 4.2. The money from selling the project's parts goes to the project's budget by its roadmap and business-financial model, less the selling cost. It is never gross receipts.
 

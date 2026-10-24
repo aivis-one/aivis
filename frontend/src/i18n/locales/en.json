@@ -1314,7 +1314,7 @@
       "allOperations": "All operations",
       "holder": {
         "title": "Holder accruals and payouts",
-        "rule": "AIVIS pays the accruals itself, once a quarter, to your bank account or card; if you paid in USDT, in USDT to your confirmed address. There is no holder balance and no withdrawal request.",
+        "rule": "AIVIS pays your share of the distributable profit itself, once a quarter and only after the 14 days of withdrawal, to your bank account or card; if you paid in USDT, in USDT to your confirmed address. Each payment comes with a calculation of your share and a statement of your accruals and payments. There is no holder balance and no withdrawal request.",
         "small": "An amount under 10 USD carries over to the next quarter."
       }
     },
@@ -2004,8 +2004,8 @@
         "frozen": "On hold"
       },
       "pool": {
-        "title": "Project pool",
-        "note": "The project's share of the gross receipts from sales of its product: {percent}% of the gross receipts. It stays zero until the product sells."
+        "title": "Distributable profit",
+        "note": "The project's gross receipts from sales of its product less the direct costs of the closed list. This screen does not calculate it and shows zero; until the project's product sells, the distributable profit is zero."
       },
       "metrics": {
         "revenue": "Sales of parts",
@@ -2863,7 +2863,7 @@
   "intro": {
     "what": {
       "title": "What AIVIS.ONE is",
-      "text": "AIVIS.ONE sells parts of intellectual property projects. A part is a share of the 10 percent of the project's gross receipts that its holders share, the sale of an existing right; it is entered in the company's register in your name."
+      "text": "AIVIS.ONE sells parts of intellectual property projects. A part is one billionth of the exclusive right to a project: by buying parts you become a co-owner of the right with the company and receive a share of the project's distributable profit; your right is entered in the company's register in your name."
     },
     "where": {
       "title": "Where you are",
