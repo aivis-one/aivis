@@ -281,7 +281,7 @@ function onRoadmapPostClick(postId: string): void {
           </h2>
         </div>
       </section>
-      <p v-if="data.description" class="co__description">
+      <p v-if="data.description" class="ds-note co__description">
         {{ data.description }}
       </p>
 
@@ -306,7 +306,7 @@ function onRoadmapPostClick(postId: string): void {
 
       <!-- Roadmap (hidden if empty per R1 §6.1) -->
       <section v-if="hasRoadmap" class="co__section" aria-labelledby="co-roadmap">
-        <h2 id="co-roadmap" class="co__section-title">
+        <h2 id="co-roadmap" class="ds-section-title">
           {{ t('inv.companyOverview.sectionRoadmap') }}
         </h2>
         <RoadmapTimeline
@@ -338,26 +338,14 @@ function onRoadmapPostClick(postId: string): void {
 }
 
 .co__description {
-  margin: 0;
   max-inline-size: var(--maxw-prose);
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  color: var(--text-secondary);
   /* Full description on overview -- no clamp. */
   white-space: pre-line;
 }
 
-/* A section heading inside the screen */
 .co__section {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-.co__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>

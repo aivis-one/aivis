@@ -44,6 +44,7 @@ interface FeedRow {
   id: string
   title: string
   at: string
+  cover: string | null
 }
 
 const posts = ref<PostResponse[]>([])
@@ -60,12 +61,14 @@ const rows = computed<FeedRow[]>(() => {
     id: p.id,
     title: p.title,
     at: p.published_at ?? p.created_at,
+    cover: p.cover_url ?? null,
   }))
   const fromEvents: FeedRow[] = events.value.map((e) => ({
     kind: 'event',
     id: e.id,
     title: e.title,
     at: e.starts_at,
+    cover: e.cover_url ?? null,
   }))
   return [...fromPosts, ...fromEvents].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
 })
@@ -146,7 +149,11 @@ onMounted(load)
     <template v-else>
       <ul class="ds-rows">
         <li v-for="row in rows" :key="`${row.kind}-${row.id}`" class="ds-row">
-          <span class="ds-row__lead">
+          <!-- The cover as the row's thumbnail (K23 .ds-thumb), else the icon of its kind -->
+          <span v-if="row.cover" class="ds-thumb">
+            <img :src="row.cover" alt="" loading="lazy" />
+          </span>
+          <span v-else class="ds-row__lead">
             <CalendarDays v-if="row.kind === 'event'" size="sm" />
             <FileText v-else size="sm" />
           </span>

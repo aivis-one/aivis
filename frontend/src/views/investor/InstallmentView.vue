@@ -546,7 +546,7 @@ onMounted(load)
             </div>
             <div class="ds-kv__row">
               <dt>{{ t('inv.installment.yourBalance') }}</dt>
-              <dd :class="{ iv__warn: insufficientBalance }">
+              <dd :data-tone="insufficientBalance ? 'danger' : undefined">
                 {{ formatPrice(balanceCents, product.currency) }}
               </dd>
             </div>
@@ -593,11 +593,6 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-/* The balance that does not cover the first payment */
-.iv__warn {
-  color: var(--danger);
 }
 
 /* Actions */

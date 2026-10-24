@@ -400,7 +400,7 @@ onUnmounted(() => {
 
       <!-- Purchases -->
       <section class="cp__purchases" aria-labelledby="cp-purchases">
-        <h2 id="cp-purchases" class="cp__section-title">
+        <h2 id="cp-purchases" class="ds-section-title">
           {{ t('inv.companyPosition.purchases.title') }}
         </h2>
 
@@ -428,7 +428,7 @@ onUnmounted(() => {
               </header>
               <dl class="ds-booking__facts">
                 <div>
-                  <dt>{{ t('inv.installmentPlans.list.item.created') }}</dt>
+                  <dt>{{ t('inv.companyPosition.purchases.booked') }}</dt>
                   <dd>{{ formatDate(p.created_at) }}</dd>
                 </div>
                 <div>
@@ -542,14 +542,6 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--space-3);
 }
-.cp__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
 .cp__list {
   list-style: none;
   margin: 0;

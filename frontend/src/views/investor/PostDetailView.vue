@@ -78,7 +78,7 @@ onMounted(load)
         <img :src="post.cover_url" :alt="post.title" />
       </div>
       <div class="ds-card__content">
-        <time class="post__date" :datetime="post.published_at ?? post.created_at">
+        <time class="ds-note ds-note--xs" :datetime="post.published_at ?? post.created_at">
           {{ formatDate(post.published_at ?? post.created_at, locale) }}
         </time>
         <p class="ds-card__body post__body">
@@ -97,11 +97,6 @@ onMounted(load)
 
 .post__article {
   inline-size: 100%;
-}
-
-.post__date {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
 }
 
 .post__body {

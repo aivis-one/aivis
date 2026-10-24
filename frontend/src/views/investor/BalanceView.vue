@@ -234,7 +234,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <p class="bv__note">
+          <p class="ds-note ds-note--xs">
             {{ t('inv.balance.accountNote') }}
           </p>
         </div>
@@ -261,10 +261,10 @@ onMounted(() => {
         </h2>
       </header>
       <div class="ds-card__body bv__body">
-        <p class="bv__note">
+        <p class="ds-note ds-note--xs">
           {{ t('inv.balance.holder.rule') }}
         </p>
-        <p class="bv__note">
+        <p class="ds-note ds-note--xs">
           {{ t('inv.balance.holder.small') }}
         </p>
       </div>
@@ -272,7 +272,7 @@ onMounted(() => {
 
     <!-- Payment history -->
     <section class="bv__history" aria-labelledby="bv-history">
-      <h2 id="bv-history" class="bv__section-title">
+      <h2 id="bv-history" class="ds-section-title">
         {{ t('inv.balance.history') }}
       </h2>
 
@@ -323,7 +323,7 @@ onMounted(() => {
             <span class="ds-row__meta">{{ formatDateTime(item.created_at, locale) }}</span>
           </span>
           <span class="ds-row__trail">
-            <span class="ds-row__value bv__amount">
+            <span class="ds-row__value" data-tone="success">
               {{ formatPrice(item.amount_cents, item.currency) }}
             </span>
             <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
@@ -362,30 +362,10 @@ onMounted(() => {
   gap: var(--space-2);
 }
 
-.bv__note {
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: var(--lh-normal);
-  color: var(--text-secondary);
-}
-
-/* A section heading inside the screen */
 .bv__history {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-.bv__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* A payment is money in: the value carries the credit colour (K23). */
-.bv__amount {
-  color: var(--success);
 }
 
 .bv__sentinel {

@@ -84,11 +84,11 @@ onMounted(load)
         <img :src="event.cover_url" :alt="event.title" />
       </div>
       <div class="ds-card__content">
-        <p class="evd__meta">
+        <p class="ds-note evd__meta">
           <CalendarDays size="sm" />
           <span>{{ whenLabel }}</span>
         </p>
-        <p v-if="event.location" class="evd__meta">
+        <p v-if="event.location" class="ds-note evd__meta">
           <MapPin size="sm" />
           <span>{{ event.location }}</span>
         </p>
@@ -125,9 +125,6 @@ onMounted(load)
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
 }
 
 .evd__body {

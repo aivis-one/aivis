@@ -551,7 +551,7 @@ onMounted(load)
         <template v-else>
           <!-- QR + address -->
           <div class="ds-invoice__qr">
-            <img v-if="qrSrc" :src="qrSrc" :alt="invoice.address ?? ''" />
+            <img v-if="qrSrc" :src="qrSrc" :alt="t('inv.deposit.qrAlt')" />
             <p class="ds-invoice__qr-note">{{ t('inv.deposit.qrUnavailable') }}</p>
           </div>
 
@@ -587,7 +587,7 @@ onMounted(load)
             :error="txidError"
             :placeholder="t('inv.deposit.txidPlaceholder')"
           />
-          <p v-if="invoice.attempts_remaining != null" class="dv__attempts">
+          <p v-if="invoice.attempts_remaining != null" class="ds-note ds-note--xs">
             {{ t('inv.deposit.attemptsRemaining', { n: invoice.attempts_remaining }) }}
           </p>
           <CButton
@@ -653,11 +653,5 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.dv__attempts {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
 }
 </style>

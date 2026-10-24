@@ -156,14 +156,8 @@ function typeLabel(type: string): string {
   return isCompany ? tOrRaw(t, `comp.operations.type.${type}`, own) : own
 }
 
-function amountClass(cents: number): string {
-  if (cents > 0) return 'tv__amount--credit'
-  if (cents < 0) return 'tv__amount--debit'
-  return ''
-}
-
-// The tone of the lead icon says the direction of the money (a second sign: the
-// value carries its sign in the text).
+// The tone of the lead icon and of the value (K23 data-tone) says the direction of
+// the money (a second sign: the value carries its sign in the text).
 function toneFor(cents: number): 'success' | 'danger' | undefined {
   if (cents > 0) return 'success'
   if (cents < 0) return 'danger'
@@ -325,7 +319,7 @@ onMounted(() => {
           <span class="ds-row__meta">{{ formatDate(item.created_at) }}</span>
         </span>
         <span class="ds-row__trail">
-          <span class="ds-row__value" :class="amountClass(item.amount_cents)">
+          <span class="ds-row__value" :data-tone="toneFor(item.amount_cents)">
             {{ formatSignedPrice(item.amount_cents, item.currency) }}
           </span>
         </span>
@@ -373,14 +367,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/* The sign of the money on the value (K23: credit --success, debit --danger). */
-.tv__amount--credit {
-  color: var(--success);
-}
-.tv__amount--debit {
-  color: var(--danger);
 }
 
 .tv__sentinel {

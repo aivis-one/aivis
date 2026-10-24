@@ -30,7 +30,8 @@
 // today (see notifications/schemas.py's own note), so the screen is chosen
 // from the notification's type (utils/notificationTarget.ts); an `action_data`
 // that names a post or an event wins when comms sends one. A row whose type has
-// no screen of its own is a plain row (it has no link); "mark all read" clears it.
+// no screen of its own is only marked read by its tap (its title is the row's
+// button form while it is unread, a plain title once read).
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -76,7 +77,7 @@ function targetOf(item: NotificationItemOut) {
   })
 }
 
-// A tap marks the row read; the link then opens the screen of its own event.
+// A tap marks the row read; a link then opens the screen of its own event.
 function markRead(item: NotificationItemOut): void {
   if (isUnread(item)) {
     void store.markRead(item.id)
@@ -169,12 +170,20 @@ onMounted(() => {
           >
             <span class="ds-row__title">{{ item.title }}</span>
           </RouterLink>
+          <button
+            v-else-if="isUnread(item)"
+            type="button"
+            class="ds-row__link"
+            @click="markRead(item)"
+          >
+            <span class="ds-row__title">{{ item.title }}</span>
+          </button>
           <span v-else class="ds-row__title">{{ item.title }}</span>
           <span class="ds-row__meta">{{ item.body }}</span>
           <span class="ds-row__meta">{{ formatDateTime(item.sent_at, locale) }}</span>
         </span>
         <span v-if="isUnread(item)" class="ds-row__trail">
-          <span class="ds-dot" aria-hidden="true" />
+          <span class="ds-dot" role="img" :aria-label="t('inv.notifications.unread')" />
         </span>
       </li>
     </ul>

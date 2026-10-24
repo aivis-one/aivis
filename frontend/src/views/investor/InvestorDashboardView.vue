@@ -424,7 +424,7 @@ onBeforeUnmount(() => {
     <!-- News and events: always shown -->
     <section class="dash__section" aria-labelledby="dash-news">
       <div class="dash__section-head">
-        <h2 id="dash-news" class="dash__section-title">
+        <h2 id="dash-news" class="ds-section-title">
           {{ t('inv.dashboard.news.title') }}
         </h2>
         <RouterLink
@@ -462,7 +462,11 @@ onBeforeUnmount(() => {
       <!-- List: each post opens its own screen (K23) -->
       <ul v-else class="ds-rows">
         <li v-for="post in posts" :key="post.id" class="ds-row">
-          <span class="ds-row__lead"><FileText size="sm" /></span>
+          <!-- The cover as the row's thumbnail (K23 .ds-thumb), else the post icon -->
+          <span v-if="post.cover_url" class="ds-thumb">
+            <img :src="post.cover_url" alt="" loading="lazy" />
+          </span>
+          <span v-else class="ds-row__lead"><FileText size="sm" /></span>
           <span class="ds-row__body">
             <RouterLink
               class="ds-row__link"
@@ -480,7 +484,7 @@ onBeforeUnmount(() => {
 
     <!-- Upcoming events (FP-25: whole section absent when settled-empty) -->
     <section v-if="showEventsSection" class="dash__section" aria-labelledby="dash-events">
-      <h2 id="dash-events" class="dash__section-title">
+      <h2 id="dash-events" class="ds-section-title">
         {{ t('inv.dashboard.events.title') }}
       </h2>
 
@@ -542,14 +546,6 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: var(--space-3);
 }
-.dash__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
 .dash__events-list {
   list-style: none;
   margin: 0;

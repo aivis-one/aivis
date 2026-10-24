@@ -495,10 +495,10 @@ onMounted(() => {
     <!-- Profile card -->
     <section class="ds-card sett__profile" :aria-label="fullName">
       <CAvatar :url="avatarUrl" :name="fullName" :size="56" />
-      <p class="sett__name">
+      <p class="ds-section-title">
         {{ fullName }}
       </p>
-      <p v-if="email" class="sett__email">
+      <p v-if="email" class="ds-note sett__email">
         {{ email }}
       </p>
       <CBadge variant="neutral" :text="roleLabel" />
@@ -716,7 +716,7 @@ onMounted(() => {
               :disabled="loggingOutAll"
               @click="handleLogoutAll"
             >
-              <span class="ds-row__title sett__title--danger">
+              <span class="ds-row__title" data-tone="danger">
                 {{ t('inv.settings.actions.logoutAll') }}
               </span>
             </button>
@@ -733,7 +733,7 @@ onMounted(() => {
           <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
           <span class="ds-row__body">
             <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
-              <span class="ds-row__title sett__title--danger">
+              <span class="ds-row__title" data-tone="danger">
                 {{ t('inv.settings.actions.logout') }}
               </span>
             </button>
@@ -818,17 +818,8 @@ onMounted(() => {
   text-align: center;
   gap: var(--space-2);
 }
-.sett__name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-}
+/* a long address breaks anywhere rather than widening the card */
 .sett__email {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 
@@ -838,11 +829,6 @@ onMounted(() => {
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-}
-
-/* The label of a row that signs out or ends sessions (K23: danger on the title) */
-.sett__title--danger {
-  color: var(--danger);
 }
 
 /* Profile edit modal (TASK-38 item 3) */

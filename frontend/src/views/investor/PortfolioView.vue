@@ -109,10 +109,11 @@ function positionProfitPercent(p: PortfolioPositionResponse): number | null {
   return (diff / p.total_paid_cents) * 100
 }
 
-function profitClass(pct: number | null): string {
-  if (pct === null) return ''
-  if (pct >= 0) return 'pv__profit--up'
-  return 'pv__profit--down'
+// The tone of a profit or loss in a card head (K07 .ds-card__delta data-tone): the
+// sign is written in the text, the tone repeats it.
+function profitTone(pct: number | null): 'success' | 'danger' | undefined {
+  if (pct === null) return undefined
+  return pct >= 0 ? 'success' : 'danger'
 }
 
 function formatProfitPercent(pct: number | null): string {
@@ -261,9 +262,9 @@ onMounted(() => {
                   {{ p.company_name }}
                 </RouterLink>
               </h3>
-              <span class="pv__profit" :class="profitClass(positionProfitPercent(p))">
+              <p class="ds-card__delta" :data-tone="profitTone(positionProfitPercent(p))">
                 {{ formatProfitPercent(positionProfitPercent(p)) }}
-              </span>
+              </p>
             </header>
             <dl class="ds-kv">
               <div class="ds-kv__row">
@@ -306,20 +307,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/* Profit: the sign is written in the text, the colour repeats it (the cards stand
-   on the card ground; the hero, on the primary colour, takes the card's own colour). */
-.pv__profit {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
-.pv__profit--up {
-  color: var(--success);
-}
-.pv__profit--down {
-  color: var(--danger);
 }
 
 /* TILE CEILING — past a point the extra room should be whitespace, not wider

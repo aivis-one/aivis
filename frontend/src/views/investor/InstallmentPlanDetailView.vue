@@ -209,14 +209,14 @@ onMounted(load)
           </div>
           <div v-if="plan.defaulted_at" class="ds-kv__row">
             <dt>{{ t('inv.installmentPlans.detail.summary.defaulted') }}</dt>
-            <dd class="ipd__danger">{{ formatDateTime(plan.defaulted_at, locale) }}</dd>
+            <dd data-tone="danger">{{ formatDateTime(plan.defaulted_at, locale) }}</dd>
           </div>
         </dl>
       </section>
 
       <!-- Tranche schedule (K32) -->
       <section class="ipd__schedule" aria-labelledby="ipd-schedule">
-        <h2 id="ipd-schedule" class="ipd__section-title">
+        <h2 id="ipd-schedule" class="ds-section-title">
           {{ t('inv.installmentPlans.detail.schedule.title') }}
         </h2>
         <ol class="ds-schedule" aria-labelledby="ipd-schedule">
@@ -270,21 +270,9 @@ onMounted(load)
   gap: var(--space-4);
 }
 
-.ipd__danger {
-  color: var(--danger);
-}
-
-/* A section heading inside the screen */
 .ipd__schedule {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-.ipd__section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
 }
 </style>
