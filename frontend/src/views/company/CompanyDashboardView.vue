@@ -9,7 +9,7 @@
 // block stands on its own: a failed request removes only the blocks it feeds
 // and leaves a retry in their place.
 //
-// THE POOL. The project's pool is a fixed 15 percent of the gross receipts
+// THE POOL. The project's pool is a fixed 10 percent of the gross receipts
 // from sales of the project's product. The money buyers pay for parts is
 // never gross receipts, and the Cabinet records no sale of a product in 1.0,
 // so the pool is zero until the product sells.
@@ -73,7 +73,7 @@ const partSales = computed<number>(() => summary.value?.total_revenue_cents ?? 0
 const partsSold = computed<number>(() => summary.value?.total_options_sold ?? 0)
 const productsCount = computed<number>(() => summary.value?.products_count ?? 0)
 
-/** The project's pool: 15 percent of the product's gross receipts. None is recorded in 1.0, so zero. */
+/** The project's pool: 10 percent of the product's gross receipts. None is recorded in 1.0, so zero. */
 const poolCents = computed<number>(() => 0)
 
 const recentTransactions = computed<CompanyTransactionResponse[]>(
