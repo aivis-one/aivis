@@ -19,8 +19,8 @@
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShieldCheck } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
 import { ApiResponseError } from '@/api/client'
 import { fetchConsistency } from '@/api/admin'
 import { tOrRaw } from '@/utils/i18n'
@@ -79,21 +79,21 @@ onMounted(run)
 
 <template>
   <div class="recon">
-    <p class="recon__hint">
-      <ShieldCheck :size="16" />
+    <StaffAlert tone="info">
       {{ t('staff.reconciliation.hint') }}
-    </p>
+    </StaffAlert>
 
     <div v-if="loading" class="recon__center">
       <CLoader :size="32" />
     </div>
 
-    <div v-else-if="errorText" class="recon__center">
-      <p class="recon__error">{{ errorText }}</p>
-      <CButton variant="secondary" size="sm" @click="run">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="errorText" tone="danger" :title="errorText">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="run">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <CEmptyState
       v-else-if="!report || !report.results.length"
@@ -119,15 +119,25 @@ onMounted(run)
             })
           }}
         </span>
-        <CButton variant="outline" size="sm" @click="run">
+        <CButton variant="outline" size="sm" inline @click="run">
           {{ t('staff.reconciliation.runAgain') }}
         </CButton>
       </div>
 
-      <ul class="recon__list">
-        <li v-for="r in rows" :key="r.name" class="recon__row">
-          <div class="recon__row-head">
-            <span class="recon__code">{{ r.name }}</span>
+      <ul class="ds-rows">
+        <li v-for="r in rows" :key="r.name" class="ds-row">
+          <span class="ds-row__body">
+            <span class="ds-row__title recon__code">{{ r.name }}</span>
+            <span class="ds-row__meta">{{ severityLabel(r.severity) }}</span>
+            <span class="recon__what">{{ describe(r.name) }}</span>
+            <dl v-if="detailLines(r.details).length" class="ds-kv">
+              <div v-for="[label, value] in detailLines(r.details)" :key="label" class="ds-kv__row">
+                <dt>{{ label }}</dt>
+                <dd>{{ value }}</dd>
+              </div>
+            </dl>
+          </span>
+          <span class="ds-row__trail">
             <CBadge
               :variant="r.status === 'pass' ? 'success' : 'danger'"
               :text="
@@ -136,15 +146,7 @@ onMounted(run)
                   : t('staff.reconciliation.fail')
               "
             />
-            <span class="recon__severity">{{ severityLabel(r.severity) }}</span>
-          </div>
-          <div class="recon__what">{{ describe(r.name) }}</div>
-          <dl v-if="detailLines(r.details).length" class="recon__details">
-            <template v-for="[label, value] in detailLines(r.details)" :key="label">
-              <dt>{{ label }}</dt>
-              <dd>{{ value }}</dd>
-            </template>
-          </dl>
+          </span>
         </li>
       </ul>
     </template>
@@ -153,20 +155,9 @@ onMounted(run)
 
 <style scoped>
 .recon {
-  padding: var(--space-4);
-}
-
-.recon__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  margin: 0 0 var(--space-4);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
 }
 
 .recon__center {
@@ -178,18 +169,11 @@ onMounted(run)
   gap: var(--space-4);
 }
 
-.recon__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
 .recon__summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-block-end: var(--space-4);
 }
 
 .recon__counts {
@@ -197,56 +181,15 @@ onMounted(run)
   color: var(--text-secondary);
 }
 
-.recon__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.recon__row {
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-
-.recon__row-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
+/* A check's code is read and copied character by character: the mono family. */
 .recon__code {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.recon__severity {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
 }
 
 .recon__what {
-  margin-block-start: var(--space-1);
   font-size: var(--fs-sm);
   color: var(--text-primary);
   max-inline-size: var(--maxw-prose);
-}
-
-.recon__details {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0 var(--space-3);
-  margin: var(--space-2) 0 0;
-  font-size: var(--fs-xs);
-}
-.recon__details dt {
-  color: var(--text-tertiary);
-}
-.recon__details dd {
-  margin: 0;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  overflow-wrap: anywhere;
 }
 </style>

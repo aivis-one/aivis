@@ -14,7 +14,11 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Banknote, Check } from '@/components/ui/icons'
-import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import { payoutLines } from '@/utils/payoutDetails'
@@ -27,19 +31,10 @@ const { showToast } = useToast()
 
 const items = ref<WithdrawalResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 
-// Named calls, not inline `page--; loadWithdrawals()` template expressions --
-// see StaffPaymentsView.vue's goToPrevPage/goToNextPage for why (prettier
-// reflows a two-statement template expression across lines and drops the
-// semicolon; Vue's expression parser then fails the build).
-function goToPrevPage(): void {
-  page.value--
-  void loadWithdrawals()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void loadWithdrawals()
 }
 const perPage = 20
@@ -165,13 +160,12 @@ onMounted(loadWithdrawals)
 <template>
   <div class="staff-wd">
     <!-- Hint -->
-    <div class="staff-wd__hint">
-      <Banknote :size="16" />
+    <StaffAlert tone="info">
       {{ t('staff.withdrawals.hint') }}
-    </div>
+    </StaffAlert>
 
-    <!-- Status filters -->
-    <div class="staff-wd__filters">
+    <!-- Status filters (K13) -->
+    <div class="ds-chip-row" role="group" :aria-label="t('staff.withdrawals.title')">
       <button
         class="ds-chip"
         :aria-pressed="!statusFilter"
@@ -195,17 +189,16 @@ onMounted(loadWithdrawals)
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="staff-wd__center">
-      <CLoader :size="32" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="staff-wd__center">
-      <p class="wd-item__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="loadWithdrawals">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadWithdrawals">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.withdrawals.noWithdrawals')">
@@ -214,101 +207,108 @@ onMounted(loadWithdrawals)
       </template>
     </CEmptyState>
 
-    <!-- Withdrawal list -->
+    <!-- Withdrawal list (K23 rows) -->
     <template v-else>
-      <div class="wd-list">
-        <div v-for="item in items" :key="item.id" class="wd-item">
-          <div class="wd-item__info">
-            <div class="wd-item__amount">
-              {{ formatCents(item.amount_cents) }}
-            </div>
-            <div class="wd-item__detail">
-              {{ new Date(item.created_at).toLocaleDateString() }}
-            </div>
-            <div class="wd-item__user">
+      <ul class="ds-rows wd-list">
+        <li v-for="item in items" :key="item.id" class="ds-row wd-item">
+          <span class="ds-row__body">
+            <span class="ds-row__title">
               {{ t('staff.withdrawals.user') }}: {{ item.user_id.slice(0, 8) }}…
-            </div>
-            <div class="wd-item__payout">
-              <template v-for="line in payoutLines(item.payout_details_snapshot)" :key="line.key">
-                <span class="wd-item__payout-key">{{ payoutLabel(line.key) }}</span>
-                <span class="wd-item__payout-value">{{ line.value }}</span>
-              </template>
-            </div>
-            <div v-if="item.status === 'processing'" class="wd-item__note">
+            </span>
+            <span class="ds-row__meta">
+              {{ new Date(item.created_at).toLocaleDateString() }}
+            </span>
+            <dl class="ds-kv wd-item__payout">
+              <div
+                v-for="line in payoutLines(item.payout_details_snapshot)"
+                :key="line.key"
+                class="ds-kv__row"
+              >
+                <dt>{{ payoutLabel(line.key) }}</dt>
+                <dd>{{ line.value }}</dd>
+              </div>
+            </dl>
+            <span v-if="item.status === 'processing'" class="ds-row__meta">
               {{ t('staff.withdrawals.processingNote') }}
-            </div>
-            <div v-if="item.rejection_reason" class="wd-item__note">
+            </span>
+            <span v-if="item.rejection_reason" class="ds-row__meta">
               {{ t('staff.withdrawals.reason') }}: {{ item.rejection_reason }}
-            </div>
-          </div>
-          <div class="wd-item__right">
+            </span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value">{{ formatCents(item.amount_cents) }}</span>
             <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
-            <div v-if="item.status === 'pending'" class="wd-item__actions">
-              <button class="wd-item__confirm" @click.stop="openConfirm(item)">
-                {{ t('staff.withdrawals.confirm') }}
+            <template v-if="item.status === 'pending'">
+              <button
+                type="button"
+                class="ds-button ds-button--primary wd-item__confirm"
+                data-size="sm"
+                @click="openConfirm(item)"
+              >
+                <span>{{ t('staff.withdrawals.confirm') }}</span>
               </button>
-              <button class="wd-item__reject" @click.stop="openReject(item)">
-                {{ t('staff.withdrawals.reject') }}
+              <button
+                type="button"
+                class="ds-button ds-button--secondary wd-item__reject"
+                data-size="sm"
+                @click="openReject(item)"
+              >
+                <span>{{ t('staff.withdrawals.reject') }}</span>
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
+            </template>
+          </span>
+        </li>
+      </ul>
 
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="staff-wd__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
-          &larr;
-        </CButton>
-        <span class="staff-wd__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
-          &rarr;
-        </CButton>
-      </div>
+      <!-- Pagination (K17) -->
+      <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
     </template>
 
     <!-- Confirm modal -->
-    <CModal :open="showConfirmModal" @close="showConfirmModal = false">
-      <h3 class="modal__title">
-        {{ t('staff.withdrawals.confirm') }}
-      </h3>
-      <p class="modal__text">
+    <CModal
+      :open="showConfirmModal"
+      :title="t('staff.withdrawals.confirm')"
+      @close="showConfirmModal = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.withdrawals.confirmConfirm') }}
       </p>
-      <p v-if="confirmTarget" class="modal__amount">
+      <p v-if="confirmTarget" class="staff-wd__amount">
         {{ formatCents(confirmTarget.amount_cents) }}
       </p>
       <template v-if="confirmTarget">
-        <p class="modal__label">{{ t('staff.withdrawals.payoutDetails') }}</p>
-        <dl class="modal__payout">
-          <template
+        <p class="staff-wd__label">{{ t('staff.withdrawals.payoutDetails') }}</p>
+        <dl class="ds-kv">
+          <div
             v-for="line in payoutLines(confirmTarget.payout_details_snapshot)"
             :key="line.key"
+            class="ds-kv__row"
           >
             <dt>{{ payoutLabel(line.key) }}</dt>
             <dd>{{ line.value }}</dd>
-          </template>
+          </div>
         </dl>
       </template>
-      <div class="modal__actions">
-        <CButton variant="outline" size="sm" @click="showConfirmModal = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showConfirmModal = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="primary" size="sm" :loading="confirmLoading" @click="handleConfirm">
+        <CButton variant="primary" size="sm" inline :loading="confirmLoading" @click="handleConfirm">
           {{ t('common.confirm') }}
         </CButton>
       </div>
     </CModal>
 
     <!-- Reject modal -->
-    <CModal :open="showRejectModal" @close="showRejectModal = false">
-      <h3 class="modal__title">
-        {{ t('staff.withdrawals.reject') }}
-      </h3>
-      <p class="modal__text">
+    <CModal
+      :open="showRejectModal"
+      :title="t('staff.withdrawals.reject')"
+      @close="showRejectModal = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.withdrawals.rejectConfirm') }}
       </p>
-      <p v-if="rejectTarget" class="modal__amount">
+      <p v-if="rejectTarget" class="staff-wd__amount">
         {{ formatCents(rejectTarget.amount_cents) }}
       </p>
       <CInput
@@ -316,11 +316,11 @@ onMounted(loadWithdrawals)
         :label="t('staff.withdrawals.reason')"
         :placeholder="t('staff.withdrawals.reason')"
       />
-      <div class="modal__actions">
-        <CButton variant="outline" size="sm" @click="showRejectModal = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showRejectModal = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="rejectLoading" @click="handleReject">
+        <CButton variant="danger" size="sm" inline :loading="rejectLoading" @click="handleReject">
           {{ t('common.confirm') }}
         </CButton>
       </div>
@@ -330,193 +330,24 @@ onMounted(loadWithdrawals)
 
 <style scoped>
 .staff-wd {
-  padding: var(--space-4);
-}
-
-.staff-wd__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-4);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
-}
-
-.staff-wd__filters {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  margin-block-end: var(--space-4);
-  padding-block-end: var(--space-1);
-}
-
-.staff-wd__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
+  display: grid;
   gap: var(--space-4);
+  align-content: start;
 }
 
-.wd-list {
-  display: flex;
-  flex-direction: column;
-}
-.wd-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.wd-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.wd-item__amount {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.wd-item__detail {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.wd-item__user {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
+.staff-wd__amount {
+  margin: 0;
   font-family: var(--font-mono);
-}
-.wd-item__note {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin-block-start: var(--space-1);
-  max-inline-size: var(--maxw-prose);
-}
-.wd-item__right {
-  text-align: end;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-items: flex-end;
-}
-.wd-item__actions {
-  display: flex;
-  gap: var(--space-3);
-}
-.wd-item__confirm {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--success);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  text-decoration: underline;
-}
-.wd-item__reject {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--danger);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  text-decoration: underline;
-}
-
-.staff-wd__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.staff-wd__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.modal__title {
-  font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
 }
-.modal__text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-2);
-  max-inline-size: var(--maxw-prose);
-}
-.modal__amount {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-.modal__label {
+
+.staff-wd__label {
+  margin: 0;
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--text-secondary);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 var(--space-1);
-}
-.modal__payout {
-  font-size: var(--fs-xs);
-  color: var(--text-primary);
-  background: var(--bg-page);
-  border: thin solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
-  margin: 0 0 var(--space-4);
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-1) var(--space-3);
-  word-break: break-word;
-  max-block-size: var(--center-md);
-  overflow-y: auto;
-}
-.modal__actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-}
-
-.modal__payout dt {
   color: var(--text-secondary);
-}
-.modal__payout dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  overflow-wrap: anywhere;
-}
-.wd-item__payout {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0 var(--space-3);
-  margin-block-start: var(--space-1);
-  font-size: var(--fs-xs);
-}
-.wd-item__payout-key {
-  color: var(--text-tertiary);
-}
-.wd-item__payout-value {
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  overflow-wrap: anywhere;
-}
-.wd-item__error {
-  font-size: var(--fs-sm);
-  color: var(--danger);
-  margin: 0;
 }
 </style>

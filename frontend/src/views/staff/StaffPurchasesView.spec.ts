@@ -118,8 +118,11 @@ describe('the purchases list', () => {
     signInAs(['financial_operations'])
     const wrapper = mount(StaffPurchasesView)
     await flushPromises()
-    expect(wrapper.text()).toContain('1 / 3')
-    const next = wrapper.findAll('.purch__pagination button')[1]!
+    // 45 purchases at 20 a page: three pages, the first current.
+    const items = wrapper.findAll('.ds-pager__item')
+    expect(wrapper.find('.ds-pager__item[aria-current="page"]').text()).toBe('1')
+    expect(items.map((i) => i.text())).toContain('3')
+    const next = items[items.length - 1]!
     await next.trigger('click')
     await flushPromises()
     expect(fetchStaffPurchases).toHaveBeenLastCalledWith(
@@ -133,7 +136,8 @@ describe('the purchases list', () => {
     signInAs(['financial_operations', 'company_manage'])
     const wrapper = mount(StaffPurchasesView)
     await flushPromises()
-    await wrapper.findAll('.purch__pagination button')[1]!.trigger('click')
+    const pagerItems = wrapper.findAll('.ds-pager__item')
+    await pagerItems[pagerItems.length - 1]!.trigger('click')
     await flushPromises()
     const selects = wrapper.findAll('select')
     // status, then project

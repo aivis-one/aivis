@@ -12,7 +12,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText, Check, X } from '@/components/ui/icons'
-import { CAvatar, CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import { CAvatar, CBadge, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import {
@@ -27,20 +31,15 @@ const { showToast } = useToast()
 
 const items = ref<AgentApplicationQueueItem[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
 
-function goToPrevPage(): void {
-  page.value--
-  void loadQueue()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void loadQueue()
 }
 
@@ -130,22 +129,21 @@ onMounted(loadQueue)
 <template>
   <div class="staff-apps">
     <!-- Hint -->
-    <div class="staff-apps__hint">
-      <FileText :size="16" />
+    <StaffAlert tone="info">
       {{ t('staff.agentApps2.hint') }}
-    </div>
+    </StaffAlert>
 
     <!-- Loading -->
-    <div v-if="loading" class="staff-apps__center">
-      <CLoader :size="32" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
     <!-- Error -->
-    <div v-else-if="error" class="staff-apps__center">
-      <CButton variant="secondary" size="sm" @click="loadQueue">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadQueue">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <!-- Empty -->
     <CEmptyState v-else-if="!items.length" :title="t('staff.agentApps2.noQueue')">
@@ -154,73 +152,71 @@ onMounted(loadQueue)
       </template>
     </CEmptyState>
 
-    <!-- Queue -->
-    <div v-else class="apps-list">
-      <div v-for="item in items" :key="item.id" class="app-item">
-        <CAvatar :name="item.applicant_name" :size="40" />
-        <div class="app-item__info">
-          <div class="app-item__name">{{ item.applicant_name }}</div>
-          <div class="app-item__detail">
+    <!-- Queue (K23 rows) -->
+    <ul v-else class="ds-rows">
+      <li v-for="item in items" :key="item.id" class="ds-row">
+        <CAvatar :name="item.applicant_name" :size="32" />
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ item.applicant_name }}</span>
+          <span class="ds-row__meta app-item__detail">
             {{ item.applicant_email ?? '—' }} &bull;
             {{ new Date(item.created_at).toLocaleDateString() }}
-          </div>
-          <div class="app-item__kyc">
-            <span class="app-item__kyc-label">{{ t('staff.agentApps2.kycStatus') }}</span>
+          </span>
+          <span class="ds-row__meta">
+            {{ t('staff.agentApps2.kycStatus') }}
             <CBadge
               :variant="kycVariant(item.applicant_kyc_status)"
               :text="kycLabel(item.applicant_kyc_status)"
             />
-          </div>
-        </div>
-        <div class="app-item__actions">
+          </span>
+        </span>
+        <span class="ds-row__trail">
           <button
+            type="button"
+            class="ds-button ds-button--primary ds-button--icon"
+            data-size="sm"
             :aria-label="t('staff.agentApps2.approve')"
-            class="app-btn app-btn--approve"
             :disabled="processingIds.has(item.id)"
-            @click.stop="handleApprove(item)"
+            @click="handleApprove(item)"
           >
-            <Check :size="16" />
+            <Check />
           </button>
           <button
-            class="app-btn app-btn--reject"
+            type="button"
+            class="ds-button ds-button--secondary ds-button--icon"
+            data-size="sm"
             :aria-label="t('staff.agentApps2.reject')"
             :disabled="processingIds.has(item.id)"
-            @click.stop="openReject(item)"
+            @click="openReject(item)"
           >
-            <X :size="16" />
+            <X />
           </button>
-        </div>
-      </div>
-    </div>
+        </span>
+      </li>
+    </ul>
 
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="apps-pagination">
-      <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
-        &larr;
-      </CButton>
-      <span class="apps-pagination__page">{{ page }} / {{ totalPages }}</span>
-      <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
-        &rarr;
-      </CButton>
-    </div>
+    <!-- Pagination (K17) -->
+    <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
 
     <!-- Reject modal -->
-    <CModal :open="showRejectModal" @close="showRejectModal = false">
-      <h3 class="reject__title">
-        {{ t('staff.agentApps2.reject') }}
-      </h3>
+    <CModal
+      :open="showRejectModal"
+      :title="t('staff.agentApps2.reject')"
+      @close="showRejectModal = false"
+    >
       <CInput
         v-model="rejectReason"
         :label="t('staff.agentApps2.rejectReason')"
         :placeholder="t('staff.agentApps2.rejectReason')"
       />
-      <div class="reject__actions">
-        <CButton variant="outline" size="sm" @click="showRejectModal = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showRejectModal = false">
           {{ t('common.cancel') }}
         </CButton>
         <CButton
           variant="danger"
           size="sm"
+          inline
           :loading="rejectLoading"
           :disabled="!rejectReason.trim()"
           @click="handleReject"
@@ -233,156 +229,9 @@ onMounted(loadQueue)
 </template>
 
 <style scoped>
+/* The frame's main pads the screen and sets its measure; the screen only stacks its parts. */
 .staff-apps {
-  padding: var(--space-4);
-}
-
-.staff-apps__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-4);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.staff-apps__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-md);
+  display: grid;
   gap: var(--space-4);
-}
-
-.apps-list {
-  display: flex;
-  flex-direction: column;
-}
-.app-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.app-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.app-item__name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.app-item__detail {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  overflow-wrap: anywhere;
-}
-.app-item__kyc {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-block-start: var(--space-1);
-}
-.app-item__kyc-label {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.apps-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.apps-pagination__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-/* A5: the gap is 12px, not 4, and the reason is arithmetic rather than taste.
-   These buttons are painted 32px and carry a 44px hit overlay; at a 4px gap
-   the pitch was 36 and ADJACENT OVERLAYS OVERLAPPED BY 8px, so the upper one
-   swallowed its neighbour's edge and half the row still failed a hit test.
-   32 + 12 = 44 makes each target own its full area with nothing to spare. */
-.app-item__actions {
-  display: flex;
-  gap: var(--space-3);
-  flex-shrink: 0;
-}
-
-.app-btn {
-  inline-size: var(--size-md);
-  block-size: var(--size-md);
-  border-radius: var(--radius-sm);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: opacity var(--dur-base);
-}
-.app-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.app-btn--approve {
-  background: var(--success);
-  color: var(--on-success);
-}
-.app-btn--approve:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.app-btn--reject {
-  background: var(--danger);
-  color: var(--on-danger);
-}
-.app-btn--reject:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.reject__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-4);
-}
-.reject__actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.staff-apps__hint {
-  max-inline-size: var(--maxw-prose);
-}
-
-/* A5: this control is deliberately 32px to sit right in its row, so the PAINTED
-   box stays and the HIT AREA is expanded past it instead. The overlay is
-   invisible, centred, and never smaller than the tap floor; clicks land on the
-   button because the pseudo-element belongs to it. */
-.app-btn {
-  position: relative;
-}
-.app-btn::after {
-  content: '';
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  inline-size: var(--tap-min);
-  block-size: var(--tap-min);
-  transform: translate(-50%, -50%);
 }
 </style>

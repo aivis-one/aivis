@@ -26,7 +26,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Gift } from '@/components/ui/icons'
-import { CBadge, CButton, CInput, CLoader, CModal, CSelect } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CSelect } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { ApiResponseError } from '@/api/client'
 import { cancelGift, grantGift } from '@/api/admin'
@@ -168,29 +169,31 @@ onMounted(loadProducts)
 
 <template>
   <div class="gifts">
-    <p class="gifts__hint">
-      <Gift :size="16" />
+    <StaffAlert tone="info">
       {{ t('staff.gifts.hint') }}
-    </p>
-    <p class="gifts__limit">
+    </StaffAlert>
+    <StaffAlert tone="warning">
       {{ t('staff.gifts.limit') }}
-    </p>
+    </StaffAlert>
 
     <div v-if="productsLoading" class="gifts__center">
       <CLoader :size="28" />
     </div>
-    <div v-else-if="productsError" class="gifts__center">
-      <p class="gifts__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="loadProducts">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="productsError" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="loadProducts">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <form v-else class="gifts__form" @submit.prevent="showConfirm = canSubmit">
-      <div class="gifts__field">
-        <span class="gifts__label">{{ t('staff.gifts.recipient') }}</span>
-        <UserPicker v-model="recipientId" role-filter="investor" @select="onRecipient" />
-      </div>
+      <UserPicker
+        v-model="recipientId"
+        :label="t('staff.gifts.recipient')"
+        role-filter="investor"
+        @select="onRecipient"
+      />
 
       <CSelect
         v-model="productId"
@@ -198,7 +201,7 @@ onMounted(loadProducts)
         :placeholder="t('staff.gifts.productPlaceholder')"
         :options="productOptions"
       />
-      <p v-if="selectedProduct" class="gifts__product-note">
+      <p v-if="selectedProduct" class="ds-field__hint">
         {{
           t('staff.gifts.priceNote', {
             price: formatPrice(selectedProduct.price_per_unit_cents, 'USD'),
@@ -215,64 +218,77 @@ onMounted(loadProducts)
         :error="unitsText.trim() !== '' && units === null ? t('staff.gifts.unitsError') : undefined"
       />
 
-      <CButton type="submit" variant="primary" size="sm" :disabled="!canSubmit">
-        {{ t('staff.gifts.grant') }}
-      </CButton>
+      <div>
+        <CButton type="submit" variant="primary" size="sm" inline :disabled="!canSubmit">
+          {{ t('staff.gifts.grant') }}
+        </CButton>
+      </div>
     </form>
 
-    <!-- The gifts granted in this session -->
+    <!-- The gifts granted in this session (K23 rows) -->
     <section v-if="granted.length" class="gifts__list" :aria-label="t('staff.gifts.sessionTitle')">
-      <h3 class="gifts__list-title">
+      <h2 class="gifts__list-title">
         {{ t('staff.gifts.sessionTitle') }}
-      </h3>
+      </h2>
       <p class="gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
-      <div v-for="entry in granted" :key="entry.gift.id" class="gifts__row">
-        <div class="gifts__row-info">
-          <div class="gifts__row-main">
-            {{ entry.recipient }} &mdash;
-            {{ t('staff.gifts.partsCount', { n: formatNumber(entry.gift.units, locale) }) }}
-          </div>
-          <div class="gifts__row-sub">{{ entry.product }}</div>
-        </div>
-        <div class="gifts__row-right">
-          <CBadge
-            :variant="statusVariant(entry.gift.status)"
-            :text="statusLabel(entry.gift.status)"
-          />
-          <button
-            v-if="entry.gift.status === 'pending_acceptance'"
-            type="button"
-            class="gifts__cancel"
-            :disabled="cancellingId === entry.gift.id"
-            @click="handleCancel(entry)"
-          >
-            {{ t('staff.gifts.cancel') }}
-          </button>
-        </div>
-      </div>
+      <ul class="ds-rows">
+        <li v-for="entry in granted" :key="entry.gift.id" class="ds-row">
+          <span class="ds-row__lead"><Gift size="sm" /></span>
+          <span class="ds-row__body">
+            <span class="ds-row__title">
+              {{ entry.recipient }} &mdash;
+              {{ t('staff.gifts.partsCount', { n: formatNumber(entry.gift.units, locale) }) }}
+            </span>
+            <span class="ds-row__meta">{{ entry.product }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <CBadge
+              :variant="statusVariant(entry.gift.status)"
+              :text="statusLabel(entry.gift.status)"
+            />
+            <button
+              v-if="entry.gift.status === 'pending_acceptance'"
+              type="button"
+              class="ds-button ds-button--secondary"
+              data-size="sm"
+              :disabled="cancellingId === entry.gift.id"
+              @click="handleCancel(entry)"
+            >
+              <span>{{ t('staff.gifts.cancel') }}</span>
+            </button>
+          </span>
+        </li>
+      </ul>
     </section>
 
     <!-- Confirmation: a gift is given in the company's name -->
-    <CModal :open="showConfirm" @close="showConfirm = false">
-      <h3 class="gifts__modal-title">
-        {{ t('staff.gifts.confirmTitle') }}
-      </h3>
-      <p class="gifts__modal-text">
+    <CModal
+      :open="showConfirm"
+      :title="t('staff.gifts.confirmTitle')"
+      @close="showConfirm = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.gifts.confirmBody') }}
       </p>
-      <dl v-if="selectedProduct && units !== null" class="gifts__summary">
-        <dt>{{ t('staff.gifts.recipient') }}</dt>
-        <dd>{{ recipientName(recipient) }}</dd>
-        <dt>{{ t('staff.gifts.product') }}</dt>
-        <dd>{{ selectedProduct.company_name }} — {{ selectedProduct.name }}</dd>
-        <dt>{{ t('staff.gifts.units') }}</dt>
-        <dd>{{ formatNumber(units, locale) }}</dd>
+      <dl v-if="selectedProduct && units !== null" class="ds-kv">
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.recipient') }}</dt>
+          <dd>{{ recipientName(recipient) }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.product') }}</dt>
+          <dd>{{ selectedProduct.company_name }} — {{ selectedProduct.name }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.units') }}</dt>
+          <dd>{{ formatNumber(units, locale) }}</dd>
+        </div>
       </dl>
-      <div class="gifts__modal-actions">
-        <CButton variant="outline" size="sm" @click="showConfirm = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showConfirm = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="primary" size="sm" :loading="granting" @click="handleGrant">
+        <CButton variant="primary" size="sm" inline :loading="granting" @click="handleGrant">
           {{ t('staff.gifts.grant') }}
         </CButton>
       </div>
@@ -282,30 +298,9 @@ onMounted(loadProducts)
 
 <style scoped>
 .gifts {
-  padding: var(--space-4);
-}
-
-.gifts__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
-}
-
-.gifts__limit {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3);
-  background: var(--warning-subtle);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-xs);
-  color: var(--text-primary);
-  max-inline-size: var(--maxw-prose);
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
 }
 
 .gifts__center {
@@ -317,135 +312,29 @@ onMounted(loadProducts)
   gap: var(--space-3);
 }
 
-.gifts__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
 .gifts__form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--space-3);
   max-inline-size: var(--maxw-prose);
-}
-
-.gifts__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.gifts__label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.gifts__product-note {
-  margin: calc(-1 * var(--space-2)) 0 0;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
 }
 
 .gifts__list {
-  margin-block-start: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
 }
 
 .gifts__list-title {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-1);
-}
-
-.gifts__list-note {
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  max-inline-size: var(--maxw-prose);
-}
-
-.gifts__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-
-.gifts__row-info {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.gifts__row-main {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.gifts__row-sub {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.gifts__row-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-.gifts__cancel {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--danger);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  text-decoration: underline;
-}
-.gifts__cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.gifts__modal-title {
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h4);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 var(--space-2);
 }
 
-.gifts__modal-text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-3);
-  max-inline-size: var(--maxw-prose);
-}
-
-.gifts__summary {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-4);
-  font-size: var(--fs-sm);
-}
-.gifts__summary dt {
-  color: var(--text-secondary);
-}
-.gifts__summary dd {
+.gifts__list-note {
   margin: 0;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-
-.gifts__modal-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  max-inline-size: var(--maxw-prose);
 }
 </style>

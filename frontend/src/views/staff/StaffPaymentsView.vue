@@ -23,6 +23,10 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CreditCard, Check } from '@/components/ui/icons'
 import { CBadge, CLoader, CButton, CEmptyState, CModal, CInput } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchPayments, reversePayment } from '@/api/admin'
@@ -34,20 +38,10 @@ const { showToast } = useToast()
 
 const items = ref<StaffPaymentResponse[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 
-// Pagination steps are a NAMED CALL, not a two-statement inline expression.
-// `@click="page--; loadPayments()"` is two statements in a template
-// expression; prettier reflows it across lines and drops the semicolon, and
-// Vue's expression parser cannot read the result -- the build fails outright.
-// Measured on 2026-08-25, not predicted.
-function goToPrevPage(): void {
-  page.value--
-  void loadPayments()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void loadPayments()
 }
 const perPage = 20
@@ -203,155 +197,153 @@ onBeforeUnmount(() => {
 <template>
   <div class="staff-pay">
     <!-- Hint -->
-    <div class="staff-pay__hint">
-      <CreditCard :size="16" />
+    <StaffAlert tone="info">
       {{ t('staff.payments.hint') }}
-    </div>
+    </StaffAlert>
 
     <!-- The queue of top-ups in their hour -->
-    <section class="pay-queue" :aria-label="t('staff.payments.queue.title')">
-      <h3 class="pay-queue__title">
+    <section class="staff-pay__section pay-queue" :aria-label="t('staff.payments.queue.title')">
+      <h2 class="staff-pay__title">
         {{ t('staff.payments.queue.title') }}
         <CBadge v-if="!queueLoading && !queueError" variant="warning" :text="String(queueTotal)" />
-      </h3>
+      </h2>
       <div v-if="queueLoading" class="staff-pay__center staff-pay__center--short">
         <CLoader :size="24" />
       </div>
-      <div v-else-if="queueError" class="staff-pay__center staff-pay__center--short">
-        <p class="pay-queue__error">{{ t('staff.payments.queue.error') }}</p>
-        <CButton variant="secondary" size="sm" @click="loadQueue">
-          {{ t('common.retry') }}
-        </CButton>
-      </div>
-      <p v-else-if="!queue.length" class="pay-queue__empty">
+      <StaffAlert v-else-if="queueError" tone="danger">
+        {{ t('staff.payments.queue.error') }}
+        <template #actions>
+          <CButton variant="secondary" size="sm" inline @click="loadQueue">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </StaffAlert>
+      <p v-else-if="!queue.length" class="staff-pay__note">
         {{ t('staff.payments.queue.empty') }}
       </p>
-      <div v-else class="pay-list">
-        <div v-for="item in queue" :key="item.id" class="pay-item">
-          <div class="pay-item__info">
-            <div class="pay-item__amount">
-              {{ formatCents(item.amount_cents, item.currency) }}
-            </div>
-            <div class="pay-item__detail">
-              {{ typeLabel(item.payment_type) }} &bull; {{ item.provider }} &bull;
-              {{ new Date(item.created_at).toLocaleString() }}
-            </div>
-            <div class="pay-item__user">
+      <ul v-else class="ds-rows pay-list">
+        <li v-for="item in queue" :key="item.id" class="ds-row pay-item">
+          <span class="ds-row__body">
+            <span class="ds-row__title">{{ typeLabel(item.payment_type) }}</span>
+            <span class="ds-row__meta">
+              {{ item.provider }} &bull; {{ new Date(item.created_at).toLocaleString() }}
+            </span>
+            <span class="ds-row__meta">
               {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
-            </div>
-          </div>
-          <div class="pay-item__right">
+            </span>
+          </span>
+          <span class="ds-row__trail">
+            <span class="ds-row__value">{{ formatCents(item.amount_cents, item.currency) }}</span>
             <CBadge variant="warning" :text="timeLeftLabel(item)" />
-            <button class="pay-item__reverse" @click.stop="openReverse(item)">
-              {{ t('staff.payments.reverse') }}
+            <button
+              type="button"
+              class="ds-button ds-button--danger pay-item__reverse"
+              data-size="sm"
+              @click="openReverse(item)"
+            >
+              <span>{{ t('staff.payments.reverse') }}</span>
             </button>
-          </div>
-        </div>
-      </div>
-      <p v-if="queueTotal > QUEUE_WINDOW" class="pay-queue__more">
+          </span>
+        </li>
+      </ul>
+      <p v-if="queueTotal > QUEUE_WINDOW" class="staff-pay__note">
         {{ t('staff.payments.queue.more', { n: QUEUE_WINDOW }) }}
       </p>
     </section>
 
     <!-- All payments -->
-    <h3 class="pay-queue__title">
-      {{ t('staff.payments.listTitle') }}
-    </h3>
+    <section class="staff-pay__section">
+      <h2 class="staff-pay__title">
+        {{ t('staff.payments.listTitle') }}
+      </h2>
 
-    <!-- Status filters -->
-    <div class="staff-pay__filters">
-      <button
-        class="ds-chip"
-        :aria-pressed="!statusFilter"
-        @click="setStatusFilter('')"
-        type="button"
-      >
-        <Check class="ds-chip__check" size="sm" />
-        <span>{{ t('common.all') }}</span>
-      </button>
-      <button
-        v-for="s in STATUSES"
-        :key="s"
-        class="ds-chip"
-        :aria-pressed="statusFilter === s"
-        @click="setStatusFilter(s)"
-        type="button"
-      >
-        <Check class="ds-chip__check" size="sm" />
-        <span>{{ statusLabel(s) }}</span>
-      </button>
-    </div>
+      <!-- Status filters (K13) -->
+      <div class="ds-chip-row" role="group" :aria-label="t('staff.payments.status')">
+        <button
+          class="ds-chip"
+          :aria-pressed="!statusFilter"
+          @click="setStatusFilter('')"
+          type="button"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('common.all') }}</span>
+        </button>
+        <button
+          v-for="s in STATUSES"
+          :key="s"
+          class="ds-chip"
+          :aria-pressed="statusFilter === s"
+          @click="setStatusFilter(s)"
+          type="button"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ statusLabel(s) }}</span>
+        </button>
+      </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="staff-pay__center">
-      <CLoader :size="32" />
-    </div>
+      <!-- Loading -->
+      <StaffListSkeleton v-if="loading" />
 
-    <!-- Error -->
-    <div v-else-if="error" class="staff-pay__center">
-      <p class="pay-queue__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="loadPayments">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+      <!-- Error -->
+      <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+        <template #actions>
+          <CButton variant="secondary" size="sm" inline @click="loadPayments">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
 
-    <!-- Empty -->
-    <CEmptyState v-else-if="!items.length" :title="t('staff.payments.noPayments')">
-      <template #icon>
-        <CreditCard :size="40" />
+      <!-- Empty -->
+      <CEmptyState v-else-if="!items.length" :title="t('staff.payments.noPayments')">
+        <template #icon>
+          <CreditCard :size="40" />
+        </template>
+      </CEmptyState>
+
+      <!-- Payment list (K23 rows) -->
+      <template v-else>
+        <ul class="ds-rows pay-list">
+          <li v-for="item in items" :key="item.id" class="ds-row pay-item">
+            <span class="ds-row__body">
+              <span class="ds-row__title">{{ typeLabel(item.payment_type) }}</span>
+              <span class="ds-row__meta">
+                {{ item.provider }} &bull; {{ new Date(item.created_at).toLocaleDateString() }}
+              </span>
+              <span class="ds-row__meta">
+                {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
+              </span>
+            </span>
+            <span class="ds-row__trail">
+              <span class="ds-row__value">{{ formatCents(item.amount_cents, item.currency) }}</span>
+              <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
+              <button
+                v-if="canReverse(item)"
+                type="button"
+                class="ds-button ds-button--danger pay-item__reverse"
+                data-size="sm"
+                @click="openReverse(item)"
+              >
+                <span>{{ t('staff.payments.reverse') }}</span>
+              </button>
+            </span>
+          </li>
+        </ul>
+
+        <!-- Pagination (K17) -->
+        <StaffPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
       </template>
-    </CEmptyState>
-
-    <!-- Payment list -->
-    <template v-else>
-      <div class="pay-list">
-        <div v-for="item in items" :key="item.id" class="pay-item">
-          <div class="pay-item__info">
-            <div class="pay-item__amount">
-              {{ formatCents(item.amount_cents, item.currency) }}
-            </div>
-            <div class="pay-item__detail">
-              {{ typeLabel(item.payment_type) }} &bull; {{ item.provider }} &bull;
-              {{ new Date(item.created_at).toLocaleDateString() }}
-            </div>
-            <div class="pay-item__user">
-              {{ t('staff.payments.user') }}: {{ item.user_id.slice(0, 8) }}…
-            </div>
-          </div>
-          <div class="pay-item__right">
-            <CBadge :variant="statusVariant(item.status)" :text="statusLabel(item.status)" />
-            <button
-              v-if="canReverse(item)"
-              class="pay-item__reverse"
-              @click.stop="openReverse(item)"
-            >
-              {{ t('staff.payments.reverse') }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="totalPages > 1" class="staff-pay__pagination">
-        <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
-          &larr;
-        </CButton>
-        <span class="staff-pay__page">{{ page }} / {{ totalPages }}</span>
-        <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
-          &rarr;
-        </CButton>
-      </div>
-    </template>
+    </section>
 
     <!-- Reverse modal -->
-    <CModal :open="showReverseModal" @close="showReverseModal = false">
-      <h3 class="modal__title">
-        {{ t('staff.payments.reverse') }}
-      </h3>
-      <p class="modal__text">
+    <CModal
+      :open="showReverseModal"
+      :title="t('staff.payments.reverse')"
+      @close="showReverseModal = false"
+    >
+      <p class="ds-dialog__text">
         {{ t('staff.payments.reverseConfirm') }}
       </p>
-      <p v-if="reverseTarget" class="modal__amount">
+      <p v-if="reverseTarget" class="staff-pay__amount">
         {{ formatCents(reverseTarget.amount_cents, reverseTarget.currency) }}
       </p>
       <CInput
@@ -359,11 +351,11 @@ onBeforeUnmount(() => {
         :label="t('staff.payments.reason')"
         :placeholder="t('staff.payments.reason')"
       />
-      <div class="modal__actions">
-        <CButton variant="outline" size="sm" @click="showReverseModal = false">
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showReverseModal = false">
           {{ t('common.cancel') }}
         </CButton>
-        <CButton variant="danger" size="sm" :loading="reverseLoading" @click="handleReverse">
+        <CButton variant="danger" size="sm" inline :loading="reverseLoading" @click="handleReverse">
           {{ t('common.confirm') }}
         </CButton>
       </div>
@@ -373,27 +365,31 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .staff-pay {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
 }
 
-.staff-pay__hint {
+.staff-pay__section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.staff-pay__title {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-4);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.staff-pay__filters {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  margin-block-end: var(--space-4);
-  padding-block-end: var(--space-1);
+.staff-pay__note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 .staff-pay__center {
@@ -404,129 +400,14 @@ onBeforeUnmount(() => {
   min-block-size: var(--center-md);
   gap: var(--space-4);
 }
-
-.pay-list {
-  display: flex;
-  flex-direction: column;
-}
-.pay-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4) 0;
-  border-block-end: thin solid var(--border-default);
-}
-.pay-item__info {
-  flex: 1;
-  min-inline-size: 0;
-}
-.pay-item__amount {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.pay-item__detail {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-.pay-item__user {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-  margin-block-start: var(--space-1);
-  font-family: var(--font-mono);
-}
-.pay-item__right {
-  text-align: end;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  align-items: flex-end;
-}
-.pay-item__reverse {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--danger);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  text-decoration: underline;
-}
-
-.staff-pay__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-.staff-pay__page {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.modal__title {
-  font-size: var(--fs-h4);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-.modal__text {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-2);
-}
-.modal__amount {
-  font-size: var(--fs-body);
-  font-weight: 700;
-  color: var(--danger);
-  margin: 0 0 var(--space-4);
-}
-.modal__actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-block-start: var(--space-4);
-}
-
-/* READING MEASURE — descriptive text only. --maxw-prose (680px) is a CEILING,
-   so this rule cannot bind until the container is already wider than a
-   comfortable line: on a phone it does nothing at all, which is why it needs
-   no media query. Measured at 1280 before applying: `event-card__desc` ran to
-   932px and `staff-dash__role-count` to 901. Names, figures and table cells
-   are deliberately NOT capped — a name is not prose, and capping it would only
-   leave dead space in its row. */
-.modal__text {
-  max-inline-size: var(--maxw-prose);
-}
-.staff-pay__hint {
-  max-inline-size: var(--maxw-prose);
-}
-
-.pay-queue {
-  margin-block-end: var(--space-5);
-}
-.pay-queue__title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 var(--space-3);
-}
-.pay-queue__empty,
-.pay-queue__more {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  margin: 0;
-}
-.pay-queue__error {
-  font-size: var(--fs-sm);
-  color: var(--danger);
-  margin: 0;
-}
 .staff-pay__center--short {
   min-block-size: var(--center-sm);
+}
+
+.staff-pay__amount {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--danger);
 }
 </style>

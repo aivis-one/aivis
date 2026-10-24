@@ -187,7 +187,8 @@ describe('integrator applications: the paged queue with the applicant', () => {
     expect(text).toContain('Ada Lovelace')
     expect(text).toContain('ada@example.com')
     // 45 applications at 20 a page: three pages.
-    expect(wrapper.find('.apps-pagination__page').text()).toBe('1 / 3')
+    expect(wrapper.find('.ds-pager__item[aria-current="page"]').text()).toBe('1')
+    expect(wrapper.findAll('.ds-pager__item').map((i) => i.text())).toContain('3')
     wrapper.unmount()
   })
 
@@ -244,8 +245,8 @@ describe('the money check', () => {
     fetchConsistency.mockRejectedValue(new Error('500'))
     const wrapper = mount(StaffReconciliationView)
     await flushPromises()
-    expect(wrapper.find('.recon__error').exists()).toBe(true)
-    expect(wrapper.find('.recon__list').exists()).toBe(false)
+    expect(wrapper.find('.ds-empty[role="alert"]').exists()).toBe(true)
+    expect(wrapper.find('.ds-rows').exists()).toBe(false)
     wrapper.unmount()
   })
 })
@@ -304,7 +305,7 @@ describe('gifts', () => {
 
     expect(grantGift).toHaveBeenCalledWith({ user_id: 'u1', product_id: 'prod-1', units: 250 })
     expect(wrapper.find('.gifts__list').text()).toContain('Ada Lovelace')
-    expect(wrapper.find('.gifts__cancel').exists()).toBe(true)
+    expect(wrapper.find('.gifts__list .ds-row__trail .ds-button').exists()).toBe(true)
     wrapper.unmount()
   })
 

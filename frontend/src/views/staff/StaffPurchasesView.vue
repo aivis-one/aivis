@@ -21,8 +21,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShoppingBag } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CLoader, CSelect } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CSelect } from '@/components/ui'
+import StaffAlert from '@/components/staff/StaffAlert.vue'
+import StaffListSkeleton from '@/components/staff/StaffListSkeleton.vue'
+import StaffPager from '@/components/staff/StaffPager.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
+import { useUrlPage } from '@/components/staff/useUrlPage'
 import { ApiResponseError } from '@/api/client'
 import { cancelGift, fetchStaffPurchases } from '@/api/admin'
 import { listProducts } from '@/api/products'
@@ -46,7 +50,7 @@ const STATUSES = ['active', 'pending_acceptance', 'reversed', 'cancelled'] as co
 
 const items = ref<StaffPurchaseItem[]>([])
 const total = ref(0)
-const page = ref(1)
+const page = useUrlPage()
 const perPage = 20
 const loading = ref(true)
 const error = ref(false)
@@ -82,13 +86,8 @@ async function load(): Promise<void> {
   }
 }
 
-function goToPrevPage(): void {
-  page.value--
-  void load()
-}
-
-function goToNextPage(): void {
-  page.value++
+function goToPage(n: number): void {
+  page.value = n
   void load()
 }
 
@@ -178,7 +177,9 @@ onMounted(() => {
 
 <template>
   <div class="purch">
-    <p class="purch__hint">{{ t('staff.purchases.hint') }}</p>
+    <StaffAlert tone="info">
+      {{ t('staff.purchases.hint') }}
+    </StaffAlert>
 
     <div class="purch__filters">
       <CSelect
@@ -194,22 +195,22 @@ onMounted(() => {
         :placeholder="t('staff.purchases.filterAll')"
         :options="projectOptions"
       />
-      <div class="purch__buyer">
-        <span class="purch__label">{{ t('staff.purchases.filterBuyer') }}</span>
-        <UserPicker v-model="buyerFilter" />
-      </div>
+      <UserPicker
+        v-model="buyerFilter"
+        class="purch__buyer"
+        :label="t('staff.purchases.filterBuyer')"
+      />
     </div>
 
-    <div v-if="loading" class="purch__center">
-      <CLoader :size="28" />
-    </div>
+    <StaffListSkeleton v-if="loading" />
 
-    <div v-else-if="error" class="purch__center">
-      <p class="purch__error">{{ t('common.error') }}</p>
-      <CButton variant="secondary" size="sm" @click="load">
-        {{ t('common.retry') }}
-      </CButton>
-    </div>
+    <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
+      <template #actions>
+        <CButton variant="secondary" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
+      </template>
+    </CEmptyState>
 
     <CEmptyState v-else-if="!items.length" :title="t('staff.purchases.empty')">
       <template #icon>
@@ -217,57 +218,51 @@ onMounted(() => {
       </template>
     </CEmptyState>
 
-    <ul v-else class="purch__list">
-      <li v-for="row in items" :key="row.id" class="purch__row">
-        <div class="purch__main">
-          <div class="purch__top">
-            <span class="purch__buyer-name">{{ buyerLabel(row) }}</span>
-            <span class="purch__date">{{ formatDate(row.created_at, locale) }}</span>
-          </div>
-          <div class="purch__sub">{{ row.company_name }} &mdash; {{ row.product_name }}</div>
-          <div class="purch__sub">
+    <ul v-else class="ds-rows purch__list">
+      <li v-for="row in items" :key="row.id" class="ds-row purch__row">
+        <span class="ds-row__body">
+          <span class="ds-row__title">{{ buyerLabel(row) }}</span>
+          <span class="ds-row__meta">
+            {{ formatDate(row.created_at, locale) }} &bull; {{ row.company_name }} &mdash;
+            {{ row.product_name }}
+          </span>
+          <span class="ds-row__meta">
             {{ t('staff.purchases.partsCount', { n: formatNumber(row.units, locale) }) }}
             &bull; {{ formatPrice(row.paid_cents, 'USD') }}
-          </div>
-        </div>
-        <div class="purch__side">
+          </span>
+        </span>
+        <span class="ds-row__trail">
           <span class="purch__kind">{{ kindLabel(row.kind) }}</span>
           <CBadge :variant="statusVariant(row.status)" :text="statusLabel(row.status)" />
           <button
             v-if="cancellable(row)"
             type="button"
-            class="purch__cancel"
+            class="ds-button ds-button--secondary purch__cancel"
+            data-size="sm"
             :disabled="cancellingId === row.id"
             @click="handleCancel(row)"
           >
-            {{ t('staff.gifts.cancel') }}
+            <span>{{ t('staff.gifts.cancel') }}</span>
           </button>
-        </div>
+        </span>
       </li>
     </ul>
 
-    <div v-if="!loading && !error && totalPages > 1" class="purch__pagination">
-      <CButton variant="outline" size="sm" :disabled="page <= 1" @click="goToPrevPage()">
-        &larr;
-      </CButton>
-      <span class="purch__page">{{ page }} / {{ totalPages }}</span>
-      <CButton variant="outline" size="sm" :disabled="page >= totalPages" @click="goToNextPage()">
-        &rarr;
-      </CButton>
-    </div>
+    <!-- Pagination (K17) -->
+    <StaffPager
+      v-if="!loading && !error"
+      :page="page"
+      :total-pages="totalPages"
+      @update:page="goToPage"
+    />
   </div>
 </template>
 
 <style scoped>
 .purch {
-  padding: var(--space-4);
-}
-
-.purch__hint {
-  margin: 0 0 var(--space-3);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  max-inline-size: var(--maxw-prose);
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
 }
 
 .purch__filters {
@@ -275,120 +270,15 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-3);
-  margin-block-end: var(--space-4);
 }
 
 .purch__buyer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 14rem;
-}
-
-.purch__label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.purch__center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-block-size: var(--center-sm);
-  gap: var(--space-3);
-}
-
-.purch__error {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--danger);
-}
-
-.purch__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.purch__row {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-block-end: thin solid var(--border-default);
-}
-
-.purch__main {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.purch__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.purch__buyer-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
-}
-
-.purch__date {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
-
-.purch__sub {
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-  overflow-wrap: anywhere;
-}
-
-.purch__side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-  flex-shrink: 0;
+  min-inline-size: var(--center-md);
 }
 
 .purch__kind {
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.purch__cancel {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--danger);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  text-decoration: underline;
-}
-.purch__cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.purch__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  margin-block-start: var(--space-4);
-}
-
-.purch__page {
-  font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
 </style>
