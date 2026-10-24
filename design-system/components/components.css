@@ -2704,3 +2704,40 @@ button.ds-card__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-dateleaf { align-content: center; gap: 0; text-align: center; line-height: var(--lh-tight); }
 .ds-dateleaf__day { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-sm); font-weight: 700; }
 .ds-dateleaf__month { font-size: var(--fs-xs); font-weight: 600; }
+
+/* ===== K52 Dialog, additions: a bulleted list and a two-column list of codes in the body ===== */
+.ds-dialog__list { margin: 0; padding-inline-start: var(--space-5); }
+.ds-dialog__list > li + li { margin-block-start: var(--space-1); }
+.ds-dialog__codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; direction: ltr; }
+.ds-dialog__codes > li {
+  box-sizing: border-box;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: thin solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* ===== K54 Timeline, addition: the entry's title as a button (an entry that opens something that is not an address) ===== */
+button.ds-timeline__title { appearance: none; flex: 0 1 auto; margin: 0; margin-inline-end: auto; padding: 0; border: 0; background: none; color: inherit; font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); letter-spacing: inherit; text-align: start; cursor: pointer; }
+button.ds-timeline__title:hover { color: var(--primary); }
+button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-xs); }
+
+/* ===== K20 Loader, addition: centred, for a section or a page, with its status text under the ring ===== */
+.ds-loader--centered { display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box; inline-size: 100%; gap: var(--space-3); padding-block: var(--space-7); text-align: center; }
+.ds-loader--centered[data-extent="page"] { min-block-size: var(--center-lg); }
+
+/* ===== K46 Stat tile, addition: a pending figure while the value loads (the skeleton's bar where the figure stands) ===== */
+.ds-stat__pending { inline-size: calc(var(--size-4xl) * 1.5); max-inline-size: 100%; block-size: calc(var(--fs-lg) * var(--lh-tight)); }
+
+/* ===== Phone (the 480 width) and touch, batch 5 ===== */
+@media (max-width: 480px) {
+  button.ds-timeline__title { min-block-size: var(--touch-min); }
+}

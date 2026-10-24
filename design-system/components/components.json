@@ -816,6 +816,10 @@
   "variants": {
    "shared": [
     "ring"
+   ],
+   "layout": [
+    "inline (default)",
+    "centred (ds-loader--centered: the ring over its status text in the middle of a section; data-extent=\"page\" gives it a page's height)"
    ]
   },
   "sizes": [
@@ -828,6 +832,7 @@
   "tokens": [
    "--border-default",
    "--border-input-width",
+   "--center-lg",
    "--dur-slower",
    "--fs-sm",
    "--primary",
@@ -835,11 +840,13 @@
    "--size-md",
    "--size-xs",
    "--space-2",
+   "--space-3",
+   "--space-7",
    "--text-secondary"
   ],
-  "accessibility": "Kit fix: the wrapper has role=\"status\" and a text (visible or .ds-sr-only) so the busy state is announced. The ring is aria-hidden. Under reduced motion it turns four times slower.",
+  "accessibility": "Kit fix: the wrapper has role=\"status\" and a text (visible or .ds-sr-only) so the busy state is announced. The ring is aria-hidden. Under reduced motion it turns four times slower. The centred form keeps role=\"status\" and shows its text, which says what is loading (\"Loading the documents\").",
   "purpose": "A wait of unknown length.",
-  "usage": "Prefer a skeleton for content (batch 2); a loader for a section or a page.",
+  "usage": "Prefer a skeleton for content (batch 2); a loader for a section or a page. A section that waits shows the centred loader with its own status text; a page that waits shows it with data-extent=\"page\".",
   "notes": ""
  },
  {
@@ -2149,6 +2156,10 @@
    ],
    "layout": [
     ".ds-stats: two across on a phone, up to four above"
+   ],
+   "value": [
+    "the figure (default)",
+    "pending (a .ds-skeleton.ds-stat__pending bar in the figure's place while the value loads)"
    ]
   },
   "sizes": [
@@ -2158,7 +2169,8 @@
    "rest",
    "hover (interactive)",
    "pressed (interactive)",
-   "focus (interactive)"
+   "focus (interactive)",
+   "pending (aria-busy=\"true\" on the tile)"
   ],
   "tokens": [
    "--bg-inset",
@@ -2173,6 +2185,7 @@
    "--focus-width",
    "--font-mono",
    "--fs-lg",
+   "--fs-sm",
    "--fs-xs",
    "--icon-secondary",
    "--icon-size-md",
@@ -2181,6 +2194,7 @@
    "--radius-card",
    "--shadow-1",
    "--shadow-2",
+   "--size-4xl",
    "--space-1",
    "--space-3",
    "--space-4",
@@ -2189,9 +2203,9 @@
    "--text-secondary",
    "--tile-min"
   ],
-  "accessibility": "A label above a figure, read in that order. The change is said in text with its sign and repeated by an arrow icon, so it is never colour alone; --success and --danger stand on the white surface (6.30 and 7.86 day). An interactive tile holds one control in its label that stretches over the tile, a link or, where the tile opens something that is not an address, a button (button.ds-stat__link): the label text is its accessible name and Enter and Space come from the platform; no click handler on the container. The icon part is decoration and sits outside the control: an icon of the set is aria-hidden, and a lead box carries no name of its own. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "A label above a figure, read in that order. The change is said in text with its sign and repeated by an arrow icon, so it is never colour alone; --success and --danger stand on the white surface (6.30 and 7.86 day). An interactive tile holds one control in its label that stretches over the tile, a link or, where the tile opens something that is not an address, a button (button.ds-stat__link): the label text is its accessible name and Enter and Space come from the platform; no click handler on the container. The icon part is decoration and sits outside the control: an icon of the set is aria-hidden, and a lead box carries no name of its own. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. A pending tile carries aria-busy=\"true\"; the bar is aria-hidden and one .ds-sr-only role=\"status\" text names what is loading; when the value arrives the bar, the status text and aria-busy go. The label stays readable throughout. Under reduced motion the bar does not shimmer.",
   "purpose": "A figure with its label, and often how it moved.",
-  "usage": "Use it for a KPI or a balance line; a summary on the primary colour is the brand Card (K07). The app writes the figure, the unit and the sign. A tile that goes to another screen uses the anchor form; one that opens a dialog or runs a view change in place uses the button form. The icon part is for the tiles that show one, a single icon of the set or a lead box (K23) above the label.",
+  "usage": "Use it for a KPI or a balance line; a summary on the primary colour is the brand Card (K07). The app writes the figure, the unit and the sign. A tile that goes to another screen uses the anchor form; one that opens a dialog or runs a view change in place uses the button form. The icon part is for the tiles that show one, a single icon of the set or a lead box (K23) above the label. While a value loads the tile shows the pending bar, never a placeholder character such as an ellipsis.",
   "notes": ""
  },
  {
@@ -2437,7 +2451,7 @@
   "name": "Dialog",
   "status": "built",
   "markup": "markup/dialog.html",
-  "class_root": ".ds-dialog",
+  "class_root": ".ds-dialog, .ds-dialog__list, .ds-dialog__codes",
   "variants": {
    "placement": [
     "sheet (default: from the bottom, a cap of --maxw-prose)",
@@ -2449,6 +2463,11 @@
    ],
    "specimen": [
     "inline (.ds-dialog--inline)"
+   ],
+   "body": [
+    "text (.ds-dialog__text)",
+    "a bulleted list (ul.ds-dialog__list)",
+    "a list of codes (ul.ds-dialog__codes: two columns, mono, each code in a quiet box, a left-to-right island)"
    ]
   },
   "sizes": [
@@ -2460,12 +2479,14 @@
    "focus"
   ],
   "tokens": [
+   "--bg-subtle",
    "--bg-surface",
    "--border-subtle",
    "--focus-offset",
    "--focus-ring",
    "--focus-width",
    "--font-display",
+   "--font-mono",
    "--fs-h4",
    "--fs-sm",
    "--lh-normal",
@@ -2474,6 +2495,7 @@
    "--maxw-prose",
    "--radius-lg",
    "--radius-modal",
+   "--radius-sm",
    "--scrim",
    "--shadow-2",
    "--shadow-deep",
@@ -2487,9 +2509,9 @@
    "--tracking-tight",
    "--z-dialog"
   ],
-  "accessibility": "role=\"dialog\" or \"alertdialog\" with aria-modal=\"true\", aria-labelledby the title and, for a confirm, aria-describedby the text. components.js moves the focus to the panel on open, keeps Tab inside, closes on Escape and on a click on the scrim (data-lock=\"true\" keeps the scrim from closing it) and returns the focus to what opened it. The close button is a ghost icon button with aria-label. A destructive confirm is a danger Button and the cancel stays first in the order of reading. Events ds-dialog-open and ds-dialog-close are the app's hooks.",
+  "accessibility": "role=\"dialog\" or \"alertdialog\" with aria-modal=\"true\", aria-labelledby the title and, for a confirm, aria-describedby the text. components.js moves the focus to the panel on open, keeps Tab inside, closes on Escape and on a click on the scrim (data-lock=\"true\" keeps the scrim from closing it) and returns the focus to what opened it. The close button is a ghost icon button with aria-label. A destructive confirm is a danger Button and the cancel stays first in the order of reading. Events ds-dialog-open and ds-dialog-close are the app's hooks. A bulleted list is a real ul named by the sentence above it (aria-labelledby); the list of codes is a real ul named the same way, in a left-to-right island, so the digits and hyphens keep their order in a right-to-left page; each code is --text-primary on --bg-subtle (16.03 day).",
   "purpose": "A confirm, an edit form or the details of an item, over the page.",
-  "usage": "Use it for anything that is not a document; the document sheet and viewer (K36) keeps the framed body, Close and Save of a document. A confirm says what will happen in the text and puts the action in the button.",
+  "usage": "Use it for anything that is not a document; the document sheet and viewer (K36) keeps the framed body, Close and Save of a document. A confirm says what will happen in the text and puts the action in the button. A short list of conditions or steps in a dialog is the bulleted list; a set of one-time codes the person must keep is the list of codes.",
   "notes": ""
  },
  {
@@ -2552,6 +2574,10 @@
    "entry": [
     "card (div)",
     "opening card (details with a summary)"
+   ],
+   "title": [
+    "text (span.ds-timeline__title)",
+    "button (button.ds-timeline__title[type=button]: an entry whose title opens something that is not an address, a post or a window)"
    ]
   },
   "sizes": [
@@ -2563,7 +2589,8 @@
    "upcoming",
    "hover (an opening card)",
    "focus",
-   "open"
+   "open",
+   "title button: hover (--primary), focus (the outline outside the title)"
   ],
   "tokens": [
    "--bg-subtle",
@@ -2589,6 +2616,7 @@
    "--primary-subtle",
    "--radius-md",
    "--radius-pill",
+   "--radius-xs",
    "--size-xs",
    "--space-1",
    "--space-3",
@@ -2597,9 +2625,9 @@
    "--text-secondary",
    "--touch-min"
   ],
-  "accessibility": "An ordered list with an aria-label. The marker is decorative; the state is said by the Badge or the title, not by the marker alone. An opening entry is native details and summary (Enter and Space toggle it) with a chevron that turns. Dates are time elements. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard.",
+  "accessibility": "An ordered list with an aria-label. The marker is decorative; the state is said by the Badge or the title, not by the marker alone. An opening entry is native details and summary (Enter and Space toggle it) with a chevron that turns. Dates are time elements. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. A title that is a button holds the entry's name as its text; Enter and Space come from the platform; it stands in a card head that is a div, never in the summary of an opening entry (a summary is itself the control); the hover colour --primary is 8.48 on the surface by day and 6.72 by night; at the 480 width it is at least --touch-min high.",
   "purpose": "Dated milestones of a project, in order.",
-  "usage": "Use it where the dates matter and an entry has a body; progress through a flow is the Stepper (K32).",
+  "usage": "Use it where the dates matter and an entry has a body; progress through a flow is the Stepper (K32). An entry that opens a post or a window takes the title as a button; an entry that has a body to read is the opening card.",
   "notes": ""
  }
 ]

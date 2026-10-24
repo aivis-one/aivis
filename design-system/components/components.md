@@ -86,7 +86,7 @@ Additions. The count on an icon button `ds-badge--count` (the danger ground, `--
 
 ## K46 Stat tile
 
-`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one control in the label: a link (`a.ds-stat__link`, a tile that goes to another screen) or a button (`button.ds-stat__link`, a tile that opens something in place), drawn the same: the font of the label, start alignment, no border or ground, and a hit area stretched over the whole tile; the focus outline is drawn round the tile. An optional icon part, `.ds-stat__icon`, is the first child, above the label: an icon of the set at `--icon-size-md` in `--icon-secondary`, or a lead box (`.ds-lead`, K23, with its own size and tone); it is decoration and is not part of the control. `.ds-stats` lays tiles out two across on a phone and up to four above. A summary on the primary colour is the brand Card (K07), not this tile. Markup: `markup/stat.html`.
+`.ds-stat` is a label (`.ds-stat__label`), a figure (`.ds-stat__value`, mono, tabular), an optional change (`.ds-stat__change`, `data-trend="up|down"`, with an arrow icon and its sign in the text) and a sub line; `--interactive` holds one control in the label: a link (`a.ds-stat__link`, a tile that goes to another screen) or a button (`button.ds-stat__link`, a tile that opens something in place), drawn the same: the font of the label, start alignment, no border or ground, and a hit area stretched over the whole tile; the focus outline is drawn round the tile. An optional icon part, `.ds-stat__icon`, is the first child, above the label: an icon of the set at `--icon-size-md` in `--icon-secondary`, or a lead box (`.ds-lead`, K23, with its own size and tone); it is decoration and is not part of the control. `.ds-stats` lays tiles out two across on a phone and up to four above. A summary on the primary colour is the brand Card (K07), not this tile. A tile whose value is loading is pending (batch 5): `aria-busy="true"` on the tile, a `span.ds-skeleton.ds-stat__pending` bar (`aria-hidden`) in the figure and one `.ds-sr-only[role=status]` text naming what loads. Markup: `markup/stat.html`.
 
 ## K47 Hero
 
@@ -98,7 +98,7 @@ Additions. The count on an icon button `ds-badge--count` (the danger ground, `--
 |---|---|---|
 | K16 Toast | live region | `.ds-toast-region[aria-live=polite]` exists from the start and holds the toasts; a danger toast has `role="alert"`; a dismiss button; the toast ground is opaque (`markup/toast.html`) |
 | K18 Progress | progressbar role | `.ds-progress__track[role=progressbar]` with `aria-valuenow`, `aria-valuemin`, `aria-valuemax` and a name; indeterminate has no `aria-valuenow`; fills `primary` (default), `success`, `warning`, `danger` (`markup/progress.html`) |
-| K20 Loader | status role | `.ds-loader[role=status]` with a visible or `.ds-sr-only` text (`markup/loader.html`) |
+| K20 Loader | status role | `.ds-loader[role=status]` with a visible or `.ds-sr-only` text (`markup/loader.html`); centred (batch 5): `.ds-loader--centered` puts the ring over its status text in the middle of a section, and `data-extent="page"` gives it a page's height |
 | K40 CAppControls | labels through i18n | contract below |
 
 ### K40 contract (CAppControls)
@@ -365,6 +365,8 @@ The months follow the reading direction, as the cabinet's flex row does: the lab
 
 `div.ds-dialog[hidden]` holds `div.ds-dialog__panel[role="dialog|alertdialog"][aria-modal="true"][aria-labelledby][tabindex="-1"]` with a head (`.ds-dialog__title` and a ghost icon close button), a body (`.ds-dialog__body`: any content, a form) and an actions row (`.ds-dialog__actions`: a secondary Cancel and the confirm; a destructive confirm is a danger Button). It is a sheet from the bottom on a phone, capped at `--maxw-prose`; `data-variant="modal"` centres it, capped at `--maxw-form-wide`. `components.js`: `[data-dialog-open="id"]` opens it and moves the focus in, Tab stays inside, Escape and the scrim close it (`data-lock="true"` keeps the scrim from closing it), the focus returns to what opened it; events `ds-dialog-open` and `ds-dialog-close`. The document sheet (K36) keeps its framed body for a document. Markup: `markup/dialog.html`.
 
+Additions (batch 5). Two parts of the body: `ul.ds-dialog__list` is a bulleted list (the markers at the start, `--space-1` between items) and `ul.ds-dialog__codes` is a list of one-time codes in two columns, each code in the mono face in a quiet box (`--bg-subtle`, `--border-subtle`), a left-to-right island; both are named by the sentence above them with `aria-labelledby`. Markup: `markup/dialog.html`.
+
 ## K53 Copyable value
 
 `div.ds-copy` holds `div.ds-copy__box` (`p.ds-copy__value`, mono, wraps anywhere, a left-to-right island that selects whole, and a ghost icon button `.ds-copy__button` with `data-copy-target`) and `p.ds-copy__status` (`role="status"`, polite). The script is the invoice block's: it copies, switches the icon to a check for three seconds, writes `data-msg-copied` or `data-msg-failed` into the status, with a selection copy as the fallback. Markup: `markup/copyable-value.html`.
@@ -372,6 +374,8 @@ The months follow the reading direction, as the cabinet's flex row does: the lab
 ## K54 Timeline
 
 `ol.ds-timeline` of `li.ds-timeline__item[data-state="done|current|upcoming"]`: a marker (decorative), a connector to the next item and an entry as a card, `div.ds-timeline__card` (`.ds-timeline__head` with the date, the title and a Badge for the kind) or, when it opens, `details.ds-timeline__card` with `summary.ds-timeline__head` (the same parts and a chevron) and `div.ds-timeline__body`. The state is said by the Badge or the title, not by the marker alone. Progress through a flow is the Stepper (K32). Markup: `markup/timeline.html`.
+
+Addition (batch 5). The entry's title as a button: `button.ds-timeline__title[type=button]` in the head of a card that is a `div`, for an entry that opens a post or a window; the same font as the text title, `--primary` on hover, the focus outline outside it, `--touch-min` high at the 480 width. Markup: `markup/timeline.html`.
 
 ## Tokens used, batch 4
 

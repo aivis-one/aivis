@@ -78,7 +78,7 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </head>
 <body>
 <header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a></div></div></div>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -190,6 +190,58 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 <article class="ds-card"><header class="ds-card__head"><h3 class="ds-card__title">Opening of the lounge</h3><time class="ds-lead ds-dateleaf" datetime="2026-01-12"><span class="ds-dateleaf__day">12</span><span class="ds-dateleaf__month">Jan</span></time></header><div class="ds-card__body">The leaf in a card head.</div></article>
 </div></div>
 <figure class="phone-wrap"><iframe class="phone" title="Date leaf on a phone" data-src="components-6.html?fragment=r4b" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+</div></section>
+<section class="blk" id="r6"><div class="wrap"><h2>Dialog (K52), Timeline (K54), Loader (K20) and Stat tile (K46) additions</h2>
+<p class="lead">A bulleted list and a two-column list of codes in a dialog body; a timeline entry whose title is a button; a centred loader for a section or a page; the pending figure of a stat tile.</p>
+<div class="cols"><div class="stack" data-frag="r6a"><div class="padded desk"><h3>Dialog: a list and a list of codes</h3>
+<div class="ds-dialog ds-dialog--inline"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="dl6-t" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="dl6-t">Apply as an integrator</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body">
+    <p class="ds-dialog__text" id="dl6-p">Before you apply, check that:</p>
+    <ul class="ds-dialog__list" aria-labelledby="dl6-p"><li>you hold a company account of your own;</li><li>your documents are valid for at least a year;</li><li>you can sign by an electronic signature.</li></ul>
+  </div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Cancel</button><button type="button" class="ds-button">Apply</button></div>
+</div></div>
+<div class="ds-dialog ds-dialog--inline"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="dl6-t2" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="dl6-t2">Recovery codes</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body">
+    <p class="ds-dialog__text" id="dl6-c">Keep these codes. Each works once.</p>
+    <ul class="ds-dialog__codes" aria-labelledby="dl6-c"><li>4821-7790</li><li>1093-5528</li><li>7764-0012</li><li>3350-9187</li><li>6041-2275</li><li>9918-4630</li><li>2287-6154</li><li>5509-3841</li></ul>
+  </div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button">Done</button></div>
+</div></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Dialog: a list and a list of codes on a phone" data-src="components-6.html?fragment=r6a" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r6b"><div class="padded desk"><h3>Timeline: the title as a button</h3>
+<ol class="ds-timeline" aria-label="Project roadmap">
+  <li class="ds-timeline__item" data-state="done"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-03">Mar 2026</time><button type="button" class="ds-timeline__title">Site selected: read the post</button><span class="ds-badge ds-badge--success">Done</span></div></div></li>
+  <li class="ds-timeline__item" data-state="current"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-10">Oct 2026</time><button type="button" class="ds-timeline__title sim-hover">Fit-out (hover)</button><span class="ds-badge ds-badge--info">In progress</span></div></div></li>
+  <li class="ds-timeline__item" data-state="upcoming"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2027-01">Jan 2027</time><button type="button" class="ds-timeline__title sim-focus">Opening (focus)</button><span class="ds-badge">Upcoming</span></div></div></li>
+</ol>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Timeline: the title as a button on a phone" data-src="components-6.html?fragment=r6b" height="420"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r6c"><div class="padded desk"><h3>Loader: centred, section and page</h3>
+<h4 class="lbl-s">a section</h4>
+<div class="ds-card"><div class="ds-loader ds-loader--centered" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading the documents</span></div></div>
+<h4 class="lbl-s">a page (data-extent="page")</h4>
+<div class="ds-card"><div class="ds-loader ds-loader--centered" data-extent="page" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading the page</span></div></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Loader: centred, section and page on a phone" data-src="components-6.html?fragment=r6c" height="700"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r6d"><div class="padded desk"><h3>Stat tile: a pending figure</h3>
+<div class="ds-stats">
+  <div class="ds-stat" aria-busy="true"><p class="ds-stat__label">Balance</p><p class="ds-stat__value"><span class="ds-skeleton ds-stat__pending" aria-hidden="true"></span><span class="ds-sr-only" role="status">Loading the balance</span></p><p class="ds-stat__sub">Open the balance</p></div>
+  <div class="ds-stat ds-stat--interactive" aria-busy="true"><p class="ds-stat__label"><button type="button" class="ds-stat__link">Payments</button></p><p class="ds-stat__value"><span class="ds-skeleton ds-stat__pending" aria-hidden="true"></span><span class="ds-sr-only" role="status">Loading the payments</span></p></div>
+  <div class="ds-stat"><p class="ds-stat__label">Balance</p><p class="ds-stat__value">1,020.00</p><p class="ds-stat__sub">Loaded</p></div>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Stat tile: a pending figure on a phone" data-src="components-6.html?fragment=r6d" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>

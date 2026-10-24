@@ -9,3 +9,9 @@
   <li class="ds-timeline__item" data-state="upcoming"><span class="ds-timeline__marker" aria-hidden="true"></span>
     <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2027-01">Jan 2027</time><span class="ds-timeline__title">Opening</span><span class="ds-badge">Upcoming</span></div></div></li>
 </ol>
+
+<!-- K54 addition (batch 5): the entry's title as a button. button.ds-timeline__title[type=button] in the head of a card that is a div (never in a summary), for an entry that opens a post or a window; the app handles the click. -->
+<ol class="ds-timeline" aria-label="Project roadmap">
+  <li class="ds-timeline__item" data-state="done"><span class="ds-timeline__marker" aria-hidden="true"></span>
+    <div class="ds-timeline__card"><div class="ds-timeline__head"><time class="ds-timeline__date" datetime="2026-03">Mar 2026</time><button type="button" class="ds-timeline__title">Site selected: read the post</button><span class="ds-badge ds-badge--success">Done</span></div></div></li>
+</ol>

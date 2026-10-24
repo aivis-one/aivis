@@ -29,3 +29,10 @@
     <p class="ds-stat__value">1,020.00</p>
   </div>
 </div>
+
+<!-- K46 addition (batch 5): a pending figure. aria-busy="true" on the tile; a .ds-skeleton.ds-stat__pending bar (aria-hidden) where the figure stands; one .ds-sr-only role="status" text names what loads.
+     When the value arrives the bar, the status text and aria-busy go. -->
+<div class="ds-stat" aria-busy="true">
+  <p class="ds-stat__label">Balance</p>
+  <p class="ds-stat__value"><span class="ds-skeleton ds-stat__pending" aria-hidden="true"></span><span class="ds-sr-only" role="status">Loading the balance</span></p>
+</div>

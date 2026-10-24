@@ -1,3 +1,7 @@
 <!-- AIVIS Loader (K20, kit fix: status role). The wrapper has role="status" and a visible or hidden text, so the busy state is announced. -->
 <span class="ds-loader" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading</span></span>
 <span class="ds-loader" role="status" data-size="sm"><span class="ds-loader__ring" aria-hidden="true"></span><span class="ds-sr-only">Loading</span></span>
+
+<!-- K20 addition (batch 5): the centred loader for a section or a page, with its status text under the ring. data-extent="page" gives it a page's height. -->
+<div class="ds-loader ds-loader--centered" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading the documents</span></div>
+<div class="ds-loader ds-loader--centered" data-extent="page" role="status"><span class="ds-loader__ring" aria-hidden="true"></span><span>Loading the page</span></div>
