@@ -53,7 +53,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from '@/components/ui/icons'
 
-import { CBadge, CButton, CEmptyState, CStatCard } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiResponseError } from '@/api/client'
 import { getProduct } from '@/api/products'
@@ -242,10 +242,7 @@ function onBuyClick(): void {
 <template>
   <div class="ppd">
     <!-- Loading -->
-    <div v-if="loading" class="ds-loader ds-loader--centered" data-extent="page" role="status">
-      <span class="ds-loader__ring" aria-hidden="true" />
-      <span>{{ t('common.loading') }}</span>
-    </div>
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- 404 -->
     <CEmptyState

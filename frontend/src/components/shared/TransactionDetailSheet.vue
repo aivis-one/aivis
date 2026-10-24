@@ -41,7 +41,7 @@ import { useI18n } from 'vue-i18n'
 import { Copy } from '@/components/ui/icons'
 
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
-import { CEmptyState } from '@/components/ui'
+import { CEmptyState, CLoader } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime, formatPrice, formatSignedPrice } from '@/utils/format'
@@ -82,11 +82,11 @@ const signedAmount = computed<string>(() => {
   return formatSignedPrice(txn.value.amount_cents, txn.value.currency)
 })
 
-const amountClass = computed<string>(() => {
-  if (!txn.value) return ''
-  if (txn.value.amount_cents > 0) return 'tds__amount--credit'
-  if (txn.value.amount_cents < 0) return 'tds__amount--debit'
-  return ''
+const amountTone = computed<'success' | 'danger' | undefined>(() => {
+  if (!txn.value) return undefined
+  if (txn.value.amount_cents > 0) return 'success'
+  if (txn.value.amount_cents < 0) return 'danger'
+  return undefined
 })
 
 const isCompany = useRoute().meta.shell === 'company'
@@ -178,10 +178,7 @@ function onClose(): void {
 
 <template>
   <CBottomSheet :open="open" :title="t('inv.transactions.detail.title')" @close="onClose">
-    <div v-if="loading" class="ds-loader ds-loader--centered" role="status">
-      <span class="ds-loader__ring" aria-hidden="true" />
-      <span>{{ t('common.loading') }}</span>
-    </div>
+    <CLoader v-if="loading" centered />
 
     <CEmptyState
       v-else-if="errored"
@@ -192,10 +189,10 @@ function onClose(): void {
     <div v-else-if="txn" class="tds">
       <!-- Summary header -->
       <div class="tds__summary">
-        <div class="tds__type">
+        <div class="ds-label" data-size="md">
           {{ typeLabel(txn.type) }}
         </div>
-        <div class="tds__amount" :class="amountClass">
+        <div class="ds-amount" :data-tone="amountTone">
           {{ signedAmount }}
         </div>
         <div class="tds__date">
@@ -239,7 +236,7 @@ function onClose(): void {
   gap: var(--space-4-lg);
 }
 
-/* Summary: the type, the amount (credit or debit coloured, the sign in the text)
+/* Summary: the type, the amount (credit or debit toned, the sign in the text)
    and the date, centred. */
 .tds__summary {
   display: grid;
@@ -247,28 +244,6 @@ function onClose(): void {
   gap: var(--space-2);
   text-align: center;
   padding-block: var(--space-1) var(--space-2);
-}
-.tds__type {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-}
-.tds__amount {
-  font-size: var(--fs-2xl);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: var(--lh-tight);
-  word-break: break-word;
-}
-.tds__amount--credit {
-  color: var(--success);
-}
-.tds__amount--debit {
-  color: var(--danger);
 }
 .tds__date {
   font-size: var(--fs-xs);

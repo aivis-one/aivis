@@ -198,23 +198,15 @@ async function handleRegister(): Promise<void> {
         @keydown.enter="handleRegister"
       />
 
-      <!-- The hint belongs to the field, directly under it, so the pair is wrapped
-             and the field's own bottom margin is dropped; the wrapper carries
-             the spacing that used to sit on .form-group. -->
-      <div class="ds-field">
-        <CInput
-          v-model="password"
-          class="form-group__field"
-          :label="t('auth.register.password')"
-          type="password"
-          :placeholder="t('auth.register.passPlaceholder')"
-          autocomplete="new-password"
-          @keydown.enter="handleRegister"
-        />
-        <div class="ds-field__hint">
-          {{ t('auth.register.passwordHint') }}
-        </div>
-      </div>
+      <CInput
+        v-model="password"
+        :label="t('auth.register.password')"
+        :hint="t('auth.register.passwordHint')"
+        type="password"
+        :placeholder="t('auth.register.passPlaceholder')"
+        autocomplete="new-password"
+        @keydown.enter="handleRegister"
+      />
 
       <CInput
         v-model="confirmPassword"
@@ -281,10 +273,3 @@ async function handleRegister(): Promise<void> {
     />
   </AuthShell>
 </template>
-
-<style scoped>
-/* The field inside a hint pair gives up its own margin to the wrapper. */
-.form-group__field {
-  margin-block-end: 0;
-}
-</style>

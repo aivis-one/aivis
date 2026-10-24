@@ -61,7 +61,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { File as FileIcon } from '@/components/ui/icons'
 
-import { CButton, CEmptyState } from '@/components/ui'
+import { CButton, CEmptyState, CLoader } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { ApiResponseError } from '@/api/client'
@@ -194,10 +194,7 @@ function onDownloadFailed(err: unknown): void {
 <template>
   <div class="atl">
     <!-- Loading -->
-    <div v-if="loading" class="ds-loader ds-loader--centered" data-extent="page" role="status">
-      <span class="ds-loader__ring" aria-hidden="true" />
-      <span>{{ t('common.loading') }}</span>
-    </div>
+    <CLoader v-if="loading" centered extent="page" />
 
     <!-- Not found: wrong id, or private / unpublished, or company inactive. The
          header's back control leads to the company. -->

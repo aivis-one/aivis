@@ -41,12 +41,9 @@ onMounted(() => {
     <div class="ds-stats">
       <CStatCard
         :label="t('agent.home.monthCommission')"
+        :pending="agentStore.commissionSummaryLoading"
         :value="
-          agentStore.commissionSummaryLoading
-            ? '…'
-            : agentStore.commissionSummaryError
-              ? '—'
-              : formatPrice(agentStore.monthCommissionCents)
+          agentStore.commissionSummaryError ? '—' : formatPrice(agentStore.monthCommissionCents)
         "
         @click="go('agent-commissions')"
       >
@@ -57,12 +54,9 @@ onMounted(() => {
 
       <CStatCard
         :label="t('agent.home.rank')"
+        :pending="agentStore.leaderboardLoading"
         :value="
-          agentStore.leaderboardLoading
-            ? '…'
-            : agentStore.leaderboardError || agentStore.myRank === null
-              ? '—'
-              : `#${agentStore.myRank}`
+          agentStore.leaderboardError || agentStore.myRank === null ? '—' : `#${agentStore.myRank}`
         "
         @click="go('agent-leaderboard')"
       >
@@ -73,12 +67,11 @@ onMounted(() => {
 
       <CStatCard
         :label="t('agent.home.registrations')"
+        :pending="agentStore.statsLoading"
         :value="
-          agentStore.statsLoading
-            ? '…'
-            : agentStore.statsError || !agentStore.stats
-              ? '—'
-              : formatNumber(agentStore.stats.total_registrations, locale)
+          agentStore.statsError || !agentStore.stats
+            ? '—'
+            : formatNumber(agentStore.stats.total_registrations, locale)
         "
         @click="go('agent-referrals')"
       >

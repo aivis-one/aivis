@@ -42,9 +42,16 @@
 // avatar-guard message, 429 shared rate-limit copy, 400 per-step key).
 // =============================================================================
 
-import { computed, ref, useId } from 'vue'
+import { computed, onUnmounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, ChevronRight, Copy, Shield, ShieldCheck } from '@/components/ui/icons'
+import {
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  Copy,
+  Shield,
+  ShieldCheck,
+} from '@/components/ui/icons'
 import QRCode from 'qrcode'
 
 import { CBadge, CButton, CInput, CModal } from '@/components/ui'
@@ -213,13 +220,31 @@ async function submitSetupCode(): Promise<void> {
   }
 }
 
-// The manual-entry code is a copyable value (K53); the copy is told by a toast.
+// The manual-entry code is a copyable value (K53): the copy is told in its own
+// polite status line, cleared after three seconds, and the icon shows a check
+// while it says the code was copied.
+const secretStatus = ref('')
+const secretCopied = ref(false)
+let secretStatusTimer: ReturnType<typeof setTimeout> | undefined
+
+function tellSecretCopy(text: string, ok: boolean): void {
+  secretStatus.value = text
+  secretCopied.value = ok
+  clearTimeout(secretStatusTimer)
+  secretStatusTimer = setTimeout(() => {
+    secretStatus.value = ''
+    secretCopied.value = false
+  }, 3000)
+}
+
+onUnmounted(() => clearTimeout(secretStatusTimer))
+
 async function copySecret(): Promise<void> {
   try {
     await navigator.clipboard.writeText(secret.value)
-    showToast(tk('secretCopied'), 'success')
+    tellSecretCopy(tk('secretCopied'), true)
   } catch {
-    showToast(tk('copyFailed'), 'error')
+    tellSecretCopy(tk('copyFailed'), false)
   }
 }
 
@@ -350,9 +375,11 @@ async function submitDisable(): Promise<void> {
             :aria-label="tk('copySecret')"
             @click="copySecret"
           >
-            <Copy size="sm" />
+            <Check v-if="secretCopied" size="sm" />
+            <Copy v-else size="sm" />
           </button>
         </div>
+        <p class="ds-copy__status" role="status" aria-live="polite">{{ secretStatus }}</p>
       </div>
 
       <CInput

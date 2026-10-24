@@ -170,20 +170,15 @@ async function handleSubmit(): Promise<void> {
       </p>
 
       <div class="ds-auth__form">
-        <div class="ds-field">
-          <CInput
-            v-model="newPassword"
-            class="form-group__field"
-            :label="t('auth.passwordReset.newPassword')"
-            type="password"
-            :placeholder="t('auth.passwordReset.newPassPlaceholder')"
-            autocomplete="new-password"
-            @keydown.enter="handleSubmit"
-          />
-          <div class="ds-field__hint">
-            {{ t('auth.passwordReset.newPasswordHint') }}
-          </div>
-        </div>
+        <CInput
+          v-model="newPassword"
+          :label="t('auth.passwordReset.newPassword')"
+          :hint="t('auth.passwordReset.newPasswordHint')"
+          type="password"
+          :placeholder="t('auth.passwordReset.newPassPlaceholder')"
+          autocomplete="new-password"
+          @keydown.enter="handleSubmit"
+        />
 
         <CInput
           v-model="confirmPassword"
@@ -214,9 +209,3 @@ async function handleSubmit(): Promise<void> {
     </template>
   </AuthShell>
 </template>
-
-<style scoped>
-.form-group__field {
-  margin-block-end: 0;
-}
-</style>

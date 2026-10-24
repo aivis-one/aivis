@@ -62,7 +62,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
-import { CButton, CEmptyState, CSelect } from '@/components/ui'
+import { CButton, CEmptyState, CListSkeleton, CSelect } from '@/components/ui'
 import DocumentRow from '@/components/shared/DocumentRow.vue'
 import { downloadAttachment } from '@/api/attachments'
 import { useAttachmentsStore } from '@/stores/attachments'
@@ -306,17 +306,7 @@ function formatBytes(bytes: number): string {
       />
     </header>
 
-    <div v-if="loading" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 3" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" /><span class="ds-skeleton-stack"
-            ><span class="ds-skeleton ds-skeleton--title" /><span
-              class="ds-skeleton ds-skeleton--text"
-          /></span>
-        </div>
-      </div>
-    </div>
+    <CListSkeleton v-if="loading" :rows="3" />
 
     <CEmptyState
       v-else-if="errored"
@@ -332,7 +322,7 @@ function formatBytes(bytes: number): string {
 
     <div v-else class="ats__groups">
       <section v-for="group in groupedItems" :key="group.l1" class="ats__group">
-        <h3 class="ats__group-title">
+        <h3 class="ds-label" data-size="md">
           {{ pathLabel(group.l1) }}
         </h3>
         <ul class="ds-rows">
@@ -378,14 +368,5 @@ function formatBytes(bytes: number): string {
 .ats__group {
   display: grid;
   gap: var(--space-2);
-}
-
-.ats__group-title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
 }
 </style>

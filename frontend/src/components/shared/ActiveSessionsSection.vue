@@ -41,7 +41,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, ChevronRight, Monitor, RefreshCw } from '@/components/ui/icons'
 
-import { CBadge, CButton, CEmptyState, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CListSkeleton, CModal } from '@/components/ui'
 import { listSessions, revokeSession } from '@/api/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
@@ -166,17 +166,7 @@ async function confirmRevoke(sessionId: string): Promise<void> {
   </ul>
 
   <CModal :open="open" :title="tk('title')" @close="close">
-    <div v-if="loading" aria-busy="true">
-      <span class="ds-sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="ds-rows" aria-hidden="true">
-        <div v-for="n in 3" :key="n" class="ds-skeleton-row">
-          <span class="ds-skeleton ds-skeleton--avatar" /><span class="ds-skeleton-stack"
-            ><span class="ds-skeleton ds-skeleton--title" /><span
-              class="ds-skeleton ds-skeleton--text"
-          /></span>
-        </div>
-      </div>
-    </div>
+    <CListSkeleton v-if="loading" :rows="3" />
 
     <CEmptyState v-else-if="loadError" tone="danger" :title="tk('loadError')">
       <template #actions>

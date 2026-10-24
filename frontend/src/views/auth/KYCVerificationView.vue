@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AuthShell from '@/components/layout/AuthShell.vue'
-import { ChevronDown, Image, ShieldAlert, Upload, X } from '@/components/ui/icons'
+import { ChevronDown, ShieldAlert } from '@/components/ui/icons'
 // Identity verification screen (H10).
 //
 // ONE SCREEN CARRYING FOUR STATES, not a modal over the page the 402
@@ -39,7 +39,7 @@ import { ChevronDown, Image, ShieldAlert, Upload, X } from '@/components/ui/icon
 // the one that counts; these exist so a person is told about a HEIC
 // before uploading eight megabytes of it, not after.
 
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -55,8 +55,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { acceptDocumentByType } from '@/api/documents'
 import { updateMe } from '@/api/users'
 import { COUNTRIES } from '@/utils/countries'
-import { formatBytes } from '@/utils/format'
-import { CInput, CSelect } from '@/components/ui'
+import { CFileField, CInput, CSelect } from '@/components/ui'
 import AuthLogoutLink from '@/components/shared/AuthLogoutLink.vue'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 
@@ -154,15 +153,6 @@ function setSlot(target: SlotTarget, file: File | null): void {
   else selfieImage.value = file
 }
 
-// Removing a chosen file empties the slot AND the input: the input is re-made
-// (its key changes), so a file chosen again after a removal is a change.
-const resets = reactive<Record<SlotTarget, number>>({ front: 0, back: 0, selfie: 0 })
-
-function clearSlot(target: SlotTarget): void {
-  setSlot(target, null)
-  resets[target] += 1
-}
-
 // The slots the form asks for now, in the order the picker shows them: the
 // front, the back when this document has one, the selfie.
 const slots = computed(() => {
@@ -176,31 +166,15 @@ const slots = computed(() => {
   return list
 })
 
-function pickFile(target: SlotTarget, event: Event): void {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-
-  if (file === null) {
-    // The person opened the picker and cancelled. Clear the slot rather
-    // than keeping the previous choice, so what the form shows is what
-    // it will send.
-    setSlot(target, null)
-    return
-  }
-
+function pickFile(target: SlotTarget, file: File): void {
   const rejection = localFileRejection(file)
   if (rejection !== null) {
-    // CLEARING THE INPUT AND CLEARING THE SLOT ARE ONE ACTION. The
-    // input is what the person SEES; the ref is what the form SENDS.
-    // This branch used to do only the first, so "front.jpg, then
-    // front.heic" left the field blank, the submit button live and
-    // front.jpg still staged -- the submission carried a document its
-    // owner believed they had replaced, and staff decided on that one.
-    // A document in storage that is not the one the person chose is a
-    // record that lies about the basis of a decision, which is why this
-    // is a blocker and not a cosmetic bug.
+    // CLEARING WHAT THE FIELD SHOWS AND WHAT THE FORM SENDS ARE ONE ACTION.
+    // "front.jpg, then front.heic" must leave the slot empty: a submission
+    // carrying a document its owner believed they had replaced is a record
+    // that lies about the basis of a decision, which is why this is a
+    // blocker and not a cosmetic bug. The field empties its own input.
     error.value = t(rejection)
-    input.value = ''
     setSlot(target, null)
     return
   }
@@ -430,47 +404,19 @@ onMounted(() => {
               </div>
             </label>
 
-            <!-- The images: a file input (K30) for each slot; the chosen file is listed
-                 with its size and a button that removes it. -->
-            <div v-for="entry in slots" :key="entry.target" class="ds-field ds-file">
-              <span :id="`kyc-${entry.target}-label`" class="ds-field__label">{{
-                entry.label
-              }}</span>
-              <label class="ds-button ds-button--secondary ds-file__pick">
-                <Upload size="sm" />
-                <span>{{ t('common.chooseFile') }}</span>
-                <input
-                  :key="`${entry.target}-${resets[entry.target]}`"
-                  type="file"
-                  class="ds-file__input"
-                  :accept="KYC_ACCEPT_ATTRIBUTE"
-                  :aria-labelledby="`kyc-${entry.target}-label`"
-                  aria-describedby="kyc-upload-hint"
-                  @change="pickFile(entry.target, $event)"
-                />
-              </label>
-              <ul v-if="entry.file" class="ds-file__list" aria-live="polite">
-                <li class="ds-file__item" data-state="selected">
-                  <span class="ds-file__thumb"><Image size="sm" /></span>
-                  <span class="ds-file__body">
-                    <span class="ds-file__name">{{ entry.file.name }}</span>
-                    <span class="ds-file__meta ds-file__status">{{
-                      formatBytes(entry.file.size)
-                    }}</span>
-                  </span>
-                  <span class="ds-file__aside">
-                    <button
-                      type="button"
-                      class="ds-file__remove"
-                      :aria-label="t('common.file.remove', { name: entry.file.name })"
-                      @click="clearSlot(entry.target)"
-                    >
-                      <X size="sm" />
-                    </button>
-                  </span>
-                </li>
-              </ul>
-            </div>
+            <!-- The images: the kit's file field (K30) for each slot; the chosen file is
+                 listed with its size and a button that removes it. -->
+            <CFileField
+              v-for="entry in slots"
+              :key="entry.target"
+              :label="entry.label"
+              :button-label="t('common.chooseFile')"
+              :accept="KYC_ACCEPT_ATTRIBUTE"
+              :file="entry.file"
+              removable
+              @select="pickFile(entry.target, $event)"
+              @remove="setSlot(entry.target, null)"
+            />
 
             <p id="kyc-upload-hint" class="ds-field__hint">{{ t('kyc.upload.hint') }}</p>
             <p class="ds-field__hint">
