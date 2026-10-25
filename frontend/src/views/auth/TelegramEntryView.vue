@@ -75,11 +75,18 @@ const isCodeComplete = computed(() => code.value.length === CODE_LENGTH)
 const error = ref('')
 // The link token is gone (it lives 15 minutes): nothing can continue here.
 const expired = ref(false)
+// The wait before the code step's resend; a corrected address on the e-mail
+// step is sent at once.
 const resendCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | null = null
+// The server's own wait after too many sends (Retry-After): it holds both the
+// e-mail step and the resend.
+const serverWait = ref(0)
+let serverWaitTimer: ReturnType<typeof setInterval> | null = null
 
 onBeforeUnmount(() => {
   if (cooldownTimer) clearInterval(cooldownTimer)
+  if (serverWaitTimer) clearInterval(serverWaitTimer)
 })
 
 function startCooldown(seconds: number = RESEND_COOLDOWN): void {
@@ -90,6 +97,18 @@ function startCooldown(seconds: number = RESEND_COOLDOWN): void {
     if (resendCooldown.value <= 0 && cooldownTimer) {
       clearInterval(cooldownTimer)
       cooldownTimer = null
+    }
+  }, 1000)
+}
+
+function startServerWait(seconds: number): void {
+  serverWait.value = seconds
+  if (serverWaitTimer) clearInterval(serverWaitTimer)
+  serverWaitTimer = setInterval(() => {
+    serverWait.value--
+    if (serverWait.value <= 0 && serverWaitTimer) {
+      clearInterval(serverWaitTimer)
+      serverWaitTimer = null
     }
   }, 1000)
 }
@@ -126,8 +145,8 @@ function goBack(): void {
   step.value = step.value === 'code' ? 'email' : 'consent'
 }
 
-async function handleSendEmail(): Promise<void> {
-  if (authStore.loading || resendCooldown.value > 0) return
+async function handleSendEmail(resend = false): Promise<void> {
+  if (authStore.loading || serverWait.value > 0 || (resend && resendCooldown.value > 0)) return
   error.value = ''
   const address = email.value.trim()
   if (!address) {
@@ -160,7 +179,7 @@ async function handleSendEmail(): Promise<void> {
           err.code === 'telegram_link_emails_per_day'
             ? t('auth.telegramEntry.emailsPerDay')
             : t('auth.error.rateLimited')
-        if (err.retryAfter) startCooldown(err.retryAfter)
+        if (err.retryAfter) startServerWait(err.retryAfter)
         return
       }
     }
@@ -354,7 +373,7 @@ async function handleConfirm(): Promise<void> {
           type="email"
           placeholder="name@example.com"
           autocomplete="email"
-          @keydown.enter="handleSendEmail"
+          @keydown.enter="handleSendEmail()"
         />
 
         <CAlert v-if="error" tone="danger">{{ error }}</CAlert>
@@ -363,14 +382,14 @@ async function handleConfirm(): Promise<void> {
           class="ds-button ds-button--primary ds-button--block"
           type="button"
           :aria-busy="authStore.loading || undefined"
-          :disabled="authStore.loading || resendCooldown > 0"
-          @click="handleSendEmail"
+          :disabled="authStore.loading || serverWait > 0"
+          @click="handleSendEmail()"
         >
           <span v-if="authStore.loading" class="ds-button__spinner" aria-hidden="true" />
           <span>
             {{
-              resendCooldown > 0
-                ? t('auth.verify.resendIn', { seconds: resendCooldown })
+              serverWait > 0
+                ? t('auth.verify.resendIn', { seconds: serverWait })
                 : t('auth.telegramEntry.sendCodeBtn')
             }}
           </span>
@@ -451,16 +470,16 @@ async function handleConfirm(): Promise<void> {
         <div class="ds-auth__foot">
           <span>{{ t('auth.verify.noCode') }}</span>
           <button
-            v-if="resendCooldown <= 0"
+            v-if="resendCooldown <= 0 && serverWait <= 0"
             type="button"
             class="ds-button ds-button--ghost"
             data-size="sm"
-            @click="handleSendEmail"
+            @click="handleSendEmail(true)"
           >
             {{ t('auth.verify.resend') }}
           </button>
           <span v-else>
-            {{ t('auth.verify.resendIn', { seconds: resendCooldown }) }}
+            {{ t('auth.verify.resendIn', { seconds: Math.max(resendCooldown, serverWait) }) }}
           </span>
         </div>
       </div>

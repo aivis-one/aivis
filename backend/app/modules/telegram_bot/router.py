@@ -24,8 +24,9 @@
 # comms only SENDS (it has no inbound webhook), so this route collides with
 # nothing there.
 #
-# THE TEXTS BELOW ARE A PLACEHOLDER. The welcome wording is neutral stand-in
-# text, to be replaced by the approved bot texts (drafted separately).
+# THE TEXTS BELOW are the bot's approved welcome, English and Russian; the
+# bot's name, about text, description and commands are set in BotFather and
+# by setMyName / setMyShortDescription / setMyDescription / setMyCommands.
 # =============================================================================
 
 import hmac
@@ -44,16 +45,21 @@ router = APIRouter(prefix="/api/v1/telegram", tags=["telegram"])
 
 SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
 
-# PLACEHOLDER -- REPLACE WITH THE APPROVED BOT TEXTS. Keyed by language; any
-# language without a text gets English.
+# Keyed by language; any language without a text gets English.
 WELCOME_TEXTS: dict[str, dict[str, str]] = {
     "en": {
-        "text": "Welcome to AIVIS. Open the cabinet with the button below.",
-        "button": "Open AIVIS",
+        "text": (
+            "AIVIS.ONE — a visionary for visionaries.\n\n"
+            "Your cabinet is one tap away: buy parts of projects and follow your holdings."
+        ),
+        "button": "Open cabinet",
     },
     "ru": {
-        "text": "Добро пожаловать в AIVIS. Откройте кабинет кнопкой ниже.",
-        "button": "Открыть AIVIS",
+        "text": (
+            "AIVIS.ONE — визионер для визионеров.\n\n"
+            "Ваш кабинет — в одно касание: покупайте части проектов и следите за своими долями."
+        ),
+        "button": "Открыть кабинет",
     },
 }
 

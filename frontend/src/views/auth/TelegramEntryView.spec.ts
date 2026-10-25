@@ -161,6 +161,27 @@ describe('TelegramEntryView', () => {
       w.unmount()
     })
 
+    it('sends a corrected address at once after going back from the code step', async () => {
+      post.mockResolvedValue({ status: 'code_sent', code_ttl_minutes: 10 })
+      const w = mountView()
+      await toEmailStep(w)
+      await sendEmail(w, 'typo@b.co')
+      expect(w.findAll('.ds-otp__cell')).toHaveLength(6)
+
+      await w.findComponent({ name: 'CBackLink' }).trigger('click')
+      await sendEmail(w, 'right@b.co')
+
+      expect(post).toHaveBeenCalledTimes(2)
+      expect(post).toHaveBeenLastCalledWith('/api/v1/auth/telegram/link/email', {
+        link_token: 'LT1',
+        email: 'right@b.co',
+        consent_given: true,
+        referral_code: null,
+      })
+      expect(w.find('.ds-auth__foot button.ds-button--ghost').exists()).toBe(false)
+      w.unmount()
+    })
+
     it('tells a spent daily allowance in its own words', async () => {
       post.mockRejectedValueOnce(apiError(429, 'telegram_link_emails_per_day'))
       const w = mountView()
