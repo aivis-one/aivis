@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- InstallmentView (Phase F4.2 + F4.2.2 polish + F4.3 fix)
+// AIVIS.ONE Frontend -- InstallmentView (the buying path, steps 2 and 3, an
+//                                        instalment)
 // =============================================================================
 //
 // Installment plan confirmation screen. Shared across
@@ -11,27 +12,27 @@
 // a valid `?plan=<template_id>` query parameter:
 //
 //   * CONFIRM mode (query.plan matches one of product.installments)
-//     The selected plan is pre-resolved, full breakdown is shown,
-//     Confirm kicks off POST /api/v1/products/{id}/installment.
-//     This is the happy path -- ProductDetailView deep-links here
-//     when the user taps a plan card.
+//     The selected plan is pre-resolved, the Purchase block (K55) shows the
+//     portfolio, its parts and the instalment's money, the schedule is a Row
+//     list (K23), and "Pay" kicks off POST /api/v1/products/{id}/installment.
+//     This is the happy path -- the project page's Buy leads here.
 //
 //   * SELECT mode (no query, or query.plan doesn't match)
 //     Defensive fallback for deep-linked / bookmarked URLs and for
 //     the rare case where a stale template id was passed in. Shows
-//     the full list of plans as tappable cards; picking one triggers
+//     the full list of plans as rows; picking one triggers
 //     router.replace to update the URL and flips the view to
 //     CONFIRM mode in the same screen -- no remount.
 //
-// Cancel always returns to ProductDetail in the current shell. The
-// user can pick a different plan from there (three cards in total,
-// no infinite list per product).
+// After the plan is created the screen turns into the done screen (step 3): the
+// congratulation, the summary, the documents the first payment issued and "To my
+// portfolio".
+//
+// "Back to the terms" always returns to the project page in the current shell.
 //
 // The frame's header (K25) holds the product name and the back control (the same
-// step as Cancel); the product is the system's Hero (K47), its text on the
-// scrim; the plan choices are Row list rows (K23, each a real link that puts the
-// plan in the URL), the payment schedule the Schedule list (K32), the first
-// payment and the balance a Key-value list (K49).
+// step as "Back to the terms"). The buyer sees PARTS (lots times the parts in a
+// lot), the price of a part and the money of the instalment -- never the lot.
 //
 // Error handling mirrors PurchaseView: narrow to ApiResponseError,
 // discriminate by the server's error code, map to toast + side-effect.
@@ -45,33 +46,23 @@
 // The backend validates first-tranche affordability inside create_plan,
 // the UI check is a courtesy.
 //
-// F4.2.2 polish:
-//   Plan-config parsing, bonus extraction, and tranche-units math
-//   moved to utils/installmentPlans -- shared with ProductDetailView
-//   and (upcoming) F4.4 Portfolio. The backend-scheduler mirror math
-//   lives in a single place now; TD-F11 tracks replacing it with a
-//   backend-issued preview endpoint.
-//
-// F4.3 fix:
-//   Cancel used router.push(ProductDetail), which pushed a fresh
-//   history entry on top of the existing stack and turned the header
-//   back button on the returned ProductDetail into a back-to-
-//   Installment trap. Now the cancel path asks vue-router to step
-//   back one entry (restoring scroll/state for free) and only falls
-//   through to push() when there is no back entry -- i.e. the user
-//   deep-linked into this screen.
+// Plan-config parsing and tranche-units math live in utils/installmentPlans
+// (TD-F11 tracks replacing the scheduler mirror with a backend-issued preview).
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, Building, Calendar } from '@/components/ui/icons'
-import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { CAlert, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiResponseError } from '@/api/client'
+import { getCompany } from '@/api/companies'
 import { getProduct } from '@/api/products'
-import { createInstallmentPlan } from '@/api/installments'
+import { createInstallmentPlan, getPlanDetail } from '@/api/installments'
 import { acceptDocumentByType } from '@/api/documents'
+import PurchaseDone, { type DoneDocument } from '@/components/shared/PurchaseDone.vue'
+import PurchaseStepLine from '@/components/shared/PurchaseStepLine.vue'
+import PurchaseSummary from '@/components/shared/PurchaseSummary.vue'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useAuthStore } from '@/stores/auth'
@@ -79,23 +70,11 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import { formatNumber, formatPrice } from '@/utils/format'
-import {
-  getPlanBonus,
-  getTrancheUnits,
-  parsePlanConfig,
-  type PlanConfig,
-} from '@/utils/installmentPlans'
+import { formatNumber } from '@/utils/format'
+import { parsePlanConfig, type PlanConfig } from '@/utils/installmentPlans'
+import { formatUsd, formatUsdCents } from '@/utils/parts'
 import type { InstallmentResponse, PublicProductDetailResponse } from '@/api/types'
-import { useProductCover } from '@/composables/useThemedLogo'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
-
-// Backend currency field is not emitted on Public*/BalanceResponse
-// yet (TD-F03 scope includes both). Same escape hatch as the other
-// F4.2 views -- remove once the multi-currency contract ships.
-type ProductWithOptionalCurrency = PublicProductDetailResponse & {
-  currency?: string
-}
 
 const route = useRoute()
 const router = useRouter()
@@ -104,10 +83,16 @@ const authStore = useAuthStore()
 const { showToast } = useToast()
 const dashboardStore = useDashboardStore()
 
-const product = ref<ProductWithOptionalCurrency | null>(null)
+const product = ref<PublicProductDetailResponse | null>(null)
+const sharesPerOption = ref(1)
 const loading = ref(true)
 const errored = ref(false)
 const submitting = ref(false)
+
+// The step the screen shows: the confirmation, then the done screen.
+const step = ref<'confirm' | 'done'>('confirm')
+const doneDocuments = ref<DoneDocument[]>([])
+const nextPayment = ref<{ amount: string; date: string } | null>(null)
 
 // Currently-selected template. Null in SELECT mode.
 const selectedPlan = ref<InstallmentResponse | null>(null)
@@ -122,9 +107,8 @@ const queryPlanId = computed<string | null>(() => {
 })
 
 const noPlans = computed<boolean>(() => {
-  // Sprint 4.4: PublicProductDetailResponse.installments is now
-  // required server-side -- always an array, never absent. Drop the
-  // `?? []` compensation that B7 carried over from the previous schema.
+  // PublicProductDetailResponse.installments is required server-side --
+  // always an array, never absent.
   return product.value !== null && product.value.installments.length === 0
 })
 
@@ -137,10 +121,19 @@ const planConfig = computed<PlanConfig | null>(() => {
   return parsePlanConfig(selectedPlan.value.plan_config)
 })
 
+const totalCents = computed<number>(() => {
+  const p = product.value
+  return p ? p.package_size * p.price_per_unit_cents : 0
+})
+
 const firstTrancheCents = computed<number>(() => {
   const tranches = planConfig.value?.tranches ?? []
   return tranches[0]?.amount_cents ?? 0
 })
+
+const summaryTitle = computed<string>(() =>
+  product.value ? `${product.value.company_name} · ${product.value.name}` : '',
+)
 
 // Spendable balance from the shared dashboard store. Falls back to
 // zero before the first refresh resolves (zeroed placeholder) -- the
@@ -180,9 +173,6 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-// The cover is the product's own picture, else the company's logo for the theme.
-const coverSrc = useProductCover(() => product.value)
-
 // ---------------------------------------------------------------------------
 // Local helpers
 // ---------------------------------------------------------------------------
@@ -192,17 +182,27 @@ function resolvePlanById(id: string): InstallmentResponse | null {
   return list.find((p) => p.id === id) ?? null
 }
 
-/**
- * Tranche row units -- thin wrapper that feeds the shared util
- * the product total. Kept local so the template stays terse.
- */
-function unitsForTranche(index: number): number {
-  if (!product.value || !planConfig.value) return 0
-  return getTrancheUnits(planConfig.value, product.value.package_size, index)
-}
-
 function installmentRouteName(): string {
   return agentShell.value ? 'agent-installment' : 'investor-installment'
+}
+
+function projectPage() {
+  return {
+    name: agentShell.value ? 'agent-company-overview' : 'investor-company-overview',
+    params: { id: product.value?.company_id ?? '' },
+  }
+}
+
+function formatDueDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(locale.value, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return iso
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +218,9 @@ async function load(): Promise<void> {
     // failures surface through dashboardStore.error; a zeroed balance
     // is handled by the insufficientBalance gate below.
     const [p] = await Promise.all([getProduct(productId.value), dashboardStore.refresh()])
+    // The parts in a lot come with the project, not with the product.
+    const company = await getCompany(p.company_id)
+    sharesPerOption.value = company.shares_per_option
     product.value = p
 
     // Resolve the query-provided template against the just-loaded
@@ -239,7 +242,7 @@ async function load(): Promise<void> {
 }
 
 async function confirm(): Promise<void> {
-  if (!canConfirm.value || !selectedPlan.value) return
+  if (!canConfirm.value || !selectedPlan.value || !planConfig.value) return
   // A deep link records no acceptance for an unverified buyer.
   if (authStore.kycStatus !== 'approved') {
     showKycPrompt('installment')
@@ -257,23 +260,39 @@ async function confirm(): Promise<void> {
       showToast(t('inv.installment.error.agreementMissing'), 'error')
       return
     }
-    await createInstallmentPlan(productId.value, {
+    const plan = await createInstallmentPlan(productId.value, {
       product_installment_id: selectedPlan.value.id,
     })
-    showToast(t('inv.installment.success'), 'success')
-    // Awaited push so `submitting` stays true until navigation
-    // resolves, avoiding a brief UI flash of the Confirm button
-    // between API success and unmount. safeNavigate is no-throw
-    // by contract -- critical here so a benign NavigationFailure
-    // does NOT bubble into the outer catch and trip handlePlanError(),
-    // which would otherwise surface a generic-error toast on top of
-    // the success toast.
-    await safeNavigate(
-      router.push({
-        name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio',
-      }),
-      '[InstallmentView] post-submit to portfolio',
-    )
+    // The first payment's agreement and the date of the next payment come from the
+    // plan's own record; the done screen still stands if that read fails.
+    const docs: DoneDocument[] = []
+    nextPayment.value = null
+    try {
+      const detail = await getPlanDetail(plan.id)
+      const first = detail.tranches?.find((x) => x.number === 1) ?? detail.tranches?.[0]
+      if (first?.purchase_id) {
+        docs.push({
+          kind: 'agreement',
+          id: first.purchase_id,
+          legalBasis: 'installment_tranche',
+        })
+      }
+      const second = detail.tranches?.find((x) => x.number === 2)
+      const cfgSecond = planConfig.value.tranches[1]
+      if (second && cfgSecond) {
+        nextPayment.value = {
+          amount: formatUsd(cfgSecond.amount_cents, locale.value),
+          date: formatDueDate(second.due_date),
+        }
+      }
+    } catch {
+      // The documents are reachable from the portfolio.
+    }
+    docs.push({ kind: 'ownership' })
+    doneDocuments.value = docs
+    step.value = 'done'
+    void dashboardStore.refresh()
+    window.scrollTo?.({ top: 0 })
   } catch (err: unknown) {
     await handlePlanError(err)
   } finally {
@@ -301,7 +320,7 @@ async function handlePlanError(err: unknown): Promise<void> {
         showToast(t('inv.installment.error.poolCapacity'), 'error')
         return
       // Template drift -- rare, but possible if an admin soft-deletes the
-      // template between ProductDetail load and Confirm click.
+      // template between the project page's load and Pay.
       case 'installment_template_mismatch':
         showToast(t('inv.installment.error.templateMismatch'), 'error')
         return
@@ -331,31 +350,24 @@ function toTopUp(): void {
 }
 
 function cancel(): void {
-  // Prefer router.back() so the ProductDetail screen restores its
-  // scroll/state for free and we don't pollute history with a
-  // duplicate ProductDetail entry (which would turn the back button
-  // on that screen into a back-to-Installment trap). Only push when
-  // vue-router has no prior entry -- i.e. InstallmentView was opened
-  // via a deep-linked URL.
+  // Prefer router.back() so the project page restores its scroll/state for free and
+  // we don't pollute history with a duplicate entry. Only push when vue-router has
+  // no prior entry -- i.e. InstallmentView was opened via a deep-linked URL.
   if (window.history.state?.back) {
     router.back()
     return
   }
+  void safeNavigate(router.push(projectPage()), '[InstallmentView] back to the project page')
+}
+
+function toPortfolio(): void {
   void safeNavigate(
-    router.push({
-      name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
-      params: { id: productId.value },
-    }),
-    '[InstallmentView] cancel fallback to product detail',
+    router.push({ name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio' }),
+    '[InstallmentView] to the portfolio',
   )
 }
 
 function backToMarket(): void {
-  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
-  // catalogue moved to *-companies (CompanyListView). Function
-  // name kept as `backToMarket` -- internal label, see also
-  // `inv.product.backToMarket` i18n key which carries the updated
-  // user-facing label "Back to companies".
   void safeNavigate(
     router.push({
       name: agentShell.value ? 'agent-companies' : 'investor-companies',
@@ -378,20 +390,18 @@ watch(queryPlanId, (qid) => {
   }
 })
 
-// The frame's header: the product name, and the back control (the step Cancel takes).
+// The frame's header: the product name, and the back control (the step "Back to the
+// terms" takes). On the done screen there is nothing to go back to but the project.
 useScreenHeader({
   title: () => product.value?.name,
   back: () =>
-    window.history.state?.back
-      ? true
-      : {
-          name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
-          params: { id: productId.value },
-        },
+    step.value === 'done' ? projectPage() : window.history.state?.back ? true : projectPage(),
 })
 
 // H38: project data is in the reader's language -- re-read it on a switch.
-useReloadOnLocale(() => load())
+useReloadOnLocale(() => {
+  if (step.value === 'confirm') return load()
+})
 
 onMounted(load)
 </script>
@@ -423,27 +433,37 @@ onMounted(load)
     >
       <template #actions>
         <CButton variant="outline" size="sm" inline @click="cancel">
-          {{ t('inv.installment.backToProduct') }}
+          {{ t('buy.backToTerms') }}
         </CButton>
       </template>
     </CEmptyState>
 
-    <template v-else>
-      <!-- Product hero (K47): the company and the product name over the photo, or
-           the fallback tile with the icon when there is no photo. -->
-      <section class="ds-hero" data-size="sm" aria-labelledby="iv-hero-title">
-        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
-        <span v-else class="ds-hero__fallback"><Building /></span>
-        <div class="ds-hero__content">
-          <h2 id="iv-hero-title" class="ds-hero__title">
-            {{ product.name }}
-          </h2>
-          <p class="ds-hero__meta">
-            {{ product.company_name }}
-          </p>
-        </div>
-      </section>
+    <!-- Step 3: the done screen -->
+    <PurchaseDone
+      v-else-if="step === 'done' && selectedPlan && planConfig"
+      :project-name="product.company_name"
+      :company-id="product.company_id"
+      :documents="doneDocuments"
+      @portfolio="toPortfolio"
+      @storefront="backToMarket"
+    >
+      <PurchaseSummary
+        :title="summaryTitle"
+        :lots="product.package_size"
+        :lot-price-cents="product.price_per_unit_cents"
+        :shares-per-option="sharesPerOption"
+        :total-cents="totalCents"
+        :bonus-percent="0"
+        :bonus-lots="0"
+        :plan="planConfig"
+        :plan-name="selectedPlan.name"
+      />
+      <p v-if="nextPayment" class="ds-note">
+        {{ t('buy.nextPayment', { amount: nextPayment.amount, date: nextPayment.date }) }}
+      </p>
+    </PurchaseDone>
 
+    <template v-else>
       <!-- SELECT mode: fallback for deep-links without ?plan= -->
       <template v-if="mode === 'select'">
         <section class="ds-card" aria-labelledby="iv-select">
@@ -470,120 +490,88 @@ onMounted(load)
                   <span class="ds-row__title">{{ plan.name }}</span>
                 </RouterLink>
               </span>
-              <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
-                <span class="ds-badge ds-badge--success">
-                  {{ t('inv.product.installmentsBonus', { n: getPlanBonus(plan) }) }}
-                </span>
-              </span>
             </li>
           </ul>
         </section>
 
         <div class="iv__actions">
           <CButton variant="outline" @click="cancel">
-            {{ t('inv.installment.cancel') }}
+            {{ t('buy.backToTerms') }}
           </CButton>
         </div>
       </template>
 
-      <!-- CONFIRM mode: selected plan, schedule, balance, CTAs -->
+      <!-- CONFIRM mode (step 2): the Purchase block with the schedule, balance, CTAs -->
       <template v-else-if="selectedPlan && planConfig">
-        <!-- Chosen plan summary -->
-        <section class="ds-card" aria-labelledby="iv-plan">
-          <header class="ds-card__head">
-            <h2 id="iv-plan" class="ds-card__title">
-              {{ t('inv.installment.planTitle') }}
-            </h2>
-          </header>
-          <ul class="ds-rows">
-            <li class="ds-row">
-              <span class="ds-row__body">
-                <span class="ds-row__title">{{ selectedPlan.name }}</span>
-              </span>
-              <span v-if="planConfig.bonus_units > 0" class="ds-row__trail">
-                <span class="ds-badge ds-badge--success">
-                  {{ t('inv.product.installmentsBonus', { n: planConfig.bonus_units }) }}
-                </span>
-              </span>
-            </li>
-          </ul>
-        </section>
+        <article class="ds-card">
+          <div class="ds-card__body ds-purchase">
+            <PurchaseStepLine :step="2" />
+            <h2 class="ds-card__title">{{ t('buy.confirmTitle') }}</h2>
+            <PurchaseSummary
+              :title="summaryTitle"
+              :lots="product.package_size"
+              :lot-price-cents="product.price_per_unit_cents"
+              :shares-per-option="sharesPerOption"
+              :total-cents="totalCents"
+              :bonus-percent="0"
+              :bonus-lots="0"
+              :plan="planConfig"
+              :plan-name="selectedPlan.name"
+            />
 
-        <!-- Payment schedule (K32) -->
-        <section class="ds-card" aria-labelledby="iv-tranches">
-          <header class="ds-card__head">
-            <h2 id="iv-tranches" class="ds-card__title">
-              {{ t('inv.installment.tranches') }}
-            </h2>
-          </header>
-          <ol class="ds-schedule" aria-labelledby="iv-tranches">
-            <li v-for="(tr, i) in planConfig.tranches" :key="i" class="ds-schedule__item">
-              <div class="ds-schedule__head">
-                <span class="ds-schedule__num">
-                  {{ t('inv.installment.tranche', { n: i + 1 }) }}
+            <!-- Payment schedule: one row per payment (K23) -->
+            <ul class="ds-rows">
+              <li v-for="(tr, i) in planConfig.tranches" :key="i" class="ds-row">
+                <span class="ds-row__body">
+                  <span class="ds-row__title">{{ t('buy.month', { n: i + 1 }) }}</span>
+                  <span class="ds-row__meta">
+                    {{ t('buy.monthShare', { n: formatNumber(tr.units_percent, locale) }) }}
+                  </span>
                 </span>
-              </div>
-              <dl class="ds-schedule__stats">
-                <div class="ds-schedule__stat">
-                  <dt>{{ t('inv.installmentPlans.detail.schedule.amount') }}</dt>
-                  <dd>{{ formatPrice(tr.amount_cents, product.currency) }}</dd>
-                </div>
-                <div class="ds-schedule__stat">
-                  <dt>{{ t('inv.installmentPlans.detail.schedule.units') }}</dt>
-                  <dd>{{ formatNumber(unitsForTranche(i), locale) }} {{ t('inv.unit') }}</dd>
-                </div>
-              </dl>
-            </li>
-          </ol>
-          <p class="ds-card__body">
-            {{ t('inv.installment.scheduleNote') }}
-          </p>
-        </section>
+                <span class="ds-row__trail">
+                  <span class="ds-row__value">{{ formatUsd(tr.amount_cents, locale) }}</span>
+                </span>
+              </li>
+            </ul>
 
-        <!-- First payment + spendable balance -->
-        <section class="ds-card">
-          <dl class="ds-kv">
-            <div class="ds-kv__row">
-              <dt>{{ t('inv.installment.firstPayment') }}</dt>
-              <dd>{{ formatPrice(firstTrancheCents, product.currency) }}</dd>
-            </div>
-            <div class="ds-kv__row">
-              <dt>{{ t('inv.installment.yourBalance') }}</dt>
-              <dd :data-tone="insufficientBalance ? 'danger' : undefined">
-                {{ formatPrice(balanceCents, product.currency) }}
-              </dd>
-            </div>
-          </dl>
-          <div v-if="insufficientBalance" class="ds-alert ds-alert--danger" role="alert">
-            <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
-            <div class="ds-alert__content">
-              <p class="ds-alert__text">
-                {{
-                  t('inv.installment.shortfall', {
-                    amount: formatPrice(shortfallCents, product.currency),
-                  })
-                }}
-              </p>
-              <div class="ds-alert__actions">
+            <p class="ds-note">
+              {{
+                t('buy.balanceNote', {
+                  balance: formatUsdCents(balanceCents, locale),
+                  pay: formatUsdCents(firstTrancheCents, locale),
+                })
+              }}
+            </p>
+            <CAlert
+              v-if="insufficientBalance"
+              tone="warning"
+              :title="t('buy.shortTitle', { amount: formatUsdCents(shortfallCents, locale) })"
+            >
+              {{
+                t('buy.shortFirst', {
+                  balance: formatUsdCents(balanceCents, locale),
+                  need: formatUsdCents(firstTrancheCents, locale),
+                })
+              }}
+              <template #actions>
                 <CButton variant="outline" size="sm" inline @click="toTopUp">
-                  {{ t('inv.installment.topUp') }}
+                  {{ t('buy.topUp') }}
                 </CButton>
-              </div>
-            </div>
+              </template>
+            </CAlert>
           </div>
-        </section>
+        </article>
 
         <!-- The disclosure, short, and the one tick of the buyer agreement -->
         <PurchaseTerms v-model="accepted" />
 
         <!-- Actions -->
         <div class="iv__actions">
-          <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
-            <Calendar size="sm" />
-            {{ t('inv.installment.pay') }}
+          <CButton variant="primary" :disabled="!canConfirm" :loading="submitting" @click="confirm">
+            {{ t('buy.payAmount', { amount: formatUsdCents(firstTrancheCents, locale) }) }}
           </CButton>
           <CButton variant="outline" :disabled="submitting" @click="cancel">
-            {{ t('inv.installment.cancel') }}
+            {{ t('buy.backToTerms') }}
           </CButton>
         </div>
       </template>

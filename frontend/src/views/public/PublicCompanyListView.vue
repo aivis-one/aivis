@@ -48,8 +48,6 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -59,9 +57,6 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import CompanyCard from '@/components/shared/CompanyCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useInfiniteScroll } from '@/composables/usePagination'
-import type { PublicCompanyListResponse } from '@/api/types'
-
-type CompanyListItem = PublicCompanyListResponse['items'][number]
 
 const { t } = useI18n()
 
@@ -70,7 +65,6 @@ useScreenHeader({
   title: () => t('public.companyList.title'),
   lead: () => t('public.companyList.subtitle'),
 })
-const router = useRouter()
 
 const store = useCompanyListStore()
 const { hasMore, loadMoreErrored } = storeToRefs(store)
@@ -90,16 +84,6 @@ useInfiniteScroll(sentinelRef, hasMore, store.loadMore, loadMoreErrored)
 onMounted(() => {
   void store.fetchFirstPage()
 })
-
-function openCompany(company: CompanyListItem): void {
-  void safeNavigate(
-    router.push({
-      name: 'public-company-overview',
-      params: { id: company.id },
-    }),
-    '[PublicCompanyListView] to company',
-  )
-}
 
 async function retryFirstPage(): Promise<void> {
   await store.fetchFirstPage()
@@ -159,7 +143,7 @@ async function retryLoadMore(): Promise<void> {
           v-for="company in store.items"
           :key="company.id"
           :company="company"
-          @click="openCompany"
+          :to="{ name: 'public-company-overview', params: { id: company.id } }"
         />
       </div>
 

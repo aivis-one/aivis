@@ -101,10 +101,54 @@ describe('the money check names', () => {
 
 describe('the basis line of a purchase card', () => {
   it('names the document and the Parts only, in the decided English words', () => {
-    const b = (en as unknown as { inv: { companyPosition: { purchases: { basis: Record<string, string> } } } })
-      .inv.companyPosition.purchases.basis
-    expect(b.sale).toBe('Basis: Parts bought under the Buyer Agreement you accepted in the Cabinet.')
-    expect(b.installment_tranche).toBe('Basis: one paid month of your instalment plan, its own purchase agreement accepted in the Cabinet.')
-    expect(b.gift).toBe('Basis: Parts given by AIVIS.ONE LLC under its order on gifts, accepted by you in the Cabinet.')
+    const b = (
+      en as unknown as {
+        inv: { companyPosition: { purchases: { basis: Record<string, string> } } }
+      }
+    ).inv.companyPosition.purchases.basis
+    expect(b.sale).toBe(
+      'Basis: Parts bought under the Buyer Agreement you accepted in the Cabinet.',
+    )
+    expect(b.installment_tranche).toBe(
+      'Basis: one paid month of your instalment plan, its own purchase agreement accepted in the Cabinet.',
+    )
+    expect(b.gift).toBe(
+      'Basis: Parts given by AIVIS.ONE LLC under its order on gifts, accepted by you in the Cabinet.',
+    )
+  })
+})
+
+describe('the buyer sees a portfolio, never a pack or a package', () => {
+  // The cabinet's buyer screens are the inv.* and buy.* texts; the staff texts keep
+  // their own words for a product's package.
+  const buyer = ([key]: [string, string]) => key.startsWith('inv.') || key.startsWith('buy.')
+
+  it('never says pack or package in English', () => {
+    expect(
+      EN.filter(buyer)
+        .filter(([, v]) => /\bpack(s|age|ages)?\b/i.test(v))
+        .map(([k, v]) => `${k}: ${v}`),
+    ).toEqual([])
+  })
+
+  it('never says пакет in Russian', () => {
+    expect(
+      RU.filter(buyer)
+        .filter(([, v]) => /пакет/i.test(v))
+        .map(([k, v]) => `${k}: ${v}`),
+    ).toEqual([])
+  })
+})
+
+describe('the done screen of a purchase', () => {
+  it('congratulates the new co-owner in the decided words', () => {
+    const b = (en as unknown as { buy: Record<string, string> }).buy
+    const r = (ru as unknown as { buy: Record<string, string> }).buy
+    expect(`${b.congratsTitle} ${b.congratsText}`).toBe(
+      'Congratulations — you are now a co-owner of {project}. A visionary for visionaries.',
+    )
+    expect(`${r.congratsTitle} ${r.congratsText}`).toBe(
+      'Поздравляем — теперь вы совладелец {project}. Визионер для визионеров.',
+    )
   })
 })

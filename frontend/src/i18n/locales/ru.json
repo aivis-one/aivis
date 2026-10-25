@@ -1148,7 +1148,7 @@
   },
   "inv": {
     "unit": "юнит",
-    "pack": "пакет",
+    "pack": "портфель",
     "available": "доступно",
     "market": {
       "title": "Витрина",
@@ -1167,7 +1167,7 @@
         "filteredTitle": "У этого проекта нет продуктов",
         "filteredDesc": "Попробуйте другой фильтр или сбросьте его"
       },
-      "packsAvailable": "пакетов в наличии"
+      "packsAvailable": "портфелей в наличии"
     },
     "product": {
       "notFound": {
@@ -1175,7 +1175,7 @@
         "desc": "Этот продукт мог быть удалён или больше недоступен"
       },
       "backToMarket": "На Витрину",
-      "pricePerPack": "Цена за пакет",
+      "pricePerPack": "Цена за портфель",
       "availability": "Доступно",
       "description": "О продукте",
       "installments": "Планы рассрочки",
@@ -1183,20 +1183,20 @@
       "installmentsBonus": "+{n} бонусных юнитов",
       "buy": "Купить сейчас",
       "soldOut": "Распродано",
-      "packsAvailability": "Наличие пакетов"
+      "packsAvailability": "Наличие портфелей"
     },
     "purchase": {
       "title": "Покупка",
       "orderSummary": "Сводка заказа",
-      "packageSize": "Размер пакета",
+      "packageSize": "Размер портфеля",
       "bonusParts": "Бонусные части",
-      "pricePerPack": "Цена за пакет",
+      "pricePerPack": "Цена за портфель",
       "total": "Итого",
       "yourBalance": "Ваш баланс",
       "insufficientHint": "Недостаточно средств для покупки",
       "confirm": "Подтвердить покупку",
       "cancel": "Отмена",
-      "success": "Пакет куплен",
+      "success": "Портфель куплен",
       "loadError": {
         "title": "Не удалось загрузить данные покупки",
         "desc": "Вернитесь назад и попробуйте снова"
@@ -1207,7 +1207,7 @@
         "productInactive": "Этот продукт больше недоступен",
         "generic": "Покупка не выполнена. Попробуйте ещё раз",
         "agreementMissing": "Договор покупателя сейчас недоступен. Попробуйте позже.",
-        "soldOut": "Для этого пакета не осталось нужного числа частей"
+        "soldOut": "Для этого портфеля не осталось нужного числа частей"
       },
       "pay": "Оплатить",
       "shortfall": "Не хватает {amount}",
@@ -1630,9 +1630,6 @@
       "notFound": "Проект не найден",
       "sectionRoadmap": "Дорожная карта",
       "sectionDocuments": "Документы проекта",
-      "cta": {
-        "viewProducts": "Смотреть продукты"
-      },
       "stats": {
         "poolTotalOptions": "Размер пула",
         "optionsSold": "Продано",
@@ -2957,6 +2954,56 @@
       "go": "Пройти проверку",
       "integrator": "Чтобы стать интегратором, пройдите проверку личности: $10"
     }
+  },
+  "buy": {
+    "step": "Шаг {n} из 3 · {name}",
+    "stepAria": "Шаг {n} из 3",
+    "steps": {
+      "terms": "Условия",
+      "confirm": "Подтверждение",
+      "done": "Готово"
+    },
+    "viewProject": "Смотреть проект",
+    "kycTitle": "Сначала проверка личности",
+    "kycText": "После неё вам станут доступны покупки. Для проверки нужно 10 $ на балансе — мы объясним зачем.",
+    "kycGo": "Пройти проверку личности",
+    "partPrice": "Цена части",
+    "title": "Купить части {project}",
+    "portfolio": "Портфель",
+    "portfolioOption": "{price} · +{n} %",
+    "payment": "Оплата",
+    "payAtOnce": "Сразу",
+    "bonusBadge": "+{n} % бонус",
+    "parts": "{n} частей",
+    "partsOver": "{n} частей за {plan}",
+    "bonusParts": "+ {n} бонусных",
+    "partPriceAtOnce": "{price} за часть · оплата сразу {total}",
+    "partPriceTotal": "{price} за часть · всего {total}",
+    "noBonus": "без бонуса",
+    "instalmentMoney": "{count} × {each} и последний {last}",
+    "instalmentEqual": "{count} × {each}",
+    "instalmentLast": "Платежей: {count}, последний {last}",
+    "partsByMonth": "Каждый месяц {each} % частей, с последним платежом {last} %",
+    "buy": "Купить",
+    "soldOut": "Распродано",
+    "loadError": "Не удалось загрузить условия",
+    "retry": "Повторить",
+    "shortTitle": "Не хватает {amount}",
+    "shortPortfolio": "На балансе {balance}, портфель стоит {need}.",
+    "shortFirst": "На балансе {balance}, первый платёж — {need}.",
+    "topUp": "Пополнить баланс",
+    "confirmTitle": "Подтверждение",
+    "balanceNote": "Баланс: {balance} · к списанию сейчас: {pay}",
+    "month": "Месяц {n}",
+    "monthShare": "{n} % частей",
+    "payAmount": "Оплатить {amount}",
+    "backToTerms": "Назад к условиям",
+    "congratsTitle": "Поздравляем — теперь вы совладелец {project}.",
+    "congratsText": "Визионер для визионеров.",
+    "nextPayment": "Следующий платёж {amount} — {date}, он спишется с баланса сам.",
+    "documents": "Документы",
+    "toPortfolio": "В мой портфель",
+    "toStorefront": "На витрину"
   },
   "intro": {
     "what": {

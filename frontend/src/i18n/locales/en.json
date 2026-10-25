@@ -1148,7 +1148,7 @@
   },
   "inv": {
     "unit": "unit",
-    "pack": "pack",
+    "pack": "portfolio",
     "available": "available",
     "market": {
       "title": "Store",
@@ -1167,7 +1167,7 @@
         "filteredTitle": "No products for this project",
         "filteredDesc": "Try another filter or clear it"
       },
-      "packsAvailable": "packs available"
+      "packsAvailable": "portfolios available"
     },
     "product": {
       "notFound": {
@@ -1175,7 +1175,7 @@
         "desc": "This product may have been removed or is no longer available"
       },
       "backToMarket": "Back to the store",
-      "pricePerPack": "Price per pack",
+      "pricePerPack": "Price per portfolio",
       "availability": "Availability",
       "description": "About",
       "installments": "Installment plans",
@@ -1183,20 +1183,20 @@
       "installmentsBonus": "+{n} bonus units",
       "buy": "Buy now",
       "soldOut": "Sold out",
-      "packsAvailability": "Packs availability"
+      "packsAvailability": "Portfolios availability"
     },
     "purchase": {
       "title": "Purchase",
       "orderSummary": "Order summary",
-      "packageSize": "Package size",
+      "packageSize": "Portfolio size",
       "bonusParts": "Bonus parts",
-      "pricePerPack": "Price per pack",
+      "pricePerPack": "Price per portfolio",
       "total": "Total",
       "yourBalance": "Your balance",
       "insufficientHint": "Not enough balance to complete this purchase",
       "confirm": "Confirm purchase",
       "cancel": "Cancel",
-      "success": "Package purchased successfully",
+      "success": "Portfolio purchased successfully",
       "loadError": {
         "title": "Could not load purchase details",
         "desc": "Please go back and try again"
@@ -1207,7 +1207,7 @@
         "productInactive": "This product is no longer available",
         "generic": "Purchase failed. Please try again",
         "agreementMissing": "The buyer agreement is not available right now. Try again later.",
-        "soldOut": "Not enough parts are left for this package"
+        "soldOut": "Not enough parts are left for this portfolio"
       },
       "pay": "Pay",
       "shortfall": "{amount} is missing",
@@ -1630,9 +1630,6 @@
       "notFound": "Project not found",
       "sectionRoadmap": "Roadmap",
       "sectionDocuments": "Project documents",
-      "cta": {
-        "viewProducts": "View products"
-      },
       "stats": {
         "poolTotalOptions": "Pool size",
         "optionsSold": "Sold",
@@ -2957,6 +2954,56 @@
       "go": "Verify identity",
       "integrator": "To become an integrator, pass identity verification: $10"
     }
+  },
+  "buy": {
+    "step": "Step {n} of 3 · {name}",
+    "stepAria": "Step {n} of 3",
+    "steps": {
+      "terms": "Terms",
+      "confirm": "Confirmation",
+      "done": "Done"
+    },
+    "viewProject": "View the project",
+    "kycTitle": "Identity verification first",
+    "kycText": "After it, purchases open to you. The verification needs $10 on the balance — we explain why.",
+    "kycGo": "Verify your identity",
+    "partPrice": "Price of a part",
+    "title": "Buy parts of {project}",
+    "portfolio": "Portfolio",
+    "portfolioOption": "{price} · +{n}%",
+    "payment": "Payment",
+    "payAtOnce": "At once",
+    "bonusBadge": "+{n}% bonus",
+    "parts": "{n} parts",
+    "partsOver": "{n} parts over {plan}",
+    "bonusParts": "+ {n} bonus",
+    "partPriceAtOnce": "{price} per part · paid at once {total}",
+    "partPriceTotal": "{price} per part · total {total}",
+    "noBonus": "no bonus",
+    "instalmentMoney": "{count} × {each} and the last {last}",
+    "instalmentEqual": "{count} × {each}",
+    "instalmentLast": "{count} payments, the last {last}",
+    "partsByMonth": "Each month {each}% of the parts, with the last payment {last}%",
+    "buy": "Buy",
+    "soldOut": "Sold out",
+    "loadError": "The terms could not be loaded",
+    "retry": "Try again",
+    "shortTitle": "Short of {amount}",
+    "shortPortfolio": "Your balance is {balance}; the portfolio costs {need}.",
+    "shortFirst": "Your balance is {balance}; the first payment is {need}.",
+    "topUp": "Top up the balance",
+    "confirmTitle": "Confirmation",
+    "balanceNote": "Your balance: {balance} · to be charged now: {pay}",
+    "month": "Month {n}",
+    "monthShare": "{n}% of the parts",
+    "payAmount": "Pay {amount}",
+    "backToTerms": "Back to the terms",
+    "congratsTitle": "Congratulations — you are now a co-owner of {project}.",
+    "congratsText": "A visionary for visionaries.",
+    "nextPayment": "The next payment, {amount}, is due on {date} and is taken from your balance by itself.",
+    "documents": "Documents",
+    "toPortfolio": "To my portfolio",
+    "toStorefront": "To the storefront"
   },
   "intro": {
     "what": {

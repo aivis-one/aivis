@@ -8,11 +8,10 @@
 // in batch 9). Renders:
 //   0. The frame's header (K25) with the company name and the back control
 //   1. Hero (K47) -- cover + name, then the description
+//   1b. The Purchase block (K55) -- the buying path's step 1, under the cover
 //   2. Stat tiles (K46) -- 4 public metrics from PublicCompanyStatsResponse
 //   3. Roadmap timeline -- batch 5 component, hidden when items empty
 //   4. Documents section -- batch 6 AttachmentsSection, self-hides when empty
-//   5. The frame's action strip (K25) -- "View products" to ProductsByCompanyView
-//      (batch 8 + 9)
 //
 // DATA SOURCE.
 //   Local state, not a store. Single round-trip via getCompany(id),
@@ -29,13 +28,11 @@
 //   of the generic error banner. Other ApiResponseError statuses
 //   (5xx, network) flip the `errored` flag and render the retry path.
 //
-// ROUTING -- ROUTE NAMES NOT YET DEFINED.
-//   Three forward navigations from this view (RoadmapTimeline product
-//   click, RoadmapTimeline external click, sticky CTA "View products")
-//   target route names that land in batches 8 / 9:
-//     - investor-product-detail / agent-product-detail   (EXISTS, batch 1 routes)
-//     - investor-company-products / agent-company-products (BATCH 9)
-//   External clicks bypass the router entirely (window.open).
+// ROUTING.
+//   Forward navigations from this view: a RoadmapTimeline product click
+//   (investor-product-detail / agent-product-detail), a post click, and the
+//   Purchase block's Buy (investor-purchase / investor-installment and the agent
+//   twins). External clicks bypass the router entirely (window.open).
 //   A post click opens the post screen (investor-post).
 //
 // IN-PLACE :id SWAP.
@@ -43,13 +40,6 @@
 //   when navigating from /investor/companies/A to /investor/companies/B.
 //   The watch on route.params.id covers that case -- without it the
 //   user would see A's content frozen while B's id is in the URL.
-//
-// ACTION STRIP (K25).
-//   The "View products" button is the screen's one primary action, drawn by the
-//   frame's own piece (ShellAction, `.ds-shell__action`): the last element of the
-//   screen, kept above the tab bar on a phone (the bar height and the safe-area
-//   inset are the system's), in the flow from 880. The cabinet keeps no
-//   fixed-position strip, no z-index and no bar-height token of its own.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -58,15 +48,16 @@ import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
-import ShellAction from '@/components/layout/ShellAction.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import AttachmentsSection from '@/components/shared/AttachmentsSection.vue'
+import PurchaseBlock from '@/components/shared/PurchaseBlock.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber } from '@/utils/format'
+import { formatPartPrice } from '@/utils/parts'
 import type { PublicCompanyDetailResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
@@ -86,9 +77,6 @@ const companyId = computed<string>(() => route.params.id as string)
 // an unresolved name emits a runtime warning and silently no-ops.
 const productDetailRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-product-detail' : 'investor-product-detail',
-)
-const companyProductsRouteName = computed<string>(() =>
-  isAgentShell(route) ? 'agent-company-products' : 'investor-company-products',
 )
 const companiesListRouteName = computed<string>(() =>
   isAgentShell(route) ? 'agent-companies' : 'investor-companies',
@@ -125,11 +113,16 @@ useScreenHeader({
 
 const stats = computed(() => data.value?.stats)
 
+// The pool counts lots; the buyer is shown parts (lots times the parts in a lot).
 const poolTotalDisplay = computed<string>(() =>
-  stats.value ? formatNumber(stats.value.pool_total_options, locale.value) : '—',
+  stats.value && data.value
+    ? formatNumber(stats.value.pool_total_options * data.value.shares_per_option, locale.value)
+    : '—',
 )
 const soldDisplay = computed<string>(() =>
-  stats.value ? formatNumber(stats.value.options_sold, locale.value) : '—',
+  stats.value && data.value
+    ? formatNumber(stats.value.options_sold * data.value.shares_per_option, locale.value)
+    : '—',
 )
 const soldPercentDisplay = computed<string>(() =>
   stats.value ? `${stats.value.options_sold_percent}%` : '—',
@@ -214,16 +207,6 @@ function goToCompaniesList(): void {
   )
 }
 
-function goToProducts(): void {
-  void safeNavigate(
-    router.push({
-      name: companyProductsRouteName.value,
-      params: { id: companyId.value },
-    }),
-    '[CompanyOverviewView] to company products',
-  )
-}
-
 function onRoadmapProductClick(productId: string): void {
   void safeNavigate(
     router.push({
@@ -289,8 +272,19 @@ function onRoadmapPostClick(postId: string): void {
         {{ data.description }}
       </p>
 
+      <!-- The buying path, step 1: the Purchase block (K55) under the cover -->
+      <PurchaseBlock
+        :company-id="companyId"
+        :company-name="data.name"
+        :shares-per-option="data.shares_per_option"
+      />
+
       <!-- Stats (K46) -->
       <section class="ds-stats">
+        <CStatCard
+          :value="formatPartPrice(data.price_per_unit_cents, data.shares_per_option, locale)"
+          :label="t('buy.partPrice')"
+        />
         <CStatCard
           :value="poolTotalDisplay"
           :label="t('inv.companyOverview.stats.poolTotalOptions')"
@@ -323,13 +317,6 @@ function onRoadmapPostClick(postId: string): void {
 
       <!-- Documents: self-hides when zero rows after fetch. -->
       <AttachmentsSection :company-id="companyId" />
-
-      <!-- The screen's one primary action (K25 action strip) -->
-      <ShellAction>
-        <CButton variant="primary" inline @click="goToProducts">
-          {{ t('inv.companyOverview.cta.viewProducts') }}
-        </CButton>
-      </ShellAction>
     </template>
   </div>
 </template>

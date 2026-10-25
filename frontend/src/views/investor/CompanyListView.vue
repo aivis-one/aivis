@@ -46,7 +46,7 @@
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 
@@ -55,18 +55,13 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import CompanyCard from '@/components/shared/CompanyCard.vue'
 import { useCompanyListStore } from '@/stores/companyList'
 import { useInfiniteScroll } from '@/composables/usePagination'
-import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { useAgentLink } from '@/composables/useAgentLink'
 import { useAgentStore } from '@/stores/agent'
 import { AlertTriangle, Link2 } from '@/components/ui/icons'
-import type { PublicCompanyListResponse } from '@/api/types'
-
-type CompanyListItem = PublicCompanyListResponse['items'][number]
 
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
 
 useScreenHeader({
   title: () => t('inv.companyList.title'),
@@ -115,16 +110,6 @@ onMounted(() => {
   if (agentShell.value && agentStore.myLink === null) void agentStore.fetchLinksFirstPage()
 })
 
-function openCompany(company: CompanyListItem): void {
-  void safeNavigate(
-    router.push({
-      name: overviewRouteName.value,
-      params: { id: company.id },
-    }),
-    '[CompanyListView] to company overview',
-  )
-}
-
 async function retryFirstPage(): Promise<void> {
   await store.fetchFirstPage()
 }
@@ -170,7 +155,10 @@ async function retryLoadMore(): Promise<void> {
     <template v-else>
       <div class="cl__grid">
         <div v-for="company in store.items" :key="company.id" class="cl__item">
-          <CompanyCard :company="company" @click="openCompany" />
+          <CompanyCard
+            :company="company"
+            :to="{ name: overviewRouteName, params: { id: company.id } }"
+          />
           <button
             v-if="agentShell && agentLink"
             type="button"

@@ -1,22 +1,25 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- PurchaseView (Phase F4.2 + F4.2.1 polish + F4.3 fix
-//                                     + F4.4 B7 UX)
+// AIVIS.ONE Frontend -- PurchaseView (the buying path, steps 2 and 3, a payment
+//                                     at once)
 // =============================================================================
 //
-// Instant-purchase confirmation screen. Shared across
-// /investor/purchase/:id and /agent/purchase/:id via role-aware
-// route names (same approach as ProductDetailView / InstallmentView).
+// The confirmation of a purchase at once and the screen that follows it. Shared
+// across /investor/purchase/:id and /agent/purchase/:id via role-aware route
+// names (same approach as InstallmentView, its twin for a plan).
 //
 // Flow:
-//   1. On mount, fetch product detail + dashboard summary in parallel.
-//   2. User reviews the order (units * price_per_unit = total) and
-//      current spendable balance.
-//   3. Confirm -> POST /api/v1/products/{id}/purchase. Backend owns
-//      the authoritative balance / KYC / status checks. The UI
-//      affordance (disabled button when balance < total) is a UX
-//      courtesy, not a security boundary.
-//   4. Success -> toast + push to the portfolio in the current shell.
+//   1. On mount, fetch the product, the project (for the parts in a lot) and the
+//      dashboard summary in parallel, then the bonus preview.
+//   2. STEP 2 -- the buyer reviews the Purchase block (K55): the portfolio, its
+//      parts, the price of a part and the total, the balance, the disclosure and
+//      ONE tick that accepts the buyer agreement.
+//   3. "Pay" records the acceptance, then POST /api/v1/products/{id}/purchase.
+//      Backend owns the authoritative balance / KYC / status checks; the
+//      disabled button is a UX courtesy, not a security boundary.
+//   4. STEP 3 -- the same screen turns into the done screen: the congratulation
+//      (a success Alert), the summary, the documents the purchase issued and
+//      "To my portfolio".
 //   5. Error -> narrow to ApiResponseError and branch on the server's error
 //      code (kyc_required, insufficient_balance, sold_out,
 //      product_not_available, company_not_active). A 402 from the KYC gate
@@ -25,60 +28,28 @@
 //      same prompt from here.
 //
 // The frame's header (K25) holds the product name and the back control (the same
-// step as Cancel); the product is the Hero (K47), its text on the scrim; the order
-// summary and the balance are Key-value lists (K49) in Cards (K07).
+// step as "Back to the terms"). The buyer sees PARTS (lots times the parts in a
+// lot), the price of a part and the total in dollars and cents -- never the lot.
 //
-// BEFORE PAYING. The screen shows the pre-purchase disclosure short, with its
-// full text by link, and ONE tick that accepts the buyer agreement. The
-// button ("Pay") stays shut until the tick is set; pressing it records the
-// acceptance (a signing of the buyer agreement) and then buys. A purchase
-// opens in the position of its own project. Short of money, the screen says
-// how much is missing and offers the top-up for exactly that amount.
+// Balance source: active_balance.confirmed from /dashboard/summary. The backend
+// reads the same figure via get_active_balance (frozen excluded).
 //
-// Balance source:
-//   active_balance.confirmed from /dashboard/summary. The backend
-//   reads the same figure via get_active_balance (frozen excluded).
-//
-// F4.2.1 polish:
-//   Error identification is by `instanceof ApiResponseError` + the
-//   server's error code (the regexes on message text are gone).
-//
-// F4.3 fix:
-//   Cancel used router.push(ProductDetail), which pushed a fresh
-//   history entry on top of the existing [Market, ProductDetail,
-//   Purchase] stack and turned the header back button on the
-//   returned ProductDetail into a back-to-Purchase trap. Now the
-//   cancel path asks vue-router to step back one entry (restoring
-//   scroll/state for free) and only falls through to push() when
-//   there is no back entry -- i.e. the user deep-linked into this
-//   screen.
-//
-// F4.4 B7 UX:
-//   Order summary row 2 anchors on the pack: label "Price per pack",
-//   value = formatPrice(price_per_pack_cents). Row 1 ("Package size")
-//   and row 3 ("Total") are unchanged -- Total stays as a separate
-//   line because it equals the pack price for a 1-pack purchase, and
-//   keeping it visually distinct preserves the "final amount" anchor
-//   pattern users expect on a checkout screen.
-//
-//   `totalCents` formula is unchanged (package_size * price_per_unit_cents).
-//   It is mathematically equal to product.price_per_pack_cents but
-//   computed locally so the screen never desyncs from the package
-//   numbers it just rendered above.
-//
-//   Sprint 4.4 also dropped the `= 0` default on `available_packages`
-//   on the backend schema. The `?? 0` fallback here is gone -- a
-//   missing populate would be a server bug, not a soft default.
+// Back used router.push(ProductDetail) once, which turned the header back button
+// into a trap; now it steps back one entry and only pushes when there is no entry
+// (the buyer deep-linked into this screen) -- to the project page.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, Building, ShoppingCart } from '@/components/ui/icons'
-import { CButton, CLoader, CEmptyState } from '@/components/ui'
+import { CAlert, CButton, CLoader, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
+import PurchaseDone, { type DoneDocument } from '@/components/shared/PurchaseDone.vue'
+import PurchaseStepLine from '@/components/shared/PurchaseStepLine.vue'
+import PurchaseSummary from '@/components/shared/PurchaseSummary.vue'
 import PurchaseTerms from '@/components/shared/PurchaseTerms.vue'
 import { ApiResponseError } from '@/api/client'
+import { getCompany } from '@/api/companies'
 import { acceptDocumentByType } from '@/api/documents'
 import { getProduct, getPurchasePreview, type PurchasePreview } from '@/api/products'
 import { createPurchase } from '@/api/purchases'
@@ -88,19 +59,9 @@ import { showKycPrompt } from '@/composables/useKycPrompt'
 import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
-import { formatNumber, formatPrice } from '@/utils/format'
+import { formatUsdCents } from '@/utils/parts'
 import type { PublicProductDetailResponse } from '@/api/types'
-import { useProductCover } from '@/composables/useThemedLogo'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
-
-// Backend currency is not emitted on Public* yet (TD-F03). Same
-// escape hatch as ProductDetailView -- remove once the field lands.
-// Note: BalanceResponse also lacks a currency field (TD-F03 scope
-// extended) -- spendable balance is assumed USD cents until the
-// multi-currency contract ships.
-type ProductWithOptionalCurrency = PublicProductDetailResponse & {
-  currency?: string
-}
 
 const route = useRoute()
 const router = useRouter()
@@ -109,11 +70,17 @@ const authStore = useAuthStore()
 const { showToast } = useToast()
 const dashboardStore = useDashboardStore()
 
-const product = ref<ProductWithOptionalCurrency | null>(null)
+const product = ref<PublicProductDetailResponse | null>(null)
+const sharesPerOption = ref(1)
 const loading = ref(true)
 const errored = ref(false)
 const submitting = ref(false)
 const bonusPreview = ref<PurchasePreview | null>(null)
+
+// The step the screen shows: the confirmation, then the done screen.
+const step = ref<'confirm' | 'done'>('confirm')
+const doneDocuments = ref<DoneDocument[]>([])
+const doneBonusLots = ref(0)
 
 const productId = computed(() => route.params.id as string)
 const agentShell = computed(() => isAgentShell(route))
@@ -133,8 +100,6 @@ const soldOut = computed(() => available.value <= 0)
 
 // Spendable balance -- reads the store's computed getter, which
 // falls back to a zeroed placeholder before the first refresh.
-// Aligning with the F4.4 B2 store migration: no more local
-// balanceCents ref, no more inline getDashboardSummary probe.
 const balanceCents = computed<number>(() => dashboardStore.activeBalance.confirmed)
 
 const insufficientBalance = computed<boolean>(() => {
@@ -164,8 +129,9 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-// The cover is the product's own picture, else the company's logo for the theme.
-const coverSrc = useProductCover(() => product.value)
+const summaryTitle = computed<string>(() =>
+  product.value ? `${product.value.company_name} · ${product.value.name}` : '',
+)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -177,6 +143,9 @@ async function load(): Promise<void> {
     // the UI with a zeroed balance, which the insufficient-balance
     // gate already handles gracefully.
     const [p] = await Promise.all([getProduct(productId.value), dashboardStore.refresh()])
+    // The parts in a lot come with the project, not with the product.
+    const company = await getCompany(p.company_id)
+    sharesPerOption.value = company.shares_per_option
     product.value = p
     // The bonus preview is informational: a failure hides the row only.
     try {
@@ -214,30 +183,17 @@ async function confirm(): Promise<void> {
     }
 
     const rows = await createPurchase(productId.value, {})
-    // The bonus parts the purchase brought, one-time, are named at once.
-    const bonusUnits = rows
+    // The bonus parts the purchase brought, one-time, are shown on the done screen.
+    doneBonusLots.value = rows
       .filter((r) => r.legal_basis === 'gift')
       .reduce((sum, r) => sum + r.units, 0)
-    showToast(
-      bonusUnits > 0
-        ? t('inv.purchase.successBonus', { units: formatNumber(bonusUnits, locale.value) })
-        : t('inv.purchase.success'),
-      'success',
-    )
-    // Awaited push so `submitting` stays true until navigation
-    // resolves, avoiding a brief UI flash of the Confirm button
-    // between API success and unmount. safeNavigate is no-throw
-    // by contract -- critical here so a benign NavigationFailure
-    // does NOT bubble into the outer catch and trip handlePurchaseError(),
-    // which would otherwise surface a generic-error toast on top of
-    // the success toast. The purchase opens in the position of ITS project.
-    await safeNavigate(
-      router.push({
-        name: agentShell.value ? 'agent-company-position' : 'investor-company-position',
-        params: { id: product.value?.company_id ?? '' },
-      }),
-      '[PurchaseView] post-submit to the project position',
-    )
+    doneDocuments.value = [
+      ...rows.map((r) => ({ kind: 'agreement' as const, id: r.id, legalBasis: r.legal_basis })),
+      { kind: 'ownership' as const },
+    ]
+    step.value = 'done'
+    void dashboardStore.refresh()
+    window.scrollTo?.({ top: 0 })
   } catch (err: unknown) {
     await handlePurchaseError(err)
   } finally {
@@ -293,31 +249,32 @@ function toTopUp(): void {
   )
 }
 
+function projectPage() {
+  return {
+    name: agentShell.value ? 'agent-company-overview' : 'investor-company-overview',
+    params: { id: product.value?.company_id ?? '' },
+  }
+}
+
 function cancel(): void {
-  // Prefer router.back() so the ProductDetail screen restores its
-  // scroll/state for free and we don't pollute history with a
-  // duplicate ProductDetail entry (which would turn the back button
-  // on that screen into a back-to-Purchase trap). Only push when
-  // vue-router has no prior entry -- i.e. PurchaseView was opened
-  // via a deep-linked URL.
+  // Prefer router.back() so the project page restores its scroll/state for free and
+  // we don't pollute history with a duplicate entry. Only push when vue-router has
+  // no prior entry -- i.e. PurchaseView was opened via a deep-linked URL.
   if (router.options.history.state.back) {
     router.back()
     return
   }
+  void safeNavigate(router.push(projectPage()), '[PurchaseView] back to the project page')
+}
+
+function toPortfolio(): void {
   void safeNavigate(
-    router.push({
-      name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
-      params: { id: productId.value },
-    }),
-    '[PurchaseView] cancel fallback to product detail',
+    router.push({ name: agentShell.value ? 'agent-portfolio' : 'investor-portfolio' }),
+    '[PurchaseView] to the portfolio',
   )
 }
 
 function backToMarket(): void {
-  // iter 2.6.x hotfix: market routes removed in iter 2.5 batch 9,
-  // catalogue moved to *-companies (CompanyListView). Function
-  // name kept -- see also `inv.product.backToMarket` i18n key which
-  // carries the updated "Back to companies" user-facing label.
   void safeNavigate(
     router.push({
       name: agentShell.value ? 'agent-companies' : 'investor-companies',
@@ -326,20 +283,22 @@ function backToMarket(): void {
   )
 }
 
-// The frame's header: the product name, and the back control (the step Cancel takes).
+// The frame's header: the product name, and the back control (the step "Back to the
+// terms" takes). On the done screen there is nothing to go back to but the project.
 useScreenHeader({
   title: () => product.value?.name,
   back: () =>
-    router.options.history.state.back
-      ? true
-      : {
-          name: agentShell.value ? 'agent-product-detail' : 'investor-product-detail',
-          params: { id: productId.value },
-        },
+    step.value === 'done'
+      ? projectPage()
+      : router.options.history.state.back
+        ? true
+        : projectPage(),
 })
 
 // H38: project data is in the reader's language -- re-read it on a switch.
-useReloadOnLocale(() => load())
+useReloadOnLocale(() => {
+  if (step.value === 'confirm') return load()
+})
 
 onMounted(load)
 </script>
@@ -361,93 +320,85 @@ onMounted(load)
       </template>
     </CEmptyState>
 
+    <!-- Step 3: the done screen -->
+    <PurchaseDone
+      v-else-if="step === 'done'"
+      :project-name="product.company_name"
+      :company-id="product.company_id"
+      :documents="doneDocuments"
+      @portfolio="toPortfolio"
+      @storefront="backToMarket"
+    >
+      <PurchaseSummary
+        :title="summaryTitle"
+        :lots="product.package_size"
+        :lot-price-cents="product.price_per_unit_cents"
+        :shares-per-option="sharesPerOption"
+        :total-cents="totalCents"
+        :bonus-percent="bonusPreview?.bonus_percent ?? 0"
+        :bonus-lots="doneBonusLots"
+        :plan="null"
+      />
+    </PurchaseDone>
+
+    <!-- Step 2: the confirmation -->
     <template v-else>
-      <!-- Product hero (K47): the company and the product name over the photo, or
-           the fallback tile with the icon when there is no photo. -->
-      <section class="ds-hero" data-size="sm" aria-labelledby="pv-hero-title">
-        <img v-if="coverSrc" class="ds-hero__image" :src="coverSrc" alt="" />
-        <span v-else class="ds-hero__fallback"><Building /></span>
-        <div class="ds-hero__content">
-          <h2 id="pv-hero-title" class="ds-hero__title">
-            {{ product.name }}
-          </h2>
-          <p class="ds-hero__meta">
-            {{ product.company_name }}
+      <article class="ds-card">
+        <div class="ds-card__body ds-purchase">
+          <PurchaseStepLine :step="2" />
+          <h2 class="ds-card__title">{{ t('buy.confirmTitle') }}</h2>
+          <PurchaseSummary
+            :title="summaryTitle"
+            :lots="product.package_size"
+            :lot-price-cents="product.price_per_unit_cents"
+            :shares-per-option="sharesPerOption"
+            :total-cents="totalCents"
+            :bonus-percent="bonusPreview?.bonus_percent ?? 0"
+            :bonus-lots="bonusPreview?.bonus_units ?? 0"
+            :plan="null"
+          />
+          <p class="ds-note">
+            {{
+              t('buy.balanceNote', {
+                balance: formatUsdCents(balanceCents, locale),
+                pay: formatUsdCents(totalCents, locale),
+              })
+            }}
           </p>
-        </div>
-      </section>
-
-      <!-- Order summary (K49) -->
-      <section class="ds-card" aria-labelledby="pv-summary">
-        <header class="ds-card__head">
-          <h2 id="pv-summary" class="ds-card__title">
-            {{ t('inv.purchase.orderSummary') }}
-          </h2>
-        </header>
-        <dl class="ds-kv">
-          <div class="ds-kv__row">
-            <dt>{{ t('inv.purchase.packageSize') }}</dt>
-            <dd>{{ formatNumber(product.package_size, locale) }} {{ t('inv.unit') }}</dd>
-          </div>
-          <div class="ds-kv__row">
-            <dt>{{ t('inv.purchase.pricePerPack') }}</dt>
-            <dd>{{ formatPrice(product.price_per_pack_cents, product.currency) }}</dd>
-          </div>
-          <div v-if="bonusPreview && bonusPreview.bonus_units > 0" class="ds-kv__row">
-            <dt>{{ t('inv.purchase.bonusParts') }}</dt>
-            <dd>
-              +{{ formatNumber(bonusPreview.bonus_units, locale) }} ({{
-                formatNumber(bonusPreview.bonus_percent, locale)
-              }}%)
-            </dd>
-          </div>
-          <div class="ds-kv__row ds-kv__row--total">
-            <dt>{{ t('inv.purchase.total') }}</dt>
-            <dd>{{ formatPrice(totalCents, product.currency) }}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <!-- Balance -->
-      <section class="ds-card">
-        <dl class="ds-kv">
-          <div class="ds-kv__row">
-            <dt>{{ t('inv.purchase.yourBalance') }}</dt>
-            <dd :data-tone="insufficientBalance ? 'danger' : undefined">
-              {{ formatPrice(balanceCents, product.currency) }}
-            </dd>
-          </div>
-        </dl>
-        <div v-if="insufficientBalance" class="ds-alert ds-alert--danger" role="alert">
-          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
-          <div class="ds-alert__content">
-            <p class="ds-alert__text">
-              {{
-                t('inv.purchase.shortfall', {
-                  amount: formatPrice(shortfallCents, product.currency),
-                })
-              }}
-            </p>
-            <div class="ds-alert__actions">
+          <CAlert
+            v-if="insufficientBalance"
+            tone="warning"
+            :title="t('buy.shortTitle', { amount: formatUsdCents(shortfallCents, locale) })"
+          >
+            {{
+              t('buy.shortPortfolio', {
+                balance: formatUsdCents(balanceCents, locale),
+                need: formatUsdCents(totalCents, locale),
+              })
+            }}
+            <template #actions>
               <CButton variant="outline" size="sm" inline @click="toTopUp">
-                {{ t('inv.purchase.topUp') }}
+                {{ t('buy.topUp') }}
               </CButton>
-            </div>
-          </div>
+            </template>
+          </CAlert>
         </div>
-      </section>
+      </article>
 
       <!-- The disclosure, short, and the one tick of the buyer agreement -->
       <PurchaseTerms v-model="accepted" />
 
       <!-- Actions -->
       <div class="pv__actions">
-        <CButton variant="primary" :disabled="!canConfirm" @click="confirm">
-          <ShoppingCart size="sm" />
-          {{ soldOut ? t('inv.product.soldOut') : t('inv.purchase.pay') }}
+        <CButton variant="primary" :disabled="!canConfirm" :loading="submitting" @click="confirm">
+          {{
+            soldOut
+              ? t('inv.product.soldOut')
+              : t('buy.payAmount', { amount: formatUsdCents(totalCents, locale) })
+          }}
         </CButton>
         <CButton variant="outline" :disabled="submitting" @click="cancel">
-          {{ t('inv.purchase.cancel') }}
+          {{ t('buy.backToTerms') }}
         </CButton>
       </div>
     </template>

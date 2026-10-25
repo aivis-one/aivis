@@ -6,7 +6,7 @@
 // Grid card for the Investor Companies tab (CompanyListView). Also
 // reused in iter 2.6 on the public landing page -- both surfaces show
 // the same denormalised list item shape, so the card is shared via
-// components/shared and the parent decides what tapping does.
+// components/shared and the parent decides where the link leads.
 //
 // COVER IMAGE.
 //   The cover is an <img> that covers the media part of the card (K07); a
@@ -21,22 +21,20 @@
 //   open / Closed"), promote `status` to a slot or a prop-driven
 //   mapping.
 //
-// CLICK EMISSION.
-//   The card emits @click with the full list-item object. The parent
-//   view (CompanyListView, or a future PublicLandingView in 2.6)
-//   resolves route name + params based on shell (`isAgentShell`) and
-//   navigates. Mirrors the ProductCard contract -- card is
-//   navigation-agnostic.
+// CALL TO ACTION.
+//   One card per project, and its one link is the call to action "View the
+//   project" (K07's call-to-action form): a link to the project page, given as
+//   `to` by the parent, which resolves the route for its shell. The card holds
+//   no other link, and the hit area stretches over the whole card.
 //
 // DESCRIPTION CLAMP.
-//   3-line clamp via -webkit-line-clamp. Empty description renders a
-//   non-breaking placeholder height (via min-height on the slot
-//   wrapper) so cards in the grid stay equal-height even when one has
-//   a long description and another has none. Without this, an empty
-//   description card would shrink and break the grid baseline.
+//   The description is cut at the second line with the system's clamp
+//   (`.ds-clamp`); the call to action sits at the foot of the content, so the
+//   buttons of a grid stand level whatever the length of the description.
 // =============================================================================
 
 import { computed } from 'vue'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 
@@ -50,9 +48,9 @@ type CompanyListItem = PublicCompanyListResponse['items'][number]
 
 const props = defineProps<{
   company: CompanyListItem
+  /** The project page the call to action leads to. */
+  to: RouteLocationRaw
 }>()
-
-defineEmits<{ click: [company: CompanyListItem] }>()
 
 const { t } = useI18n()
 
@@ -71,33 +69,20 @@ const coverSrc = computed(() => props.company.cover_url ?? null)
 
     <div class="ds-card__content">
       <div class="ds-card__head">
-        <h3 class="ds-card__title">
-          <button type="button" class="ds-card__link" @click="$emit('click', company)">
-            {{ company.name }}
-          </button>
-        </h3>
+        <h3 class="ds-card__title">{{ company.name }}</h3>
         <CBadge variant="success" :text="t('common.statusActive')" />
       </div>
 
-      <p class="ds-card__body company-card__description">
+      <p class="ds-card__body ds-clamp">
         {{ company.description ?? '' }}
       </p>
+
+      <div class="ds-card__action">
+        <RouterLink class="ds-button ds-button--primary ds-button--block ds-card__link" :to="to">
+          {{ t('buy.viewProject') }}
+          <span class="ds-sr-only">{{ company.name }}</span>
+        </RouterLink>
+      </div>
     </div>
   </article>
 </template>
-
-<style scoped>
-/* The card, its cover, the title link and the status badge are the system's media
-   card (K07) and Badge (K08). What is left is the description's clamp: it reserves
-   three lines even when empty so the cards in a grid stay equal-height (a literal
-   inside a calc is invisible to a scan, so it is derived from the tokens the text
-   is set in). */
-.company-card__description {
-  min-block-size: calc(var(--fs-sm) * var(--lh-normal) * 3);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  max-inline-size: var(--maxw-prose);
-}
-</style>

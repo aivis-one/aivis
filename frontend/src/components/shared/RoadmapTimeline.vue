@@ -114,13 +114,16 @@ function stateOf(item: RoadmapItemResponse): 'done' | 'current' | 'upcoming' {
   return 'upcoming'
 }
 
+// The buyer reads a month, not a day: a roadmap date is a target, not a promise.
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(locale.value, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
+    return new Date(iso)
+      .toLocaleDateString(locale.value, {
+        year: 'numeric',
+        month: 'long',
+        timeZone: 'UTC',
+      })
+      .replace(/\s*г\.$/, '')
   } catch {
     return iso
   }

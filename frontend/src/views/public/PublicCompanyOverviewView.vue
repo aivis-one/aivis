@@ -19,17 +19,16 @@
 //      visitor scrolls through the overview, reads the pitch, taps
 //      a product card to commit. CompanyOverview's job is to inform,
 //      not to sell.
-//   3. Products section is wired via <PublicProductsSection> (Batch 5)
-//      -- teaser only (first page), with a "Register to see all" CTA
-//      that branches on auth state. Self-hiding contract, no v-if
-//      needed.
+//   3. The buying path starts here: the Purchase block (K55) under the cover
+//      (<PurchaseBlock>) holds the project's portfolios, the payment switch and
+//      "Buy"; a visitor who presses it is sent to register.
 //   4. Documents section is wired via <PublicAttachmentsSection>
 //      (Batch 4) -- self-hiding contract, no v-if needed.
 //   5. The back control returns to the list of companies, one step back
 //      when there is a page to return to, else straight to the list.
 //
 // LAYOUT ORDER (R1 §1.6.1).
-//   Hero -> Stats -> Roadmap -> Products -> Documents.
+//   Hero -> Purchase block -> Stats -> Roadmap -> Documents.
 //   Each non-hero/stats section self-hides when empty, so a company
 //   with no roadmap / no products / no documents collapses gracefully
 //   to just hero + stats.
@@ -72,11 +71,12 @@ import { Building } from '@/components/ui/icons'
 import { CButton, CEmptyState, CLoader, CStatCard } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import PublicAttachmentsSection from '@/components/shared/PublicAttachmentsSection.vue'
-import PublicProductsSection from '@/components/shared/PublicProductsSection.vue'
+import PurchaseBlock from '@/components/shared/PurchaseBlock.vue'
 import RoadmapTimeline from '@/components/shared/RoadmapTimeline.vue'
 import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
 import { formatNumber } from '@/utils/format'
+import { formatPartPrice } from '@/utils/parts'
 import type { PublicCompanyDetailResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
@@ -113,11 +113,16 @@ useScreenHeader({
 
 const stats = computed(() => data.value?.stats)
 
+// The pool counts lots; the buyer is shown parts (lots times the parts in a lot).
 const poolTotalDisplay = computed<string>(() =>
-  stats.value ? formatNumber(stats.value.pool_total_options, locale.value) : '—',
+  stats.value && data.value
+    ? formatNumber(stats.value.pool_total_options * data.value.shares_per_option, locale.value)
+    : '—',
 )
 const soldDisplay = computed<string>(() =>
-  stats.value ? formatNumber(stats.value.options_sold, locale.value) : '—',
+  stats.value && data.value
+    ? formatNumber(stats.value.options_sold * data.value.shares_per_option, locale.value)
+    : '—',
 )
 const soldPercentDisplay = computed<string>(() =>
   stats.value ? `${stats.value.options_sold_percent}%` : '—',
@@ -254,8 +259,20 @@ function onRoadmapPostClick(postId: string): void {
         </p>
       </section>
 
+      <!-- The buying path, step 1: the Purchase block (K55) under the cover. A
+           visitor who presses Buy is sent to register. -->
+      <PurchaseBlock
+        :company-id="companyId"
+        :company-name="data.name"
+        :shares-per-option="data.shares_per_option"
+      />
+
       <!-- Stats -->
       <section class="ds-stats">
+        <CStatCard
+          :value="formatPartPrice(data.price_per_unit_cents, data.shares_per_option, locale)"
+          :label="t('buy.partPrice')"
+        />
         <CStatCard
           :value="poolTotalDisplay"
           :label="t('public.companyOverview.stats.poolTotalOptions')"
@@ -285,13 +302,6 @@ function onRoadmapPostClick(postId: string): void {
           @post-click="onRoadmapPostClick"
         />
       </section>
-
-      <!--
-        Public products teaser (iter 2.6 Batch 5, R1 §1.6.1).
-        Component self-hides when the company has no products after
-        a successful fetch -- no v-if guard here.
-      -->
-      <PublicProductsSection :company-id="companyId" />
 
       <!--
         Public attachments section (iter 2.6 Batch 4, R2 §7.2).
