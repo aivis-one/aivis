@@ -1169,7 +1169,22 @@ def _settings(**over: Any) -> Settings:
     return Settings(_env_file=None, app_env="development", **over)  # type: ignore[call-arg]
 
 
-def test_support_language_defaults_in_development_and_is_normalized() -> None:
+@pytest.fixture
+def no_support_language_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A test about SUPPORT_LANGUAGE NOT BEING SET must not read the box's.
+
+    The installer writes SUPPORT_LANGUAGE into backend/.env, and the suite
+    runs inside the app container whose environment carries it; Settings
+    reads the environment for every field the test does not pass. Without
+    this, "not set" is whatever the box was installed with -- which is how
+    both tests below first reached a box: green here, red there.
+    """
+    monkeypatch.delenv("SUPPORT_LANGUAGE", raising=False)
+
+
+def test_support_language_defaults_in_development_and_is_normalized(
+    no_support_language_env: None,
+) -> None:
     assert _settings().support_language == "en"
     assert _settings(support_language=" RU ").support_language == "ru"
 
@@ -1180,6 +1195,8 @@ def test_support_language_outside_the_interface_refuses_the_start(value: str) ->
         _settings(support_language=value)
 
 
-def test_support_language_is_required_outside_development() -> None:
+def test_support_language_is_required_outside_development(
+    no_support_language_env: None,
+) -> None:
     with pytest.raises(ValueError, match="SUPPORT_LANGUAGE"):
         Settings(_env_file=None, app_env="production")  # type: ignore[call-arg]
