@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Staff avatar mode — start session form + restrictions info.
+// Staff avatar mode — start session form + one sentence on what the mode is.
 // On start: composable handles token swap + redirect to target user dashboard.
 // Session management (banner, end) handled by App.vue + useAvatar composable.
 //
@@ -10,7 +10,7 @@
 
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ghost, Ban } from '@/components/ui/icons'
+import { Ghost } from '@/components/ui/icons'
 import { CButton } from '@/components/ui'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
@@ -26,14 +26,6 @@ useScreenHeader({
 })
 
 const targetUserId = ref('')
-
-const restrictions = [
-  'staff.avatar.noPurchase',
-  'staff.avatar.noWithdraw',
-  'staff.avatar.noPassword',
-  'staff.avatar.noDelete',
-  'staff.avatar.noKyc',
-] as const
 
 async function handleStart(): Promise<void> {
   const uid = targetUserId.value.trim()
@@ -59,17 +51,9 @@ async function handleStart(): Promise<void> {
       </CButton>
     </div>
 
-    <!-- Restrictions (K07 flat card holding K23 rows) -->
+    <!-- What the mode is: the staff member acts as the user, nothing it does not do -->
     <section class="ds-card ds-card--flat">
-      <h2 class="ds-card__title">{{ t('staff.avatar.restrictions') }}</h2>
-      <ul class="ds-rows">
-        <li v-for="key in restrictions" :key="key" class="ds-row">
-          <span class="ds-row__lead" data-tone="danger"><Ban size="sm" /></span>
-          <span class="ds-row__body">
-            <span class="ds-row__title">{{ t(key) }}</span>
-          </span>
-        </li>
-      </ul>
+      <p class="ds-card__body">{{ t('staff.avatar.note') }}</p>
     </section>
   </div>
 </template>

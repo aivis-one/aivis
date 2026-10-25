@@ -208,7 +208,7 @@
       "confirmPassPlaceholder": "Repeat password",
       "confirmBtn": "Reset password",
       "confirmSuccessTitle": "Password updated",
-      "confirmSuccessText": "Your password has been changed and you've been signed out everywhere else. Sign in with your new password.",
+      "confirmSuccessText": "Your password has been changed and you've been logged out everywhere else. Sign in with your new password.",
       "invalidLinkTitle": "Invalid or expired link",
       "invalidLinkText": "This password reset link is invalid or has expired. Request a new one.",
       "requestNewLink": "Request a new link",
@@ -250,23 +250,23 @@
       "timeout": "Server did not respond. Try again",
       "rateLimited": "Too many attempts. Please try again later"
     },
-    "logout": "Sign out"
+    "logout": "Log out"
   },
   "tab": {
-    "home": "Home",
+    "home": "Dashboard",
     "portfolio": "Portfolio",
-    "market": "Store",
+    "market": "Projects",
     "balance": "Balance",
     "more": "More",
     "comp": {
-      "home": "Home",
+      "home": "Dashboard",
       "products": "Products",
       "analytics": "Analytics",
       "settings": "Settings",
       "publications": "Publications"
     },
     "staff": {
-      "home": "Home",
+      "home": "Dashboard",
       "users": "Users",
       "platform": "Platform",
       "finance": "Finance",
@@ -355,7 +355,8 @@
     "more": {},
     "settings": {
       "language": "Language",
-      "logout": "Sign out",
+      "logout": "Log out",
+      "leave": "Log out",
       "noName": "Staff",
       "roleStaff": "Staff",
       "roleAdmin": "Administrator",
@@ -410,9 +411,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -564,12 +565,7 @@
       "selectUser": "Select user",
       "portfolio": "portfolio",
       "referrals": "referrals",
-      "restrictions": "Restricted operations in the avatar mode",
-      "noPurchase": "Cannot make purchases on behalf of the user",
-      "noWithdraw": "Cannot withdraw funds",
-      "noPassword": "Cannot change password or email",
-      "noDelete": "Cannot delete account",
-      "noKyc": "Cannot modify KYC data",
+      "note": "In the avatar mode you act as the user: every action is the user's own, and the audit records the staff member who did it.",
       "session": "Active Session",
       "return": "Return to the staff cabinet",
       "start": "Start Session",
@@ -650,7 +646,7 @@
       "changeEmailReason": "Reason (required)",
       "emailChanged": "Email address changed",
       "deactivate": "Take off duty",
-      "deactivateConfirm": "The member loses access to the staff cabinet and is signed out everywhere at once. The profile and its history stay.",
+      "deactivateConfirm": "The member loses access to the staff cabinet and is logged out everywhere at once. The profile and its history stay.",
       "deactivated": "Member taken off duty",
       "offDuty": "Off duty",
       "onboardingSteps": {
@@ -1178,7 +1174,7 @@
     "pack": "portfolio",
     "available": "available",
     "market": {
-      "title": "Store",
+      "title": "Projects",
       "subtitle": "Available products",
       "filter": {
         "all": "All projects",
@@ -1201,7 +1197,7 @@
         "title": "Product not found",
         "desc": "This product may have been removed or is no longer available"
       },
-      "backToMarket": "Back to the store",
+      "backToMarket": "Back to Projects",
       "pricePerPack": "Price per portfolio",
       "availability": "Availability",
       "description": "About",
@@ -1557,7 +1553,7 @@
         "units": "Parts",
         "companies": "Projects",
         "empty": "No purchases yet",
-        "emptyCta": "Browse the store"
+        "emptyCta": "Browse Projects"
       },
       "balance": {
         "title": "Active account",
@@ -1567,7 +1563,7 @@
       "actions": {
         "title": "Quick actions",
         "deposit": "Deposit",
-        "market": "Store"
+        "market": "Projects"
       },
       "posts": {
         "title": "Latest news",
@@ -1631,8 +1627,8 @@
       },
       "empty": {
         "title": "No purchases yet",
-        "description": "Browse the store to start your portfolio.",
-        "cta": "Go to the store"
+        "description": "Browse Projects to start your portfolio.",
+        "cta": "Go to Projects"
       },
       "errorTitle": "Could not load portfolio"
     },
@@ -1854,10 +1850,13 @@
           "toSupport": "Write to support"
         }
       },
+      "leave": {
+        "title": "Log out and deactivate"
+      },
       "actions": {
         "title": "Security and documents",
         "docs": "Documents",
-        "logout": "Sign out",
+        "logout": "Log out",
         "twoFactor": {
           "ctaEnable": "Enable two-factor authentication",
           "ctaManage": "Two-factor authentication",
@@ -1902,9 +1901,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -1953,7 +1952,7 @@
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
-          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "warning": "You'll be logged out on every device immediately. To use AIVIS.ONE again, contact support.",
           "passwordLabel": "Current password",
           "passwordPlaceholder": "Enter your current password",
           "cancelBtn": "Cancel",
@@ -1970,8 +1969,8 @@
         },
         "support": "Support",
         "faq": "FAQ",
-        "logoutAll": "Sign out of all devices",
-        "logoutAllError": "Could not sign out of all devices. Try again."
+        "logoutAll": "Log out of all devices",
+        "logoutAllError": "Could not log out of all devices. Try again."
       },
       "subtitle": "Manage your profile and preferences",
       "email": {
@@ -2218,9 +2217,12 @@
         "title": "Activity",
         "cta": "View activity history"
       },
+      "leave": {
+        "title": "Log out and deactivate"
+      },
       "actions": {
         "title": "Account",
-        "logout": "Sign out",
+        "logout": "Log out",
         "twoFactor": {
           "ctaEnable": "Enable two-factor authentication",
           "ctaManage": "Two-factor authentication",
@@ -2265,9 +2267,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -2316,7 +2318,7 @@
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
-          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "warning": "You'll be logged out on every device immediately. To use AIVIS.ONE again, contact support.",
           "passwordLabel": "Current password",
           "passwordPlaceholder": "Enter your current password",
           "cancelBtn": "Cancel",
@@ -3036,7 +3038,15 @@
     "nextPayment": "The next payment, {amount}, is due on {date} and is taken from your balance by itself.",
     "documents": "Documents",
     "toPortfolio": "To my portfolio",
-    "toStorefront": "To the storefront"
+    "toStorefront": "To Projects"
+  },
+  "inst": {
+    "planMonths": {
+      "one": "{n} month",
+      "few": "{n} months",
+      "many": "{n} months",
+      "other": "{n} months"
+    }
   },
   "intro": {
     "what": {
@@ -3045,7 +3055,7 @@
     },
     "where": {
       "title": "Where you are",
-      "text": "This is your cabinet: the storefront of projects, your portfolio with the documents of every purchase, and your active account."
+      "text": "This is your cabinet: the projects, your portfolio with the documents of every purchase, and your active account."
     },
     "how": {
       "title": "What to do here",

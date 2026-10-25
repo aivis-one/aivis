@@ -114,3 +114,18 @@ describe('InvestorSettingsView order', () => {
     expect(w.get('section[aria-labelledby="sett-actions"]').text()).toContain('Identity')
   })
 })
+
+describe('InvestorSettingsView leaving', () => {
+  it('stands the log outs and the deactivation in a last card, apart from the actions', async () => {
+    const w = await mountSettings({ first_name: 'Anna', last_name: 'Petrova' })
+    const ids = w.findAll('section[aria-labelledby]').map((s) => s.attributes('aria-labelledby'))
+    expect(ids[ids.length - 1]).toBe('sett-leave')
+    const leave = w.get('section[aria-labelledby="sett-leave"]')
+    expect(leave.text()).toContain('Log out of all devices')
+    expect(leave.text()).toMatch(/Log out\s*$/)
+    expect(leave.find('deactivate-account-section-stub').exists()).toBe(true)
+    const actions = w.get('section[aria-labelledby="sett-actions"]')
+    expect(actions.text()).not.toContain('Log out')
+    expect(actions.find('deactivate-account-section-stub').exists()).toBe(false)
+  })
+})

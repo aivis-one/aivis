@@ -25,7 +25,7 @@
 //   6. Documents (the project's legal documents to read), Support, FAQ,
 //      Activity (the change log).
 //   7. Media links, then the account: two-factor authentication, sessions,
-//      notification preferences, deactivation, sign-out.
+//      notification preferences; then, in a last card apart, deactivation and log out.
 //
 // Posts, the roadmap and documents of the project live on the Publications
 // tab; the balance in the top bar opens the balance screen.
@@ -788,6 +788,15 @@ onMounted(() => {
       <TwoFactorSection tPrefix="comp.settings.actions" />
       <ActiveSessionsSection tPrefix="comp.settings.actions" />
       <NotificationPreferencesSection tPrefix="comp.settings.actions" />
+    </section>
+
+    <!-- Leaving: deactivation and sign out, a last card apart -->
+    <section class="ds-card" aria-labelledby="cset-leave">
+      <header class="ds-card__head">
+        <h2 id="cset-leave" class="ds-sr-only">
+          {{ t('comp.settings.leave.title') }}
+        </h2>
+      </header>
       <DeactivateAccountSection tPrefix="comp.settings.actions" />
       <ul class="ds-rows">
         <li class="ds-row" :aria-disabled="loggingOut || undefined">

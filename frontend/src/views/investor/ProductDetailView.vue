@@ -62,7 +62,7 @@ import { showKycPrompt } from '@/composables/useKycPrompt'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { formatPartPrice, formatPartsCount } from '@/utils/parts'
 import { useSharesPerOption } from '@/composables/useSharesPerOption'
-import { getPlanBonus } from '@/utils/installmentPlans'
+import { getPlanBonus, planMonthsLabel } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
@@ -76,6 +76,8 @@ type ProductWithOptionalCurrency = PublicProductDetailResponse & {
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const planLabel = (plan: { name: string; plan_config: Record<string, unknown> }): string =>
+  planMonthsLabel(plan, t, locale.value)
 const authStore = useAuthStore()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
@@ -279,9 +281,9 @@ onMounted(loadProduct)
                 :href="planHref(plan.id)"
                 @click.prevent="openInstallmentPlan(plan.id)"
               >
-                <span class="ds-row__title">{{ plan.name }}</span>
+                <span class="ds-row__title">{{ planLabel(plan) }}</span>
               </a>
-              <span v-else class="ds-row__title">{{ plan.name }}</span>
+              <span v-else class="ds-row__title">{{ planLabel(plan) }}</span>
             </span>
             <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
               <CBadge

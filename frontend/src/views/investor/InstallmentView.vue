@@ -71,7 +71,7 @@ import { useToast } from '@/composables/useToast'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber } from '@/utils/format'
-import { parsePlanConfig, type PlanConfig } from '@/utils/installmentPlans'
+import { parsePlanConfig, planMonthsLabel, type PlanConfig } from '@/utils/installmentPlans'
 import { formatUsd, formatUsdCents } from '@/utils/parts'
 import type { InstallmentResponse, PublicProductDetailResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
@@ -79,6 +79,8 @@ import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const planLabel = (plan: { name: string; plan_config: Record<string, unknown> }): string =>
+  planMonthsLabel(plan, t, locale.value)
 const authStore = useAuthStore()
 const { showToast } = useToast()
 const dashboardStore = useDashboardStore()
@@ -456,7 +458,7 @@ onMounted(load)
         :bonus-percent="0"
         :bonus-lots="0"
         :plan="planConfig"
-        :plan-name="selectedPlan.name"
+        :plan-name="planLabel(selectedPlan)"
       />
       <p v-if="nextPayment" class="ds-note">
         {{ t('buy.nextPayment', { amount: nextPayment.amount, date: nextPayment.date }) }}
@@ -487,7 +489,7 @@ onMounted(load)
                     query: { plan: plan.id },
                   }"
                 >
-                  <span class="ds-row__title">{{ plan.name }}</span>
+                  <span class="ds-row__title">{{ planLabel(plan) }}</span>
                 </RouterLink>
               </span>
             </li>
@@ -516,7 +518,7 @@ onMounted(load)
               :bonus-percent="0"
               :bonus-lots="0"
               :plan="planConfig"
-              :plan-name="selectedPlan.name"
+              :plan-name="planLabel(selectedPlan)"
             />
 
             <!-- Payment schedule: one row per payment (K23) -->

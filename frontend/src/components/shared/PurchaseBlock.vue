@@ -37,7 +37,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { useAuthWall } from '@/composables/useAuthWall'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 import { safeNavigate } from '@/composables/safeNavigate'
-import { parsePlanConfig, type PlanConfig } from '@/utils/installmentPlans'
+import { parsePlanConfig, planMonthsLabel, type PlanConfig } from '@/utils/installmentPlans'
 import { bonusPercentFromText, formatUsd, formatUsdCents } from '@/utils/parts'
 import { formatNumber } from '@/utils/format'
 import type { PublicProductDetailResponse } from '@/api/types'
@@ -50,6 +50,8 @@ const props = defineProps<{
 }>()
 
 const { t, locale } = useI18n()
+const planLabel = (plan: { name: string; plan_config: Record<string, unknown> }): string =>
+  planMonthsLabel(plan, t, locale.value)
 const router = useRouter()
 const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
@@ -78,13 +80,14 @@ const selected = computed<PublicProductDetailResponse | null>(
 interface PlanOption {
   id: string
   name: string
+  plan_config: Record<string, unknown>
   config: PlanConfig
 }
 
 const planOptions = computed<PlanOption[]>(() =>
   (selected.value?.installments ?? []).flatMap((pl) => {
     const config = parsePlanConfig(pl.plan_config)
-    return config ? [{ id: pl.id, name: pl.name, config }] : []
+    return config ? [{ id: pl.id, name: pl.name, plan_config: pl.plan_config, config }] : []
   }),
 )
 
@@ -273,7 +276,7 @@ function toTopUp(): void {
           :bonus-percent="bonusPercentOf(selected)"
           :bonus-lots="bonusLotsOf(selected)"
           :plan="plan ? plan.config : null"
-          :plan-name="plan ? plan.name : undefined"
+          :plan-name="plan ? planLabel(plan) : undefined"
         >
           <fieldset v-if="planOptions.length > 0" class="ds-segmented">
             <legend class="ds-sr-only">{{ t('buy.payment') }}</legend>
@@ -295,7 +298,7 @@ function toTopUp(): void {
                 name="buy-payment"
                 :value="o.name"
               />
-              {{ o.name }}
+              {{ planLabel(o) }}
             </label>
           </fieldset>
         </PurchaseSummary>

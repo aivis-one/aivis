@@ -79,6 +79,33 @@ export function parsePlanConfig(cfg: Record<string, unknown>): PlanConfig | null
   }
 }
 
+type Translate = (key: string, named?: Record<string, unknown>) => string
+
+/**
+ * The name the buyer reads for an instalment plan: a locale key built from the
+ * plan's months ("6 months", «6 месяцев»), never the English name stored on the
+ * server. One month is paid by one tranche, so the months are the tranche count;
+ * the noun's form is picked by `Intl.PluralRules` for the locale (`one`, `few`,
+ * `many`, `other` -- the keys `inst.planMonths.<form>`, `other` the fallback).
+ * A plan whose config cannot be read keeps the stored name.
+ */
+export function planMonthsLabel(
+  plan: { name: string; plan_config: Record<string, unknown> },
+  t: Translate,
+  locale: string,
+): string {
+  const config = parsePlanConfig(plan.plan_config)
+  if (!config) return plan.name
+  const n = config.tranches.length
+  const form = new Intl.PluralRules(locale).select(n)
+  for (const f of [form, 'other']) {
+    const key = `inst.planMonths.${f}`
+    const text = t(key, { n })
+    if (text !== key) return text
+  }
+  return plan.name
+}
+
 /**
  * Safe accessor for completion bonus_units on a plan template.
  * Used by ProductDetailView card chips and InstallmentView summary.

@@ -11,16 +11,17 @@
 //   2. Language -- English or Russian, saved on the account.
 //   3. Account -- two-factor authentication, active sessions, notification
 //      preferences (the shared sections), the notifications inbox, the staff
-//      member's legal documents (the AML policy among them), sign-out.
+//      member's legal documents (the AML policy among them).
 //   4. About -- the version of this build: its tag, written into the bundle at
 //      build time (src/appVersion.ts).
+//   5. Leaving -- Log out, a last card apart.
 // =============================================================================
 
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Bell, ChevronRight, FileText, LogOut } from '@/components/ui/icons'
-import { CAvatar, CBadge, CButton, CSelect } from '@/components/ui'
+import { CAvatar, CBadge, CSelect } from '@/components/ui'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
 import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue'
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
@@ -140,12 +141,6 @@ const version = __APP_VERSION__
           <ChevronRight class="ds-navtile__go" />
         </RouterLink>
       </div>
-
-      <div>
-        <CButton variant="outline" inline :disabled="loggingOut" @click="handleLogout">
-          <LogOut size="sm" /> {{ t('staff.settings.logout') }}
-        </CButton>
-      </div>
     </section>
 
     <!-- About (K49) -->
@@ -159,6 +154,26 @@ const version = __APP_VERSION__
           <dd>{{ version }}</dd>
         </div>
       </dl>
+    </section>
+
+    <!-- Leaving: sign out, a last card apart -->
+    <section class="ds-card" aria-labelledby="staff-settings-leave">
+      <header class="ds-card__head">
+        <h2 id="staff-settings-leave" class="ds-sr-only">
+          {{ t('staff.settings.leave') }}
+        </h2>
+      </header>
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
+              <span class="ds-row__title" data-tone="danger">{{ t('staff.settings.logout') }}</span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
     </section>
   </div>
 </template>

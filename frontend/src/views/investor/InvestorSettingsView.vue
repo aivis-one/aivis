@@ -49,8 +49,9 @@
 //      below is the way in). State machine below.
 //   5. Actions -- identity verification (its status), Documents, Support
 //      and FAQ (they lie inside Settings on a phone), the security group
-//      (two-factor, sessions, "Sign out of all devices", "Sign out"),
-//      notification settings and account deactivation.
+//      (two-factor, sessions) and notification settings.
+//   6. Leaving -- the last card, apart: "Log out of all devices", account
+//      deactivation and "Log out".
 //
 // AGENT APPLICATION STATE MACHINE.
 //   TASK-39 item 5: the derivation (loading / load_error / kyc_required /
@@ -642,44 +643,11 @@ onMounted(() => {
         </li>
       </ul>
 
-      <!-- Security: two-factor, sessions, sign out of all devices, sign out -->
+      <!-- Security: two-factor and the active sessions -->
       <TwoFactorSection tPrefix="inv.settings.actions" />
       <ActiveSessionsSection tPrefix="inv.settings.actions" />
-      <ul class="ds-rows">
-        <li class="ds-row" :aria-disabled="loggingOutAll ? 'true' : undefined">
-          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
-          <span class="ds-row__body">
-            <button
-              type="button"
-              class="ds-row__link"
-              :disabled="loggingOutAll"
-              @click="handleLogoutAll"
-            >
-              <span class="ds-row__title" data-tone="danger">
-                {{ t('inv.settings.actions.logoutAll') }}
-              </span>
-            </button>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-      </ul>
 
       <NotificationPreferencesSection tPrefix="inv.settings.actions" />
-      <DeactivateAccountSection tPrefix="inv.settings.actions" />
-
-      <ul class="ds-rows">
-        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
-          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
-          <span class="ds-row__body">
-            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
-              <span class="ds-row__title" data-tone="danger">
-                {{ t('inv.settings.actions.logout') }}
-              </span>
-            </button>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-      </ul>
     </section>
 
     <!-- Preferences -->
@@ -789,6 +757,50 @@ onMounted(() => {
         @close="agentModalOpen = false"
         @submit="applyForAgent"
       />
+    </section>
+
+    <!-- Leaving: sign out (this device, every device) and deactivation, a last card apart -->
+    <section class="ds-card" aria-labelledby="sett-leave">
+      <header class="ds-card__head">
+        <h2 id="sett-leave" class="ds-sr-only">
+          {{ t('inv.settings.leave.title') }}
+        </h2>
+      </header>
+
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOutAll ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button
+              type="button"
+              class="ds-row__link"
+              :disabled="loggingOutAll"
+              @click="handleLogoutAll"
+            >
+              <span class="ds-row__title" data-tone="danger">
+                {{ t('inv.settings.actions.logoutAll') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
+
+      <DeactivateAccountSection tPrefix="inv.settings.actions" />
+
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
+              <span class="ds-row__title" data-tone="danger">
+                {{ t('inv.settings.actions.logout') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
     </section>
 
     <!-- Profile edit modal (TASK-38 item 3): first/last name, phone,

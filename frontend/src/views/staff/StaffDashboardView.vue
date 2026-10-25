@@ -32,24 +32,12 @@ import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useStaffRights } from '@/composables/useStaffRights'
-import { useAuthStore } from '@/stores/auth'
 import { QUEUES, useStaffQueuesStore } from '@/stores/staffQueues'
 import type { QueueKey, QueueSpec } from '@/stores/staffQueues'
 
 const { t } = useI18n()
-const authStore = useAuthStore()
 const queues = useStaffQueuesStore()
 const { current } = useStaffRights()
-
-const userName = computed(() => {
-  const p = authStore.user?.profile
-  if (p && typeof p === 'object') {
-    const fn = (p as Record<string, unknown>).first_name
-    const ln = (p as Record<string, unknown>).last_name
-    if (fn || ln) return `${fn ?? ''} ${ln ?? ''}`.trim()
-  }
-  return authStore.user?.email ?? t('staff.settings.noName')
-})
 
 // The icon part of each queue's tile: an icon of the set in a lead box (K23) whose
 // tone is a second sign (the label says the same in words).
@@ -61,9 +49,9 @@ const ICONS: Record<QueueKey, { icon: Component; tone: 'warning' | 'success' | '
   support: { icon: MessageCircle, tone: 'accent' },
 }
 
-// The frame's header carries the greeting: the member's name and the panel's name.
+// The frame's header carries the tab's name (no greeting) and the panel's name.
 useScreenHeader({
-  title: () => userName.value,
+  title: () => t('tab.staff.home'),
   lead: () => t('staff.panel'),
 })
 

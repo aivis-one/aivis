@@ -63,7 +63,7 @@ import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { formatPartPrice, formatPartsCount } from '@/utils/parts'
 import { useSharesPerOption } from '@/composables/useSharesPerOption'
-import { getPlanBonus } from '@/utils/installmentPlans'
+import { getPlanBonus, planMonthsLabel } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
@@ -76,6 +76,8 @@ type ProductWithOptionalCurrency = PublicProductDetailResponse & {
 }
 
 const { t, locale } = useI18n()
+const planLabel = (plan: { name: string; plan_config: Record<string, unknown> }): string =>
+  planMonthsLabel(plan, t, locale.value)
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -340,7 +342,7 @@ function onBuyClick(): void {
         <ul v-else class="ds-rows">
           <li v-for="plan in product.installments" :key="plan.id" class="ds-row">
             <span class="ds-row__body">
-              <span class="ds-row__title">{{ plan.name }}</span>
+              <span class="ds-row__title">{{ planLabel(plan) }}</span>
             </span>
             <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
               <CBadge
