@@ -20,23 +20,32 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/staff-companies', () => ({
   updateStaffCompany: vi.fn(),
 }))
+vi.mock('@/api/media', async (importActual) => ({
+  ...(await importActual<typeof import('@/api/media')>()),
+  uploadStaffCompanyMedia: vi.fn(),
+  deleteStaffCompanyMedia: vi.fn(),
+}))
 
 import * as staffCompanies from '@/api/staff-companies'
+import * as media from '@/api/media'
 import { useAuthStore } from '@/stores/auth'
 import { PERMISSION_KEYS } from '@/utils/staffRights'
 import StaffCompanyProfileSection from './StaffCompanyProfileSection.vue'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
 
 const updateStaffCompany = vi.mocked(staffCompanies.updateStaffCompany)
+const uploadStaffCompanyMedia = vi.mocked(media.uploadStaffCompanyMedia)
+const deleteStaffCompanyMedia = vi.mocked(media.deleteStaffCompanyMedia)
 
 const COMPANY = {
   id: 'proj-1',
   name: 'Project One',
   description: 'About it',
   status: 'active',
-  logo_url: 'cdn.example.org/logo.png',
+  logo_url: 'https://files.example.org/logo.png?sig=1',
+  logo_dark_url: null,
   cover_url: null,
-  promo_video_url: null,
+  promo_video_url: 'https://example.org/promo.mp4',
   presentation_url: null,
   price_per_unit_cents: 5,
   total_supply: 1_000_000_000,
@@ -159,6 +168,10 @@ describe('the project profile section', () => {
     wrapper.unmount()
   })
 
+  // Until H36 this cleared the LOGO link: the logo was a typed URL then. The
+  // logo is a file now (its own endpoints, not this form), so the same
+  // property -- a cleared link travels as an explicit null -- is held on the
+  // promo video, a link the form still carries.
   it('clears a link with an explicit null', async () => {
     signInAs(['project_manage'])
     updateStaffCompany.mockResolvedValue(COMPANY as never)
@@ -169,17 +182,93 @@ describe('the project profile section', () => {
       .find((b) => b.text().includes('staff.platform.profile.profileEditCta'))!
       .trigger('click')
     await flushPromises()
-    // The inputs of the form, in order: name, logo, cover, promo video, presentation.
+    // The inputs of the form, in order: name, promo video, presentation.
     const inputs = Array.from(
       document.body.querySelectorAll('.ds-dialog__panel input'),
     ) as HTMLInputElement[]
-    const logo = inputs[1]!
-    logo.value = ''
-    logo.dispatchEvent(new Event('input'))
+    expect(inputs).toHaveLength(3)
+    const promo = inputs[1]!
+    expect(promo.value).toBe('https://example.org/promo.mp4')
+    promo.value = ''
+    promo.dispatchEvent(new Event('input'))
     await flushPromises()
     modalButton('common.save').click()
     await flushPromises()
-    expect(updateStaffCompany).toHaveBeenCalledWith('proj-1', { logo_url: null })
+    expect(updateStaffCompany).toHaveBeenCalledWith('proj-1', { promo_video_url: null })
+    wrapper.unmount()
+  })
+})
+
+// =============================================================================
+// THE PICTURES ARE FILES (H36 P-131)
+// =============================================================================
+//
+// Axes: the three slots are three fields, each with its own endpoint slot
+// (REPEAT); a stored logo is drawn, an absent dark logo and cover are not
+// (EMPTINESS); a member who may not edit gets fields that do nothing.
+
+describe('StaffCompanyProfileSection pictures', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    uploadStaffCompanyMedia.mockReset()
+    deleteStaffCompanyMedia.mockReset()
+    document.body.innerHTML = ''
+  })
+
+  function fileInputs(): HTMLInputElement[] {
+    return Array.from(document.body.querySelectorAll('.scp input[type="file"]'))
+  }
+
+  async function pick(input: HTMLInputElement, file: File): Promise<void> {
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    input.dispatchEvent(new Event('change'))
+    await flushPromises()
+  }
+
+  it('draws one field per slot, the stored logo as a thumb', async () => {
+    signInAs(['project_manage'])
+    const { wrapper } = mountSection()
+    await flushPromises()
+    expect(fileInputs()).toHaveLength(3)
+    const thumbs = Array.from(document.body.querySelectorAll('.scp .ds-file__thumb img'))
+    expect(thumbs.map((img) => img.getAttribute('src'))).toEqual([COMPANY.logo_url])
+    wrapper.unmount()
+  })
+
+  it('uploads into the slot of its field and reloads the project', async () => {
+    signInAs(['project_manage'])
+    uploadStaffCompanyMedia.mockResolvedValue(COMPANY as never)
+    const { wrapper, reload } = mountSection()
+    await flushPromises()
+    const file = new File(['png'], 'dark.png', { type: 'image/png' })
+    await pick(fileInputs()[1]!, file)
+    expect(uploadStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo-dark', file)
+    expect(reload).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('removes a stored picture after the confirmation', async () => {
+    signInAs(['project_manage'])
+    deleteStaffCompanyMedia.mockResolvedValue(undefined as never)
+    const { wrapper, reload } = mountSection()
+    await flushPromises()
+    ;(document.body.querySelector('.scp .ds-file__remove') as HTMLButtonElement).click()
+    await flushPromises()
+    modalButton('common.media.remove').click()
+    await flushPromises()
+    expect(deleteStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo')
+    expect(reload).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('gives a member without project_manage fields that do nothing', async () => {
+    signInAs([])
+    const { wrapper } = mountSection()
+    await flushPromises()
+    const inputs = fileInputs()
+    expect(inputs).toHaveLength(3)
+    expect(inputs.every((input) => input.disabled)).toBe(true)
+    expect(document.body.querySelector('.scp .ds-file__remove')).toBeNull()
     wrapper.unmount()
   })
 })

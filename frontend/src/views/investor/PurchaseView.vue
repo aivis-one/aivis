@@ -90,6 +90,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { PublicProductDetailResponse } from '@/api/types'
+import { useProductCover } from '@/composables/useThemedLogo'
 
 // Backend currency is not emitted on Public* yet (TD-F03). Same
 // escape hatch as ProductDetailView -- remove once the field lands.
@@ -162,10 +163,8 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-// The cover is the product's own picture, else the company's logo.
-const coverSrc = computed<string | null>(
-  () => product.value?.cover_url ?? product.value?.company_logo_url ?? null,
-)
+// The cover is the product's own picture, else the company's logo for the theme.
+const coverSrc = useProductCover(() => product.value)
 
 async function load(): Promise<void> {
   loading.value = true

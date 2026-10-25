@@ -90,6 +90,12 @@
 #                                 utf-8 decoded) and storage_prefix (the
 #                                 MinIO folder, useful for staff jumping
 #                                 into the Web UI to inspect).
+#
+# H36 P-131 (pictures in our storage):
+#   logo_url / cover_url left every create / update body: the pictures
+#   are files, uploaded through PUT|DELETE .../media/{slot}
+#   (companies/media.py). CompanyResponse and PublicCompanyResponse keep
+#   logo_url / cover_url as presigned links and gain logo_dark_url.
 # =============================================================================
 
 from datetime import date, datetime
@@ -130,8 +136,6 @@ class CreateCompanyRequest(BaseModel):
     # Company profile.
     name: str = Field(min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
-    logo_url: str | None = Field(default=None, max_length=2000)
-    cover_url: str | None = Field(default=None, max_length=2000)
     promo_video_url: str | None = Field(default=None, max_length=2000)
     presentation_url: str | None = Field(default=None, max_length=2000)
     price_per_unit_cents: int = Field(gt=0)
@@ -171,8 +175,6 @@ class AssignCompanyRequest(BaseModel):
     # minus email/password.
     name: str = Field(min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
-    logo_url: str | None = Field(default=None, max_length=2000)
-    cover_url: str | None = Field(default=None, max_length=2000)
     promo_video_url: str | None = Field(default=None, max_length=2000)
     presentation_url: str | None = Field(default=None, max_length=2000)
     price_per_unit_cents: int = Field(gt=0)
@@ -198,8 +200,6 @@ class UpdateCompanyRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
-    logo_url: str | None = None
-    cover_url: str | None = None
     promo_video_url: str | None = None
     presentation_url: str | None = None
     distribution_config: dict | None = None  # type: ignore[type-arg]
@@ -265,8 +265,6 @@ class UpdateOwnCompanyRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
-    logo_url: str | None = Field(default=None, max_length=2000)
-    cover_url: str | None = Field(default=None, max_length=2000)
     promo_video_url: str | None = Field(default=None, max_length=2000)
     presentation_url: str | None = Field(default=None, max_length=2000)
     # TASK-39 item 6 (time-boxed supersession of TASK-30 ruling 10 --
@@ -519,7 +517,11 @@ class CompanyResponse(BaseModel):
     user_id: UUID
     name: str
     description: str | None
+    # Presigned links signed at answer time from the storage keys
+    # (companies/media.py); None when the picture is not uploaded or the
+    # link could not be signed.
     logo_url: str | None
+    logo_dark_url: str | None
     cover_url: str | None
     promo_video_url: str | None
     presentation_url: str | None
@@ -556,7 +558,11 @@ class PublicCompanyResponse(BaseModel):
     id: UUID
     name: str
     description: str | None
+    # Presigned links signed at answer time from the storage keys
+    # (companies/media.py); None when the picture is not uploaded or the
+    # link could not be signed.
     logo_url: str | None
+    logo_dark_url: str | None
     cover_url: str | None
     promo_video_url: str | None
     presentation_url: str | None

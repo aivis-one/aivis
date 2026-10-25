@@ -18,6 +18,14 @@
 #     Populated by the public router via a batch CompanyProfile lookup so
 #     the storefront can render cards without a second round-trip.
 #
+# H36 P-131 CHANGES (pictures in our storage):
+#   - cover_url left CreateProductRequest and UpdateProductRequest: the
+#     cover is a file, uploaded and removed through
+#     PUT|DELETE /api/v1/staff/companies/{id}/products/{id}/cover.
+#   - cover_url / company_logo_url / company_cover_url in the responses
+#     keep their names and are presigned links now;
+#     PublicProductResponse gains company_logo_dark_url.
+#
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - CreateProductRequest.units -> CreateProductRequest.package_size.
 #     Semantics unchanged (number of options in one package); the rename
@@ -107,7 +115,6 @@ class CreateProductRequest(BaseModel):
     # Sprint 4.3: renamed from `units`. Number of options in one package
     # of this product. Immutable after creation.
     package_size: int = Field(gt=0)
-    cover_url: str | None = Field(default=None, max_length=2000)
     purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
@@ -123,7 +130,6 @@ class UpdateProductRequest(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
-    cover_url: str | None = Field(default=None, max_length=2000)
     purchase_config: dict | None = None  # type: ignore[type-arg]
 
 
@@ -241,6 +247,8 @@ class ProductResponse(BaseModel):
     description: str | None
     # Sprint 4.3: renamed from `units`.
     package_size: int
+    # Presigned link signed at answer time from cover_storage_key
+    # (companies/media.py); None when no cover is uploaded.
     cover_url: str | None
     purchase_config: dict | None  # type: ignore[type-arg]
     price_per_unit_cents: int
@@ -261,7 +269,8 @@ class ProductListResponse(BaseModel):
 class PublicProductResponse(BaseModel):
     """Product info for public storefront.
 
-    company_name / company_logo_url / company_cover_url are denormalised
+    company_name / company_logo_url / company_logo_dark_url /
+    company_cover_url are denormalised
     from CompanyProfile by the public router (Sprint F4.1) so the
     storefront can render a card without a second API call.
 
@@ -300,7 +309,10 @@ class PublicProductResponse(BaseModel):
     # company on a product is a 500 (raised in the router as
     # RuntimeError), not a soft empty-string fallback.
     company_name: str
+    # Presigned links to the company's pictures, signed at answer time
+    # (companies/media.py), like cover_url above.
     company_logo_url: str | None = None
+    company_logo_dark_url: str | None = None
     company_cover_url: str | None = None
 
 

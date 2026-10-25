@@ -26,7 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_reader
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.models import CompanyProfile
-from app.modules.products.schemas import ProductListResponse, ProductResponse
+from app.modules.companies.media import build_product_response
+from app.modules.products.schemas import ProductListResponse
 from app.modules.products.service import list_products
 
 router = APIRouter(prefix="/api/v1/company/products", tags=["company-products"])
@@ -49,7 +50,7 @@ async def list_my_products(
         per_page=per_page,
     )
     return ProductListResponse(
-        items=[ProductResponse.model_validate(p) for p in products],
+        items=[await build_product_response(p) for p in products],
         total=total,
         page=page,
         per_page=per_page,

@@ -9,8 +9,8 @@
 #                                   EXCEPTION added by TASK-39 item 6:
 #                                   project self-service partial update,
 #                                   restricted to the project-editable
-#                                   field set (description/logo_url/
-#                                   cover_url/promo_video_url/
+#                                   field set (description/
+#                                   promo_video_url/
 #                                   presentation_url/name/
 #                                   price_per_unit_cents/total_supply/
 #                                   shares_per_option + status
@@ -22,6 +22,13 @@
 #                                   lookup on the caller's own user_id, so
 #                                   there is no way to even address another
 #                                   company's row through this endpoint.
+#   PUT|DELETE /api/v1/companies/me/media/{slot}
+#                               -- H36 P-131: the project's own logo,
+#                                   dark logo or cover (slot: logo,
+#                                   logo-dark, cover), as files. Same
+#                                   session rule as PATCH below: only
+#                                   company.id and company.user_id reach
+#                                   the service.
 #
 # iter 2.4 MIGRATION:
 #   GET /api/v1/companies              (list)   moved to companies/public_router.py
@@ -56,14 +63,27 @@
 #   This mirrors update_company()'s existing (company_id, session) shape.
 # =============================================================================
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.body_limit import upload_body_limit
 from app.core.database import get_db_session
+from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
 from app.modules.companies.dependencies import get_current_company_profile
+from app.modules.companies.media import (
+    CompanyMediaSlotPath,
+    build_company_response,
+    slot_from_path,
+)
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.schemas import CompanyResponse, UpdateOwnCompanyRequest
-from app.modules.companies.service import update_own_company
+from app.modules.companies.service import (
+    delete_own_company_media,
+    set_own_company_media,
+    update_own_company,
+    validate_roadmap_cover_mime_by_filename,
+)
+from app.modules.companies.staff_router import _resolve_upload_size
 
 router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
 
@@ -88,7 +108,7 @@ async def get_my_company_endpoint(
     projection (no distribution_config, no user_id) and 404s on
     non-active status.
     """
-    return CompanyResponse.model_validate(company)
+    return await build_company_response(company)
 
 
 @router.patch(
@@ -108,8 +128,9 @@ async def update_my_company_endpoint(
     platform today is the owner's own project rather than a third party,
     UpdateOwnCompanyRequest now ALSO carries name, price_per_unit_cents,
     total_supply, and shares_per_option, alongside the original
-    description/logo_url/cover_url/promo_video_url/presentation_url/
-    status set. This is TIME-BOXED, not a repeal -- it holds only while
+    description/promo_video_url/presentation_url/status set (logo_url
+    and cover_url left it in H36: the pictures are files, set through
+    PUT /me/media/{slot}). This is TIME-BOXED, not a repeal -- it holds only while
     every company remains the owner's own, and admin-side price/volume
     validation must land before the first non-owner company is
     onboarded (see TASK-39 item 6, owner ruling 2026-08-29). A price
@@ -144,4 +165,53 @@ async def update_my_company_endpoint(
     into the service call.
     """
     updated = await update_own_company(company.id, body, session)
-    return CompanyResponse.model_validate(updated)
+    return await build_company_response(updated)
+
+
+@router.put(
+    "/me/media/{slot}",
+    response_model=CompanyResponse,
+)
+@upload_body_limit(files=1, per_file_bytes=ROADMAP_COVER_MAX_BYTES)
+async def set_my_company_media_endpoint(
+    slot: CompanyMediaSlotPath,
+    file: UploadFile = File(...),
+    company: CompanyProfile = Depends(get_current_company_profile),
+    session: AsyncSession = Depends(get_db_session),
+) -> CompanyResponse:
+    """Upload / replace the project's own logo, dark logo or cover (H36).
+
+    Mirrors the staff route (staff_router.set_company_media_endpoint):
+    mime from the filename extension, the per-slot size limit checked by
+    the service. Only company.id and company.user_id reach the service,
+    for the session reason in the header.
+    """
+    content_type, ext = validate_roadmap_cover_mime_by_filename(
+        file.filename or "untitled"
+    )
+    profile = await set_own_company_media(
+        session=session,
+        company_id=company.id,
+        actor_user_id=company.user_id,
+        slot=slot_from_path(slot),
+        file_data=file.file,
+        file_size_bytes=_resolve_upload_size(file),
+        content_type=content_type,
+        file_extension=ext,
+    )
+    return await build_company_response(profile)
+
+
+@router.delete(
+    "/me/media/{slot}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_my_company_media_endpoint(
+    slot: CompanyMediaSlotPath,
+    company: CompanyProfile = Depends(get_current_company_profile),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Remove the project's own logo, dark logo or cover. 404 when it has none."""
+    await delete_own_company_media(
+        company.id, slot_from_path(slot), company.user_id, session
+    )

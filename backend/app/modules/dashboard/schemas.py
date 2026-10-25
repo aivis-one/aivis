@@ -35,7 +35,10 @@ class CompanySummaryResponse(BaseModel):
 
     company_id: UUID
     company_name: str
+    # Presigned links to the company's logos, signed at answer time
+    # (companies/media.py); None when not uploaded.
     logo_url: str | None
+    logo_dark_url: str | None
     total_units: int
     invested_cents: int
     current_value_cents: int

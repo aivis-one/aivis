@@ -28,7 +28,10 @@ class CompanyPositionResponse(BaseModel):
 
     company_id: UUID
     company_name: str
+    # Presigned links to the company's logos, signed at answer time
+    # (companies/media.py); None when not uploaded.
     logo_url: str | None
+    logo_dark_url: str | None
     total_units: int
     sale_units: int
     gift_units: int
@@ -65,7 +68,10 @@ class CompanyPositionDetailResponse(BaseModel):
 
     company_id: UUID
     company_name: str
+    # Presigned links to the company's logos, signed at answer time
+    # (companies/media.py); None when not uploaded.
     logo_url: str | None
+    logo_dark_url: str | None
     total_units: int
     sale_units: int
     gift_units: int

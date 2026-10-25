@@ -9,6 +9,7 @@
 // Cover image fallback chain (F4.1):
 //   1. product.cover_url          -- product-level cover if set
 //   2. product.company_logo_url   -- company logo as a neutral fallback
+//      (company_logo_dark_url instead in the dark theme when set, H36)
 //   3. Building icon              -- final fallback (no image)
 //
 // F4.1.4 polish: formatters moved to utils/format.ts (TD-F04 closed).
@@ -31,6 +32,7 @@ import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { PublicProductResponse } from '@/api/types'
+import { useProductCover } from '@/composables/useThemedLogo'
 
 // Backend doesn't yet emit `currency` on PublicProductResponse
 // (TD-F03). Keep the escape hatch here so the card stays correct
@@ -47,9 +49,9 @@ defineEmits<{ click: [product: PublicProductResponse] }>()
 
 const { t, locale } = useI18n()
 
-// The cover is the product's own picture, else the company's logo; either covers
-// the media part of the card (K07).
-const coverSrc = computed(() => props.product.cover_url ?? props.product.company_logo_url ?? null)
+// The cover is the product's own picture, else the company's logo for the theme;
+// either covers the media part of the card (K07).
+const coverSrc = useProductCover(() => props.product)
 
 // F4.4: backend now guarantees this field is populated; no `?? 0`.
 const available = computed(() => props.product.available_packages)

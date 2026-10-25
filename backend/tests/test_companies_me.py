@@ -172,6 +172,18 @@ async def _create_installment_template(
 async def test_project_can_edit_all_own_fields(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """The project edits its own presentation fields; the picture URLs are
+    no longer among them.
+
+    Until H36 P-131 this body also carried logo_url and cover_url and the
+    test asserted they round-tripped as typed: they were project-editable
+    string columns then, and that was right. H36 replaced them with files
+    in our storage (PUT /api/v1/companies/me/media/{slot}, covered in
+    test_project_media.py), so here the same two keys must now be refused
+    by the schema (extra="forbid" -> 422), and the response still carries
+    logo_url / logo_dark_url / cover_url -- as links, None until a file is
+    uploaded.
+    """
     admin, admin_token = await create_admin_user(client, db_session)
     company_id, company_token = await _create_company_and_login(client, admin_token)
 
@@ -179,8 +191,6 @@ async def test_project_can_edit_all_own_fields(
         "/api/v1/companies/me",
         json={
             "description": "New description",
-            "logo_url": "https://example.com/logo.png",
-            "cover_url": "https://example.com/cover.png",
             "promo_video_url": "https://example.com/promo.mp4",
             "presentation_url": "https://example.com/deck.pdf",
         },
@@ -190,10 +200,19 @@ async def test_project_can_edit_all_own_fields(
     body = resp.json()
     assert body["id"] == company_id
     assert body["description"] == "New description"
-    assert body["logo_url"] == "https://example.com/logo.png"
-    assert body["cover_url"] == "https://example.com/cover.png"
     assert body["promo_video_url"] == "https://example.com/promo.mp4"
     assert body["presentation_url"] == "https://example.com/deck.pdf"
+    assert body["logo_url"] is None
+    assert body["logo_dark_url"] is None
+    assert body["cover_url"] is None
+
+    for field in ("logo_url", "cover_url"):
+        refused = await client.patch(
+            "/api/v1/companies/me",
+            json={field: "https://example.com/picture.png"},
+            headers=auth_headers(company_token),
+        )
+        assert refused.status_code == 422, (field, refused.text)
 
     # Confirm it round-trips via GET too, not just the PATCH response.
     get_resp = await client.get(

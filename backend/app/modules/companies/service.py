@@ -15,7 +15,7 @@
 #   update_own_company()   -- TASK-30 ruling 10/12 + TASK-39 item 6
 #                             TIME-BOXED SUPERSESSION: project self-service
 #                             partial update. Project-editable fields are
-#                             description/logo_url/cover_url/promo_video_url/
+#                             description/promo_video_url/
 #                             presentation_url/name/price_per_unit_cents/
 #                             total_supply/shares_per_option + status
 #                             ACTIVE->HIDDEN only. A price change routes
@@ -45,6 +45,14 @@
 #   update_roadmap_item()  -- partial update roadmap item
 #   delete_roadmap_item()  -- soft-delete (is_deleted=True)
 #   reorder_roadmap()      -- bulk update order column
+#
+# H36 P-131 ADDITIONS (project pictures in our storage, companies/media.py):
+#   set_company_media()        -- staff: upload / replace one slot (logo,
+#                                 logo_dark, cover) of a project
+#   delete_company_media()     -- staff: remove one slot
+#   set_own_company_media()    -- the project itself, same flow
+#   delete_own_company_media() -- the project itself, same flow
+#   The product cover lives in products/service.py (set_product_cover).
 #
 # Refactor 2 iter 2.2 ADDITIONS (Company Attachments):
 #   create_attachment()           -- upload to MinIO + insert row + order shift
@@ -186,6 +194,7 @@ from app.core.storage import (
 from app.modules.auth.service import hash_password, get_platform_user_id
 from app.modules.companies.constants import (
     ALLOWED_ATTACHMENT_MIME_TYPES,
+    CompanyMediaSlot,
     DocumentTemplateKind,
     ROADMAP_COVER_EXTENSION_TO_MIME,
     RoadmapItemKind,
@@ -193,6 +202,12 @@ from app.modules.companies.constants import (
     TemplateStatus,
     VALID_COMPANY_STATUS_TRANSITIONS,
     validate_distribution_config,
+)
+from app.modules.companies.media import (
+    COMPANY_MEDIA_COLUMN,
+    company_media_key,
+    company_media_max_bytes,
+    validate_media_upload,
 )
 from app.modules.companies.models import (
     CompanyAttachment,
@@ -294,8 +309,6 @@ async def create_company(
         user_id=company_user.id,
         name=body.name,
         description=body.description,
-        logo_url=body.logo_url,
-        cover_url=body.cover_url,
         promo_video_url=body.promo_video_url,
         presentation_url=body.presentation_url,
         price_per_unit_cents=body.price_per_unit_cents,
@@ -407,8 +420,6 @@ async def assign_company(
         user_id=target.id,
         name=body.name,
         description=body.description,
-        logo_url=body.logo_url,
-        cover_url=body.cover_url,
         promo_video_url=body.promo_video_url,
         presentation_url=body.presentation_url,
         price_per_unit_cents=body.price_per_unit_cents,
@@ -636,6 +647,8 @@ async def update_own_company(
     Backs PATCH /api/v1/companies/me. Originally TASK-30 ruling 10/12
     (project-editable fields only: description/logo_url/cover_url/
     promo_video_url/presentation_url + status ACTIVE->HIDDEN only).
+    H36 P-131 took logo_url / cover_url out of this body: the pictures
+    are files now, set through set_own_company_media.
 
     TASK-39 item 6 SUPERSEDES that ruling IN PART, by explicit owner
     decision (2026-08): name, price_per_unit_cents, total_supply, and
@@ -2443,6 +2456,236 @@ async def delete_own_roadmap_cover(
         target_type="company",
         target_id=company_id,
         data={"item_id": str(item.id), "storage_key": storage_key},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Project pictures: logo, dark logo, cover (H36 P-131)
+# ---------------------------------------------------------------------------
+#
+# Same storage flow as the roadmap cover (set_roadmap_cover above): the
+# object is uploaded BEFORE the row is written, so a failed upload leaves
+# nothing behind and a rolled-back transaction leaves at worst an orphan
+# object; a replace with the same extension overwrites the same key, one
+# with another extension deletes the old object best-effort after the
+# flush. The staff and the project's own variants differ only in who is
+# recorded as the actor. The audit target is the company in both, so
+# both appear in the project's own change log (audit/company_router).
+
+
+async def _store_company_media(
+    session: AsyncSession,
+    company_id: UUID,
+    slot: CompanyMediaSlot,
+    *,
+    actor_id: UUID,
+    actor_type: str,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> CompanyProfile:
+    """Upload one picture into its slot and point the profile at it."""
+    validate_media_upload(
+        content_type=content_type,
+        file_extension=file_extension,
+        file_size_bytes=file_size_bytes,
+        max_bytes=company_media_max_bytes(slot),
+    )
+    profile = await get_company(company_id, session)
+
+    column = COMPANY_MEDIA_COLUMN[slot]
+    old_storage_key = getattr(profile, column)
+    new_storage_key = company_media_key(company_id, slot, file_extension)
+
+    # Upload first. Orphan-on-rollback is acceptable here; a row
+    # pointing at a missing object would not be.
+    await upload_object(
+        new_storage_key,
+        file_data,
+        content_type,
+        content_length=file_size_bytes,
+    )
+
+    setattr(profile, column, new_storage_key)
+    await session.flush()
+    await session.refresh(profile)
+
+    if old_storage_key and old_storage_key != new_storage_key:
+        try:
+            await delete_object(old_storage_key)
+        except StorageError as exc:
+            logger.warning(
+                "company_media_old_delete_failed",
+                company_id=str(company_id),
+                slot=slot.value,
+                storage_key=old_storage_key,
+                error=str(exc),
+            )
+
+    await record_audit(
+        session=session,
+        event=f"company.{slot.value}_uploaded",
+        actor_id=actor_id,
+        actor_type=actor_type,
+        target_type="company",
+        target_id=company_id,
+        data={
+            "storage_key": new_storage_key,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
+
+    logger.info(
+        "company_media_uploaded",
+        company_id=str(company_id),
+        slot=slot.value,
+        actor_id=str(actor_id),
+        storage_key=new_storage_key,
+        size=file_size_bytes,
+    )
+
+    return profile
+
+
+async def _remove_company_media(
+    session: AsyncSession,
+    company_id: UUID,
+    slot: CompanyMediaSlot,
+    *,
+    actor_id: UUID,
+    actor_type: str,
+) -> None:
+    """Clear one slot and delete its object (best-effort)."""
+    profile = await get_company(company_id, session)
+
+    column = COMPANY_MEDIA_COLUMN[slot]
+    storage_key = getattr(profile, column)
+    if storage_key is None:
+        raise NotFoundError(f"Company has no {slot.value} image")
+
+    setattr(profile, column, None)
+    await session.flush()
+
+    try:
+        await delete_object(storage_key)
+    except StorageError as exc:
+        logger.warning(
+            "company_media_delete_failed",
+            company_id=str(company_id),
+            slot=slot.value,
+            storage_key=storage_key,
+            error=str(exc),
+        )
+
+    await record_audit(
+        session=session,
+        event=f"company.{slot.value}_deleted",
+        actor_id=actor_id,
+        actor_type=actor_type,
+        target_type="company",
+        target_id=company_id,
+        data={"storage_key": storage_key},
+    )
+
+
+async def set_company_media(
+    session: AsyncSession,
+    company_id: UUID,
+    staff: User,
+    *,
+    slot: CompanyMediaSlot,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> CompanyProfile:
+    """Upload / replace one picture of a project (staff).
+
+    The object goes to companies/<company_id>/media/ (company_media_key).
+    `file_extension` carries its dot (".png"); `content_type` must be the
+    type of that extension. Logos are limited to COMPANY_LOGO_MAX_BYTES,
+    the cover to ROADMAP_COVER_MAX_BYTES. Audited as
+    company.<slot>_uploaded, actor_type="staff".
+
+    Raises:
+        BadRequestError: extension, type or size refused
+            (validate_media_upload), checked before anything is written.
+        NotFoundError: company not found.
+        StorageError: the upload failed; nothing was written.
+    """
+    return await _store_company_media(
+        session,
+        company_id,
+        slot,
+        actor_id=staff.id,
+        actor_type="staff",
+        file_data=file_data,
+        file_size_bytes=file_size_bytes,
+        content_type=content_type,
+        file_extension=file_extension,
+    )
+
+
+async def delete_company_media(
+    company_id: UUID,
+    slot: CompanyMediaSlot,
+    staff: User,
+    session: AsyncSession,
+) -> None:
+    """Remove one picture of a project (staff).
+
+    404 when the slot is empty -- the operation is explicit, as for the
+    roadmap cover. The object delete is best-effort. Audited as
+    company.<slot>_deleted, actor_type="staff".
+
+    Raises:
+        NotFoundError: company not found, or the slot holds no picture.
+    """
+    await _remove_company_media(
+        session, company_id, slot, actor_id=staff.id, actor_type="staff"
+    )
+
+
+async def set_own_company_media(
+    session: AsyncSession,
+    company_id: UUID,
+    actor_user_id: UUID,
+    *,
+    slot: CompanyMediaSlot,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> CompanyProfile:
+    """Upload / replace one picture of the caller's OWN project.
+
+    Mirrors set_company_media exactly; only the actor differs
+    (actor_type="user", the project's own user id).
+    """
+    return await _store_company_media(
+        session,
+        company_id,
+        slot,
+        actor_id=actor_user_id,
+        actor_type="user",
+        file_data=file_data,
+        file_size_bytes=file_size_bytes,
+        content_type=content_type,
+        file_extension=file_extension,
+    )
+
+
+async def delete_own_company_media(
+    company_id: UUID,
+    slot: CompanyMediaSlot,
+    actor_user_id: UUID,
+    session: AsyncSession,
+) -> None:
+    """Remove one picture of the caller's OWN project. 404 when empty."""
+    await _remove_company_media(
+        session, company_id, slot, actor_id=actor_user_id, actor_type="user"
     )
 
 

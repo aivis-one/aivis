@@ -6,8 +6,8 @@
 // The products of one project in EVERY status (active, hidden, archived), with
 // what a staff member does to them: create a product (a package of a fixed
 // number of parts at the project's price of a part), change an existing
-// product's text (name, description, cover) and move it between statuses --
-// Hide, Archive and Return. A product can be created only after the project has
+// product's text (name, description), its cover (a file) and move it between
+// statuses -- Hide, Archive and Return. A product can be created only after the project has
 // a pool of parts for sale (the Parts section).
 //
 // Only the moves the server allows are offered: an active product can be hidden
@@ -17,6 +17,11 @@
 // POST  /api/v1/staff/products                 (project_manage AND financial_operations)
 // PATCH /api/v1/staff/products/{id}            (project_manage)
 // PATCH /api/v1/staff/products/{id}/status     (project_manage)
+// PUT|DELETE /api/v1/staff/companies/{id}/products/{productId}/cover (project_manage)
+//
+// THE COVER IS A FILE (H36 P-131). It is uploaded and removed at once from the
+// edit form, not by its Save, and only for a product that exists: on create
+// there is no product to attach it to yet, so the form says so.
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
@@ -39,6 +44,8 @@ import {
   updateStaffProductStatus,
 } from '@/api/staff-products'
 import type { StaffProductStatus, StaffUpdateProductRequest } from '@/api/staff-products'
+import { MEDIA_LIMITS, deleteStaffProductCover, uploadStaffProductCover } from '@/api/media'
+import MediaImageField from '@/components/shared/MediaImageField.vue'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
@@ -168,7 +175,6 @@ const saving = ref(false)
 
 const draftName = ref('')
 const draftDescription = ref('')
-const draftCover = ref('')
 const draftPackageSize = ref('')
 
 const trimmedName = computed(() => draftName.value.trim())
@@ -191,7 +197,6 @@ function openCreate(): void {
   editing.value = null
   draftName.value = ''
   draftDescription.value = ''
-  draftCover.value = ''
   draftPackageSize.value = ''
   showForm.value = true
 }
@@ -201,7 +206,7 @@ function openEdit(product: ProductResponse): void {
   editing.value = product
   draftName.value = product.name
   draftDescription.value = product.description ?? ''
-  draftCover.value = product.cover_url ?? ''
+  coverUrl.value = product.cover_url
   showForm.value = true
 }
 
@@ -216,18 +221,14 @@ async function handleSave(): Promise<void> {
       if (trimmedName.value !== current.name) body.name = trimmedName.value
       const description = draftDescription.value.trim()
       if (description !== (current.description ?? '')) body.description = description || null
-      const cover = draftCover.value.trim()
-      if (cover !== (current.cover_url ?? '')) body.cover_url = cover || null
       if (Object.keys(body).length > 0) await updateStaffProduct(current.id, body)
       showToast(t('staff.platform.products.updated'), 'success')
     } else if (packageSize.value !== null) {
       const description = draftDescription.value.trim()
-      const cover = draftCover.value.trim()
       await createStaffProduct({
         company_id: companyId.value,
         name: trimmedName.value,
         description: description || null,
-        cover_url: cover || null,
         package_size: packageSize.value,
       })
       showToast(t('staff.platform.products.created'), 'success')
@@ -238,6 +239,51 @@ async function handleSave(): Promise<void> {
     showToast(serverReason(err), 'error')
   } finally {
     saving.value = false
+  }
+}
+
+// -- The cover (H36): a file, immediate, edit only --------------------------------
+
+// The link of the cover of the product being edited; follows the uploads and
+// removals so the form shows the truth without waiting for the list.
+const coverUrl = ref<string | null>(null)
+const coverBusy = ref(false)
+
+async function onCoverSelect(file: File): Promise<void> {
+  const current = editing.value
+  if (!canEdit.value || !current || coverBusy.value) return
+  coverBusy.value = true
+  try {
+    const updated = await uploadStaffProductCover(companyId.value, current.id, file)
+    coverUrl.value = updated.cover_url
+    showToast(t('common.media.uploaded'), 'success')
+    await load()
+  } catch (err) {
+    showToast(serverReason(err), 'error')
+  } finally {
+    coverBusy.value = false
+  }
+}
+
+async function onCoverRemove(): Promise<void> {
+  const current = editing.value
+  if (!canEdit.value || !current || coverBusy.value) return
+  coverBusy.value = true
+  try {
+    await deleteStaffProductCover(companyId.value, current.id)
+    coverUrl.value = null
+    showToast(t('common.media.removed'), 'success')
+    await load()
+  } catch (err) {
+    // 404: the cover was already gone.
+    if (err instanceof ApiResponseError && err.status === 404) {
+      coverUrl.value = null
+      await load()
+    } else {
+      showToast(serverReason(err), 'error')
+    }
+  } finally {
+    coverBusy.value = false
   }
 }
 
@@ -356,12 +402,20 @@ onMounted(load)
         :label="t('staff.platform.products.fieldDescription')"
         maxlength="5000"
       />
-      <CInput
-        v-model="draftCover"
+      <MediaImageField
+        v-if="editing"
         :label="t('staff.platform.products.fieldCover')"
-        :placeholder="t('staff.platform.urlPlaceholder')"
-        maxlength="2000"
+        :url="coverUrl"
+        :max-bytes="MEDIA_LIMITS.productCover"
+        :busy="coverBusy"
+        :disabled="!canEdit"
+        @select="onCoverSelect"
+        @remove="onCoverRemove"
       />
+      <div v-else class="ds-field">
+        <span class="ds-field__label">{{ t('staff.platform.products.fieldCover') }}</span>
+        <p class="ds-field__hint">{{ t('staff.platform.products.coverAfterCreate') }}</p>
+      </div>
       <template v-if="!editing">
         <CInput
           v-model="draftPackageSize"

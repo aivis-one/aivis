@@ -4,7 +4,8 @@
 // =============================================================================
 //
 // Project profile: a staff member reads it and changes its NAME,
-// DESCRIPTION and LINKS (logo, cover, promo video, presentation), plus
+// DESCRIPTION and LINKS (promo video, presentation), its PICTURES (logo,
+// dark logo, cover -- files, H36), plus
 // (TASK-30 ruling 12) a status control. Reads the project from the shared
 // STAFF_COMPANY_KEY context (PERF-40-01) -- the parent detail view already
 // loaded it for the header, so this section does not fire its own detail GET.
@@ -38,6 +39,12 @@
 //   current status is 'archived' there are none, so the edit CTA does
 //   not render at all rather than opening a modal with an empty select.
 //
+// PICTURES (H36 P-131). The logo, the logo for the dark theme and the cover
+// are files in our storage, uploaded and removed at once through
+// PUT|DELETE /api/v1/staff/companies/{id}/media/{slot} (project_manage), not
+// through the profile form's Save. After each, the shared context reloads so
+// every section sees the new links.
+//
 // FP-25 self-hide: optional fields (description, cover) are omitted from
 // the render when absent rather than showing empty rows.
 // =============================================================================
@@ -59,6 +66,9 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { updateStaffCompany } from '@/api/staff-companies'
+import { MEDIA_LIMITS, deleteStaffCompanyMedia, uploadStaffCompanyMedia } from '@/api/media'
+import type { CompanyMediaSlot } from '@/api/media'
+import MediaImageField from '@/components/shared/MediaImageField.vue'
 import { ApiResponseError } from '@/api/client'
 import type { UpdateCompanyRequest } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
@@ -192,8 +202,6 @@ const showProfileEdit = ref(false)
 const savingProfile = ref(false)
 const draftName = ref('')
 const draftDescription = ref('')
-const draftLogo = ref('')
-const draftCover = ref('')
 const draftPromo = ref('')
 const draftPresentation = ref('')
 
@@ -202,8 +210,6 @@ function openProfileEdit(): void {
   const c = company.value
   draftName.value = c.name
   draftDescription.value = c.description ?? ''
-  draftLogo.value = c.logo_url ?? ''
-  draftCover.value = c.cover_url ?? ''
   draftPromo.value = c.promo_video_url ?? ''
   draftPresentation.value = c.presentation_url ?? ''
   showProfileEdit.value = true
@@ -222,8 +228,6 @@ function profileChanges(): UpdateCompanyRequest {
   if (text(draftDescription.value) !== (c.description ?? null)) {
     body.description = text(draftDescription.value)
   }
-  if (text(draftLogo.value) !== (c.logo_url ?? null)) body.logo_url = text(draftLogo.value)
-  if (text(draftCover.value) !== (c.cover_url ?? null)) body.cover_url = text(draftCover.value)
   if (text(draftPromo.value) !== (c.promo_video_url ?? null)) {
     body.promo_video_url = text(draftPromo.value)
   }
@@ -253,6 +257,65 @@ async function handleProfileSave(): Promise<void> {
     showToast(message, 'error')
   } finally {
     savingProfile.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pictures: logo, dark logo, cover (H36 P-131, project_manage)
+// ---------------------------------------------------------------------------
+
+interface MediaSlotView {
+  slot: CompanyMediaSlot
+  label: string
+  url: string | null
+}
+
+const mediaSlots = computed<MediaSlotView[]>(() => {
+  const c = company.value
+  return [
+    { slot: 'logo', label: t('staff.platform.profile.media.logo'), url: c?.logo_url ?? null },
+    {
+      slot: 'logo-dark',
+      label: t('staff.platform.profile.media.logoDark'),
+      url: c?.logo_dark_url ?? null,
+    },
+    { slot: 'cover', label: t('staff.platform.profile.media.cover'), url: c?.cover_url ?? null },
+  ]
+})
+
+const mediaBusy = ref<CompanyMediaSlot | null>(null)
+
+async function onMediaSelect(slot: CompanyMediaSlot, file: File): Promise<void> {
+  if (!canEditProfile.value || !companyId.value || mediaBusy.value) return
+  mediaBusy.value = slot
+  try {
+    await uploadStaffCompanyMedia(companyId.value, slot, file)
+    showToast(t('common.media.uploaded'), 'success')
+    await ctx?.reload()
+  } catch (err) {
+    const message = err instanceof ApiResponseError && err.detail ? err.detail : t('common.error')
+    showToast(message, 'error')
+  } finally {
+    mediaBusy.value = null
+  }
+}
+
+async function onMediaRemove(slot: CompanyMediaSlot): Promise<void> {
+  if (!canEditProfile.value || !companyId.value || mediaBusy.value) return
+  mediaBusy.value = slot
+  try {
+    await deleteStaffCompanyMedia(companyId.value, slot)
+    showToast(t('common.media.removed'), 'success')
+    await ctx?.reload()
+  } catch (err) {
+    // 404: the picture was already gone -- the reload shows the truth.
+    if (err instanceof ApiResponseError && err.status === 404) {
+      await ctx?.reload()
+    } else {
+      showToast(t('common.error'), 'error')
+    }
+  } finally {
+    mediaBusy.value = null
   }
 }
 
@@ -340,23 +403,30 @@ function formatPrice(cents: number): string {
         </p>
       </section>
 
+      <!-- Pictures (H36): the logo, the dark logo and the cover, as files (K30) -->
+      <section class="scp__section">
+        <h2 class="ds-section-title">
+          {{ t('staff.platform.profile.media.title') }}
+        </h2>
+        <MediaImageField
+          v-for="m in mediaSlots"
+          :key="m.slot"
+          :label="m.label"
+          :url="m.url"
+          :max-bytes="MEDIA_LIMITS[m.slot]"
+          :busy="mediaBusy === m.slot"
+          :disabled="!canEditProfile || (mediaBusy !== null && mediaBusy !== m.slot)"
+          @select="(file) => onMediaSelect(m.slot, file)"
+          @remove="onMediaRemove(m.slot)"
+        />
+      </section>
+
       <!-- External links (FP-25 self-hide each when absent): K23 rows that open the link -->
-      <section
-        v-if="company.logo_url || company.promo_video_url || company.presentation_url"
-        class="scp__section"
-      >
+      <section v-if="company.promo_video_url || company.presentation_url" class="scp__section">
         <h2 class="ds-section-title">
           {{ t('staff.platform.profile.links') }}
         </h2>
         <ul class="ds-rows">
-          <li v-if="company.logo_url" class="ds-row">
-            <span class="ds-row__lead"><ExternalLink size="sm" /></span>
-            <span class="ds-row__body">
-              <a class="ds-row__link" :href="company.logo_url" target="_blank" rel="noopener">
-                <span class="ds-row__title">{{ t('staff.platform.profile.logoUrl') }}</span>
-              </a>
-            </span>
-          </li>
           <li v-if="company.promo_video_url" class="ds-row">
             <span class="ds-row__lead"><ExternalLink size="sm" /></span>
             <span class="ds-row__body">
@@ -418,16 +488,6 @@ function formatPrice(cents: number): string {
         :label="t('staff.platform.profile.description')"
         :rows="4"
         maxlength="5000"
-      />
-      <CInput
-        v-model="draftLogo"
-        :label="t('staff.platform.profile.logoUrl')"
-        :placeholder="t('staff.platform.urlPlaceholder')"
-      />
-      <CInput
-        v-model="draftCover"
-        :label="t('staff.platform.profile.coverUrl')"
-        :placeholder="t('staff.platform.urlPlaceholder')"
       />
       <CInput
         v-model="draftPromo"

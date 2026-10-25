@@ -19,6 +19,8 @@
 #   documents_link        -- the address of one document, for its email
 #   build_document_environment -- THE Jinja2 environment for document
 #                             templates (renderers and reconcile, H34 P-128)
+#   template_references    -- does a template body read a given variable
+#                             (H36: the logo's bytes are fetched only then)
 #
 # All of them are pure -- they only read their inputs (or settings) and
 # return a value. No DB / MinIO / Redis access; safe to call inside any
@@ -29,7 +31,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
-from jinja2 import Environment, StrictUndefined
+from jinja2 import Environment, StrictUndefined, meta
 
 from app.core.config import settings
 from app.modules.users.models import User
@@ -73,6 +75,18 @@ def build_document_environment(
     if asset_data_uri is not None:
         env.globals["asset_data_uri"] = asset_data_uri
     return env
+
+
+def template_references(env: Environment, html_body: str, name: str) -> bool:
+    """True when the template body reads the top-level variable `name`.
+
+    Parses only (no render). Used so a renderer fetches something costly
+    -- the project's logo bytes for `company_logo_url` (H36) -- only for a
+    template that will print it. The renderer still puts the name into
+    the context either way (None when unread), so StrictUndefined has
+    nothing to trip on.
+    """
+    return name in meta.find_undeclared_variables(env.parse(html_body))
 
 
 def extract_investor_name(user: User) -> str:

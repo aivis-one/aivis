@@ -84,6 +84,7 @@ from app.core.comms import comms_configured
 from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import AivisError, BadRequestError, NotFoundError
+from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
 from app.modules.companies.service import (
     get_template_html_cached,
@@ -104,6 +105,7 @@ from app.modules.purchases.document_utils import (
     format_cents,
     format_document_date,
     format_document_datetime,
+    template_references,
 )
 from app.modules.purchases.models import Purchase
 from app.modules.users.account_number import resolve_account_number
@@ -460,7 +462,14 @@ async def render_agreement_html(
         # has no dedicated legal-name column; we render the same `name`
         # value into both placeholders.
         "company_legal_name": data.company.name,
-        "company_logo_url": data.company.logo_url,
+        # The logo's bytes inline (H36): a presigned link would expire,
+        # and an agreement is frozen for good. Fetched only when the
+        # template reads the variable.
+        "company_logo_url": (
+            await company_logo_data_uri(data.company)
+            if template_references(env, html_body, "company_logo_url")
+            else None
+        ),
         "product_name": data.product.name,
         "units": data.purchase.units,
         # Bootstrap templates take raw cents (they format inline in the

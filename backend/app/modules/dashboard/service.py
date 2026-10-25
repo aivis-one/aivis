@@ -19,6 +19,7 @@ from uuid import UUID
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.companies.media import company_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.dashboard.schemas import (
     BalanceResponse,
@@ -48,7 +49,9 @@ async def get_dashboard_summary(
         select(
             Purchase.company_id,
             CompanyProfile.name.label("company_name"),
-            CompanyProfile.logo_url.label("logo_url"),
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("invested_cents"),
@@ -61,7 +64,9 @@ async def get_dashboard_summary(
         .group_by(
             Purchase.company_id,
             CompanyProfile.name,
-            CompanyProfile.logo_url,
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents,
         )
         .order_by(func.sum(Purchase.units).desc())
@@ -81,10 +86,17 @@ async def get_dashboard_summary(
         invested = int(row.invested_cents)
         current_value = units * int(row.current_price)
 
+        links = await company_media_urls(
+            row.company_id,
+            logo_storage_key=row.logo_storage_key,
+            logo_dark_storage_key=row.logo_dark_storage_key,
+            cover_storage_key=row.cover_storage_key,
+        )
         companies.append(CompanySummaryResponse(
             company_id=row.company_id,
             company_name=row.company_name,
-            logo_url=row.logo_url,
+            logo_url=links["logo_url"],
+            logo_dark_url=links["logo_dark_url"],
             total_units=units,
             invested_cents=invested,
             current_value_cents=current_value,

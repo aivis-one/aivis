@@ -95,8 +95,6 @@ async def _mini_company(
         user_id=owner_id,
         name=f"PoolCap Test Co {tag}",
         description="R51 pool-capacity test fixture.",
-        logo_url=None,
-        cover_url=None,
         promo_video_url=None,
         presentation_url=None,
         price_per_unit_cents=_PRICE,

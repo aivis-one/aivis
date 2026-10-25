@@ -4,7 +4,7 @@
 # =============================================================================
 #
 # CompanyProfile:
-#   One-to-one with User (role=company). Contains media URLs, pricing,
+#   One-to-one with User (role=company). Contains media keys, pricing,
 #   distribution config, and status. User is created alongside the profile
 #   by staff admin (not promoted from existing user).
 #
@@ -125,12 +125,21 @@ class CompanyProfile(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     )
 
     # -- Media --
-    logo_url: Mapped[str | None] = mapped_column(
-        String(2000),
+    # Object keys of the project's pictures in our storage (H36 P-131),
+    # under companies/<id>/media/ (companies/media.py). Set and cleared
+    # only by the media services (set_company_media and its kin), never
+    # through a create / update body; every response carries presigned
+    # links signed from them (logo_url, logo_dark_url, cover_url).
+    logo_storage_key: Mapped[str | None] = mapped_column(
+        String(1000),
         nullable=True,
     )
-    cover_url: Mapped[str | None] = mapped_column(
-        String(2000),
+    logo_dark_storage_key: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+    cover_storage_key: Mapped[str | None] = mapped_column(
+        String(1000),
         nullable=True,
     )
     promo_video_url: Mapped[str | None] = mapped_column(

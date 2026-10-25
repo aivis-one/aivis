@@ -84,8 +84,6 @@ async def _mini_company(
         user_id=owner_id,
         name=f"SupplyTest Co {tag}",
         description="TASK-39 item 6 dilution test fixture.",
-        logo_url=None,
-        cover_url=None,
         promo_video_url=None,
         presentation_url=None,
         price_per_unit_cents=1000,

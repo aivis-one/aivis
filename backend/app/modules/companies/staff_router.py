@@ -21,6 +21,11 @@
 #   PATCH /api/v1/staff/companies/{id}/roadmap/{item_id}   -- update roadmap item
 #   DELETE /api/v1/staff/companies/{id}/roadmap/{item_id}  -- soft-delete item
 #   PATCH /api/v1/staff/companies/{id}/roadmap/reorder     -- reorder items
+#   PUT|DELETE /api/v1/staff/companies/{id}/media/{slot}   -- project picture
+#                                                              (H36: logo,
+#                                                              logo-dark, cover)
+#   PUT|DELETE /api/v1/staff/companies/{id}/products/{product_id}/cover
+#                                                           -- product cover (H36)
 #
 # PERMISSIONS:
 #   Read endpoints (list, detail, price-history) require company_manage.
@@ -87,6 +92,12 @@ from app.modules.companies.constants import (
     ROADMAP_COVER_MAX_BYTES,
     CompanyStatus,
 )
+from app.modules.companies.media import (
+    CompanyMediaSlotPath,
+    build_company_response,
+    build_product_response,
+    slot_from_path,
+)
 from app.modules.companies.schemas import (
     AssignCompanyRequest,
     CompanyDetailResponse,
@@ -108,6 +119,7 @@ from app.modules.companies.service import (
     build_roadmap_item_response,
     create_company,
     create_roadmap_item,
+    delete_company_media,
     delete_roadmap_cover,
     delete_roadmap_item,
     get_company,
@@ -115,6 +127,7 @@ from app.modules.companies.service import (
     list_companies,
     list_price_history,
     reorder_roadmap,
+    set_company_media,
     set_roadmap_cover,
     update_company,
     update_price,
@@ -123,7 +136,11 @@ from app.modules.companies.service import (
     validate_roadmap_cover_mime_by_filename,
 )
 from app.modules.products.schemas import ProductListResponse, ProductResponse
-from app.modules.products.service import list_products
+from app.modules.products.service import (
+    delete_product_cover,
+    list_products,
+    set_product_cover,
+)
 from app.modules.staff.constants import is_admin
 from app.modules.staff.permissions import require_financial_operations
 from app.modules.users.models import User
@@ -183,7 +200,7 @@ async def list_companies_endpoint(
         per_page=per_page,
     )
     return CompanyListResponse(
-        items=[CompanyResponse.model_validate(c) for c in companies],
+        items=[await build_company_response(c) for c in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -229,11 +246,11 @@ async def get_company_detail_endpoint(
         for item in roadmap_items
     ]
 
-    # CompanyDetailResponse(CompanyResponse) adds `roadmap`; validate the
-    # ORM profile into the base shape, then attach the assembled list.
-    response = CompanyDetailResponse.model_validate(profile)
-    response.roadmap = roadmap
-    return response
+    # CompanyDetailResponse(CompanyResponse) adds `roadmap`; build the
+    # base shape (with the picture links signed now), then attach the
+    # assembled list.
+    base = await build_company_response(profile)
+    return CompanyDetailResponse(**base.model_dump(), roadmap=roadmap)
 
 
 @router.post(
@@ -253,7 +270,7 @@ async def create_company_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await create_company(body, staff, session)
-    return CompanyResponse.model_validate(profile)
+    return await build_company_response(profile)
 
 
 @router.post(
@@ -283,7 +300,7 @@ async def assign_company_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await assign_company(body, staff, session)
-    return CompanyResponse.model_validate(profile)
+    return await build_company_response(profile)
 
 
 @router.patch(
@@ -305,7 +322,7 @@ async def update_company_endpoint(
         await require_financial_operations(staff, session)
 
     profile = await update_company(company_id, body, staff, session)
-    return CompanyResponse.model_validate(profile)
+    return await build_company_response(profile)
 
 
 @router.patch(
@@ -326,7 +343,7 @@ async def update_price_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await update_price(company_id, body.price_per_unit_cents, staff, session)
-    return CompanyResponse.model_validate(profile)
+    return await build_company_response(profile)
 
 
 @router.patch(
@@ -352,7 +369,7 @@ async def update_supply_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await update_supply(company_id, body.total_supply, staff, session)
-    return CompanyResponse.model_validate(profile)
+    return await build_company_response(profile)
 
 
 @router.get(
@@ -417,7 +434,7 @@ async def list_company_products_endpoint(
         per_page=per_page,
     )
     return ProductListResponse(
-        items=[ProductResponse.model_validate(p) for p in products],
+        items=[await build_product_response(p) for p in products],
         total=total,
         page=page,
         per_page=per_page,
@@ -653,3 +670,101 @@ async def delete_roadmap_cover_endpoint(
     knows it was a no-op instead of treating empty cover as success.
     """
     await delete_roadmap_cover(company_id, item_id, staff, session)
+
+
+# ---------------------------------------------------------------------------
+# Project pictures and product covers (H36 P-131)
+# ---------------------------------------------------------------------------
+#
+# Files, like the roadmap cover above: mime from the filename extension
+# (the multipart Content-Type is ignored), PUT uploads or replaces, DELETE
+# removes and answers 404 when there is nothing to remove. The size limit
+# per slot (1 MiB for the logos, 10 MiB for the covers) is checked by the
+# service before anything is written; the request body limit is the
+# larger of the two, since one route serves all three slots.
+
+
+@router.put(
+    "/{company_id}/media/{slot}",
+    response_model=CompanyResponse,
+)
+@upload_body_limit(files=1, per_file_bytes=ROADMAP_COVER_MAX_BYTES)
+async def set_company_media_endpoint(
+    company_id: UUID,
+    slot: CompanyMediaSlotPath,
+    file: UploadFile = File(...),
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> CompanyResponse:
+    """Upload / replace a project's logo, dark logo or cover (H36)."""
+    content_type, ext = validate_roadmap_cover_mime_by_filename(
+        file.filename or "untitled"
+    )
+    profile = await set_company_media(
+        session=session,
+        company_id=company_id,
+        staff=staff,
+        slot=slot_from_path(slot),
+        file_data=file.file,
+        file_size_bytes=_resolve_upload_size(file),
+        content_type=content_type,
+        file_extension=ext,
+    )
+    return await build_company_response(profile)
+
+
+@router.delete(
+    "/{company_id}/media/{slot}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_company_media_endpoint(
+    company_id: UUID,
+    slot: CompanyMediaSlotPath,
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Remove a project's logo, dark logo or cover. 404 when it has none."""
+    await delete_company_media(company_id, slot_from_path(slot), staff, session)
+
+
+@router.put(
+    "/{company_id}/products/{product_id}/cover",
+    response_model=ProductResponse,
+)
+@upload_body_limit(files=1, per_file_bytes=ROADMAP_COVER_MAX_BYTES)
+async def set_product_cover_endpoint(
+    company_id: UUID,
+    product_id: UUID,
+    file: UploadFile = File(...),
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> ProductResponse:
+    """Upload / replace a product's cover (H36). 404 for another project's product."""
+    content_type, ext = validate_roadmap_cover_mime_by_filename(
+        file.filename or "untitled"
+    )
+    product = await set_product_cover(
+        session=session,
+        company_id=company_id,
+        product_id=product_id,
+        staff=staff,
+        file_data=file.file,
+        file_size_bytes=_resolve_upload_size(file),
+        content_type=content_type,
+        file_extension=ext,
+    )
+    return await build_product_response(product)
+
+
+@router.delete(
+    "/{company_id}/products/{product_id}/cover",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_product_cover_endpoint(
+    company_id: UUID,
+    product_id: UUID,
+    staff: User = Depends(require_staff_permission("project_manage")),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Remove a product's cover. 404 when it has none."""
+    await delete_product_cover(company_id, product_id, staff, session)

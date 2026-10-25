@@ -25,6 +25,9 @@
 #   - Create/Update endpoints forward cover_url to the service layer.
 #     cover_url is NOT financial_operations-gated (same tier as name /
 #     description -- purely cosmetic media URL).
+#     H36 P-131: cover_url left both bodies. The cover is a file now,
+#     uploaded through PUT|DELETE /api/v1/staff/companies/{id}/products/
+#     {product_id}/cover (companies/staff_router.py).
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - Create endpoint forwards body.package_size (renamed from body.units)
@@ -55,6 +58,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_session
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.products.calculator import calculate_installment_preview
+from app.modules.companies.media import build_product_response
 from app.modules.products.schemas import (
     CreateInstallmentRequest,
     CreateProductRequest,
@@ -111,10 +115,9 @@ async def create_product_endpoint(
         staff,
         session,
         description=body.description,
-        cover_url=body.cover_url,
         purchase_config=body.purchase_config,
     )
-    return ProductResponse.model_validate(product)
+    return await build_product_response(product)
 
 
 @router.patch(
@@ -142,10 +145,9 @@ async def update_product_endpoint(
         session,
         name=updates.get("name"),
         description=updates.get("description", ...),
-        cover_url=updates.get("cover_url", ...),
         purchase_config=updates.get("purchase_config", ...),
     )
-    return ProductResponse.model_validate(product)
+    return await build_product_response(product)
 
 
 @router.patch(
@@ -162,7 +164,7 @@ async def update_product_status_endpoint(
     product = await update_product_status(
         product_id, body.status, staff, session
     )
-    return ProductResponse.model_validate(product)
+    return await build_product_response(product)
 
 
 # ---------------------------------------------------------------------------

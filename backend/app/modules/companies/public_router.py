@@ -59,10 +59,10 @@ from app.modules.companies.constants import (
     PUBLIC_COMPANIES_RATE_LIMIT,
     CompanyStatus,
 )
+from app.modules.companies.media import build_public_company_response
 from app.modules.companies.schemas import (
     PublicCompanyDetailResponse,
     PublicCompanyListResponse,
-    PublicCompanyResponse,
 )
 from app.modules.companies.service import (
     build_roadmap_item_response,
@@ -135,7 +135,7 @@ async def list_public_companies_endpoint(
         per_page=per_page,
     )
     return PublicCompanyListResponse(
-        items=[PublicCompanyResponse.model_validate(c) for c in companies],
+        items=[await build_public_company_response(c) for c in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -183,7 +183,7 @@ async def get_public_company_detail_endpoint(
         for item in roadmap_items
     ]
     return PublicCompanyDetailResponse(
-        **PublicCompanyResponse.model_validate(profile).model_dump(),
+        **(await build_public_company_response(profile)).model_dump(),
         stats=stats,
         roadmap=roadmap,
     )

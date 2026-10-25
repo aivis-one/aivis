@@ -9,6 +9,9 @@
 //      who works in the account.
 //   3. Profile -- description, status (or the "withdraw" button while the
 //      project is on sale), and a pencil that opens the profile and media form.
+//      The pictures in that form (logo, dark logo, cover) are files (H36),
+//      uploaded and removed at once through PUT|DELETE /companies/me/media/
+//      {slot}, not by the form's Save; the answer replaces the cached profile.
 //   4. Parts -- the price of a part and the parts for sale, READ ONLY. The price
 //      of a part is the fair value of the project divided by 1,000,000,000,
 //      one for every project; it changes only by a revaluation of the project,
@@ -73,7 +76,11 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import { useToast } from '@/composables/useToast'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
-import { updateOwnCompany } from '@/api/companies'
+import { getMyCompany, updateOwnCompany } from '@/api/companies'
+import { MEDIA_LIMITS, deleteOwnCompanyMedia, uploadOwnCompanyMedia } from '@/api/media'
+import type { CompanyMediaSlot } from '@/api/media'
+import MediaImageField from '@/components/shared/MediaImageField.vue'
+import { useThemedLogo } from '@/composables/useThemedLogo'
 import { updateMe } from '@/api/users'
 import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
@@ -111,7 +118,11 @@ const hasError = computed<boolean>(() => profileStore.error !== null)
 // ---------------------------------------------------------------------------
 
 const companyName = computed<string>(() => profile.value?.name ?? '')
-const logoUrl = computed<string | null>(() => profile.value?.logo_url ?? null)
+// The logo for the rendered theme: the dark one in the dark theme when set (H36).
+const logoUrl = useThemedLogo(
+  () => profile.value?.logo_url,
+  () => profile.value?.logo_dark_url,
+)
 
 const status = computed<string>(() => profile.value?.status ?? '')
 const statusLabel = computed<string>(() =>
@@ -181,7 +192,8 @@ async function handleWithdraw(): Promise<void> {
 // Profile: self-service edit (TASK-30 W1)
 // ---------------------------------------------------------------------------
 //
-// One modal covers description + the four media URLs. Submit sends only
+// One modal covers description + the two media links (promo video,
+// presentation), plus the pictures as files (below). Submit sends only
 // the fields that actually changed, diffed against the loaded profile --
 // same exclude_unset contract the roadmap/attachments editors already
 // rely on (omit = keep, null = clear). Pricing/supply/distribution and
@@ -192,8 +204,6 @@ const showEditProfile = ref(false)
 const savingProfile = ref(false)
 
 const draftDescription = ref('')
-const draftLogoUrl = ref('')
-const draftCoverUrl = ref('')
 const draftPromoVideoUrl = ref('')
 const draftPresentationUrl = ref('')
 
@@ -201,8 +211,6 @@ function openEditProfile(): void {
   const p = profile.value
   if (!p) return
   draftDescription.value = p.description ?? ''
-  draftLogoUrl.value = p.logo_url ?? ''
-  draftCoverUrl.value = p.cover_url ?? ''
   draftPromoVideoUrl.value = p.promo_video_url ?? ''
   draftPresentationUrl.value = p.presentation_url ?? ''
   showEditProfile.value = true
@@ -213,8 +221,6 @@ function closeEditProfile(): void {
 }
 
 const trimmedDescription = computed<string>(() => draftDescription.value.trim())
-const trimmedLogoUrl = computed<string>(() => draftLogoUrl.value.trim())
-const trimmedCoverUrl = computed<string>(() => draftCoverUrl.value.trim())
 const trimmedPromoVideoUrl = computed<string>(() => draftPromoVideoUrl.value.trim())
 const trimmedPresentationUrl = computed<string>(() => draftPresentationUrl.value.trim())
 
@@ -226,19 +232,13 @@ function isValidOptionalUrl(v: string): boolean {
   return v.startsWith('http://') || v.startsWith('https://')
 }
 
-const logoUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedLogoUrl.value))
-const coverUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedCoverUrl.value))
 const promoVideoUrlValid = computed<boolean>(() => isValidOptionalUrl(trimmedPromoVideoUrl.value))
 const presentationUrlValid = computed<boolean>(() =>
   isValidOptionalUrl(trimmedPresentationUrl.value),
 )
 
 const canSubmitProfile = computed<boolean>(
-  () =>
-    logoUrlValid.value &&
-    coverUrlValid.value &&
-    promoVideoUrlValid.value &&
-    presentationUrlValid.value,
+  () => promoVideoUrlValid.value && presentationUrlValid.value,
 )
 
 // Diff against the loaded profile -- send only fields that changed.
@@ -252,16 +252,6 @@ function buildProfileUpdateBody(): UpdateOwnCompanyRequest {
   const origDescription = p.description ?? ''
   if (trimmedDescription.value !== origDescription) {
     body.description = trimmedDescription.value ? trimmedDescription.value : null
-  }
-
-  const origLogoUrl = p.logo_url ?? ''
-  if (trimmedLogoUrl.value !== origLogoUrl) {
-    body.logo_url = trimmedLogoUrl.value ? trimmedLogoUrl.value : null
-  }
-
-  const origCoverUrl = p.cover_url ?? ''
-  if (trimmedCoverUrl.value !== origCoverUrl) {
-    body.cover_url = trimmedCoverUrl.value ? trimmedCoverUrl.value : null
   }
 
   const origPromoVideoUrl = p.promo_video_url ?? ''
@@ -301,6 +291,61 @@ async function handleSaveProfile(): Promise<void> {
     showToast(message, 'error')
   } finally {
     savingProfile.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pictures: logo, dark logo, cover (H36 P-131)
+// ---------------------------------------------------------------------------
+
+interface MediaSlotView {
+  slot: CompanyMediaSlot
+  label: string
+  url: string | null
+}
+
+const mediaSlots = computed<MediaSlotView[]>(() => {
+  const p = profile.value
+  return [
+    { slot: 'logo', label: t('comp.settings.media.logo'), url: p?.logo_url ?? null },
+    { slot: 'logo-dark', label: t('comp.settings.media.logoDark'), url: p?.logo_dark_url ?? null },
+    { slot: 'cover', label: t('comp.settings.media.cover'), url: p?.cover_url ?? null },
+  ]
+})
+
+const mediaBusy = ref<CompanyMediaSlot | null>(null)
+
+async function onMediaSelect(slot: CompanyMediaSlot, file: File): Promise<void> {
+  if (mediaBusy.value) return
+  mediaBusy.value = slot
+  try {
+    profileStore.applyProfile(await uploadOwnCompanyMedia(slot, file))
+    showToast(t('common.media.uploaded'), 'success')
+  } catch (err) {
+    const message = err instanceof ApiResponseError && err.detail ? err.detail : t('common.error')
+    showToast(message, 'error')
+  } finally {
+    mediaBusy.value = null
+  }
+}
+
+async function onMediaRemove(slot: CompanyMediaSlot): Promise<void> {
+  if (mediaBusy.value) return
+  mediaBusy.value = slot
+  try {
+    try {
+      await deleteOwnCompanyMedia(slot)
+      showToast(t('common.media.removed'), 'success')
+    } catch (err) {
+      // 404: the picture was already gone -- the fetch below shows the truth.
+      if (!(err instanceof ApiResponseError && err.status === 404)) throw err
+    }
+    // A removal answers 204 with no body: fetch the profile for the new links.
+    profileStore.applyProfile(await getMyCompany())
+  } catch {
+    showToast(t('common.error'), 'error')
+  } finally {
+    mediaBusy.value = null
   }
 }
 
@@ -721,8 +766,9 @@ onMounted(() => {
       </div>
     </CModal>
 
-    <!-- Profile edit modal (TASK-30 W1): description + the four media
-         URLs. Pricing/supply/distribution/status are NOT here. -->
+    <!-- Profile edit modal (TASK-30 W1): description + the two media
+         links, and the pictures as files (H36). Pricing/supply/distribution/
+         status are NOT here. -->
     <CModal
       :open="showEditProfile"
       :title="t('comp.settings.profile.editTitle')"
@@ -735,20 +781,16 @@ onMounted(() => {
         maxlength="5000"
       />
 
-      <CInput
-        v-model="draftLogoUrl"
-        :label="t('comp.settings.links.logo')"
-        placeholder="https://..."
-        maxlength="2000"
-        :error="!logoUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
-      />
-
-      <CInput
-        v-model="draftCoverUrl"
-        :label="t('comp.settings.links.cover')"
-        placeholder="https://..."
-        maxlength="2000"
-        :error="!coverUrlValid ? t('comp.settings.profile.urlFormatError') : ''"
+      <MediaImageField
+        v-for="m in mediaSlots"
+        :key="m.slot"
+        :label="m.label"
+        :url="m.url"
+        :max-bytes="MEDIA_LIMITS[m.slot]"
+        :busy="mediaBusy === m.slot"
+        :disabled="mediaBusy !== null && mediaBusy !== m.slot"
+        @select="(file) => onMediaSelect(m.slot, file)"
+        @remove="onMediaRemove(m.slot)"
       />
 
       <CInput

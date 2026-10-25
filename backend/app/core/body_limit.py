@@ -127,7 +127,7 @@ def _flatten(routes: list[Any]) -> list[Any]:
     their full path, because every router in this tree declares its prefix
     on itself and none is included under an extra prefix. If a FastAPI
     upgrade changes the wrapper, this returns no limited routes, and the
-    test that pins the table to the seven upload endpoints fails -- the
+    test that pins the table of upload endpoints fails -- the
     limit cannot disappear silently.
     """
     flat: list[Any] = []

@@ -7,7 +7,9 @@
 #   create_product()        -- create Product, copy price from Company,
 #                              attach to active OptionPool (Sprint 4.3)
 #   update_product()        -- partial update (name, description,
-#                              cover_url, purchase_config)
+#                              purchase_config)
+#   set_product_cover()     -- H36: upload / replace the cover file
+#   delete_product_cover()  -- H36: remove the cover file
 #   update_product_status() -- state machine transition
 #   get_product()           -- load Product by id
 #   list_products()         -- paginated list (public: active only)
@@ -25,6 +27,12 @@
 # Sprint F4.1 CHANGES:
 #   - create_product(): +cover_url kwarg (scalar, stored as-is).
 #   - update_product(): +cover_url sentinel kwarg (Ellipsis semantics).
+#
+# H36 P-131 CHANGES (pictures in our storage):
+#   - cover_url left create_product() / update_product(). The cover is a
+#     file in our storage under companies/<company_id>/products/<id>/,
+#     set by set_product_cover() and removed by delete_product_cover();
+#     Product.cover_storage_key holds its key (companies/media.py).
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - create_product(): kwarg `units` -> `package_size`. Looks up the
@@ -52,11 +60,16 @@ from uuid import UUID
 
 import structlog
 from datetime import datetime, UTC
+from typing import BinaryIO
+
 from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.storage import StorageError, delete_object, upload_object
+from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
+from app.modules.companies.media import product_cover_key, validate_media_upload
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import get_company
 from app.modules.products.constants import (
@@ -86,7 +99,6 @@ async def create_product(
     session: AsyncSession,
     *,
     description: str | None = None,
-    cover_url: str | None = None,
     purchase_config: dict | None = None,  # type: ignore[type-arg]
 ) -> Product:
     """Create a new product for a company.
@@ -135,7 +147,6 @@ async def create_product(
         name=name,
         description=description,
         package_size=package_size,
-        cover_url=cover_url,
         purchase_config=purchase_config,
         price_per_unit_cents=company.price_per_unit_cents,
         status=ProductStatus.HIDDEN,
@@ -179,7 +190,6 @@ async def update_product(
     *,
     name: str | None = None,
     description=...,
-    cover_url=...,
     purchase_config=...,
 ) -> Product:
     """Partial update of product fields.
@@ -202,10 +212,6 @@ async def update_product(
     if description is not ...:
         product.description = description
         changed_fields.append("description")
-
-    if cover_url is not ...:
-        product.cover_url = cover_url
-        changed_fields.append("cover_url")
 
     if purchase_config is not ...:
         if purchase_config is not None:
@@ -269,6 +275,152 @@ async def update_product_status(
     )
 
     return product
+
+
+async def _get_company_product(
+    company_id: UUID, product_id: UUID, session: AsyncSession
+) -> Product:
+    """The product, when it belongs to `company_id`; 404 otherwise.
+
+    A product of another company answers exactly like a missing one, so
+    the cover routes cannot be used to probe ids across projects.
+    """
+    await get_company(company_id, session)
+    product = await get_product(product_id, session)
+    if product.company_id != company_id:
+        raise NotFoundError("Product not found")
+    return product
+
+
+async def set_product_cover(
+    session: AsyncSession,
+    company_id: UUID,
+    product_id: UUID,
+    staff: User,
+    *,
+    file_data: BinaryIO,
+    file_size_bytes: int,
+    content_type: str,
+    file_extension: str,
+) -> Product:
+    """Upload / replace the cover of a product (H36 P-131, staff).
+
+    The object goes to companies/<company_id>/products/<product_id>/
+    (product_cover_key). Same storage flow as the roadmap cover
+    (companies/service.py::set_roadmap_cover): upload before the row is
+    written; a replace with another extension deletes the old object
+    best-effort after the flush. Limit ROADMAP_COVER_MAX_BYTES.
+
+    Raises:
+        BadRequestError: extension, type or size refused
+            (validate_media_upload), checked before anything is written.
+        NotFoundError: company or product not found, or the product is
+            another company's.
+        StorageError: the upload failed; nothing was written.
+    """
+    validate_media_upload(
+        content_type=content_type,
+        file_extension=file_extension,
+        file_size_bytes=file_size_bytes,
+        max_bytes=ROADMAP_COVER_MAX_BYTES,
+    )
+    product = await _get_company_product(company_id, product_id, session)
+
+    old_storage_key = product.cover_storage_key
+    new_storage_key = product_cover_key(company_id, product_id, file_extension)
+
+    await upload_object(
+        new_storage_key,
+        file_data,
+        content_type,
+        content_length=file_size_bytes,
+    )
+
+    product.cover_storage_key = new_storage_key
+    await session.flush()
+    await session.refresh(product)
+
+    if old_storage_key and old_storage_key != new_storage_key:
+        try:
+            await delete_object(old_storage_key)
+        except StorageError as exc:
+            logger.warning(
+                "product_cover_old_delete_failed",
+                product_id=str(product_id),
+                storage_key=old_storage_key,
+                error=str(exc),
+            )
+
+    await record_audit(
+        session=session,
+        event="product.cover_uploaded",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="product",
+        target_id=product.id,
+        data={
+            "company_id": str(company_id),
+            "storage_key": new_storage_key,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
+
+    logger.info(
+        "product_cover_uploaded",
+        product_id=str(product.id),
+        company_id=str(company_id),
+        staff_id=str(staff.id),
+        storage_key=new_storage_key,
+        size=file_size_bytes,
+    )
+
+    return product
+
+
+async def delete_product_cover(
+    company_id: UUID,
+    product_id: UUID,
+    staff: User,
+    session: AsyncSession,
+) -> None:
+    """Remove the cover of a product (H36 P-131, staff).
+
+    404 when no cover is set, as for the roadmap cover. The object delete
+    is best-effort.
+
+    Raises:
+        NotFoundError: company or product not found, the product is
+            another company's, or it has no cover.
+    """
+    product = await _get_company_product(company_id, product_id, session)
+
+    if product.cover_storage_key is None:
+        raise NotFoundError("Product has no cover image")
+
+    storage_key = product.cover_storage_key
+    product.cover_storage_key = None
+    await session.flush()
+
+    try:
+        await delete_object(storage_key)
+    except StorageError as exc:
+        logger.warning(
+            "product_cover_delete_failed",
+            product_id=str(product_id),
+            storage_key=storage_key,
+            error=str(exc),
+        )
+
+    await record_audit(
+        session=session,
+        event="product.cover_deleted",
+        actor_id=staff.id,
+        actor_type="staff",
+        target_type="product",
+        target_id=product.id,
+        data={"company_id": str(company_id), "storage_key": storage_key},
+    )
 
 
 async def get_product(

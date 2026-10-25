@@ -59,6 +59,23 @@ class CompanyStatus(enum.StrEnum):
     ARCHIVED = "archived"
 
 
+class CompanyMediaSlot(enum.StrEnum):
+    """The pictures of a project kept in our storage (H36 P-131).
+
+    logo       -- the logo, also the one documents print
+    logo_dark  -- the logo for the dark theme
+    cover      -- the project's cover
+
+    Each has its own key column on CompanyProfile and its own object
+    under companies/<id>/media/ (companies/media.py). The product cover
+    is not a slot of the company: it lives on Product.
+    """
+
+    LOGO = "logo"
+    LOGO_DARK = "logo_dark"
+    COVER = "cover"
+
+
 class RoadmapItemStatus(enum.StrEnum):
     """Company roadmap item status."""
 
@@ -277,10 +294,20 @@ ROADMAP_COVER_EXTENSION_TO_MIME: dict[str, str] = {
 }
 
 
-# Maximum cover size in bytes. Enforced by the staff router before the
-# upload reaches the storage layer; Nginx caps the request body at
-# 100 MB platform-wide so this is the application-level guard.
+# Maximum cover size in bytes. Enforced before the upload reaches the
+# storage layer (the roadmap cover routers, the project media services);
+# Nginx caps the request body at 100 MB platform-wide so this is the
+# application-level guard.
 ROADMAP_COVER_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MiB
+
+
+# Maximum size of a project's logo, light or dark (H36 P-131). Smaller
+# than a cover on purpose: the logo's bytes are inlined into documents
+# (companies/media.py::company_logo_data_uri), and a purchase agreement
+# is frozen into purchases.agreement_html for every purchase -- a 10 MiB
+# logo would put some 13 MiB of base64 into each such row. The project
+# cover and the product cover keep ROADMAP_COVER_MAX_BYTES.
+COMPANY_LOGO_MAX_BYTES: int = 1 * 1024 * 1024  # 1 MiB
 
 
 # =============================================================================

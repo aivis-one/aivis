@@ -87,6 +87,7 @@ import {
   type PlanConfig,
 } from '@/utils/installmentPlans'
 import type { InstallmentResponse, PublicProductDetailResponse } from '@/api/types'
+import { useProductCover } from '@/composables/useThemedLogo'
 
 // Backend currency field is not emitted on Public*/BalanceResponse
 // yet (TD-F03 scope includes both). Same escape hatch as the other
@@ -178,10 +179,8 @@ const canConfirm = computed<boolean>(() => {
   )
 })
 
-// The cover is the product's own picture, else the company's logo.
-const coverSrc = computed<string | null>(
-  () => product.value?.cover_url ?? product.value?.company_logo_url ?? null,
-)
+// The cover is the product's own picture, else the company's logo for the theme.
+const coverSrc = useProductCover(() => product.value)
 
 // ---------------------------------------------------------------------------
 // Local helpers

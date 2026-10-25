@@ -6,7 +6,7 @@
 # above its endpoint's declared limit before the application reads the body.
 # Four groups of assertions:
 #
-#   THE TABLE -- exactly the seven upload endpoints carry a limit, each equal
+#   THE TABLE -- exactly the ten upload endpoints carry a limit, each equal
 #     to files * per-file limit + overhead computed from the SAME constants
 #     the services check; and EVERY endpoint taking an UploadFile has one.
 #     The second is the class guard: a new upload endpoint without a limit
@@ -58,6 +58,12 @@ EXPECTED = {
         "PATCH",
         "/api/v1/staff/companies/{company_id}/attachments/{attachment_id}/replace",
     ): settings.storage_max_file_size_bytes,
+    ("PUT", "/api/v1/staff/companies/{company_id}/media/{slot}"): ROADMAP_COVER_MAX_BYTES,
+    ("PUT", "/api/v1/companies/me/media/{slot}"): ROADMAP_COVER_MAX_BYTES,
+    (
+        "PUT",
+        "/api/v1/staff/companies/{company_id}/products/{product_id}/cover",
+    ): ROADMAP_COVER_MAX_BYTES,
 }
 
 COVER_PATH = f"/api/v1/company/roadmap/{uuid4()}/cover"
@@ -79,11 +85,17 @@ def _table() -> dict[tuple[str, str], int]:
     return out
 
 
-def test_exactly_the_seven_upload_endpoints_carry_a_limit() -> None:
-    """EMPTINESS: the table is not empty, and it is exactly these seven --
-    each limit derived from the per-file constant the service enforces."""
+def test_exactly_the_ten_upload_endpoints_carry_a_limit() -> None:
+    """EMPTINESS: the table is not empty, and it is exactly these ten --
+    each limit derived from the per-file constant the service enforces.
+
+    Seven until H36 P-131, which added the project's pictures (staff and
+    own, one route per verb for all three slots) and the product cover.
+    The picture routes carry the cover limit, the larger of the two
+    per-slot limits; the 1 MiB logo limit is the service's check, not
+    the body limit's."""
     table = _table()
-    assert len(table) == 7
+    assert len(table) == 10
     assert table == {
         key: per_file + MULTIPART_OVERHEAD_BYTES for key, per_file in EXPECTED.items()
     }
@@ -106,7 +118,7 @@ def test_every_endpoint_that_takes_a_file_has_a_limit() -> None:
         for route in _flatten(app.router.routes)
         if getattr(route, "endpoint", None) is not None and _takes_upload(route.endpoint)
     ]
-    assert len(uploads) == 7
+    assert len(uploads) == 10
     limited = {id(route) for route, _ in declared_limits(app.router.routes)}
     missing = [route.path for route in uploads if id(route) not in limited]
     assert missing == []

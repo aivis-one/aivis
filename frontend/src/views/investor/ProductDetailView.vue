@@ -62,6 +62,7 @@ import { showKycPrompt } from '@/composables/useKycPrompt'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
+import { useProductCover } from '@/composables/useThemedLogo'
 
 // Backend currency field is not emitted yet (TD-F03). Keep the
 // escape hatch here so the page is correct once it lands.
@@ -94,10 +95,8 @@ async function loadProduct(): Promise<void> {
   }
 }
 
-// The cover is the product's own picture, else the company's logo.
-const coverSrc = computed<string | null>(
-  () => product.value?.cover_url ?? product.value?.company_logo_url ?? null,
-)
+// The cover is the product's own picture, else the company's logo for the theme.
+const coverSrc = useProductCover(() => product.value)
 
 // F4.4: backend guarantees available_packages is populated; no `?? 0`.
 const available = computed<number>(() => {

@@ -58,6 +58,7 @@ from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
 from app.modules.companies.constants import PUBLIC_COMPANIES_RATE_LIMIT
+from app.modules.companies.media import product_cover_url, profile_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.products.constants import ProductStatus
 from app.modules.products.schemas import (
@@ -165,6 +166,13 @@ async def list_public_products_endpoint(
     else:
         companies_map = {}
 
+    # The company's picture links, signed once per company on the page
+    # rather than once per product (H36).
+    company_links = {
+        cid: await profile_media_urls(company)
+        for cid, company in companies_map.items()
+    }
+
     items: list[PublicProductResponse] = []
     for p in products:
         # FK is RESTRICT -- missing company is a data integrity bug.
@@ -189,11 +197,12 @@ async def list_public_products_endpoint(
                 package_size=p.package_size,
                 price_per_unit_cents=p.price_per_unit_cents,
                 price_per_pack_cents=p.package_size * p.price_per_unit_cents,
-                cover_url=p.cover_url,
+                cover_url=await product_cover_url(p),
                 available_packages=available_map.get(p.id, 0),
                 company_name=company.name,
-                company_logo_url=company.logo_url,
-                company_cover_url=company.cover_url,
+                company_logo_url=company_links[p.company_id]["logo_url"],
+                company_logo_dark_url=company_links[p.company_id]["logo_dark_url"],
+                company_cover_url=company_links[p.company_id]["cover_url"],
             )
         )
 
@@ -267,6 +276,8 @@ async def get_public_product_detail_endpoint(
         for inst in installments
     ]
 
+    links = await profile_media_urls(company)
+
     return PublicProductDetailResponse(
         id=product.id,
         company_id=product.company_id,
@@ -275,10 +286,11 @@ async def get_public_product_detail_endpoint(
         package_size=product.package_size,
         price_per_unit_cents=product.price_per_unit_cents,
         price_per_pack_cents=product.package_size * product.price_per_unit_cents,
-        cover_url=product.cover_url,
+        cover_url=await product_cover_url(product),
         available_packages=available_map.get(product.id, 0),
         company_name=company.name,
-        company_logo_url=company.logo_url,
-        company_cover_url=company.cover_url,
+        company_logo_url=links["logo_url"],
+        company_logo_dark_url=links["logo_dark_url"],
+        company_cover_url=links["cover_url"],
         installments=public_installments,
     )

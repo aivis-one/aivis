@@ -63,6 +63,7 @@ import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { formatNumber, formatPrice } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
+import { useProductCover } from '@/composables/useThemedLogo'
 
 // Backend currency field is not emitted yet (TD-F03). Keep the
 // escape hatch here so the page is correct once it lands -- same
@@ -153,11 +154,9 @@ watch(
 // Derived display state
 // ---------------------------------------------------------------------------
 
-// The cover is the product's own picture, else the company's logo (K47 hero).
-const coverSrc = computed<string | null>(() => {
-  const p = product.value
-  return p ? (p.cover_url ?? p.company_logo_url ?? null) : null
-})
+// The cover is the product's own picture, else the company's logo for the
+// theme (K47 hero).
+const coverSrc = useProductCover(() => product.value)
 
 // available_packages is required on the backend schema (no `?? 0`
 // default, see auth-flow ProductDetailView's F4.4 note). The 0

@@ -59,7 +59,19 @@
     "downloading": "Downloading",
     "downloaded": "Downloaded",
     "chooseFile": "Choose a file",
-    "actions": "Actions for {title}"
+    "actions": "Actions for {title}",
+    "media": {
+      "upload": "Upload a picture",
+      "replace": "Replace the picture",
+      "remove": "Remove",
+      "hint": "PNG, JPEG or WEBP, up to {size} MB",
+      "errorType": "This file type is not accepted: PNG, JPEG or WEBP only",
+      "errorSize": "The file is larger than {size} MB",
+      "uploaded": "Picture uploaded",
+      "removed": "Picture removed",
+      "removeTitle": "Remove the picture: {name}?",
+      "removeBody": "The file will be deleted. You can upload a new one at any time."
+    }
   },
   "error": {
     "pageNotFound": "Page not found"
@@ -695,7 +707,6 @@
         "totalSupply": "Parts in total",
         "description": "Description",
         "links": "Links",
-        "logoUrl": "Logo",
         "promoVideoUrl": "Promo video",
         "presentationUrl": "Presentation",
         "statusEditCta": "Change status",
@@ -713,7 +724,6 @@
         "profileEditTitle": "Edit the project's profile",
         "profileEditHint": "The name, the description and the links. The division of the parts is fixed and is not edited here.",
         "profileUpdated": "Profile updated",
-        "coverUrl": "Cover",
         "distribution": {
           "title": "Distribution of parts",
           "rows": {
@@ -723,6 +733,12 @@
             "reserve": "Reserve and parts of the company"
           },
           "hint": "The division is fixed. This version has no control that changes it."
+        },
+        "media": {
+          "title": "Pictures",
+          "logo": "Logo",
+          "logoDark": "Logo for the dark theme",
+          "cover": "Cover"
         }
       },
       "price": {
@@ -882,7 +898,8 @@
         "packageSizeNote": "The number of parts in a package cannot be changed after the product is created.",
         "created": "Product created",
         "updated": "Product updated",
-        "meta": "{size} parts in a package · {price} a part"
+        "meta": "{size} parts in a package · {price} a part",
+        "coverAfterCreate": "The cover is added after the product is created: open it with Edit."
       },
       "urlPlaceholder": "Web address"
     },
@@ -2204,6 +2221,11 @@
       "docs": {
         "title": "Documents",
         "cta": "Read the legal documents"
+      },
+      "media": {
+        "logo": "Logo",
+        "logoDark": "Logo for the dark theme",
+        "cover": "Cover image"
       }
     },
     "roadmap": {

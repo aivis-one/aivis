@@ -70,6 +70,7 @@ from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.modules.companies.constants import DocumentTemplateKind
+from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import (
     find_active_template,
@@ -91,6 +92,7 @@ from app.modules.purchases.document_utils import (
     extract_investor_name,
     format_cents,
     format_document_date,
+    template_references,
 )
 from app.modules.purchases.models import Purchase
 from app.modules.users.models import User
@@ -340,7 +342,14 @@ async def render_ownership_html(
     context = {
         "investor_name": data.investor_name,
         "company_name": data.company.name,
-        "company_logo_url": data.company.logo_url,
+        # The logo's bytes inline (H36): a presigned link would expire,
+        # and an agreement is frozen for good. Fetched only when the
+        # template reads the variable.
+        "company_logo_url": (
+            await company_logo_data_uri(data.company)
+            if template_references(env, html_body, "company_logo_url")
+            else None
+        ),
         "total_units": data.total_units,
         "sale_units": data.sale_units,
         "gift_units": data.gift_units,

@@ -42,6 +42,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.modules.companies.media import company_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.portfolio.schemas import (
     CompanyPositionDetailResponse,
@@ -132,7 +133,9 @@ async def get_portfolio(
         select(
             Purchase.company_id,
             CompanyProfile.name.label("company_name"),
-            CompanyProfile.logo_url.label("logo_url"),
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
@@ -148,7 +151,9 @@ async def get_portfolio(
         .group_by(
             Purchase.company_id,
             CompanyProfile.name,
-            CompanyProfile.logo_url,
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents,
         )
         .order_by(
@@ -168,10 +173,17 @@ async def get_portfolio(
         total_paid = int(row.total_paid)
         current_price = int(row.current_price)
 
+        links = await company_media_urls(
+            row.company_id,
+            logo_storage_key=row.logo_storage_key,
+            logo_dark_storage_key=row.logo_dark_storage_key,
+            cover_storage_key=row.cover_storage_key,
+        )
         positions.append(CompanyPositionResponse(
             company_id=row.company_id,
             company_name=row.company_name,
-            logo_url=row.logo_url,
+            logo_url=links["logo_url"],
+            logo_dark_url=links["logo_dark_url"],
             total_units=total_units,
             sale_units=sale_units,
             gift_units=gift_units,
@@ -202,7 +214,9 @@ async def get_company_position(
     agg_stmt = (
         select(
             CompanyProfile.name.label("company_name"),
-            CompanyProfile.logo_url.label("logo_url"),
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
@@ -217,7 +231,9 @@ async def get_company_position(
         )
         .group_by(
             CompanyProfile.name,
-            CompanyProfile.logo_url,
+            CompanyProfile.logo_storage_key,
+            CompanyProfile.logo_dark_storage_key,
+            CompanyProfile.cover_storage_key,
             CompanyProfile.price_per_unit_cents,
         )
     )
@@ -263,10 +279,17 @@ async def get_company_position(
     purchases_result = await session.execute(purchases_stmt)
     purchases = list(purchases_result.scalars().all())
 
+    links = await company_media_urls(
+        company_id,
+        logo_storage_key=agg_row.logo_storage_key,
+        logo_dark_storage_key=agg_row.logo_dark_storage_key,
+        cover_storage_key=agg_row.cover_storage_key,
+    )
     return CompanyPositionDetailResponse(
         company_id=company_id,
         company_name=agg_row.company_name,
-        logo_url=agg_row.logo_url,
+        logo_url=links["logo_url"],
+        logo_dark_url=links["logo_dark_url"],
         total_units=total_units,
         sale_units=sale_units,
         gift_units=gift_units,

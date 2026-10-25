@@ -38,6 +38,7 @@ import { useCompanyProfileStore } from '@/stores/companyProfile'
 import type { CompanyTransactionResponse } from '@/api/types'
 import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
+import { useThemedLogo } from '@/composables/useThemedLogo'
 
 // The share of the gross receipts that forms the project's pool, in percent.
 const POOL_PERCENT = 10
@@ -57,7 +58,11 @@ useScreenHeader({
 // ---------------------------------------------------------------------------
 
 const companyName = computed<string>(() => profileStore.profile?.name ?? '')
-const logoUrl = computed<string | null>(() => profileStore.profile?.logo_url ?? null)
+// The logo for the rendered theme: the dark one in the dark theme when set (H36).
+const logoUrl = useThemedLogo(
+  () => profileStore.profile?.logo_url,
+  () => profileStore.profile?.logo_dark_url,
+)
 
 // ---------------------------------------------------------------------------
 // Summary blocks

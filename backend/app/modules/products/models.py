@@ -17,6 +17,8 @@
 # Sprint F4.1 CHANGES:
 #   - Added cover_url (nullable String(2000)): storefront hero image.
 #     When null, clients fall back to Company logo/cover.
+#   - H36 P-131: replaced by cover_storage_key (migration 0057), the key
+#     of the cover file in our storage.
 #
 # Sprint 4.3 CHANGES (TD-071 / Share Pool Refactor):
 #   - Renamed `units` column to `package_size`. Semantics: number of options
@@ -116,11 +118,15 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    # -- Storefront hero image (Sprint F4.1) --
-    # Nullable: when unset, storefront falls back to CompanyProfile.logo_url
-    # / cover_url, and finally to a placeholder icon on the client.
-    cover_url: Mapped[str | None] = mapped_column(
-        String(2000),
+    # -- Storefront hero image (Sprint F4.1; in our storage since H36) --
+    # Object key of the product's cover, under
+    # companies/<company_id>/products/<id>/ (companies/media.py). Set and
+    # cleared only by products.service.set_product_cover /
+    # delete_product_cover; responses carry a presigned `cover_url` signed
+    # from it. Nullable: when unset, the storefront falls back to the
+    # company's logo, and finally to a placeholder icon on the client.
+    cover_storage_key: Mapped[str | None] = mapped_column(
+        String(1000),
         nullable=True,
     )
 

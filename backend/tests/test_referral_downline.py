@@ -107,8 +107,6 @@ async def _sale_target(
         user_id=owner_id,
         name=f"Downline Test Co {tag}",
         description="Task 2b downline test fixture.",
-        logo_url=None,
-        cover_url=None,
         promo_video_url=None,
         presentation_url=None,
         price_per_unit_cents=_PRICE,

@@ -13,6 +13,8 @@
 //   PATCH /api/v1/staff/products/{id}             -- text
 //   PATCH /api/v1/staff/products/{id}/status      -- hide / archive / return
 //
+// The cover is a file, not a field of these bodies (H36): api/media.ts.
+//
 // The status moves the server allows (products/constants.py,
 // VALID_PRODUCT_STATUS_TRANSITIONS), mirrored below so the screen offers only
 // those: hidden -> active | archived; active -> hidden | archived; archived is
@@ -29,14 +31,12 @@ export interface StaffCreateProductRequest {
   name: string
   description?: string | null
   package_size: number
-  cover_url?: string | null
 }
 
 /** The text fields of a product a staff member may change. */
 export interface StaffUpdateProductRequest {
   name?: string
   description?: string | null
-  cover_url?: string | null
 }
 
 /** The statuses of a product. */
@@ -73,7 +73,7 @@ export function createStaffProduct(body: StaffCreateProductRequest): Promise<Pro
   return api.post<ProductResponse>('/api/v1/staff/products', body)
 }
 
-/** PATCH /api/v1/staff/products/{id} -- change a product's name, description or cover. */
+/** PATCH /api/v1/staff/products/{id} -- change a product's name or description. */
 export function updateStaffProduct(
   productId: string,
   body: StaffUpdateProductRequest,
