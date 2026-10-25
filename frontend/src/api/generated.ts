@@ -101,6 +101,11 @@ export interface AssignCompanyRequest {
   shares_per_option?: number
 }
 
+/** Hand a ticket to another operator (H40 item 5). `assignee` is the TARGET of the handover, not the actor: the actor is the session's operator, always. */
+export interface AssignIn {
+  assignee: string
+}
+
 /** POST /api/v1/users/me/email -- an account without an e-mail adds one. */
 export interface AttachEmailRequest {
   email: string
@@ -1340,7 +1345,7 @@ export interface SemaphoreResult {
   details?: Record<string, unknown> | null
 }
 
-/** One message into the caller's own conversation. `body` is the whole request. There is no thread id: the caller has exactly one conversation and it is resolved from the local pointer, never from the wire. T-66: the operator side reuses this model for its reply. Same field, same ceiling, and a second model would be a second place to change the limit in. */
+/** One message into the caller's own conversation. `body` is the whole request. There is no thread id: the caller's conversation is ONE for them however many tickets it holds, and where the message goes is decided from the local pointers, never from the wire (service.send_dialog_message). T-66: the operator side reuses this model for its reply. Same field, same ceiling, and a second model would be a second place to change the limit in. */
 export interface SendMessageIn {
   body: string
 }
@@ -1360,9 +1365,9 @@ export interface SessionListResponse {
   items: SessionItemResponse[]
 }
 
-/** An operator moving a conversation along (T-66). `open` IS NOT AN OPTION. comms 3.11 does allow a manual return to `open` (from `resolved` and from `closed`), so its absence here is this product's choice, not comms' limit: staff reopening a request is part of the ticket statuses H40 decides. Until then a thread comes back to life when the CLIENT writes into it. */
-export interface SetStatusIn {
-  status: 'resolved' | 'closed'
+/** An operator closing an OPEN ticket one of four ways (H40 item 4). `open` is not here: back to work is its own route (reopen), with its own rule for spam. comms' `closed` is not a status of ours at all -- nothing moves a ticket's thread there (comms would tell the person). */
+export interface SetTicketStatusIn {
+  status: 'resolved' | 'rejected' | 'duplicate' | 'spam'
 }
 
 /** Attachment as seen by staff: includes operational fields hidden from auth/public flows. The model column is `created_by` (UUID NOT NULL today, FK ondelete=RESTRICT); we expose it as `created_by_id` at the API boundary for naming clarity and type it as Optional to leave room for a future ondelete=SET NULL. `validation_alias="created_by"` lets Pydantic populate this field from the ORM attribute without renaming the column. */
@@ -1506,6 +1511,12 @@ export interface TemplateResponse {
   created_at: string
   updated_at: string | null
   is_platform_default: boolean
+}
+
+/** One appeal through the support form (H40 item 1): a topic of the six and the text. The thread, the category and the status are ours to decide; the person names none of them. */
+export interface TicketIn {
+  topic: 'payments' | 'withdrawal' | 'kyc' | 'purchases' | 'technical' | 'other'
+  body: string
 }
 
 /** GET /api/v1/transactions -- paginated event log. */
