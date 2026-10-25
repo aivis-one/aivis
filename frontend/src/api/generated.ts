@@ -92,8 +92,6 @@ export interface AssignCompanyRequest {
   user_id: string
   name: string
   description?: string | null
-  logo_url?: string | null
-  cover_url?: string | null
   promo_video_url?: string | null
   presentation_url?: string | null
   price_per_unit_cents: number
@@ -206,7 +204,19 @@ export interface Body_replace_own_attachment_endpoint_api_v1_company_attachments
   file: string
 }
 
+export interface Body_set_company_media_endpoint_api_v1_staff_companies__company_id__media__slot__put {
+  file: string
+}
+
+export interface Body_set_my_company_media_endpoint_api_v1_companies_me_media__slot__put {
+  file: string
+}
+
 export interface Body_set_own_roadmap_cover_endpoint_api_v1_company_roadmap__item_id__cover_put {
+  file: string
+}
+
+export interface Body_set_product_cover_endpoint_api_v1_staff_companies__company_id__products__product_id__cover_put {
   file: string
 }
 
@@ -294,6 +304,7 @@ export interface CompanyDetailResponse {
   name: string
   description: string | null
   logo_url: string | null
+  logo_dark_url: string | null
   cover_url: string | null
   promo_video_url: string | null
   presentation_url: string | null
@@ -320,6 +331,7 @@ export interface CompanyPositionDetailResponse {
   company_id: string
   company_name: string
   logo_url: string | null
+  logo_dark_url: string | null
   total_units: number
   sale_units: number
   gift_units: number
@@ -338,6 +350,7 @@ export interface CompanyPositionResponse {
   company_id: string
   company_name: string
   logo_url: string | null
+  logo_dark_url: string | null
   total_units: number
   sale_units: number
   gift_units: number
@@ -355,6 +368,7 @@ export interface CompanyResponse {
   name: string
   description: string | null
   logo_url: string | null
+  logo_dark_url: string | null
   cover_url: string | null
   promo_video_url: string | null
   presentation_url: string | null
@@ -389,6 +403,7 @@ export interface CompanySummaryResponse {
   company_id: string
   company_name: string
   logo_url: string | null
+  logo_dark_url: string | null
   total_units: number
   invested_cents: number
   current_value_cents: number
@@ -430,8 +445,6 @@ export interface CreateCompanyRequest {
   password: string
   name: string
   description?: string | null
-  logo_url?: string | null
-  cover_url?: string | null
   promo_video_url?: string | null
   presentation_url?: string | null
   price_per_unit_cents: number
@@ -493,7 +506,6 @@ export interface CreateProductRequest {
   name: string
   description?: string | null
   package_size: number
-  cover_url?: string | null
   purchase_config?: Record<string, unknown> | null
 }
 
@@ -1015,6 +1027,7 @@ export interface PublicCompanyDetailResponse {
   name: string
   description: string | null
   logo_url: string | null
+  logo_dark_url: string | null
   cover_url: string | null
   promo_video_url: string | null
   presentation_url: string | null
@@ -1041,6 +1054,7 @@ export interface PublicCompanyResponse {
   name: string
   description: string | null
   logo_url: string | null
+  logo_dark_url: string | null
   cover_url: string | null
   promo_video_url: string | null
   presentation_url: string | null
@@ -1072,6 +1086,7 @@ export interface PublicProductDetailResponse {
   available_packages: number
   company_name: string
   company_logo_url?: string | null
+  company_logo_dark_url?: string | null
   company_cover_url?: string | null
   installments: InstallmentResponse[]
 }
@@ -1084,7 +1099,7 @@ export interface PublicProductListResponse {
   per_page: number
 }
 
-/** Product info for public storefront. company_name / company_logo_url / company_cover_url are denormalised from CompanyProfile by the public router (Sprint F4.1) so the storefront can render a card without a second API call. Sprint 4.3: package_size (renamed from units), available_packages (renamed from sold_units, now COMPUTED from the pool, not from purchase counts). pool_id is intentionally NOT exposed here -- it is a staff-side identifier. Sprint 4.4: price_per_pack_cents added; available_packages is now required (no `= 0` default). Both are populated by the public router; missing populate is a server bug, not a soft fallback. */
+/** Product info for public storefront. company_name / company_logo_url / company_logo_dark_url / company_cover_url are denormalised from CompanyProfile by the public router (Sprint F4.1) so the storefront can render a card without a second API call. Sprint 4.3: package_size (renamed from units), available_packages (renamed from sold_units, now COMPUTED from the pool, not from purchase counts). pool_id is intentionally NOT exposed here -- it is a staff-side identifier. Sprint 4.4: price_per_pack_cents added; available_packages is now required (no `= 0` default). Both are populated by the public router; missing populate is a server bug, not a soft fallback. */
 export interface PublicProductResponse {
   id: string
   company_id: string
@@ -1097,6 +1112,7 @@ export interface PublicProductResponse {
   available_packages: number
   company_name: string
   company_logo_url?: string | null
+  company_logo_dark_url?: string | null
   company_cover_url?: string | null
 }
 
@@ -1528,8 +1544,6 @@ export interface UpdateCompanyPostRequest {
 export interface UpdateCompanyRequest {
   name?: string | null
   description?: string | null
-  logo_url?: string | null
-  cover_url?: string | null
   promo_video_url?: string | null
   presentation_url?: string | null
   distribution_config?: Record<string, unknown> | null
@@ -1558,8 +1572,6 @@ export interface UpdateInstallmentRequest {
 export interface UpdateOwnCompanyRequest {
   name?: string | null
   description?: string | null
-  logo_url?: string | null
-  cover_url?: string | null
   promo_video_url?: string | null
   presentation_url?: string | null
   price_per_unit_cents?: number | null
@@ -1611,7 +1623,6 @@ export interface UpdatePriceRequest {
 export interface UpdateProductRequest {
   name?: string | null
   description?: string | null
-  cover_url?: string | null
   purchase_config?: Record<string, unknown> | null
 }
 
