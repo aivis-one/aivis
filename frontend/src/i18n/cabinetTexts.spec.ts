@@ -42,8 +42,8 @@ describe('point 1 -- the tab is "Projects"', () => {
   it('names the tab, its screen and the back-links Projects / Проекты', () => {
     expect(en.tab.market).toBe('Projects')
     expect(ru.tab.market).toBe('Проекты')
-    expect(en.inv.market.title).toBe(en.tab.market)
-    expect(ru.inv.market.title).toBe(ru.tab.market)
+    expect(en.inv.companyList.title).toBe(en.tab.market)
+    expect(ru.inv.companyList.title).toBe(ru.tab.market)
     expect(en.inv.product.backToMarket).toBe('Back to Projects')
     expect(ru.inv.product.backToMarket).toBe('К проектам')
   })
