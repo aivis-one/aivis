@@ -93,7 +93,7 @@ describe('the support conversation', () => {
 
   it('a failed appeal keeps what was typed', async () => {
     feed.mockResolvedValue({ items: [], next_cursor: null })
-    create.mockRejectedValue(new ApiResponseError(502, 'down'))
+    create.mockRejectedValue(new ApiResponseError(502, 'HTTP 502: non-JSON response'))
     const wrapper = mount(InvestorSupportView)
     await flushPromises()
     await wrapper.find('select').setValue('kyc')
@@ -183,13 +183,14 @@ describe('the support screen of F7', () => {
   })
 
   it('shows the unavailable text, not a raw status line, for a non-JSON answer', async () => {
-    vi.mocked(sendSupportMessage).mockRejectedValue(
-      new ApiResponseError(502, 'HTTP 502: non-JSON response'),
-    )
-    const { w } = await mountView('en')
-    await w.get('textarea').setValue('Hello')
-    await w.get('form.ds-composer').trigger('submit')
+    feed.mockResolvedValue({ items: [MESSAGE], next_cursor: null })
+    send.mockRejectedValue(new ApiResponseError(502, 'HTTP 502: non-JSON response'))
+    const wrapper = mount(InvestorSupportView)
     await flushPromises()
-    expect(w.get('.ds-field__error').text()).toBe(en.inv.support.errorUnavailable)
+    await wrapper.get('#isup-message').setValue('Hello')
+    await wrapper.get('form.ds-composer').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#isup-message-error').text()).toBe('inv.support.errorUnavailable')
+    wrapper.unmount()
   })
 })
