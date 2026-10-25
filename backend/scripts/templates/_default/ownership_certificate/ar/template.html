@@ -93,11 +93,11 @@
     <table class="details">
       <tr><td class="label">المستثمر:</td><td class="value">{{ investor_name }}</td></tr>
       <tr><td class="label">الشركة:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">إجمالي الوحدات:</td><td class="value">{{ total_units }}</td></tr>
-      <tr><td class="label">الوحدات المشتراة:</td><td class="value">{{ sale_units }}</td></tr>
-      <tr><td class="label">وحدات الهدية:</td><td class="value">{{ gift_units }}</td></tr>
-      <tr><td class="label">الإجمالي المدفوع:</td><td class="value">{{ total_paid_cents }}</td></tr>
-      <tr><td class="label">القيمة الحالية:</td><td class="value">{{ current_value_cents }}</td></tr>
+      <tr><td class="label">إجمالي الوحدات:</td><td class="value">{{ total_parts }}</td></tr>
+      <tr><td class="label">الوحدات المشتراة:</td><td class="value">{{ sale_parts }}</td></tr>
+      <tr><td class="label">وحدات الهدية:</td><td class="value">{{ gift_parts }}</td></tr>
+      <tr><td class="label">الإجمالي المدفوع:</td><td class="value">{{ total_paid_display }} USD</td></tr>
+      <tr><td class="label">القيمة الحالية:</td><td class="value">{{ current_value_display }} USD</td></tr>
       <tr><td class="label">حتى تاريخ:</td><td class="value">{{ as_of_date }}</td></tr>
     </table>
     <p class="note">المبالغ بالسنتات (دولار أمريكي).</p>
@@ -117,8 +117,8 @@
         <tr>
           <td>{{ p.date }}</td>
           <td>{{ p.legal_basis }}</td>
-          <td>{{ p.units }}</td>
-          <td>{{ p.paid_cents }}</td>
+          <td>{{ p.parts }}</td>
+          <td>{{ p.paid_display }} USD</td>
         </tr>
         {% endfor %}
       </tbody>

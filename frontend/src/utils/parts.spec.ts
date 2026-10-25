@@ -12,7 +12,9 @@ import { describe, expect, it } from 'vitest'
 import {
   bonusPercentFromText,
   firstLine,
+  formatAveragePartPrice,
   formatPartPrice,
+  formatPartsCount,
   formatUsd,
   formatUsdCents,
   instalmentLines,
@@ -96,5 +98,31 @@ describe('the instalment lines', () => {
     )
     expect(l.eachCents).toBeNull()
     expect(l.eachPercent).toBeNull()
+  })
+})
+
+describe('the portfolio and history figures', () => {
+  it('prints the average price of a part from the money paid over the parts it bought', () => {
+    // 4 lots of 25 parts paid 40 cents: 100 parts at 0.004 USD.
+    expect(formatAveragePartPrice(40, 4, 25, 'en')).toBe('$0.004')
+    expect(formatAveragePartPrice(40, 4, 25, 'ru')).toMatch(/0,004/)
+    // A gift-only holding bought nothing: 0.000, never a division by zero.
+    expect(formatAveragePartPrice(0, 0, 25, 'en')).toBe('$0.000')
+  })
+
+  it('counts the parts in lots, or a dash while the parts per lot is unknown', () => {
+    expect(formatPartsCount(4, 25, 'en')).toBe('100')
+    expect(formatPartsCount(10_000, 25, 'en')).toBe('250,000')
+    expect(formatPartsCount(4, null, 'en')).toBe('—')
+  })
+
+  it('closes a total in whole cents from the parts and the price of a part', () => {
+    const lots = 10_000
+    const lotCents = 10
+    const parts = partsOf(lots, 25)
+    expect(parts).toBe(250_000)
+    // 250,000 parts at 0.004 USD is 1,000.00 USD, the lots' own money.
+    expect(formatUsdCents(lots * lotCents, 'en')).toBe('$1,000.00')
+    expect(parts * 0.004).toBeCloseTo((lots * lotCents) / 100, 10)
   })
 })

@@ -141,6 +141,7 @@ async def get_portfolio(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
+            CompanyProfile.shares_per_option,
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
             _gift_units_expr().label("gift_units"),
@@ -161,6 +162,7 @@ async def get_portfolio(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
+            CompanyProfile.shares_per_option,
         )
         .order_by(
             (func.sum(Purchase.units) * CompanyProfile.price_per_unit_cents).desc()
@@ -194,6 +196,7 @@ async def get_portfolio(
             ),
             logo_url=links["logo_url"],
             logo_dark_url=links["logo_dark_url"],
+            shares_per_option=int(row.shares_per_option),
             total_units=total_units,
             sale_units=sale_units,
             gift_units=gift_units,
@@ -231,6 +234,7 @@ async def get_company_position(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
+            CompanyProfile.shares_per_option,
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
             _gift_units_expr().label("gift_units"),
@@ -250,6 +254,7 @@ async def get_company_position(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
+            CompanyProfile.shares_per_option,
         )
     )
 
@@ -309,6 +314,7 @@ async def get_company_position(
         ),
         logo_url=links["logo_url"],
         logo_dark_url=links["logo_dark_url"],
+        shares_per_option=int(agg_row.shares_per_option),
         total_units=total_units,
         sale_units=sale_units,
         gift_units=gift_units,

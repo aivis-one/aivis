@@ -114,9 +114,9 @@
     <p>1.1. Компания продала Покупателю, а Покупатель купил части указанного ниже проекта (&laquo;Части&raquo;):</p>
     <table class="t">
       <tr><td class="k">Проект</td><td class="v">{{ company_name }}</td></tr>
-      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ units }}</td></tr>
+      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ parts }}</td></tr>
       <tr><td class="k">Выдано бонусных Частей (для индекса — единиц)</td><td class="v">{% if bonus_parts %}{{ bonus_parts }}{% else %}нет{% endif %}</td></tr>
-      <tr><td class="k">Цена за Часть</td><td class="v">{{ price_per_unit_display }} USD</td></tr>
+      <tr><td class="k">Цена за Часть</td><td class="v">{{ price_per_part_display }} USD</td></tr>
       <tr><td class="k">Оплачено</td><td class="v">{{ paid_display }} USD</td></tr>
       <tr><td class="k">Вид покупки</td><td class="v">{% if purchase_type == 'instalment' %}Рассрочка{% if tranche_number %}, месяц рассрочки {{ tranche_number }} из {{ tranche_count }}{% endif %}{% else %}Разовая покупка{% endif %}</td></tr>
       <tr><td class="k">Дата покупки</td><td class="v">{{ purchase_date }}</td></tr>

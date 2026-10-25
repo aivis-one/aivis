@@ -17,7 +17,7 @@
 //
 // Hero card:
 //   The system's brand card (K07): total value + three stats
-//   (Products, Units, Profit%). Total value is current value
+//   (Products, Parts, Profit%). Total value is current value
 //   across all positions; profit% is a CLIENT-side calc
 //   `(current - paid) / paid * 100`. See TD-F11d comment below:
 //   backend does not emit profit yet, and switching to a server-side
@@ -28,7 +28,7 @@
 //   One interactive card (K07) per company position (PortfolioPositionResponse);
 //   its title is the one link, to CompanyPositionView by a role-aware route
 //   name. It shows the company name + per-company profit%, followed by three
-//   facts (Units / Avg. price / Value) as a key-value list (K49).
+//   facts (Parts / Avg. price of a part / Value) as a key-value list (K49).
 //
 // Empty state:
 //   CTA to companies catalogue. If the investor has zero companies
@@ -51,6 +51,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber, formatPrice } from '@/utils/format'
+import { formatAveragePartPrice, partsOf } from '@/utils/parts'
 import type { PortfolioPositionResponse } from '@/api/types'
 
 const { t, locale } = useI18n()
@@ -80,7 +81,7 @@ const totalInvested = computed<number>(() =>
   store.positions.reduce((acc, p) => acc + p.total_paid_cents, 0),
 )
 const totalUnits = computed<number>(() =>
-  store.positions.reduce((acc, p) => acc + p.total_units, 0),
+  store.positions.reduce((acc, p) => acc + partsOf(p.total_units, p.shares_per_option), 0),
 )
 const productsCount = computed<number>(() => store.positions.length)
 
@@ -273,11 +274,20 @@ onMounted(() => {
             <dl class="ds-kv">
               <div class="ds-kv__row">
                 <dt>{{ t('inv.portfolio.position.units') }}</dt>
-                <dd>{{ formatNumber(p.total_units, locale) }}</dd>
+                <dd>{{ formatNumber(partsOf(p.total_units, p.shares_per_option), locale) }}</dd>
               </div>
               <div class="ds-kv__row">
                 <dt>{{ t('inv.portfolio.position.avgPrice') }}</dt>
-                <dd>{{ formatPrice(p.avg_price_cents) }}</dd>
+                <dd>
+                  {{
+                    formatAveragePartPrice(
+                      p.total_paid_cents,
+                      p.sale_units,
+                      p.shares_per_option,
+                      locale,
+                    )
+                  }}
+                </dd>
               </div>
               <div class="ds-kv__row">
                 <dt>{{ t('inv.portfolio.position.value') }}</dt>

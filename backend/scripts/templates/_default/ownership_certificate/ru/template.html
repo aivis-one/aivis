@@ -111,9 +111,9 @@
     <table class="t">
       <tr><td class="k">Держатель</td><td class="v">{{ investor_name }}</td></tr>
       <tr><td class="k">Проект</td><td class="v">{{ company_name }}</td></tr>
-      <tr><td class="k">Частей (для индекса — единиц) во владении</td><td class="v">{{ total_units }}</td></tr>
-      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ sale_units }}</td></tr>
-      <tr><td class="k">Получено Частей (для индекса — единиц) как бонусные или в дар</td><td class="v">{{ gift_units }}</td></tr>
+      <tr><td class="k">Частей (для индекса — единиц) во владении</td><td class="v">{{ total_parts }}</td></tr>
+      <tr><td class="k">Куплено Частей (для индекса — единиц)</td><td class="v">{{ sale_parts }}</td></tr>
+      <tr><td class="k">Получено Частей (для индекса — единиц) как бонусные или в дар</td><td class="v">{{ gift_parts }}</td></tr>
       <tr><td class="k">Всего оплачено</td><td class="v">{{ total_paid_display }} USD</td></tr>
       <tr><td class="k">Стоимость по текущей цене Части</td><td class="v">{{ current_value_display }} USD</td></tr>
       <tr><td class="k">На дату</td><td class="v">{{ as_of_date }}</td></tr>
@@ -129,7 +129,7 @@
         <tr>
           <td>{{ p.date }}</td>
           <td>{% if p.purchase_type == 'sale' %}Покупка{% elif p.purchase_type == 'instalment' %}Рассрочка{% if p.tranche_number %}, месяц {{ p.tranche_number }} из {{ p.tranche_count }}{% endif %}{% elif p.purchase_type == 'bonus' %}Бонусные Части{% else %}Дар{% endif %}</td>
-          <td>{{ p.units }}</td>
+          <td>{{ p.parts }}</td>
           <td>{{ p.paid_display }}</td>
         </tr>
         {% endfor %}

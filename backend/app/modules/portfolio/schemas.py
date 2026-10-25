@@ -32,6 +32,8 @@ class CompanyPositionResponse(BaseModel):
     # (companies/media.py); None when not uploaded.
     logo_url: str | None
     logo_dark_url: str | None
+    # Parts per lot of the project: the buyer sees lots x this, in Parts.
+    shares_per_option: int
     total_units: int
     sale_units: int
     gift_units: int
@@ -72,6 +74,8 @@ class CompanyPositionDetailResponse(BaseModel):
     # (companies/media.py); None when not uploaded.
     logo_url: str | None
     logo_dark_url: str | None
+    # Parts per lot of the project: the buyer sees lots x this, in Parts.
+    shares_per_option: int
     total_units: int
     sale_units: int
     gift_units: int

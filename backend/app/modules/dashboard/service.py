@@ -57,6 +57,7 @@ async def get_dashboard_summary(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
+            CompanyProfile.shares_per_option,
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("invested_cents"),
         )
@@ -74,6 +75,7 @@ async def get_dashboard_summary(
             CompanyProfile.media_variants,
             CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
+            CompanyProfile.shares_per_option,
         )
         .order_by(func.sum(Purchase.units).desc())
     )
@@ -107,6 +109,7 @@ async def get_dashboard_summary(
             ),
             logo_url=links["logo_url"],
             logo_dark_url=links["logo_dark_url"],
+            shares_per_option=int(row.shares_per_option),
             total_units=units,
             invested_cents=invested,
             current_value_cents=current_value,

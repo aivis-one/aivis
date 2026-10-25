@@ -51,10 +51,12 @@ import { AlertTriangle } from '@/components/ui/icons'
 import { ApiResponseError } from '@/api/client'
 import { getPlanDetail } from '@/api/installments'
 import { isAgentShell } from '@/router/helpers'
-import { formatDate, formatDateTime, formatNumber, formatPrice } from '@/utils/format'
+import { formatDate, formatDateTime, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { InstallmentPlanDetailResponse, InstallmentTrancheResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
+import { formatPartPrice, formatPartsCount } from '@/utils/parts'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -66,6 +68,10 @@ const errored = ref(false)
 
 const planId = computed(() => route.params.id as string)
 const tranches = computed<InstallmentTrancheResponse[]>(() => plan.value?.tranches ?? [])
+
+// The plan counts lots; the buyer sees parts, so the project's parts per lot is asked for.
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+const sharesPerOption = computed<number | null>(() => partsPerLot(plan.value?.company_id))
 
 // ---------------------------------------------------------------------------
 // Status presentation
@@ -129,6 +135,7 @@ async function load(): Promise<void> {
   errored.value = false
   try {
     plan.value = await getPlanDetail(planId.value)
+    void ensureParts([plan.value.company_id])
   } catch (err: unknown) {
     plan.value = null
     if (err instanceof ApiResponseError && err.status === 404) {
@@ -197,11 +204,17 @@ onMounted(load)
           </div>
           <div class="ds-kv__row">
             <dt>{{ t('inv.installmentPlans.detail.summary.totalUnits') }}</dt>
-            <dd>{{ formatNumber(plan.total_units, locale) }}</dd>
+            <dd>{{ formatPartsCount(plan.total_units, sharesPerOption, locale) }}</dd>
           </div>
           <div class="ds-kv__row">
             <dt>{{ t('inv.installmentPlans.detail.summary.pricePerUnit') }}</dt>
-            <dd>{{ formatPrice(plan.price_per_unit_cents) }}</dd>
+            <dd>
+              {{
+                sharesPerOption === null
+                  ? '—'
+                  : formatPartPrice(plan.price_per_unit_cents, sharesPerOption, locale)
+              }}
+            </dd>
           </div>
           <div class="ds-kv__row">
             <dt>{{ t('inv.installmentPlans.detail.summary.created') }}</dt>
@@ -250,7 +263,7 @@ onMounted(load)
               </div>
               <div class="ds-schedule__stat">
                 <dt>{{ t('inv.installmentPlans.detail.schedule.units') }}</dt>
-                <dd>{{ formatNumber(tr.units_unlocked, locale) }}</dd>
+                <dd>{{ formatPartsCount(tr.units_unlocked, sharesPerOption, locale) }}</dd>
               </div>
             </dl>
             <p v-if="tr.paid_at" class="ds-schedule__foot">

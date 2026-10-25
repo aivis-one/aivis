@@ -43,7 +43,9 @@ import { Check, Copy } from '@/components/ui/icons'
 import CBottomSheet from '@/components/ui/CBottomSheet.vue'
 import { CEmptyState, CLoader } from '@/components/ui'
 import { getTransaction } from '@/api/transactions'
-import { formatDateTime, formatPrice, formatSignedPrice } from '@/utils/format'
+import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/utils/format'
+import { formatPartPrice, partsOf } from '@/utils/parts'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import { tOrRaw } from '@/utils/i18n'
 import type { TransactionResponse } from '@/api/types'
 
@@ -67,10 +69,28 @@ let fetchEpoch = 0
 
 // Entries to render in the key-value table. Filters out null/
 // undefined values so an empty field doesn't render as a blank row.
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+
+// A purchase entry counts lots and the lot's price; the buyer sees parts and the
+// price of a part. Both lines wait for the project's parts per lot and are left
+// out until it is known (the lot figures are never shown in their place).
+const LOT_KEYS = ['units', 'price_per_unit_cents'] as const
+
+function detailsProjectId(): string | null {
+  const id = txn.value?.details?.company_id
+  return typeof id === 'string' ? id : null
+}
+
 const detailEntries = computed<[string, unknown][]>(() => {
   const d = txn.value?.details
   if (!d) return []
-  return Object.entries(d).filter(([, v]) => v !== null && v !== undefined)
+  const parts = partsPerLot(detailsProjectId())
+  return Object.entries(d).filter(
+    ([k, v]) =>
+      v !== null &&
+      v !== undefined &&
+      !((LOT_KEYS as readonly string[]).includes(k) && parts === null),
+  )
 })
 
 const hasDetails = computed<boolean>(() => detailEntries.value.length > 0)
@@ -105,6 +125,11 @@ function keyLabel(key: string): string {
 
 function formatValue(key: string, value: unknown): string {
   if (value === null || value === undefined) return ''
+  const perLot = partsPerLot(detailsProjectId())
+  if (perLot !== null && typeof value === 'number') {
+    if (key === 'units') return formatNumber(partsOf(value, perLot), locale.value)
+    if (key === 'price_per_unit_cents') return formatPartPrice(value, perLot, locale.value)
+  }
   // *_cents -> currency string. Picked up by suffix so every
   // price_per_unit_cents / amount_cents / total_cents future
   // addition formats correctly without an allow-list.
@@ -150,6 +175,8 @@ async function load(id: string): Promise<void> {
     const resp = await getTransaction(id)
     if (epoch !== fetchEpoch) return
     txn.value = resp
+    const projectId = detailsProjectId()
+    if (projectId) void ensureParts([projectId])
   } catch {
     if (epoch !== fetchEpoch) return
     errored.value = true

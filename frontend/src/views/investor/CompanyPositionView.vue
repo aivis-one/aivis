@@ -89,6 +89,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { isAgentShell } from '@/router/helpers'
 import { parseDocumentQuery } from '@/router/documentLink'
 import { formatNumber, formatPrice } from '@/utils/format'
+import { formatAveragePartPrice, partsOf } from '@/utils/parts'
 import { tOrRaw } from '@/utils/i18n'
 import type { PurchaseItemResponse } from '@/api/types'
 
@@ -354,7 +355,12 @@ onUnmounted(() => {
               {{ t('inv.companyPosition.aggregate.totalUnits') }}
             </p>
             <p class="ds-card__delta">
-              {{ formatNumber(currentDetail.total_units, locale) }}
+              {{
+                formatNumber(
+                  partsOf(currentDetail.total_units, currentDetail.shares_per_option),
+                  locale,
+                )
+              }}
             </p>
           </div>
           <div>
@@ -362,7 +368,14 @@ onUnmounted(() => {
               {{ t('inv.companyPosition.aggregate.avgPrice') }}
             </p>
             <p class="ds-card__delta">
-              {{ formatPrice(currentDetail.avg_price_cents) }}
+              {{
+                formatAveragePartPrice(
+                  currentDetail.total_paid_cents,
+                  currentDetail.sale_units,
+                  currentDetail.shares_per_option,
+                  locale,
+                )
+              }}
             </p>
           </div>
           <div>
@@ -378,7 +391,12 @@ onUnmounted(() => {
               {{ t('inv.companyPosition.aggregate.saleUnits') }}
             </p>
             <p class="ds-card__delta">
-              {{ formatNumber(currentDetail.sale_units, locale) }}
+              {{
+                formatNumber(
+                  partsOf(currentDetail.sale_units, currentDetail.shares_per_option),
+                  locale,
+                )
+              }}
             </p>
           </div>
           <div v-if="currentDetail.gift_units > 0">
@@ -386,7 +404,12 @@ onUnmounted(() => {
               {{ t('inv.companyPosition.aggregate.giftUnits') }}
             </p>
             <p class="ds-card__delta">
-              {{ formatNumber(currentDetail.gift_units, locale) }}
+              {{
+                formatNumber(
+                  partsOf(currentDetail.gift_units, currentDetail.shares_per_option),
+                  locale,
+                )
+              }}
             </p>
           </div>
         </div>
@@ -444,7 +467,9 @@ onUnmounted(() => {
                 </div>
                 <div>
                   <dt>{{ t('inv.companyPosition.purchases.units') }}</dt>
-                  <dd>{{ formatNumber(p.units, locale) }}</dd>
+                  <dd>
+                    {{ formatNumber(partsOf(p.units, currentDetail.shares_per_option), locale) }}
+                  </dd>
                 </div>
                 <div v-if="p.legal_basis !== 'gift'">
                   <dt>{{ t('inv.companyPosition.purchases.paid') }}</dt>

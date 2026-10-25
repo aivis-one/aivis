@@ -83,6 +83,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useDashboardStore } from '@/stores/dashboard'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
+import { partsOf } from '@/utils/parts'
 import type { PostResponse, EventResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
@@ -236,7 +237,13 @@ const portfolioEmpty = computed<boolean>(() => {
 
 const totalCurrentValue = computed<number>(() => dashboardStore.summary?.current_value_cents ?? 0)
 
-const totalUnits = computed<number>(() => dashboardStore.summary?.total_units ?? 0)
+// Parts held across the projects: each project's lots in its own parts per lot.
+const totalUnits = computed<number>(() =>
+  (dashboardStore.summary?.companies ?? []).reduce(
+    (acc, c) => acc + partsOf(c.total_units, c.shares_per_option),
+    0,
+  ),
+)
 
 const productsCount = computed<number>(() => dashboardStore.summary?.companies_count ?? 0)
 

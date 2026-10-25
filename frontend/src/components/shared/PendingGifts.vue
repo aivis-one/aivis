@@ -14,9 +14,11 @@ import AgreementSheet from '@/components/shared/AgreementSheet.vue'
 import { ApiResponseError } from '@/api/client'
 import { acceptGift, listPendingGifts } from '@/api/purchases'
 import { useToast } from '@/composables/useToast'
-import { formatDate, formatNumber } from '@/utils/format'
+import { formatDate } from '@/utils/format'
+import { formatPartsCount } from '@/utils/parts'
 import type { PurchaseResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 
 const emit = defineEmits<{ accepted: [] }>()
 
@@ -24,12 +26,16 @@ const { t, locale } = useI18n()
 const { showToast } = useToast()
 
 const gifts = ref<PurchaseResponse[]>([])
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
 const accepting = ref<string | null>(null)
 const certificateId = ref<string | null>(null)
 
 async function load(): Promise<void> {
   try {
-    gifts.value = (await listPendingGifts()).items
+    const items = (await listPendingGifts()).items
+    // A gift counts lots; its parts come with the project's parts per lot.
+    await ensureParts(items.map((g) => g.company_id))
+    gifts.value = items
   } catch {
     gifts.value = []
   }
@@ -76,7 +82,11 @@ onMounted(() => {
         <span class="ds-row__lead"><Gift size="sm" /></span>
         <span class="ds-row__body">
           <span class="ds-row__title">
-            {{ t('inv.portfolio.gifts.units', { units: formatNumber(gift.units, locale) }) }}
+            {{
+              t('inv.portfolio.gifts.units', {
+                units: formatPartsCount(gift.units, partsPerLot(gift.company_id), locale),
+              })
+            }}
           </span>
           <span class="ds-row__meta">{{ formatDate(gift.created_at, locale) }}</span>
         </span>

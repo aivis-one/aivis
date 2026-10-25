@@ -253,7 +253,7 @@ async def test_agreement_sends_its_rows_and_the_link(recorder: Recorder) -> None
         purchase=purchase,
         investor_name="Anna Ivanova",
         investor_email="anna@example.com",
-        company=SimpleNamespace(id=uuid4(), name="Acme Robotics"),
+        company=SimpleNamespace(id=uuid4(), name="Acme Robotics", shares_per_option=25),
         product=SimpleNamespace(name="Seed round"),
     )
     await agreement_service.request_agreement_email(data, None)  # type: ignore[arg-type]
@@ -284,7 +284,7 @@ async def test_certificate_date_follows_the_investors_language(
         investor_language=language,
         investor_name="Anna Ivanova",
         investor_email="anna@example.com",
-        company=SimpleNamespace(id=uuid4(), name="Acme Robotics"),
+        company=SimpleNamespace(id=uuid4(), name="Acme Robotics", shares_per_option=25),
         total_units=40,
         current_value_cents=2_000_000,
         as_of_date=datetime(2026, 10, 23, tzinfo=UTC),
@@ -295,7 +295,7 @@ async def test_certificate_date_follows_the_investors_language(
     action = payload["action_data"]
     _assert_wire_safe(action)
     assert action["as_of"] == as_of
-    assert action["total_units"] == 40
+    assert action["total_units"] == 1000  # 40 lots of 25 parts
     assert action["current_value"] == "20,000.00"
     assert "?doc=ownership" in action["documents_url"]
 

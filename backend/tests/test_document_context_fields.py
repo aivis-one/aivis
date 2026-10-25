@@ -250,7 +250,7 @@ async def test_agreement_context_carries_the_four_fields(
     )
     assert accepted == "" and annex == ""  # no acceptance recorded
     assert account == str(inv_id).split("-")[0].upper()
-    assert int(bonus_parts) == expected_bonus
+    assert int(bonus_parts) == expected_bonus * data.company.shares_per_option
     assert purchase_type == "sale"
     assert (int(number), int(count)) == (0, 0)
 

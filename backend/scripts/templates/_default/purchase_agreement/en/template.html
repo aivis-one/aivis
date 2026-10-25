@@ -114,9 +114,9 @@
     <p>1.1. The Company sold the Buyer, and the Buyer bought, parts of the project named below (the &ldquo;Parts&rdquo;):</p>
     <table class="t">
       <tr><td class="k">Project</td><td class="v">{{ company_name }}</td></tr>
-      <tr><td class="k">Parts (for the index: Units) bought</td><td class="v">{{ units }}</td></tr>
+      <tr><td class="k">Parts (for the index: Units) bought</td><td class="v">{{ parts }}</td></tr>
       <tr><td class="k">Bonus Parts (for the index: Units) given</td><td class="v">{% if bonus_parts %}{{ bonus_parts }}{% else %}none{% endif %}</td></tr>
-      <tr><td class="k">Price per Part</td><td class="v">{{ price_per_unit_display }} USD</td></tr>
+      <tr><td class="k">Price per Part</td><td class="v">{{ price_per_part_display }} USD</td></tr>
       <tr><td class="k">Amount paid</td><td class="v">{{ paid_display }} USD</td></tr>
       <tr><td class="k">Type of purchase</td><td class="v">{% if purchase_type == 'instalment' %}Instalment{% if tranche_number %}, instalment month {{ tranche_number }} of {{ tranche_count }}{% endif %}{% else %}One-time purchase{% endif %}</td></tr>
       <tr><td class="k">Date of purchase</td><td class="v">{{ purchase_date }}</td></tr>

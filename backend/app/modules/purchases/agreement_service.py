@@ -106,6 +106,8 @@ from app.modules.purchases.document_utils import (
     format_cents,
     format_document_date,
     format_document_datetime,
+    format_part_price,
+    parts_of,
     template_references,
 )
 from app.modules.purchases.models import Purchase
@@ -344,9 +346,10 @@ async def purchase_type_of(purchase: Purchase, session: AsyncSession) -> str:
 
 
 async def bonus_parts_of(purchase_id: UUID, session: AsyncSession) -> int:
-    """Bonus parts given with one purchase: the sum of the units of the
+    """Bonus lots given with one purchase: the sum of the units of the
     active bonus rows whose source_purchase_id is this purchase. 0 when
-    there are none."""
+    there are none. The document states them in Parts (lots x the
+    project's Parts per lot)."""
     total = await session.scalar(
         select(func.coalesce(func.sum(Purchase.units), 0)).where(
             Purchase.source_purchase_id == purchase_id,
@@ -480,6 +483,14 @@ async def render_agreement_html(
             data.product.translations, language, "name", data.product.name
         ),
         "units": data.purchase.units,
+        # What the document states: the count of Parts (lots x the project's
+        # Parts per lot) and the price of one Part, three decimals. The
+        # lot-based `units` and `price_per_unit_*` stay for a template a
+        # project uploaded earlier.
+        "parts": parts_of(data.purchase.units, data.company.shares_per_option),
+        "price_per_part_display": format_part_price(
+            data.purchase.price_per_unit_cents, data.company.shares_per_option
+        ),
         # Bootstrap templates take raw cents (they format inline in the
         # locale-specific HTML). The pre-formatted *_display strings are
         # kept alongside for any company-overridden template that wants
@@ -516,7 +527,10 @@ async def render_agreement_html(
         "account_number": await resolve_account_number(
             data.purchase.investor_id, session
         ),
-        "bonus_parts": await bonus_parts_of(data.purchase.id, session),
+        "bonus_parts": parts_of(
+            await bonus_parts_of(data.purchase.id, session),
+            data.company.shares_per_option,
+        ),
         "purchase_type": await purchase_type_of(data.purchase, session),
         "tranche_number": tranche_number,
         "tranche_count": tranche_count,

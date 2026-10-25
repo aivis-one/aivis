@@ -15,6 +15,7 @@
 // product's description first line, where the project writes it.
 // =============================================================================
 
+import { formatNumber } from '@/utils/format'
 import type { PlanConfig } from '@/utils/installmentPlans'
 
 /** The count of parts in `lots` lots of `sharesPerOption` parts each. */
@@ -109,4 +110,31 @@ export function instalmentLines(config: PlanConfig): InstalmentLines {
     eachPercent,
     lastPercent: last.units_percent,
   }
+}
+
+/**
+ * The average price of one part over the lots paid for: the money paid over the
+ * parts it bought (gifts carry no money and are not in `paidLots`). Three
+ * decimals, like the price of a part; 0.000 when nothing was bought.
+ */
+export function formatAveragePartPrice(
+  totalPaidCents: number,
+  paidLots: number,
+  sharesPerOption: number,
+  locale: string,
+): string {
+  return formatPartPrice(totalPaidCents, partsOf(paidLots, sharesPerOption), locale)
+}
+
+/**
+ * The count of parts in `lots` lots, grouped for the locale; a dash while the
+ * project's parts per lot is not known yet (never the lot count in its place).
+ */
+export function formatPartsCount(
+  lots: number,
+  sharesPerOption: number | null,
+  locale: string,
+): string {
+  if (sharesPerOption === null) return '—'
+  return formatNumber(partsOf(lots, sharesPerOption), locale)
 }

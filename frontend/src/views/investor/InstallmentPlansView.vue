@@ -57,10 +57,12 @@ import { useInfiniteScroll } from '@/composables/usePagination'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { listMyPlans } from '@/api/installments'
-import { formatDateTime, formatNumber, formatPrice } from '@/utils/format'
+import { formatDateTime, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { InstallmentPlanResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
+import { formatPartsCount } from '@/utils/parts'
 
 const PER_PAGE = 20
 
@@ -79,6 +81,7 @@ useScreenHeader({
 })
 
 const items = ref<InstallmentPlanResponse[]>([])
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
 const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
@@ -159,6 +162,7 @@ async function fetchFirstPage(): Promise<void> {
     const resp = await listMyPlans({ page: 1, per_page: PER_PAGE })
     if (epoch !== fetchEpoch) return
     items.value = resp.items
+    void ensureParts(resp.items.map((p) => p.company_id))
     total.value = resp.total
     page.value = 1
     loaded.value = true
@@ -183,6 +187,7 @@ async function loadMore(): Promise<void> {
     const resp = await listMyPlans({ page: nextPage, per_page: PER_PAGE })
     if (epoch !== fetchEpoch) return
     items.value = [...items.value, ...resp.items]
+    void ensureParts(resp.items.map((p) => p.company_id))
     total.value = resp.total
     page.value = nextPage
   } catch {
@@ -268,7 +273,7 @@ onMounted(() => {
             </RouterLink>
             <span class="ds-row__meta">
               {{ t('inv.installmentPlans.list.item.units') }}:
-              {{ formatNumber(plan.total_units, locale) }}
+              {{ formatPartsCount(plan.total_units, partsPerLot(plan.company_id), locale) }}
             </span>
             <span class="ds-row__meta">
               {{ t('inv.installmentPlans.list.item.created') }}

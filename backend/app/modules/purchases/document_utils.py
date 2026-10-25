@@ -14,6 +14,8 @@
 #   extract_investor_name  -- best-effort display name from User.profile
 #   extract_investor_email -- email address from User.credentials JSONB
 #   format_cents           -- "150000" -> "1,500.00"
+#   parts_of               -- lots x parts-per-lot: the count of Parts
+#   format_part_price      -- the price of one Part, three decimals
 #   format_document_date   -- a date in the document's language
 #   format_document_datetime -- a date and the UTC time, the same way
 #   documents_link        -- the address of one document, for its email
@@ -29,6 +31,7 @@
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from jinja2 import Environment, StrictUndefined, meta
@@ -125,6 +128,29 @@ def format_cents(cents: int) -> str:
     """
     dollars = cents / 100
     return f"{dollars:,.2f}"
+
+
+def parts_of(lots: int, shares_per_option: int) -> int:
+    """The count of Parts in `lots` lots of `shares_per_option` Parts each.
+
+    A buyer never sees the lot: a document states the Parts, the price of
+    one Part and the total in whole cents. 4 lots of 25 -> 100 Parts.
+    """
+    return lots * shares_per_option
+
+
+def format_part_price(lot_price_cents: int, shares_per_option: int) -> str:
+    """The price of one Part in dollars, three decimals.
+
+    A lot at 10 cents over 25 Parts -> '0.004'. Computed in exact decimals
+    (half-up on the third place), never in floats; 0.000 when the lot holds
+    no Parts. The total is not derived from this figure: it stays the
+    whole-cent amount the purchase carries.
+    """
+    if shares_per_option <= 0:
+        return "0.000"
+    per_part = Decimal(lot_price_cents) / Decimal(shares_per_option) / Decimal(100)
+    return f"{per_part.quantize(Decimal('0.001'), rounding=ROUND_HALF_UP):,}"
 
 
 # Russian month names in the genitive case ("23 октября 2026 г.").

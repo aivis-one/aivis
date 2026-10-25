@@ -1290,7 +1290,7 @@
         "item": {
           "label": "Plan {id}",
           "totalPrice": "Total price",
-          "units": "Units",
+          "units": "Parts",
           "created": "Started"
         }
       },
@@ -1302,8 +1302,8 @@
         "defaultedBanner": "This plan defaulted after a missed payment. Units from tranches already paid are kept; the remaining tranches were cancelled.",
         "summary": {
           "totalPrice": "Total price",
-          "totalUnits": "Total units",
-          "pricePerUnit": "Price per unit",
+          "totalUnits": "Total parts",
+          "pricePerUnit": "Price of a part",
           "created": "Started",
           "completed": "Completed",
           "defaulted": "Defaulted"
@@ -1313,7 +1313,7 @@
           "tranche": "Tranche {n}",
           "due": "Due date",
           "amount": "Amount",
-          "units": "Units",
+          "units": "Parts",
           "paidOn": "Paid on {date}"
         }
       },
@@ -1536,8 +1536,8 @@
           "tx_hash": "Transaction hash",
           "from_address": "From address",
           "product_name": "Product",
-          "units": "Units",
-          "price_per_unit_cents": "Price per unit",
+          "units": "Parts",
+          "price_per_unit_cents": "Price of a part",
           "reason": "Reason",
           "trigger_tranche_number": "Trigger tranche",
           "cancelled_count": "Tranches cancelled",
@@ -1556,7 +1556,7 @@
         "title": "Portfolio",
         "totalValue": "Total value",
         "products": "Products",
-        "units": "Units",
+        "units": "Parts",
         "companies": "Projects",
         "empty": "No purchases yet",
         "emptyCta": "Browse the store"
@@ -1621,12 +1621,12 @@
       "subtitle": "Your holdings across all projects",
       "totalValue": "Total value",
       "products": "Products",
-      "units": "Units",
+      "units": "Parts",
       "invested": "Spent",
       "profit": "Profit",
       "position": {
-        "units": "Units",
-        "avgPrice": "Avg. price",
+        "units": "Parts",
+        "avgPrice": "Avg. price of a part",
         "value": "Value",
         "saleUnits": "Purchased",
         "giftUnits": "Gifted"
@@ -1695,8 +1695,8 @@
     "companyPosition": {
       "title": "Position",
       "aggregate": {
-        "totalUnits": "Total units",
-        "avgPrice": "Avg. price",
+        "totalUnits": "Total parts",
+        "avgPrice": "Avg. price of a part",
         "invested": "Spent",
         "currentValue": "Current value",
         "saleUnits": "Purchased",
@@ -1715,9 +1715,9 @@
           "installment_tranche": "Basis: one paid month of your instalment plan, its own purchase agreement accepted in the Cabinet.",
           "gift": "Basis: Parts given by AIVIS.ONE LLC under its order on gifts, accepted by you in the Cabinet."
         },
-        "units": "Units",
+        "units": "Parts",
         "paid": "Paid",
-        "pricePerUnit": "Price per unit",
+        "pricePerUnit": "Price of a part",
         "certificate": "Certificate",
         "booked": "Booked"
       },

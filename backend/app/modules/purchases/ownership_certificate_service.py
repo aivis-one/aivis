@@ -93,6 +93,8 @@ from app.modules.purchases.document_utils import (
     extract_investor_name,
     format_cents,
     format_document_date,
+    format_part_price,
+    parts_of,
     template_references,
 )
 from app.modules.purchases.models import Purchase
@@ -321,11 +323,17 @@ async def render_ownership_html(
     # The per-item `date` key (not `purchase_date`) matches the bootstrap
     # ownership_certificate templates which iterate {% for p in purchases %}
     # and render {{ p.date }} (R2 §4.4).
+    shares_per_option = data.company.shares_per_option
     purchases_for_template = [
         {
             "id": str(item.id),
             "legal_basis": item.legal_basis,
             "units": item.units,
+            # The Parts the row states and the price of one Part.
+            "parts": parts_of(item.units, shares_per_option),
+            "price_per_part_display": format_part_price(
+                item.price_per_unit_cents, shares_per_option
+            ),
             "paid_cents": item.paid_cents,
             "paid_display": format_cents(item.paid_cents),
             "price_per_unit_cents": item.price_per_unit_cents,
@@ -357,6 +365,10 @@ async def render_ownership_html(
         "total_units": data.total_units,
         "sale_units": data.sale_units,
         "gift_units": data.gift_units,
+        # The same counts in Parts (lots x the project's Parts per lot).
+        "total_parts": parts_of(data.total_units, shares_per_option),
+        "sale_parts": parts_of(data.sale_units, shares_per_option),
+        "gift_parts": parts_of(data.gift_units, shares_per_option),
         "total_paid_cents": data.total_paid_cents,
         "total_paid_display": format_cents(data.total_paid_cents),
         "current_value_cents": data.current_value_cents,
@@ -417,7 +429,8 @@ async def request_ownership_email(
                 f"Dear {data.investor_name},\n\n"
                 f"Your ownership certificate for {data.company.name} is "
                 f"ready.\n\n"
-                f"Total units owned: {data.total_units}\n"
+                f"Total parts owned: "
+                f"{parts_of(data.total_units, data.company.shares_per_option)}\n"
                 f"Current value: {format_cents(data.current_value_cents)}\n"
                 f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
                 f"Open it here (you will be asked to sign in): "
@@ -428,7 +441,9 @@ async def request_ownership_email(
             "action_data": email_action_data(
                 investor_name=data.investor_name,
                 company=data.company.name,
-                total_units=data.total_units,
+                total_units=parts_of(
+                    data.total_units, data.company.shares_per_option
+                ),
                 current_value=format_cents(data.current_value_cents),
                 as_of=format_document_date(
                     data.as_of_date, data.investor_language

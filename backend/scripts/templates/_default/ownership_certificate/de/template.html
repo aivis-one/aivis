@@ -93,11 +93,11 @@
     <table class="details">
       <tr><td class="label">Investor:</td><td class="value">{{ investor_name }}</td></tr>
       <tr><td class="label">Unternehmen:</td><td class="value">{{ company_name }}</td></tr>
-      <tr><td class="label">Gesamtanteile:</td><td class="value">{{ total_units }}</td></tr>
-      <tr><td class="label">Gekaufte Anteile:</td><td class="value">{{ sale_units }}</td></tr>
-      <tr><td class="label">Schenkungsanteile:</td><td class="value">{{ gift_units }}</td></tr>
-      <tr><td class="label">Gesamtsumme gezahlt:</td><td class="value">{{ total_paid_cents }}</td></tr>
-      <tr><td class="label">Aktueller Wert:</td><td class="value">{{ current_value_cents }}</td></tr>
+      <tr><td class="label">Gesamtanteile:</td><td class="value">{{ total_parts }}</td></tr>
+      <tr><td class="label">Gekaufte Anteile:</td><td class="value">{{ sale_parts }}</td></tr>
+      <tr><td class="label">Schenkungsanteile:</td><td class="value">{{ gift_parts }}</td></tr>
+      <tr><td class="label">Gesamtsumme gezahlt:</td><td class="value">{{ total_paid_display }} USD</td></tr>
+      <tr><td class="label">Aktueller Wert:</td><td class="value">{{ current_value_display }} USD</td></tr>
       <tr><td class="label">Stand:</td><td class="value">{{ as_of_date }}</td></tr>
     </table>
     <p class="note">Betraege in Cents (USD).</p>
@@ -117,8 +117,8 @@
         <tr>
           <td>{{ p.date }}</td>
           <td>{{ p.legal_basis }}</td>
-          <td>{{ p.units }}</td>
-          <td>{{ p.paid_cents }}</td>
+          <td>{{ p.parts }}</td>
+          <td>{{ p.paid_display }} USD</td>
         </tr>
         {% endfor %}
       </tbody>

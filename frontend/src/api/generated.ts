@@ -347,6 +347,7 @@ export interface CompanyPositionDetailResponse {
   company_name: string
   logo_url: string | null
   logo_dark_url: string | null
+  shares_per_option: number
   total_units: number
   sale_units: number
   gift_units: number
@@ -366,6 +367,7 @@ export interface CompanyPositionResponse {
   company_name: string
   logo_url: string | null
   logo_dark_url: string | null
+  shares_per_option: number
   total_units: number
   sale_units: number
   gift_units: number
@@ -422,6 +424,7 @@ export interface CompanySummaryResponse {
   company_name: string
   logo_url: string | null
   logo_dark_url: string | null
+  shares_per_option: number
   total_units: number
   invested_cents: number
   current_value_cents: number

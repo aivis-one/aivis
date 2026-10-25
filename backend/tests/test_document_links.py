@@ -108,7 +108,7 @@ async def test_agreement_email_links_to_this_purchase(monkeypatch: pytest.Monkey
     data = SimpleNamespace(
         investor_email="buyer@example.test",
         investor_name="Buyer",
-        company=SimpleNamespace(id=company_id, name="Acme"),
+        company=SimpleNamespace(id=company_id, name="Acme", shares_per_option=1),
         product=SimpleNamespace(name="Unit"),
         purchase=SimpleNamespace(
             id=purchase_id, user_id=uuid4(), units=3, paid_cents=150000
@@ -130,7 +130,7 @@ async def test_ownership_email_links_to_this_company(monkeypatch: pytest.MonkeyP
         investor_name="Holder",
         investor_language="en",
         investor_id=uuid4(),
-        company=SimpleNamespace(id=company_id, name="Acme"),
+        company=SimpleNamespace(id=company_id, name="Acme", shares_per_option=1),
         total_units=7,
         current_value_cents=250000,
         as_of_date=datetime.now(UTC),
