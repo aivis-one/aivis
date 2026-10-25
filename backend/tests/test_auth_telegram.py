@@ -3,7 +3,8 @@
 # =============================================================================
 #
 # Tests cover:
-#   1:    Valid initData -> 200, user created
+#   1:    Valid initData of a new person -> link_required, then the link
+#         flow (tests/test_auth_telegram_link.py) -> user with a verified e-mail
 #   2:    Repeat login -> same user, credentials.telegram updated
 #   3:    Session created (verified by authenticated request)
 #   4:    Invalid HMAC signature -> 400
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tests.helpers import (
     auth_headers,
     build_init_data,
+    login_legacy_telegram,
     login_telegram,
 )
 
@@ -40,7 +42,11 @@ TG_IDS = list(range(100001, 100020))
 
 @pytest.mark.asyncio
 async def test_telegram_login_creates_user(client: AsyncClient) -> None:
-    """Valid initData -> 200, new user created with role=investor."""
+    """A new person who goes through the e-mail step ends as an investor.
+
+    login_telegram goes on through link/email and link/confirm; the entry
+    itself creates nothing (tests/test_auth_telegram_link.py).
+    """
     data = await login_telegram(client, telegram_id=100001, first_name="Alice")
 
     assert "session_token" in data
@@ -242,41 +248,29 @@ async def test_telegram_missing_init_data(client: AsyncClient) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Entry without an e-mail
+# Entry ends with an e-mail
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_telegram_entry_skips_the_email_step(
+async def test_telegram_entry_ends_with_a_verified_email_and_no_password(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """A new Telegram user is an investor who is never sent to the e-mail
-    step: the first step is the documents step or, with nothing to sign,
-    the cabinet. The account has no confirmed e-mail."""
-    from sqlalchemy import select
+    """No Telegram-only account is born: a new Telegram person holds an
+    e-mail proven by the code, no password, and the Telegram id."""
+    import uuid
 
-    from app.modules.documents.models import Document, DocumentStatus
     from app.modules.users.models import User
 
     data = await login_telegram(client, telegram_id=100010, first_name="NoMail")
     assert data["user"]["role"] == "investor"
 
-    required = (
-        await db_session.execute(
-            select(Document.id).where(
-                Document.status == DocumentStatus.ACTIVE,
-                Document.required_for_roles.contains(["investor"]),
-            )
-        )
-    ).first()
-    expected = "role_selected" if required else "onboarding_complete"
-    assert data["user"]["onboarding_step"] == expected
-
-    import uuid
-
     user = await db_session.get(User, uuid.UUID(data["user"]["id"]))
-    assert user.email is None
-    assert user.email_verified is False
+    await db_session.refresh(user)
+    assert user.email is not None
+    assert user.email_verified is True
+    assert "password_hash" not in user.credentials["email"]
+    assert user.credentials["telegram"]["id"] == 100010
 
 
 # ---------------------------------------------------------------------------
@@ -295,8 +289,8 @@ async def test_telegram_account_adds_and_confirms_an_email(
 
     from app.modules.users.models import User
 
-    data = await login_telegram(
-        client, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
+    data = await login_legacy_telegram(
+        client, db_session, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
     )
     token = data["session_token"]
     address = f"tg_{uuid.uuid4().hex[:10]}@example.com"
@@ -337,7 +331,7 @@ async def test_telegram_account_adds_and_confirms_an_email(
 
 @pytest.mark.asyncio
 async def test_attach_email_refuses_an_address_of_another_account(
-    client: AsyncClient,
+    client: AsyncClient, db_session: AsyncSession
 ) -> None:
     import uuid
 
@@ -345,8 +339,8 @@ async def test_attach_email_refuses_an_address_of_another_account(
 
     taken = await register_user(client)
     taken_email = taken["user"]["email"]
-    data = await login_telegram(
-        client, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
+    data = await login_legacy_telegram(
+        client, db_session, telegram_id=int(uuid.uuid4().int % 10**9) + 10**9
     )
 
     resp = await client.post(

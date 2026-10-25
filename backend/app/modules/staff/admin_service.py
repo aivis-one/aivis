@@ -368,6 +368,14 @@ async def block_user(
     if target.role == UserRole.PLATFORM:
         raise BadRequestError("Cannot block platform user")
 
+    # A staff block stamps its own marker, so a stale "self" left by an
+    # earlier self-deactivation can never read as the user's own choice.
+    creds = dict(target.credentials or {})
+    creds["account"] = {
+        **(creds.get("account") or {}),
+        "deactivated_by": "staff",
+    }
+    target.set_jsonb("credentials", creds)
     target.is_active = False
     await session.flush()
 

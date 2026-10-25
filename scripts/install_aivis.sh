@@ -823,6 +823,9 @@ log "Generating random secrets..."
 DB_PASS=$(gen_password)
 REDIS_PASS=$(gen_password)
 SECRET=$(gen_secret)
+# The secret_token for the bot's webhook (Telegram echoes it in a header;
+# 1-256 characters of letters, digits, _ and -, which gen_password gives).
+TELEGRAM_WEBHOOK_SECRET_VAL=$(gen_password)
 
 # Storage secrets. The root key is what the RustFS server boots on and
 # what storage-init uses to bootstrap; the backend's key (ACCESS/SECRET) is
@@ -1267,6 +1270,10 @@ TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_VAL}
 # button from it, and a value invented in two places is a value that can
 # disagree with itself.
 TELEGRAM_BOT_URL=${TELEGRAM_BOT_URL_VAL}
+# The webhook's secret_token: the backend refuses a /telegram/webhook call
+# whose X-Telegram-Bot-Api-Secret-Token header differs. Registered with
+# Telegram by the setWebhook step at the end of the install.
+TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET_VAL}
 
 # -- Telegram Auth Security --
 AUTH_RATE_LIMIT_MAX_REQUESTS=5
@@ -2202,6 +2209,26 @@ log "Building frontend image with the fresh types..."
 "$INSTALL_BASE/repo/scripts/aivis-manage.sh" frontend build 2>&1 || { error "Frontend image build failed. Check output above."; }
 docker compose up -d frontend 2>&1 || { error "Frontend start failed. Check output above."; }
 success "Frontend built and started"
+
+# ------------------------------------------------------------------------------
+# The bot's webhook, ONE setWebhook call: Telegram sends the bot's updates
+# (the /start welcome) to the backend and echoes the secret_token in the
+# X-Telegram-Bot-Api-Secret-Token header, which the backend checks. Only
+# `message` updates are asked for. A failure is a warning, not a stop: the
+# cabinet works without the welcome, and the call can be repeated by hand.
+# ------------------------------------------------------------------------------
+log "Registering the bot's webhook (setWebhook)..."
+set_webhook=$(curl -s --max-time 15 -X POST \
+    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN_VAL}/setWebhook" \
+    --data-urlencode "url=https://${API_DOMAIN}/api/v1/telegram/webhook" \
+    --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET_VAL}" \
+    --data-urlencode 'allowed_updates=["message"]' || true)
+if echo "$set_webhook" | grep -q '"ok":true'; then
+    success "Bot webhook registered: https://${API_DOMAIN}/api/v1/telegram/webhook"
+else
+    warn "Telegram did not accept setWebhook: ${set_webhook:-<no answer>}"
+    warn "The /start welcome will not arrive until it is set; the cabinet is unaffected."
+fi
 
 # ==============================================================================
 # MANAGEMENT COMMAND

@@ -224,12 +224,33 @@ class Settings(BaseSettings):
     # (Telegram getMe) and written to backend/.env. The letters' support
     # link falls back to it (core/email_vars.py).
     telegram_bot_url: str = ""
+    # The secret Telegram echoes in X-Telegram-Bot-Api-Secret-Token on every
+    # webhook call (POST /api/v1/telegram/webhook). Generated and registered
+    # with setWebhook by scripts/install_aivis.sh. Empty = the webhook route
+    # refuses every call (fail closed).
+    telegram_webhook_secret: str = ""
 
     # -- Telegram Auth Security --
     auth_rate_limit_max_requests: int = 5
     auth_rate_limit_window_seconds: int = 60
     auth_init_data_ttl_seconds: int = 300
     auth_clock_skew_seconds: int = 60
+
+    # -- Telegram entry: linking a Telegram id to an e-mail account --
+    # (these numbers are the owner's.)
+    # How long a link token (Telegram id + name + consent + referral code,
+    # held in Redis) lives.
+    telegram_link_token_ttl_seconds: int = 15 * 60
+    # New codes per e-mail per hour, across every token and Telegram id.
+    telegram_link_codes_per_hour: int = 3
+    # Distinct e-mails one Telegram id may ask a code for, per day.
+    telegram_link_emails_per_day: int = 3
+    # E-mail steps one client IP may make per day.
+    telegram_link_ip_per_day: int = 20
+    # Wrong codes per e-mail (across all tokens and Telegram ids) before
+    # that e-mail's Telegram link is locked for telegram_link_lock_seconds.
+    telegram_link_max_wrong_codes: int = 5
+    telegram_link_lock_seconds: int = 60 * 60
 
     # -- Email --
     #

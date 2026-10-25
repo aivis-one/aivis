@@ -258,7 +258,7 @@ async def login_user(
 # ---------------------------------------------------------------------------
 
 
-async def login_telegram(
+async def telegram_entry(
     client: AsyncClient,
     *,
     telegram_id: int,
@@ -268,8 +268,9 @@ async def login_telegram(
     language: str = "en",
     referral_code: str | None = None,
 ) -> dict:
-    """POST /api/v1/auth/telegram with forged initData. Asserts
-    2xx and returns the response body.
+    """POST /api/v1/auth/telegram with forged initData. Asserts 200 and
+    returns the body as it is: a session, `mfa_required`, or -- for a
+    Telegram id no row holds -- `link_required` plus a `link_token`.
     """
     init_data = build_init_data(
         telegram_id=telegram_id,
@@ -285,6 +286,137 @@ async def login_telegram(
     resp = await client.post("/api/v1/auth/telegram", json=payload)
     assert resp.status_code in (200, 201), resp.text
     return resp.json()
+
+
+async def read_telegram_link_code(link_token: str) -> str:
+    """The e-mail code held in a link token's Redis record.
+
+    The letter is an outbox row that tests do not deliver; the code is
+    kept inside the link token record, which is where a
+    test reads it.
+    """
+    from app.core.redis import get_redis
+
+    raw = await get_redis().get(f"telegram_link:{link_token}")
+    assert raw is not None, "link token record is gone"
+    code = json.loads(raw)["code"]
+    assert code, "no code was requested for this link token"
+    return code
+
+
+async def link_telegram_email(
+    client: AsyncClient,
+    link_token: str,
+    email: str,
+    *,
+    consent_given: bool = True,
+    referral_code: str | None = None,
+) -> Any:
+    """POST /api/v1/auth/telegram/link/email. Returns the response."""
+    payload: dict[str, Any] = {
+        "link_token": link_token,
+        "email": email,
+        "consent_given": consent_given,
+    }
+    if referral_code:
+        payload["referral_code"] = referral_code
+    return await client.post("/api/v1/auth/telegram/link/email", json=payload)
+
+
+async def link_telegram_confirm(
+    client: AsyncClient,
+    link_token: str,
+    code: str,
+    *,
+    second_code: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> Any:
+    """POST /api/v1/auth/telegram/link/confirm. Returns the response."""
+    payload: dict[str, str] = {"link_token": link_token, "code": code}
+    if second_code:
+        payload["second_code"] = second_code
+    return await client.post(
+        "/api/v1/auth/telegram/link/confirm", json=payload, headers=headers
+    )
+
+
+async def login_telegram(
+    client: AsyncClient,
+    *,
+    telegram_id: int,
+    first_name: str = "Test",
+    last_name: str = "User",
+    username: str | None = None,
+    language: str = "en",
+    referral_code: str | None = None,
+    email: str | None = None,
+) -> dict:
+    """Enter through Telegram the way a person does, and return a session body.
+
+    POST /api/v1/auth/telegram; when no row holds the Telegram id the
+    server answers `link_required` and this helper goes on through the
+    e-mail step and the code step (a fresh unique address unless `email`
+    is given), so the returned body is always {user, session_token}.
+    """
+    body = await telegram_entry(
+        client,
+        telegram_id=telegram_id,
+        first_name=first_name,
+        last_name=last_name,
+        username=username,
+        language=language,
+        referral_code=referral_code,
+    )
+    if not body.get("link_required"):
+        return body
+
+    token = body["link_token"]
+    address = email or f"tg_{uuid.uuid4().hex[:12]}@example.com"
+    resp = await link_telegram_email(
+        client, token, address, referral_code=referral_code
+    )
+    assert resp.status_code == 200, resp.text
+    code = await read_telegram_link_code(token)
+    resp = await link_telegram_confirm(client, token, code)
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+async def login_legacy_telegram(
+    client: AsyncClient,
+    session: AsyncSession,
+    *,
+    telegram_id: int,
+) -> dict:
+    """A Telegram-only account of the OLD kind (no e-mail), then its login.
+
+    No such account is born any more (POST /auth/telegram creates
+    nothing); the few that exist are rows made before the change. The row
+    is written straight to the database, and the session comes from the
+    ordinary find-and-login path.
+    """
+    from app.modules.auth.service import get_platform_user_id
+
+    platform_id = await get_platform_user_id(session)
+    session.add(
+        User(
+            role=UserRole.INVESTOR,
+            referred_by=platform_id,
+            credentials={
+                "telegram": {
+                    "id": telegram_id,
+                    "username": None,
+                    "first_name": "Legacy",
+                    "last_name": None,
+                    "photo_url": None,
+                    "language_code": "en",
+                }
+            },
+            onboarding_step=OnboardingStep.ROLE_SELECTED,
+        )
+    )
+    await session.commit()
+    return await telegram_entry(client, telegram_id=telegram_id)
 
 
 # ---------------------------------------------------------------------------

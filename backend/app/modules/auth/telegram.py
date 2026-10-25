@@ -16,7 +16,8 @@
 # ANTI-REPLAY (WARNING-4):
 #   Each initData hash is stored in Redis with TTL=auth_init_data_ttl_seconds.
 #   A second request with the same initData within the window is rejected.
-#   Key: init_data_used:{sha256(init_data)}
+#   Key: init_data_used:{the validated `hash` field} (not a hash of the raw
+#   string: see check_init_data_replay).
 #
 # RATE LIMITING (CRITICAL-4):
 #   Max auth_rate_limit_max_requests per auth_rate_limit_window_seconds
@@ -64,6 +65,12 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> dict:
     # Parse the query string into key-value pairs.
     parsed = parse_qs(init_data, keep_blank_values=True)
 
+    # A key that appears twice is refused outright (threat 4): the
+    # signature is over ONE value per key, so a second `hash=` or a second
+    # `auth_date=` is never part of what Telegram signed.
+    if any(len(values) != 1 for values in parsed.values()):
+        raise TelegramValidationError("Repeated key in initData")
+
     # Extract hash -- Telegram includes it for verification.
     received_hash = parsed.pop("hash", [None])[0]
     if not received_hash:
@@ -84,7 +91,7 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> dict:
     ).hexdigest()
 
     # Constant-time comparison to prevent timing attacks.
-    if not hmac.compare_digest(computed_hash, received_hash):
+    if not hmac.compare_digest(computed_hash.encode(), received_hash.encode()):
         raise TelegramValidationError("Invalid initData signature")
 
     # Check auth_date is present and not too old.
@@ -132,8 +139,14 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> dict:
 async def check_init_data_replay(init_data: str) -> None:
     """Reject replayed initData within the validity window.
 
-    Each initData hash is stored in Redis with TTL=auth_init_data_ttl_seconds.
-    A second request with the same initData is rejected immediately.
+    Each initData is stored in Redis with TTL=auth_init_data_ttl_seconds,
+    keyed on the VALIDATED `hash` field Telegram signed -- never on the raw
+    string. The signature covers the parsed, sorted pairs, so the same
+    signed payload can be written many ways (pairs reordered, percent
+    encoding changed); a key over the raw string would give each spelling
+    a new key and the replay would pass. The `hash` is the one value all
+    spellings share. validate_telegram_init_data has already refused a
+    query string with a repeated key.
 
     Args:
         init_data: Raw Telegram initData string (already HMAC-validated).
@@ -142,8 +155,11 @@ async def check_init_data_replay(init_data: str) -> None:
         TelegramValidationError: If this initData was already used.
     """
     redis = get_redis()
-    init_data_hash = hashlib.sha256(init_data.encode()).hexdigest()
-    replay_key = f"init_data_used:{init_data_hash}"
+    parsed = parse_qs(init_data, keep_blank_values=True)
+    hashes = parsed.get("hash") or []
+    if len(hashes) != 1 or not hashes[0]:
+        raise TelegramValidationError("Missing hash in initData")
+    replay_key = f"init_data_used:{hashes[0]}"
 
     # SET NX: only succeeds if key doesn't exist yet.
     # Returns True if set (first use), None if already existed.

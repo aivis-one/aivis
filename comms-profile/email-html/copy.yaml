@@ -43,6 +43,38 @@ auth.password_reset:
     button_url: "{reset_url}"
     note: "Если вы не запрашивали сброс, проигнорируйте письмо: пароль останется прежним."
 
+auth.telegram_link_code:
+  layout: code
+  en:
+    heading: "Link Telegram"
+    lead: "The Telegram account {telegram_name} asks to be linked to your AIVIS account. Enter this code to confirm:"
+    code: "{code}"
+    valid_note: "The code is valid for {minutes} minutes."
+    ignore_note: "If this was not you, ignore this letter: nothing will be linked. Never tell the code to anyone."
+  ru:
+    heading: "Привязка Telegram"
+    lead: "Аккаунт Telegram {telegram_name} просит привязать его к вашему аккаунту AIVIS. Введите этот код, чтобы подтвердить:"
+    code: "{code}"
+    valid_note: "Код действует {minutes} минут."
+    ignore_note: "Если это были не вы, проигнорируйте письмо: ничего не будет привязано. Никому не сообщайте этот код."
+
+auth.telegram_linked:
+  layout: action
+  en:
+    heading: "Telegram linked"
+    lead: "The Telegram account {telegram_name} was linked to your AIVIS account."
+    highlight: "{telegram_name}"
+    button_text: "Contact support"
+    button_url: "{support_url}"
+    note: "If this was not you, contact support right away."
+  ru:
+    heading: "Telegram привязан"
+    lead: "Аккаунт Telegram {telegram_name} привязан к вашему аккаунту AIVIS."
+    highlight: "{telegram_name}"
+    button_text: "Написать в поддержку"
+    button_url: "{support_url}"
+    note: "Если это были не вы, сразу напишите в поддержку."
+
 purchase.agreement:
   layout: document
   en:

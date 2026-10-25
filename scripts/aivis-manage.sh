@@ -1039,6 +1039,36 @@ update_product() {
     # server tracks" mean "whatever someone last checked out here".
     BRANCH="${AIVIS_PRODUCT_BRANCH:-$(git branch --show-current)}"
 
+    # THE BOT'S WEBHOOK SECRET on a box installed before the webhook
+    # existed: when backend/.env has no TELEGRAM_WEBHOOK_SECRET, make one,
+    # write it (the backend reads it when it is restarted by this update)
+    # and register the webhook once, the same setWebhook call the installer
+    # makes. The bot token is read from the file and never printed. A
+    # failure is a warning: the cabinet works without the /start welcome.
+    if [ $FRONTEND_ONLY -eq 0 ]; then
+        local wh_env="$COMPOSE_DIR/backend/.env" wh_secret wh_token wh_answer
+        wh_secret=$(grep -E '^TELEGRAM_WEBHOOK_SECRET=' "$wh_env" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)
+        if [ -z "$wh_secret" ] && [ -f "$wh_env" ]; then
+            wh_secret=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+            if grep -q '^TELEGRAM_WEBHOOK_SECRET=' "$wh_env"; then
+                sed -i "s|^TELEGRAM_WEBHOOK_SECRET=.*|TELEGRAM_WEBHOOK_SECRET=${wh_secret}|" "$wh_env"
+            else
+                printf '%s\n' "TELEGRAM_WEBHOOK_SECRET=${wh_secret}" >> "$wh_env"
+            fi
+            wh_token=$(grep -E '^TELEGRAM_BOT_TOKEN=' "$wh_env" | tail -n 1 | cut -d= -f2- || true)
+            wh_answer=$(curl -s --max-time 15 -X POST \
+                "https://api.telegram.org/bot${wh_token}/setWebhook" \
+                --data-urlencode "url=https://${API_DOMAIN}/api/v1/telegram/webhook" \
+                --data-urlencode "secret_token=${wh_secret}" \
+                --data-urlencode 'allowed_updates=["message"]' || true)
+            if echo "$wh_answer" | grep -q '"ok":true'; then
+                echo -e "${GREEN}✓ Bot webhook registered (new TELEGRAM_WEBHOOK_SECRET written)${NC}"
+            else
+                echo -e "${YELLOW}Telegram did not accept setWebhook; the /start welcome waits until it is set${NC}"
+            fi
+        fi
+    fi
+
     # WHETHER THERE IS ANYTHING TO DO is decided from what was last
     # DEPLOYED, not from HEAD against origin (H24 P-112). The checkout was
     # already brought to origin before the services ran

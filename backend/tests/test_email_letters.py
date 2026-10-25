@@ -38,6 +38,8 @@ SHARED = {"support_url", "support_email", "cabinet_url", "site_url", "logo_url"}
 EMAIL_TYPES = {
     "auth.verification_code",
     "auth.password_reset",
+    "auth.telegram_link_code",
+    "auth.telegram_linked",
     "purchase.agreement",
     "ownership.certificate",
     "withdrawal.processing",
@@ -155,6 +157,31 @@ async def test_verification_code_sends_code_and_minutes(recorder: Recorder) -> N
     assert payload["action_data"]["minutes"] == ttl
     # the stored body stays as the fallback and keeps the code
     assert "482915" in payload["body"]
+
+
+@pytest.mark.asyncio
+async def test_telegram_link_code_sends_the_code_the_minutes_and_the_name(
+    recorder: Recorder,
+) -> None:
+    await auth_service._request_telegram_link_code_email(
+        None, uuid4(), "654321", datetime.now(UTC), "@alice"
+    )
+    payload = recorder.payloads[0]
+    assert payload["type"] == "auth.telegram_link_code"
+    data = payload["action_data"]
+    _assert_wire_safe(data)
+    assert data["code"] == "654321"
+    assert data["minutes"] == 10
+    assert data["telegram_name"] == "@alice"
+
+
+@pytest.mark.asyncio
+async def test_telegram_linked_notice_sends_the_name(recorder: Recorder) -> None:
+    await auth_service._request_telegram_linked_email(None, uuid4(), "@alice")
+    payload = recorder.payloads[0]
+    assert payload["type"] == "auth.telegram_linked"
+    _assert_wire_safe(payload["action_data"])
+    assert payload["action_data"]["telegram_name"] == "@alice"
 
 
 @pytest.mark.asyncio

@@ -868,6 +868,8 @@ export interface LoginResponse {
   mfa_token?: string | null
   user?: UserResponse | null
   session_token?: string | null
+  link_required?: boolean
+  link_token?: string | null
 }
 
 /** Navigational intent for one inbox item, or nothing. comms' frozen contract calls this `action_data`: {"action": ..., "params": {...}} | null. None of AIVIS's 16 event producers populate it today (checked at the emit_event call sites, e.g. withdrawals/service.py ~line 117 -- the payload carries no action_data key at all), so every item this proxy serves right now has it as null. Typed here anyway: comms may start sending it at any point and an untyped field showing up later would be a schema break for the frontend, not a feature. Wiring an actual navigation target from `action` + `params` is explicitly out of scope -- see the module header on notifications/service.py. */
@@ -1477,6 +1479,27 @@ export interface SubmitTxidRequest {
 export interface TelegramAuthRequest {
   init_data: string
   referral_code?: string | null
+}
+
+/** POST /api/v1/auth/telegram/link/confirm -- request body. */
+export interface TelegramLinkConfirmRequest {
+  link_token: string
+  code: string
+  second_code?: string | null
+}
+
+/** POST /api/v1/auth/telegram/link/email -- request body. */
+export interface TelegramLinkEmailRequest {
+  link_token: string
+  email: string
+  consent_given: boolean
+  referral_code?: string | null
+}
+
+/** The one answer of the e-mail step, identical for every e-mail. */
+export interface TelegramLinkEmailResponse {
+  status?: string
+  code_ttl_minutes: number
 }
 
 /** Single template with full body for staff inspection (R2 §4.5). Adds: - html_content: utf-8 decoded body of <storage_prefix>/template.html fetched from MinIO at request time. Read-through the Redis HTML cache (R2 §4.10) so the staff inspect flow shares cache warmth with the renderer. - storage_prefix: the MinIO folder path for this template. Useful when staff wants to jump into MinIO Web UI to see the asset files alongside the parsed HTML. */

@@ -41,8 +41,8 @@ failure `#9C231E`.
 
 ## Which types use which layout
 
-- `code`: `auth.verification_code`
-- `action`: `auth.password_reset`, and the unsent `welcome` and `installment.reminder`
+- `code`: `auth.verification_code`, `auth.telegram_link_code`
+- `action`: `auth.password_reset`, `auth.telegram_linked`, and the unsent `welcome` and `installment.reminder`
 - `document`: `purchase.agreement`, `ownership.certificate`
 - `notice`: `withdrawal.processing`, `.completed`, `.rejected`, `.failed`,
   `installment.tranche_overdue`, `installment.plan_defaulted`

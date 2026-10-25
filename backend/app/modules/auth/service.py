@@ -11,7 +11,11 @@
 #   list_sessions()               -- enumerate active sessions (TASK-38)
 #   revoke_session()              -- kill one session by its public id
 #                                     (TASK-38)
-#   upsert_telegram_user()        -- Telegram WebApp auth (Sprint 1.2)
+#   upsert_telegram_user()        -- Telegram WebApp auth, FIND-ONLY: creates
+#                                     no user (one person, one account)
+#   create_telegram_link_token()  -- link token of a Telegram id no row holds
+#   request_telegram_link_code()  -- e-mail step: make/find the row, send a code
+#   confirm_telegram_link()       -- code step: prove the mailbox, link the id
 #   verify_email_code()           -- verify 6-digit email code (G1)
 #   resend_verification_code()    -- regenerate + resend code (G1)
 #   request_password_reset()      -- request a reset link (unauthenticated)
@@ -128,6 +132,7 @@ import hashlib
 import json
 import secrets
 from datetime import datetime, timedelta, UTC
+from typing import Any
 from uuid import UUID
 
 import pyotp
@@ -152,10 +157,18 @@ from app.core.exceptions import (
     BadRequestError,
     ConflictError,
     ForbiddenError,
+    NotFoundError,
+    RateLimitError,
     UnauthorizedError,
 )
+from app.core.rate_limit import _RATE_LIMIT_SCRIPT, check_rate_limit
 from app.core.redis import get_redis
-from app.modules.documents.service import maybe_complete_onboarding
+from app.modules.documents.service import (
+    get_current_document_by_type,
+    has_signed_document_type,
+    maybe_complete_onboarding,
+    sign_document,
+)
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
 
 logger = structlog.get_logger()
@@ -686,16 +699,16 @@ async def login_email(
 
     if not user.is_active:
         # TASK-38: is_active=False now has TWO distinct causes -- staff
-        # block_user() (staff/admin_service.py, untouched) and this
+        # block_user() (staff/admin_service.py), which stamps
+        # deactivated_by="staff", and this
         # module's own deactivate_own_account() (users/service.py). Both
         # write is_active=False; only self-deactivation additionally
         # writes credentials.account.deactivated_by="self". Reusing the
         # bare flag without this discriminator would tell a user who
         # deactivated their OWN account that they were "suspended" --
-        # wrong and alarming. See users/service.py's self-deactivation
-        # module note for the KNOWN EDGE CASE this discriminator does
-        # NOT cover (unblock -> re-block after a self-deactivation
-        # leaves it stale).
+        # wrong and alarming. A staff block overwrites the marker with
+        # "staff", so a stale "self" from an earlier self-deactivation never
+        # reads as the user's choice.
         account_meta = (user.credentials or {}).get("account", {})
         deactivated_by = account_meta.get("deactivated_by")
 
@@ -1322,42 +1335,68 @@ async def verify_2fa_login(
 
 
 # ---------------------------------------------------------------------------
-# Telegram Auth (Sprint 1.2)
+# Telegram Auth: find-only, and the link of a Telegram id to an e-mail account
 # ---------------------------------------------------------------------------
+#
+# ONE PERSON, ONE ACCOUNT. POST /auth/telegram never creates a user any more:
+# an initData whose Telegram id no row holds ends in `link_required` plus a
+# short-lived LINK TOKEN (Redis `telegram_link:{token}`, TTL
+# settings.telegram_link_token_ttl_seconds) that holds the Telegram id and
+# name, the consent, the referral code, and -- once the e-mail step has run --
+# the e-mail, the row id and the code. The mailbox then decides:
+#
+#   POST /auth/telegram/link/email   -> request_telegram_link_code()
+#   POST /auth/telegram/link/confirm -> confirm_telegram_link()
+#
+# The checks at the code step run in this order:
+#   1. token live; wrong tries for this e-mail under the cap; code equal
+#   2. a row whose e-mail was unverified is CLAIMED by the proof
+#   3. platform role refused as on the web; row active (staff are allowed)
+#   4. row holds no Telegram id, or the same one
+#   5. two-factor on: the second code is right
+#   6. write the Telegram id, sign the documents, audit, session
+# The row is read FOR UPDATE before check 2, so the claim and the Telegram
+# check of two simultaneous proofs run one after the other (threat 13).
+#
+# WRONG TRIES ARE COUNTED PER E-MAIL (Redis `telegram_link_tries:{sha256}`),
+# across every link token and every Telegram id, and a new code does not reset
+# them: fresh initData is no barrier (any Telegram account mints it by
+# reopening the Mini App), so a per-token count would be no limit at all
+# (threat 5). The counter is raised BEFORE the code is compared, by the same
+# Lua script as the rate limiter, so parallel guesses cannot exceed the cap.
+#
+# A conflict is told only AFTER the mailbox is proven; the e-mail step answers
+# the same word for every e-mail (threat 6).
 
 
-async def upsert_telegram_user(
-    telegram_user: dict,
-    session: AsyncSession,
-    *,
-    referral_code: str | None = None,
-) -> tuple[User, bool]:
-    """Create or update user on Telegram login.
+_TELEGRAM_LINK_PREFIX = "telegram_link:"
+_TELEGRAM_LINK_TRIES_PREFIX = "telegram_link_tries:"
+_TELEGRAM_LINK_EMAILS_PREFIX = "telegram_link_emails:"
 
-    Lookup by credentials->'telegram'->>'id' via functional index.
-    If found -- update credentials.telegram via set_jsonb().
-    If not found -- create new User with role=investor.
+# The two documents the Mini App's consent screen stands for.
+_CONSENT_DOCUMENT_TYPES = ("cabinet_terms", "privacy_policy")
 
-    referral_code is only used for NEW users (is_new=True).
-    Existing users keep their original referred_by / referred_by_link_id.
+# Distinct e-mails per Telegram id per day: add the e-mail to a set unless the
+# set is full; the set lives one day from its first member.
+_DISTINCT_EMAIL_SCRIPT = """
+if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then
+    return 1
+end
+if redis.call('SCARD', KEYS[1]) >= tonumber(ARGV[2]) then
+    return 0
+end
+redis.call('SADD', KEYS[1], ARGV[1])
+if redis.call('TTL', KEYS[1]) < 0 then
+    redis.call('EXPIRE', KEYS[1], ARGV[3])
+end
+return 1
+"""
 
-    Race condition (two simultaneous first logins) is handled via
-    begin_nested() (SAVEPOINT) + IntegrityError catch + retry SELECT.
-    This follows P-05 pattern: savepoint rolls back only the INSERT,
-    outer transaction remains valid for retry.
 
-    After set_jsonb + flush, session.refresh() reloads expired attrs
-    (updated_at) to prevent MissingGreenlet when Pydantic reads them.
-
-    Does NOT commit -- caller manages transaction (P-01).
-
-    Returns:
-        Tuple of (User, is_new) where is_new=True if user was just created.
-    """
-    telegram_id = telegram_user["id"]
-
-    telegram_creds = {
-        "id": telegram_id,
+def _telegram_credentials(telegram_user: dict) -> dict:
+    """The credentials.telegram block built from validated initData."""
+    return {
+        "id": telegram_user["id"],
         "username": telegram_user.get("username"),
         "first_name": telegram_user.get("first_name"),
         "last_name": telegram_user.get("last_name"),
@@ -1365,159 +1404,821 @@ async def upsert_telegram_user(
         "language_code": telegram_user.get("language_code"),
     }
 
-    # Step 1: Lookup existing user by telegram_id in JSONB.
-    # Drive-by fix (found during Task 1): the lookup used as_integer(),
-    # i.e. CAST(... AS INTEGER). Real Telegram ids exceeded int32 long
-    # ago, so any such user got an asyncpg int4 bind overflow -> 500 on
-    # login. The functional index ix_users_telegram_id (migration 0002)
-    # was ALWAYS ::bigint -- this BIGINT cast both fixes the overflow
-    # and makes the expression actually match the index.
+
+def _telegram_display_name(telegram_creds: dict) -> str:
+    """How a letter names the Telegram account: @username, else the numeric id.
+
+    Never the first or last name: it is free text typed by whoever owns that
+    Telegram account, put in front of the owner of the mailbox (threat 16).
+    A username is restricted by Telegram to letters, digits and underscores;
+    control characters are dropped and the length capped all the same.
+    """
+    username = telegram_creds.get("username")
+    raw = f"@{username}" if username else str(telegram_creds.get("id", ""))
+    return "".join(ch for ch in raw if ch.isprintable())[:64]
+
+
+def _email_key(email_lower: str) -> str:
+    """The part of a Redis key that stands for an e-mail (no address in keys)."""
+    return hashlib.sha256(email_lower.encode()).hexdigest()
+
+
+def _raise_if_platform(
+    user: User, background_tasks: BackgroundTasks | None
+) -> None:
+    """Refuse the platform role (the system's technical account) before any
+    session, with the web login's wording and code (decided by the owner,
+    2026-10-25). Staff are not refused."""
+    if user.role != UserRole.PLATFORM:
+        return
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _audit_login_failure, user.id, "platform_login_blocked"
+        )
+    raise UnauthorizedError("Invalid email or password")
+
+
+def _raise_if_inactive(
+    user: User, background_tasks: BackgroundTasks | None
+) -> None:
+    """Refuse an inactive row before any session, with the web login's words.
+
+    Staff block (403 account_blocked) and self-deactivation (403
+    account_self_deactivated) are told apart exactly as login_email does.
+    The staff role is NOT refused here: staff enter through Telegram like
+    any account (decided by the owner, 2026-10-25).
+    """
+    if user.is_active:
+        return
+    account_meta = (user.credentials or {}).get("account", {})
+    if account_meta.get("deactivated_by") == "self":
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _audit_login_failure, user.id, "account_self_deactivated"
+            )
+        raise ForbiddenError(
+            "Your account is deactivated. Contact support to reactivate it.",
+            code="account_self_deactivated",
+        )
+    if background_tasks is not None:
+        background_tasks.add_task(
+            _audit_login_failure, user.id, "account_deactivated"
+        )
+    raise ForbiddenError(
+        "Your account has been suspended. Contact support for help.",
+        code="account_blocked",
+    )
+
+
+async def _find_user_by_telegram_id(
+    telegram_id: int,
+    session: AsyncSession,
+    *,
+    exclude_id: UUID | None = None,
+) -> User | None:
+    """The row holding this Telegram id (BIGINT cast = the index expression)."""
     stmt = select(User).where(
         cast(User.credentials["telegram"]["id"].astext, BigInteger)
         == telegram_id
     )
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    return (await session.execute(stmt)).scalars().first()
 
-    if user is not None:
-        # Existing user -- update credentials.telegram.
-        # Merge with existing credentials to preserve email auth data.
-        updated_creds = dict(user.credentials)
-        updated_creds["telegram"] = telegram_creds
-        user.set_jsonb("credentials", updated_creds)
 
-        # A Telegram-only user born before the e-mail step was dropped
-        # for Telegram sits on REGISTERED with no e-mail to confirm: lift
-        # such a user onto the documents step.
-        if (
-            user.onboarding_step == OnboardingStep.REGISTERED
-            and not (user.credentials or {}).get("email")
-        ):
-            user.onboarding_step = OnboardingStep.ROLE_SELECTED
+async def upsert_telegram_user(
+    telegram_user: dict,
+    session: AsyncSession,
+    *,
+    background_tasks: BackgroundTasks | None = None,
+) -> User | None:
+    """Find the user holding this Telegram id and refresh credentials.telegram.
 
-        await session.flush()
-        await maybe_complete_onboarding(user.id, session)
-        # Reload expired attrs (updated_at) after set_jsonb + flush.
-        await session.refresh(user)
+    FIND-ONLY (one person, one account: Telegram entry creates no user):
+    an unknown Telegram id returns None and creates nothing -- the router
+    answers `link_required` and the person
+    goes through the e-mail step. The create branch and its race handler are
+    gone; the one-row-per-id guarantee is ix_users_telegram_id, enforced when
+    the link is written (confirm_telegram_link).
 
-        await record_audit(
-            session=session,
-            event="user.login",
-            actor_id=user.id,
-            actor_type="user",
-            target_type="user",
-            target_id=user.id,
-            data={"auth_method": "telegram"},
-        )
+    A found row that is inactive or self-deactivated is refused HERE, before
+    its credentials are touched and before any session (threat 8); the platform
+    role is refused as on the web; staff enter as on the web. A row that is
+    merely found goes on to the router's two-factor gate.
 
-        logger.info(
-            "telegram_user_updated",
-            user_id=str(user.id),
-            telegram_id=telegram_id,
-        )
+    After set_jsonb + flush, session.refresh() reloads expired attrs
+    (updated_at) to prevent MissingGreenlet when Pydantic reads them.
 
-        return user, False
+    Does NOT commit -- caller manages transaction (P-01).
+    """
+    telegram_id = telegram_user["id"]
+    telegram_creds = _telegram_credentials(telegram_user)
 
-    # Step 2: New user -- create with role=investor.
-    # Use begin_nested() (SAVEPOINT) so that IntegrityError from race
-    # condition only rolls back the INSERT, not the outer transaction (P-05).
+    user = await _find_user_by_telegram_id(telegram_id, session)
+    if user is None:
+        return None
 
-    # Sprint 7.2: resolve referrer for new user.
-    # Task 1 Block C: the specific link is captured alongside the agent.
-    referred_by, referred_by_link_id = await _resolve_referrer(
-        referral_code, session
-    )
+    _raise_if_platform(user, background_tasks)
+    _raise_if_inactive(user, background_tasks)
 
-    lang = (telegram_user.get("language_code") or "en")[:2] or "en"
-    new_user = User(
-        role=UserRole.INVESTOR,
-        referred_by=referred_by,
-        referred_by_link_id=referred_by_link_id,
-        credentials={"telegram": telegram_creds},
-        language=lang,
-        # A Telegram entry has no e-mail and no e-mail step:
-        # the first data comes from Telegram, so the user starts on the
-        # documents step. maybe_complete_onboarding below finishes it when
-        # there is nothing left to sign. The e-mail is asked for later, as
-        # KYC's first condition (kyc_email_not_verified).
-        onboarding_step=OnboardingStep.ROLE_SELECTED,
-    )
+    # Merge with existing credentials to preserve email auth data.
+    updated_creds = dict(user.credentials)
+    updated_creds["telegram"] = telegram_creds
+    user.set_jsonb("credentials", updated_creds)
 
-    try:
-        async with session.begin_nested():
-            session.add(new_user)
-            await session.flush()
-    except IntegrityError as exc:
-        if "ix_users_telegram_id" in str(exc.orig):
-            # Race condition: another request created this user first.
-            # Savepoint rolled back, outer transaction still valid.
-            result = await session.execute(stmt)
-            user = result.scalar_one()
+    # A Telegram-only user born before the e-mail step was dropped for
+    # Telegram sits on REGISTERED with no e-mail to confirm: lift such a user
+    # onto the documents step. (No such row is born any more.)
+    if (
+        user.onboarding_step == OnboardingStep.REGISTERED
+        and not (user.credentials or {}).get("email")
+    ):
+        user.onboarding_step = OnboardingStep.ROLE_SELECTED
 
-            updated_creds = dict(user.credentials)
-            updated_creds["telegram"] = telegram_creds
-            user.set_jsonb("credentials", updated_creds)
-            await session.flush()
-            await session.refresh(user)
-
-            # Audit the race-resolved login -- every auth event must
-            # be recorded for financial platform compliance.
-            await record_audit(
-                session=session,
-                event="user.login",
-                actor_id=user.id,
-                actor_type="user",
-                target_type="user",
-                target_id=user.id,
-                data={
-                    "auth_method": "telegram",
-                    "race_resolved": True,
-                },
-            )
-
-            logger.info(
-                "telegram_login_race_resolved",
-                user_id=str(user.id),
-                telegram_id=telegram_id,
-            )
-
-            return user, False
-        raise
-
-    await maybe_complete_onboarding(new_user.id, session)
-    await session.refresh(new_user)
-
-    # Same rule as the e-mail path: comms learns the recipient before
-    # the product has anything to say to them (T-64). Deliberately NOT
-    # in the race branch above -- that branch resolved to an EXISTING
-    # user, who already got their upsert when they were created.
-    await sync_recipient(session, new_user)
+    await session.flush()
+    await maybe_complete_onboarding(user.id, session)
+    # Reload expired attrs (updated_at) after set_jsonb + flush.
+    await session.refresh(user)
 
     await record_audit(
         session=session,
-        event="user.registered",
-        actor_id=new_user.id,
+        event="user.login",
+        actor_id=user.id,
         actor_type="user",
         target_type="user",
-        target_id=new_user.id,
-        data={
-            "auth_method": "telegram",
-            "referral_code": referral_code,
-            "referred_by": str(referred_by),
-            "referred_by_link_id": (
-                str(referred_by_link_id) if referred_by_link_id else None
+        target_id=user.id,
+        data={"auth_method": "telegram"},
+    )
+
+    logger.info(
+        "telegram_user_updated",
+        user_id=str(user.id),
+        telegram_id=telegram_id,
+    )
+
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Link token (Redis), copied from the pending-MFA pair above
+# ---------------------------------------------------------------------------
+
+
+async def create_telegram_link_token(
+    telegram_user: dict, referral_code: str | None
+) -> str:
+    """Mint the link token for a Telegram id that no row holds.
+
+    Random (~256 bits), bound to this Telegram id by its record, live
+    settings.telegram_link_token_ttl_seconds, deleted on success and on the
+    capped number of wrong tries (threat 14).
+    """
+    token = secrets.token_urlsafe(32)
+    lang = (telegram_user.get("language_code") or "en")[:2] or "en"
+    record = {
+        "telegram": _telegram_credentials(telegram_user),
+        "language": lang,
+        "consent_given": False,
+        "referral_code": referral_code,
+        "email": None,
+        "user_id": None,
+        "code": None,
+        "code_expires_at": None,
+    }
+    await get_redis().set(
+        f"{_TELEGRAM_LINK_PREFIX}{token}",
+        json.dumps(record),
+        ex=settings.telegram_link_token_ttl_seconds,
+    )
+    return token
+
+
+async def get_telegram_link_record(token: str) -> dict | None:
+    """The record of a live link token, or None."""
+    raw = await get_redis().get(f"{_TELEGRAM_LINK_PREFIX}{token}")
+    if raw is None:
+        return None
+    return json.loads(raw)
+
+
+async def save_telegram_link_record(token: str, record: dict) -> None:
+    """Rewrite a live token's record, keeping the TTL it already has."""
+    await get_redis().set(
+        f"{_TELEGRAM_LINK_PREFIX}{token}",
+        json.dumps(record),
+        keepttl=True,
+    )
+
+
+async def delete_telegram_link_token(token: str) -> None:
+    await get_redis().delete(f"{_TELEGRAM_LINK_PREFIX}{token}")
+
+
+def _link_token_invalid() -> BadRequestError:
+    return BadRequestError(
+        "The sign-in link has expired. Open the app again.",
+        code="link_token_invalid",
+    )
+
+
+# ---------------------------------------------------------------------------
+# The two letters of the link (comms-profile/types.yaml)
+# ---------------------------------------------------------------------------
+
+
+async def _request_telegram_link_code_email(
+    session: AsyncSession,
+    user_id: UUID,
+    code: str,
+    expires_at: datetime,
+    telegram_name: str,
+) -> None:
+    """The code for an EXISTING row: names the Telegram account (threat 16).
+
+    The owner of the mailbox is told which Telegram account asks to be
+    linked, so a person talked into reading a code out loud sees whose
+    request it is. A new person's code uses auth.verification_code.
+    """
+    if not comms_configured():
+        return
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"auth-telegram-link:{user_id}:{expires_at.isoformat()}"
+            ),
+            "type": "auth.telegram_link_code",
+            "target_type": "user",
+            "target_value": str(user_id),
+            "title": "AIVIS.ONE - Link Telegram",
+            "body": (
+                f"A Telegram account ({telegram_name}) asks to be linked to "
+                "your AIVIS account.\n\n"
+                f"Your code is: {code}\n\n"
+                f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} "
+                "minutes. Do not share it with anyone.\n\n"
+                "If this was not you, ignore this email."
+            ),
+            "expiry_at": expires_at.isoformat(),
+            "action_data": email_action_data(
+                code=code,
+                minutes=_VERIFICATION_CODE_TTL_MINUTES,
+                telegram_name=telegram_name,
             ),
         },
     )
 
-    logger.info(
-        "telegram_user_created",
-        user_id=str(new_user.id),
-        telegram_id=telegram_id,
-        referred_by=str(referred_by),
+
+async def _request_telegram_linked_email(
+    session: AsyncSession,
+    user_id: UUID,
+    telegram_name: str,
+) -> None:
+    """The notice after a link: which Telegram was linked, where to complain."""
+    if not comms_configured():
+        return
+
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"auth-telegram-linked:{user_id}:"
+                f"{datetime.now(UTC).isoformat()}"
+            ),
+            "type": "auth.telegram_linked",
+            "target_type": "user",
+            "target_value": str(user_id),
+            "title": "AIVIS.ONE - Telegram linked",
+            "body": (
+                f"The Telegram account {telegram_name} was linked to your "
+                "AIVIS account.\n\n"
+                "If this was not you, contact support."
+            ),
+            "action_data": email_action_data(telegram_name=telegram_name),
+        },
     )
 
-    return new_user, True
+
+# ---------------------------------------------------------------------------
+# E-mail step: send a code
+# ---------------------------------------------------------------------------
+
+
+async def request_telegram_link_code(
+    link_token: str,
+    email: str,
+    consent_given: bool,
+    referral_code: str | None,
+    session: AsyncSession,
+    *,
+    ip: str,
+) -> None:
+    """Flow (c)/(d) step 4: make (or find) the row for this e-mail, send a code.
+
+    Returns nothing: the router answers one fixed word for every e-mail,
+    known, unknown, blocked or linked (threat 6). A conflict is never told
+    here -- only after the mailbox is proven (confirm_telegram_link).
+
+    An unknown e-mail gets a row (S5): e-mail only, unverified, no password,
+    no Telegram id, no referrer (platform) -- a letter needs a row. The
+    Telegram id is NOT written until the code
+    is proven.
+
+    Checks, in order: token live; consent_given true; IP limits; the lock on
+    this e-mail; codes per hour for this e-mail; distinct e-mails per day for
+    this Telegram id.
+
+    Does NOT commit -- caller manages transaction (P-01).
+    """
+    record = await get_telegram_link_record(link_token)
+    if record is None:
+        raise _link_token_invalid()
+
+    if consent_given is not True:
+        raise BadRequestError(
+            "Both documents must be accepted to continue.",
+            code="consent_required",
+        )
+
+    email_lower = email.strip().lower()
+    email_key = _email_key(email_lower)
+    telegram_creds = record["telegram"]
+    telegram_id = telegram_creds["id"]
+
+    # IP: the register limit, and a daily cap.
+    await check_rate_limit(f"telegram_link_ip:{ip}")
+    await check_rate_limit(
+        f"telegram_link_ip_day:{ip}",
+        max_requests=settings.telegram_link_ip_per_day,
+        window_seconds=86400,
+    )
+
+    redis = get_redis()
+
+    # A locked e-mail gets no fresh code (threat 5). The lock is by e-mail
+    # whether or not a row exists, so it tells nothing about the row.
+    wrong = await redis.get(f"{_TELEGRAM_LINK_TRIES_PREFIX}{email_key}")
+    if wrong is not None and int(wrong) >= settings.telegram_link_max_wrong_codes:
+        ttl = await redis.ttl(f"{_TELEGRAM_LINK_TRIES_PREFIX}{email_key}")
+        raise RateLimitError(
+            "Too many wrong codes for this e-mail. Try again later.",
+            code="telegram_link_locked",
+            retry_after_seconds=ttl if ttl > 0 else None,
+        )
+
+    # New codes per e-mail per hour, across every token and Telegram id.
+    await check_rate_limit(
+        f"telegram_link_code:{email_key}",
+        max_requests=settings.telegram_link_codes_per_hour,
+        window_seconds=3600,
+        error_message="Too many codes requested for this e-mail. "
+        "Please try again later.",
+    )
+
+    # Distinct e-mails per day for this Telegram id (threat 11).
+    allowed = await redis.eval(
+        _DISTINCT_EMAIL_SCRIPT,
+        1,
+        f"{_TELEGRAM_LINK_EMAILS_PREFIX}{telegram_id}",
+        email_key,
+        settings.telegram_link_emails_per_day,
+        86400,
+    )
+    if int(allowed) != 1:
+        raise RateLimitError(
+            "Too many different e-mails tried today. Please try again later.",
+            code="telegram_link_emails_per_day",
+        )
+
+    # Find the row, or make S5. Both branches queue a letter below.
+    user = (
+        await session.execute(
+            select(User).where(
+                User.credentials["email"]["email"].as_string() == email_lower
+            )
+        )
+    ).scalar_one_or_none()
+    created = False
+
+    if user is None:
+        platform_id = await get_platform_user_id(session)
+        new_user = User(
+            role=UserRole.INVESTOR,
+            referred_by=platform_id,
+            referred_by_link_id=None,
+            language=record.get("language") or "en",
+            credentials={
+                "email": {
+                    "email": email_lower,
+                    "verified": False,
+                    "verified_at": None,
+                },
+            },
+        )
+        try:
+            async with session.begin_nested():
+                session.add(new_user)
+                await session.flush()
+            user = new_user
+            created = True
+        except IntegrityError as exc:
+            if "ix_users_email" not in str(exc.orig):
+                raise
+            # Lost a race for the same new address: the other row stands.
+            user = (
+                await session.execute(
+                    select(User).where(
+                        User.credentials["email"]["email"].as_string()
+                        == email_lower
+                    )
+                )
+            ).scalar_one()
+
+    if created:
+        # comms learns the recipient before the letter (T-64).
+        await sync_recipient(session, user)
+        await record_audit(
+            session=session,
+            event="user.registered",
+            actor_id=user.id,
+            actor_type="user",
+            target_type="user",
+            target_id=user.id,
+            data={
+                "auth_method": "telegram_link",
+                "stage": "email_unproven",
+            },
+        )
+
+    code = _generate_verification_code()
+    expires_at = datetime.now(UTC) + timedelta(
+        minutes=_VERIFICATION_CODE_TTL_MINUTES
+    )
+
+    record["email"] = email_lower
+    record["user_id"] = str(user.id)
+    record["code"] = code
+    record["code_expires_at"] = expires_at.isoformat()
+    record["consent_given"] = True
+    if referral_code:
+        record["referral_code"] = referral_code
+    await save_telegram_link_record(link_token, record)
+
+    if created:
+        await _request_verification_email(session, user.id, code, expires_at)
+    else:
+        await _request_telegram_link_code_email(
+            session,
+            user.id,
+            code,
+            expires_at,
+            _telegram_display_name(telegram_creds),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Code step: prove the mailbox, link the Telegram id
+# ---------------------------------------------------------------------------
+
+
+async def _sign_consent_documents(
+    user: User,
+    ip: str,
+    user_agent: str,
+    session: AsyncSession,
+) -> None:
+    """Record the two ticks of the consent screen as the signings.
+
+    The server signs `cabinet_terms` and `privacy_policy` with the request's
+    IP and user agent, from the consent_given kept in the link token. A type
+    the person signed already (a web user) is left alone: 409 "already
+    signed" is treated as done. A type with no active document is logged and
+    skipped -- the documents screen asks again for whatever is unsigned.
+    """
+    for document_type in _CONSENT_DOCUMENT_TYPES:
+        if await has_signed_document_type(user.id, document_type, session):
+            continue
+        try:
+            document = await get_current_document_by_type(
+                document_type, user.language or "en", user.id, session
+            )
+        except NotFoundError:
+            logger.warning(
+                "telegram_link_consent_document_missing",
+                document_type=document_type,
+            )
+            continue
+        if document.is_signed:
+            continue
+        try:
+            async with session.begin_nested():
+                await sign_document(
+                    user.id, document.id, ip, user_agent, session
+                )
+        except ConflictError:
+            continue
+
+
+async def confirm_telegram_link(
+    link_token: str,
+    code: str,
+    second_code: str | None,
+    session: AsyncSession,
+    *,
+    ip: str,
+    user_agent: str,
+    background_tasks: BackgroundTasks | None = None,
+) -> tuple[User, bool]:
+    """Prove the mailbox with the code and link the Telegram id.
+
+    Returns (user, claimed); the router makes the session and, for a claimed
+    row, ends the other sessions after the commit. Every refusal after the
+    code is right ROLLS BACK this transaction, so a claim (check 2) is never
+    left half-done by a later refusal; the sessions the claim ends are ended
+    only at the very end, outside the transaction, once nothing can refuse.
+
+    Raises:
+        BadRequestError: dead token, no code asked, expired or wrong code,
+            second code missing or wrong.
+        RateLimitError: the e-mail is locked after too many wrong codes.
+        ForbiddenError: the row is blocked / self-deactivated, or holds
+            another Telegram id (contact support).
+        UnauthorizedError: the row is the platform role (the web login's words).
+        ConflictError: this Telegram id is already linked to another row.
+    """
+    record = await get_telegram_link_record(link_token)
+    if record is None:
+        raise _link_token_invalid()
+
+    email = record.get("email")
+    stored_code = record.get("code")
+    user_id_raw = record.get("user_id")
+    if not email or not stored_code or not user_id_raw:
+        raise BadRequestError(
+            "Ask for a code first.", code="link_code_not_requested"
+        )
+
+    expires_at_str = record.get("code_expires_at")
+    if expires_at_str and datetime.now(UTC) > datetime.fromisoformat(
+        expires_at_str
+    ):
+        raise BadRequestError(
+            "Code expired, please request a new code.", code="code_expired"
+        )
+
+    # -- Check 1: wrong tries for THIS E-MAIL (not this token), then the code.
+    redis = get_redis()
+    tries_key = f"{_TELEGRAM_LINK_TRIES_PREFIX}{_email_key(email)}"
+    count, ttl = await redis.eval(
+        _RATE_LIMIT_SCRIPT, 1, tries_key, settings.telegram_link_lock_seconds
+    )
+    count, ttl = int(count), int(ttl)
+    max_wrong = settings.telegram_link_max_wrong_codes
+    if count > max_wrong:
+        raise RateLimitError(
+            "Too many wrong codes for this e-mail. Try again later.",
+            code="telegram_link_locked",
+            retry_after_seconds=ttl if ttl > 0 else None,
+        )
+    if not secrets.compare_digest(code.encode(), stored_code.encode()):
+        if count >= max_wrong:
+            await delete_telegram_link_token(link_token)
+        raise BadRequestError("Invalid verification code", code="invalid_code")
+
+    # Single use under concurrency: of two confirms holding the same token
+    # and the right code, one takes the claim and the other is refused. The
+    # claim is dropped on every refusal after it, so a refused call does not
+    # burn the token.
+    claim_key = f"telegram_link_claim:{link_token}"
+    if not await redis.set(claim_key, "1", nx=True, ex=60):
+        raise _link_token_invalid()
+    try:
+        user, claimed = await _link_after_code(
+            link_token,
+            record,
+            email,
+            user_id_raw,
+            second_code,
+            session,
+            redis=redis,
+            tries_key=tries_key,
+            ip=ip,
+            user_agent=user_agent,
+            background_tasks=background_tasks,
+        )
+    except BaseException:
+        await redis.delete(claim_key)
+        raise
+    return user, claimed
+
+
+async def _link_after_code(
+    link_token: str,
+    record: dict,
+    email: str,
+    user_id_raw: str,
+    second_code: str | None,
+    session: AsyncSession,
+    *,
+    redis: Any,
+    tries_key: str,
+    ip: str,
+    user_agent: str,
+    background_tasks: BackgroundTasks | None,
+) -> tuple[User, bool]:
+    """Checks 2-6 of confirm_telegram_link, once the code is right and the
+    token is claimed. Returns (user, claimed)."""
+    telegram_creds = record["telegram"]
+    telegram_id = telegram_creds["id"]
+
+    # The row, under a lock: the claim and the Telegram checks of two
+    # simultaneous proofs of one mailbox run one after the other (threat 13).
+    user = (
+        await session.execute(
+            select(User)
+            .where(User.id == UUID(user_id_raw))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    if user is None or (user.email or "").lower() != email:
+        raise _link_token_invalid()
+
+    # -- Check 2: an unverified e-mail is claimed by this proof.
+    now = datetime.now(UTC)
+    claimed = not user.email_verified
+    if claimed:
+        # A self-deactivation set by an unproven holder goes with the rest
+        # (the `account` marker is popped below). A block by staff has no
+        # such marker and stays: check 3 refuses it.
+        if ((user.credentials or {}).get("account") or {}).get(
+            "deactivated_by"
+        ) == "self":
+            user.is_active = True
+        creds = dict(user.credentials or {})
+        email_creds = dict(creds.get("email") or {})
+        email_creds.pop("password_hash", None)
+        email_creds["verified"] = True
+        email_creds["verified_at"] = now.isoformat()
+        creds["email"] = email_creds
+        for key in ("totp", "totp_pending", "telegram", "account"):
+            creds.pop(key, None)
+        creds["password_reset"] = None
+        onboarding = dict(creds.get("onboarding") or {})
+        onboarding["email_token"] = None
+        onboarding["email_token_expires_at"] = None
+        onboarding["email_verification_attempts"] = 0
+        creds["onboarding"] = onboarding
+        user.set_jsonb("credentials", creds)
+
+        if user.onboarding_step == OnboardingStep.REGISTERED:
+            user.onboarding_step = OnboardingStep.EMAIL_VERIFIED
+
+        # The referrer is the prover's own, not what the unproven requester
+        # set (the prover's referral).
+        user.referred_by, user.referred_by_link_id = await _resolve_referrer(
+            record.get("referral_code"), session
+        )
+
+    # -- Check 3: the platform role is refused as on the web; the row is
+    # active. Staff are allowed.
+    _raise_if_platform(user, background_tasks)
+    _raise_if_inactive(user, background_tasks)
+
+    # -- Check 4: no other Telegram id on the row.
+    held = ((user.credentials or {}).get("telegram") or {}).get("id")
+    if held is not None and int(held) != int(telegram_id):
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _audit_login_failure, user.id, "telegram_link_other_telegram"
+            )
+        raise ForbiddenError(
+            "This account is already linked to another Telegram account. "
+            "Contact support.",
+            code="telegram_conflict",
+        )
+
+    # -- Check 5: two-factor on: the second code in the same call.
+    if ((user.credentials or {}).get("totp") or {}).get("enabled"):
+        if not second_code:
+            # Asking for the second code is not a wrong try: give back the
+            # one this call took, so the person is not locked by the ask.
+            await redis.decr(tries_key)
+            raise BadRequestError(
+                "Enter the code from your authenticator app.",
+                code="second_code_required",
+            )
+        if not await verify_totp_or_backup_code(
+            user, second_code, session, consume_backup_code=True
+        ):
+            if background_tasks is not None:
+                background_tasks.add_task(
+                    _audit_login_failure,
+                    user.id,
+                    "telegram_link_wrong_second_code",
+                )
+            raise BadRequestError(
+                "Invalid verification code", code="second_code_invalid"
+            )
+
+    # -- Check 6: write the Telegram id (the unique index decides a race).
+    other = await _find_user_by_telegram_id(
+        telegram_id, session, exclude_id=user.id
+    )
+    already_linked = ConflictError(
+        "This Telegram account is already linked. Open the app again.",
+        code="telegram_already_linked",
+    )
+    if other is not None:
+        raise already_linked
+    creds = dict(user.credentials or {})
+    creds["telegram"] = telegram_creds
+    user.set_jsonb("credentials", creds)
+    try:
+        async with session.begin_nested():
+            await session.flush()
+    except IntegrityError as exc:
+        if "ix_users_telegram_id" in str(exc.orig):
+            raise already_linked from None
+        raise
+
+    await _sign_consent_documents(user, ip, user_agent, session)
+    await maybe_complete_onboarding(user.id, session)
+    await sync_recipient(session, user)
+    await session.refresh(user)
+
+    if claimed:
+        await record_audit(
+            session=session,
+            event="user.email_verified",
+            actor_id=user.id,
+            actor_type="user",
+            target_type="user",
+            target_id=user.id,
+            data={"via": "telegram_link", "claimed": True},
+        )
+    await record_audit(
+        session=session,
+        event="user.telegram_linked",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={
+            "telegram_id": telegram_id,
+            "claimed": claimed,
+            "mfa_verified": bool(second_code),
+        },
+    )
+    await record_audit(
+        session=session,
+        event="user.login",
+        actor_id=user.id,
+        actor_type="user",
+        target_type="user",
+        target_id=user.id,
+        data={"auth_method": "telegram"},
+    )
+
+    await _request_telegram_linked_email(
+        session, user.id, _telegram_display_name(telegram_creds)
+    )
+
+    # Nothing can refuse any more: spend the token and the tries, and end
+    # the sessions an unproven holder may have opened (threat 1).
+    await delete_telegram_link_token(link_token)
+    await redis.delete(tries_key)
+    if claimed:
+        await delete_all_sessions(user.id)
+
+    logger.info(
+        "telegram_linked",
+        user_id=str(user.id),
+        telegram_id=telegram_id,
+        claimed=claimed,
+    )
+    return user, claimed
+
+
+async def end_other_sessions(user_id: UUID, keep_token: str) -> int:
+    """Delete every session of the user except `keep_token`.
+
+    Run by the confirm route AFTER the claim is committed: a session an
+    unproven holder opened while the claim was still uncommitted (his
+    password still worked until then) is ended, and the prover's new
+    session stays.
+    """
+    redis = get_redis()
+    tokens = await redis.zrange(f"{_USER_SESSIONS_PREFIX}{user_id}", 0, -1)
+    ended = 0
+    for token in tokens:
+        if token != keep_token:
+            await delete_session(token, user_id=user_id)
+            ended += 1
+    return ended
 
 
 # ---------------------------------------------------------------------------

@@ -35,6 +35,32 @@ auth.password_reset:
 
       AIVIS.ONE
 
+auth.telegram_link_code:
+  email:
+    subject: "Link Telegram to your AIVIS account"
+    body: |-
+      The Telegram account {telegram_name} asks to be linked to your AIVIS
+      account.
+
+      Your code is: {code}
+
+      This code expires in {minutes} minutes. Do not share it with anyone,
+      even if they say they are from AIVIS.
+
+      If this was not you, ignore this letter: nothing will be linked.
+
+      AIVIS.ONE
+
+auth.telegram_linked:
+  email:
+    subject: "Telegram linked to your AIVIS account"
+    body: |-
+      The Telegram account {telegram_name} was linked to your AIVIS account.
+
+      If this was not you, contact support: {support_url} or {support_email}
+
+      AIVIS.ONE
+
 purchase.agreement:
   email:
     subject: "Purchase agreement {agreement_number}"

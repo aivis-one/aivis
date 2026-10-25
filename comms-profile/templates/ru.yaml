@@ -31,6 +31,32 @@ auth.password_reset:
 
       AIVIS.ONE
 
+auth.telegram_link_code:
+  email:
+    subject: "Привязка Telegram к аккаунту AIVIS"
+    body: |-
+      Аккаунт Telegram {telegram_name} просит привязать его к вашему
+      аккаунту AIVIS.
+
+      Ваш код: {code}
+
+      Код действует {minutes} минут. Никому его не сообщайте, даже если
+      вам скажут, что это AIVIS.
+
+      Если это были не вы, проигнорируйте письмо: ничего не будет привязано.
+
+      AIVIS.ONE
+
+auth.telegram_linked:
+  email:
+    subject: "Telegram привязан к вашему аккаунту AIVIS"
+    body: |-
+      Аккаунт Telegram {telegram_name} привязан к вашему аккаунту AIVIS.
+
+      Если это были не вы, напишите в поддержку: {support_url} или {support_email}
+
+      AIVIS.ONE
+
 purchase.agreement:
   email:
     subject: "Договор покупки {agreement_number}"

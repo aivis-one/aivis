@@ -494,15 +494,8 @@ async def _require_current_password(user: User, password: str) -> None:
 # UX-parity gap, deliberately separate from the jurisdiction-conditional
 # GDPR erasure item tracked elsewhere.
 #
-# KNOWN EDGE CASE (not fixed here -- block_user/unblock_user are
-# read-only reference per this task's scope): if a self-deactivated
-# user is later unblocked (unblock_user, is_active=True) and then
-# BLOCKED by staff (block_user, is_active=False again), the
-# credentials.account.deactivated_by discriminator is still "self" --
-# neither function touches it -- so login_email() would show the
-# self-deactivated copy for what is actually a staff block. Rare
-# (requires that exact sequence) but real; flagged rather than
-# silently accepted.
+# block_user() stamps deactivated_by="staff", so the self-deactivate,
+# unblock, block sequence reads as a staff block.
 
 
 async def _require_no_active_products(user: User, session: AsyncSession) -> None:

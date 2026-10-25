@@ -226,6 +226,71 @@ class LoginResponse(BaseModel):
     )
     user: UserResponse | None = None
     session_token: str | None = None
+    # POST /auth/telegram only: no account holds this Telegram id. Nothing
+    # was created; link_token (15 minutes, bound to this Telegram id) is the
+    # key to POST /auth/telegram/link/email and /confirm.
+    link_required: bool = False
+    link_token: str | None = Field(
+        default=None,
+        description=(
+            "Opaque token for POST /auth/telegram/link/email and "
+            "/auth/telegram/link/confirm. Only set when link_required=true."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Telegram entry: link a Telegram id to an e-mail account
+# ---------------------------------------------------------------------------
+
+
+class TelegramLinkEmailRequest(BaseModel):
+    """POST /api/v1/auth/telegram/link/email -- request body."""
+
+    link_token: str = Field(..., min_length=1, max_length=128)
+    email: EmailStr = Field(..., description="The e-mail to send the code to")
+    consent_given: bool = Field(
+        ...,
+        description=(
+            "The person ticked both documents (the cabinet's user "
+            "agreement and the privacy policy), worded as consent to "
+            "register. Must be true."
+        ),
+    )
+    referral_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Referral code of the Mini App's start_param (optional)",
+    )
+
+
+class TelegramLinkEmailResponse(BaseModel):
+    """The one answer of the e-mail step, identical for every e-mail."""
+
+    status: Literal["code_sent"] = "code_sent"
+    code_ttl_minutes: int
+
+
+class TelegramLinkConfirmRequest(BaseModel):
+    """POST /api/v1/auth/telegram/link/confirm -- request body."""
+
+    link_token: str = Field(..., min_length=1, max_length=128)
+    code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-digit code from the e-mail",
+    )
+    second_code: str | None = Field(
+        default=None,
+        min_length=6,
+        max_length=64,
+        description=(
+            "Authenticator code or backup code; required only when the "
+            "account has two-factor on"
+        ),
+    )
 
 
 class TwoFactorSetupRequest(BaseModel):

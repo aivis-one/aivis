@@ -232,6 +232,7 @@ from app.modules.support.mute import run_support_operator_mutes
 from app.modules.support.purge import run_support_spam_purge
 from app.modules.support.router import router as support_router
 from app.modules.support.staff_router import router as staff_support_router
+from app.modules.telegram_bot.router import router as telegram_bot_router
 from app.modules.transactions.router import router as transactions_router
 from app.modules.users.router import router as users_router
 from app.modules.withdrawals.router import router as withdrawals_router
@@ -629,6 +630,8 @@ app.add_middleware(TraceIdMiddleware)
 # ---------------------------------------------------------------------------
 
 app.include_router(auth_router)
+# The bot's /start welcome: Telegram calls it, secret_token checked inside.
+app.include_router(telegram_bot_router)
 app.include_router(users_router)
 app.include_router(kyc_router)
 app.include_router(documents_router)

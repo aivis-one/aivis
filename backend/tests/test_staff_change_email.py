@@ -33,7 +33,7 @@ from tests.helpers import (
     auth_headers,
     create_admin_user,
     create_staff_user,
-    login_telegram,
+    login_legacy_telegram,
     register_user,
 )
 
@@ -254,7 +254,9 @@ async def test_telegram_only_user_is_refused(
 ) -> None:
     """No address to change: giving one would ADD a login method -> 400."""
     _admin, admin_token = await create_admin_user(client, db_session)
-    data = await login_telegram(client, telegram_id=int(uuid4().int % 10**9) + 10**9)
+    data = await login_legacy_telegram(
+        client, db_session, telegram_id=int(uuid4().int % 10**9) + 10**9
+    )
     user_id = data["user"]["id"]
 
     response = await _change(

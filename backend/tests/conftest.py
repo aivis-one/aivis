@@ -243,6 +243,12 @@ async def clear_rate_limit() -> None:
         await redis.delete("totp_login_verify:127.0.0.1")
         async for key in redis.scan_iter(match="auth_rate:*"):
             await redis.delete(key)
+        # The Telegram link flow: IP limits, per-e-mail code counts and
+        # wrong-try locks, distinct-e-mail sets and the link tokens
+        # themselves (every key starts `telegram_link`). A lock or a cap
+        # reached by one test must not reach the next.
+        async for key in redis.scan_iter(match="telegram_link*"):
+            await redis.delete(key)
     except RuntimeError:
         # Redis singleton not yet initialised (test collection error path).
         pass

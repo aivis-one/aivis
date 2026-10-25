@@ -5,7 +5,12 @@
 # ENDPOINTS:
 #   POST /api/v1/auth/email/register      -- Register via email + password
 #   POST /api/v1/auth/email/login         -- Login via email + password
-#   POST /api/v1/auth/telegram            -- Login via Telegram WebApp (Sprint 1.2)
+#   POST /api/v1/auth/telegram            -- Login via Telegram WebApp (Sprint 1.2);
+#                                            find-only, an unknown Telegram id
+#                                            gets link_required + a link token
+#   POST /api/v1/auth/telegram/link/email -- send a code to the e-mail the
+#                                            person types (link token)
+#   POST /api/v1/auth/telegram/link/confirm -- prove the mailbox, link the id
 #   POST /api/v1/auth/verify-email        -- Verify 6-digit email code (G1)
 #   POST /api/v1/auth/verify-email/resend -- Resend verification code (G1)
 #   POST /api/v1/auth/password-reset/request -- Request password reset link
@@ -128,8 +133,9 @@
 #   Resolution happens in service -- router just forwards.
 #
 # COMMIT RULE (P-01):
-#   Routers never call session.commit(). get_db_session commits
-#   automatically after yield.
+#   Routers never call session.commit() -- get_db_session commits after
+#   yield -- except POST /telegram/link/confirm, which commits a claim
+#   before ending the row's other sessions.
 # =============================================================================
 
 import structlog
@@ -151,6 +157,9 @@ from app.modules.auth.schemas import (
     SessionItemResponse,
     SessionListResponse,
     TelegramAuthRequest,
+    TelegramLinkConfirmRequest,
+    TelegramLinkEmailRequest,
+    TelegramLinkEmailResponse,
     TwoFactorConfirmRequest,
     TwoFactorConfirmResponse,
     TwoFactorDisableRequest,
@@ -160,15 +169,20 @@ from app.modules.auth.schemas import (
     VerifyEmailRequest,
 )
 from app.modules.auth.service import (
+    _VERIFICATION_CODE_TTL_MINUTES,
     confirm_password_reset,
+    confirm_telegram_link,
     create_mfa_pending_token,
     create_session,
+    create_telegram_link_token,
     delete_all_sessions,
     delete_session,
+    end_other_sessions,
     list_sessions,
     login_email,
     register_email,
     request_password_reset,
+    request_telegram_link_code,
     resend_verification_code,
     revoke_session,
     upsert_telegram_user,
@@ -378,6 +392,7 @@ async def auth_password_reset_confirm(
 async def auth_telegram(
     body: TelegramAuthRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db_session),
 ) -> LoginResponse:
     """Authenticate via Telegram WebApp.
@@ -386,7 +401,13 @@ async def auth_telegram(
       1. Validate initData signature (HMAC-SHA256)
       2. Anti-replay: reject reused initData (Redis SET NX)
       3. Rate limit per telegram_id (Redis INCR + EXPIRE)
-      4. Find or create User by telegram_id in credentials JSONB
+      4. Find the User by telegram_id in credentials JSONB. FIND-ONLY: an
+         unknown Telegram id creates nothing; the answer is
+         link_required=True plus a link token (one person, one account:
+         Telegram entry creates no user) and the person
+         goes on through /telegram/link/email and /confirm.
+         A found row that is inactive or self-deactivated is refused here,
+         before any session (threat 8).
       5. TASK-38: if this account has 2FA enabled, return
          mfa_required=True instead of creating a session -- see the
          module header's "TELEGRAM ALSO HONOURS 2FA" note for why this
@@ -425,16 +446,20 @@ async def auth_telegram(
     # get the 400 mapping; only rate-limit gets the dedicated 429.
     await check_auth_rate_limit(telegram_user["id"])
 
-    # Step 4: Upsert user (flush inside service, not here).
-    user, _is_new = await upsert_telegram_user(
+    # Step 4: Find the user (flush inside service, not here). Find-only:
+    # an unknown Telegram id gets a link token and no row.
+    user = await upsert_telegram_user(
         telegram_user,
         session,
-        referral_code=body.referral_code,
+        background_tasks=background_tasks,
     )
+    if user is None:
+        link_token = await create_telegram_link_token(
+            telegram_user, body.referral_code
+        )
+        return LoginResponse(link_required=True, link_token=link_token)
 
-    # Step 5 (TASK-38): 2FA gate -- see module header note. A brand-new
-    # user (is_new=True) can never reach this branch: upsert_telegram_user
-    # only sets credentials.telegram, never credentials.totp.
+    # Step 5 (TASK-38): 2FA gate -- see module header note.
     totp_creds = (user.credentials or {}).get("totp") or {}
     if totp_creds.get("enabled"):
         mfa_token = await create_mfa_pending_token(user.id, auth_method="telegram")
@@ -452,6 +477,95 @@ async def auth_telegram(
     )
 
     return LoginResponse(
+        user=UserResponse.model_validate(user),
+        session_token=token,
+    )
+
+
+@router.post(
+    "/telegram/link/email",
+    response_model=TelegramLinkEmailResponse,
+)
+async def auth_telegram_link_email(
+    body: TelegramLinkEmailRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+) -> TelegramLinkEmailResponse:
+    """E-mail step of the Telegram entry: send a code to this e-mail.
+
+    UNAUTHENTICATED; the link token (from POST /auth/telegram) is the key.
+    The answer is the same word for every e-mail -- known, unknown, blocked
+    or already linked -- and any conflict is told only after the mailbox is
+    proven, at /telegram/link/confirm (threat 6).
+    """
+    await request_telegram_link_code(
+        body.link_token,
+        body.email,
+        body.consent_given,
+        body.referral_code,
+        session,
+        ip=get_client_ip(request),
+    )
+    return TelegramLinkEmailResponse(
+        code_ttl_minutes=_VERIFICATION_CODE_TTL_MINUTES
+    )
+
+
+@router.post(
+    "/telegram/link/confirm",
+    response_model=AuthResponse,
+)
+async def auth_telegram_link_confirm(
+    body: TelegramLinkConfirmRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+) -> AuthResponse:
+    """Code step of the Telegram entry: prove the mailbox, link the id.
+
+    UNAUTHENTICATED; the link token is the key. Runs the checks of the code step
+    in order (auth/service.py::confirm_telegram_link) and, only when all
+    pass, makes the session. A row with two-factor on needs `second_code` in
+    this same call; its attempts share the TOTP login limit key of
+    POST /2fa/login-verify (5 per 5 minutes per IP).
+    """
+    ip = get_client_ip(request)
+    if body.second_code:
+        await check_rate_limit(
+            f"totp_login_verify:{ip}",
+            max_requests=5,
+            window_seconds=300,
+            error_message="Too many verification attempts. Please try again later.",
+        )
+
+    user, claimed = await confirm_telegram_link(
+        body.link_token,
+        body.code,
+        body.second_code,
+        session,
+        ip=ip,
+        user_agent=request.headers.get("User-Agent", ""),
+        background_tasks=background_tasks,
+    )
+    token = await create_session(
+        user,
+        auth_method="telegram",
+        ip=ip,
+        user_agent=request.headers.get("User-Agent", ""),
+    )
+    if claimed:
+        # The claim ended the row's sessions inside its transaction, but a
+        # session opened by the unproven holder before the commit (his
+        # password still worked until then) would survive it. Commit now --
+        # the one place a router commits, for exactly this -- and end every
+        # session of the row except the prover's new one.
+        await session.commit()
+        await end_other_sessions(user.id, token)
+    # Reload before serialising: the link touched the row after its last
+    # refresh (see auth_2fa_login_verify for the MissingGreenlet reason).
+    await session.refresh(user)
+
+    return AuthResponse(
         user=UserResponse.model_validate(user),
         session_token=token,
     )
