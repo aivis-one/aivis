@@ -318,12 +318,32 @@ async def test_grant_needs_an_active_product_and_company(
 async def test_staff_cancels_a_pending_gift_without_any_ledger_entry(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
+    """A staff cancel of a pending gift writes no ledger entry and frees no parts.
+
+    S-02 (one ledger entry per purchase) is checked as a DELTA: its
+    counts are snapshotted before the grant and must be unchanged after
+    the grant (pending) and after the cancel -- the convention of
+    test_purchase_reversal.py::test_s02_s03_delta_neutral_under_reversal.
+
+    This used to assert that S-02 passes globally. On a clean database
+    that is true, and it is what the test means: neither a pending nor a
+    cancelled gift enters the purchase/ledger pairing. But the suite
+    shares one database for the whole run, and an earlier file
+    (test_document_context_fields.py) legitimately commits purchase rows
+    without ledger entries as render fixtures; after it, S-02 fails for
+    reasons unrelated to gifts, and this test failed in the full run
+    while passing alone. The delta keeps the property and drops the
+    dependency on what the rest of the run left behind.
+    """
     _, admin_token = await create_admin_user(client, db_session)
     company_id, product_id = await _setup(client, admin_token)
     recipient = await register_user(client)
+    s02_before = (await s_02(db_session)).details
     granted = (
         await _grant(client, admin_token, recipient["user"]["id"], product_id)
     ).json()
+    # A pending gift is no purchase of the ledger pairing (S-02).
+    assert (await s_02(db_session)).details == s02_before
     consumed_before = await get_pool_consumed(UUID(company_id), db_session)
 
     resp = await client.post(
@@ -334,7 +354,7 @@ async def test_staff_cancels_a_pending_gift_without_any_ledger_entry(
     assert resp.json()["status"] == PurchaseStatus.CANCELLED
     assert await _ledger_rows(db_session, granted["id"]) == 0
     # A cancelled gift is no purchase of the ledger pairing (S-02).
-    assert (await s_02(db_session)).status == "pass"
+    assert (await s_02(db_session)).details == s02_before
     assert await get_pool_consumed(UUID(company_id), db_session) == consumed_before
 
     # It leaves the recipient's pending list and cannot be accepted.
