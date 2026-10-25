@@ -113,7 +113,7 @@ useScreenHeader({
 
 const stats = computed(() => data.value?.stats)
 
-// The project's valuation: the pool's lots at the lot's price (the price of a part
+// The project's valuation: all the project's lots (total_supply) at the lot's price (the price of a part
 // times all the parts), in whole cents.
 const valuationDisplay = computed<string>(() =>
   data.value

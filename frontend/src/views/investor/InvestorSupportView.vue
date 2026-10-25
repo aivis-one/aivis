@@ -97,8 +97,9 @@ const { restart: restartTranslationPoll } = useTranslationPoll({
 })
 
 /**
- * The server's own sentence when it answered with one (a status came with
- * it); otherwise 502/504 (comms unreachable) reads as "try later" and
+ * 502/504 (comms unreachable) reads as "try later" in the person's language,
+ * whatever the gateway or the backend said; otherwise the server's own
+ * sentence when it answered with one (a status came with it), and
  * everything else -- a network error, an answer with no text -- as a
  * plain retry prompt. Applied uniformly to every error surface on
  * this screen (init / feed / send), so "comms is down" says the same
@@ -106,6 +107,9 @@ const { restart: restartTranslationPoll } = useTranslationPoll({
  */
 function errorMessage(err: SupportActionError | null): string {
   if (!err) return ''
+  if (err.status === 502 || err.status === 504) {
+    return t('inv.support.errorUnavailable')
+  }
   const said = err.message.trim()
   if (
     err.status !== undefined &&
@@ -114,9 +118,6 @@ function errorMessage(err: SupportActionError | null): string {
     !said.startsWith('{')
   )
     return said
-  if (err.status === 502 || err.status === 504) {
-    return t('inv.support.errorUnavailable')
-  }
   return t('inv.support.errorGeneric')
 }
 
@@ -240,7 +241,7 @@ onMounted(() => {
 
     <template v-else>
       <!-- An empty conversation opens with support's greeting, so the person sees where to write (F7) -->
-      <section v-if="isEmpty" class="ds-thread isup__thread" :aria-label="t('inv.support.title')">
+      <section v-if="isEmpty" class="ds-thread" :aria-label="t('inv.support.title')">
         <ul class="ds-thread__feed" role="log">
           <li class="ds-message" data-from="other">
             <span class="ds-message__author">{{ t('inv.support.sender.operator') }}</span>

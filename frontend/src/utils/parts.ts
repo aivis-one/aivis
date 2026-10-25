@@ -24,12 +24,12 @@ export function partsOf(lots: number, sharesPerOption: number): number {
 }
 
 /**
- * The valuation of a project in cents: every lot of the project (the pool) at the
+ * The valuation of a project in cents: every lot of the project (its total_supply, not the offered pool) at the
  * lot's price, which is the price of a part times all the parts. Whole cents, no
  * rounding.
  */
-export function valuationCents(poolLots: number, lotPriceCents: number): number {
-  return poolLots * lotPriceCents
+export function valuationCents(projectLots: number, lotPriceCents: number): number {
+  return projectLots * lotPriceCents
 }
 
 /** USD for a figure in cents: whole dollars without cents, else with two decimals. */

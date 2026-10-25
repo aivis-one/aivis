@@ -93,7 +93,7 @@ describe('the support conversation', () => {
 
   it('a failed appeal keeps what was typed', async () => {
     feed.mockResolvedValue({ items: [], next_cursor: null })
-    create.mockRejectedValue(new ApiResponseError(502, 'HTTP 502: non-JSON response'))
+    create.mockRejectedValue(new ApiResponseError(502, 'down'))
     const wrapper = mount(InvestorSupportView)
     await flushPromises()
     await wrapper.find('select').setValue('kyc')
@@ -170,7 +170,7 @@ describe('the support screen of F7', () => {
 
   it('keeps the composer field and the Send button on one line, the error above them', async () => {
     feed.mockResolvedValue({ items: [MESSAGE], next_cursor: null })
-    send.mockRejectedValue(new ApiResponseError(502, 'Support is not reachable yet'))
+    send.mockRejectedValue(new ApiResponseError(409, 'Support is not reachable yet'))
     const wrapper = mount(InvestorSupportView)
     await flushPromises()
     await wrapper.get('#isup-message').setValue('Hello')
