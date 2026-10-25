@@ -1,698 +1,220 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- StaffSupportView (Ф-3)
+// AIVIS.ONE Frontend -- StaffSupportView (Ф-3, H40 tickets)
 // =============================================================================
 //
-// One route (/staff/support): the queue by default, a conversation
-// panel in place of it once a card is tapped. No child route for a
-// single thread -- see STAKE A below for why that is deliberate, not
-// a shortcut.
+// The list of support tickets: /staff/users/support, a section of the
+// Users hub. A row opens the ticket's card, its own route
+// (staff-support-ticket, StaffSupportTicketView) -- the same card an
+// operator signal opens.
 //
-// A section of the Users hub, as StaffAgentAppsView and StaffAvatarView are.
-// It sets no page title of its own: a short one-line hint stands instead (an
-// info Alert, as StaffAgentAppsView has). Its refresh is a title-side action,
-// so it stands in the frame's header. The conversation is a state of this
-// screen and not a route (stake A), so its way back is the screen's own back
-// button, not the header's.
+// EVERY OPERATOR SEES EVERY TICKET (owner ruling, H40): an operator is any
+// active staff member, and the list is the product's own table. Who took a
+// ticket is a column, not a filter of visibility.
 //
-// STAKE A (gate): one route, not a routed thread id.
-//   The new GET .../messages endpoint is gated ONLY by "does this
-//   thread exist" (_require_known_thread) -- NOT by whether the
-//   caller's own queue would ever have shown it. list_operator_threads
-//   filters visibility server-side; the read endpoint does not. If a
-//   thread id were reachable as a route param, a plain operator could
-//   type a colleague's claimed thread's id into the URL bar and read
-//   a conversation their own queue never surfaced. Keeping the
-//   selection as component-local state driven only by rows already
-//   present in `support.queue` (itself already visibility-filtered)
-//   closes that door without adding a check the backend doesn't
-//   already need for its own reasons. This is a narrower answer than
-//   the handoff's "без нового вида в нижней навигации" alone requires
-//   -- named here because it wasn't asked for, it was found.
+// TWO TABS: "All" -- every ticket but spam, with a status filter; "Spam" --
+// spam alone. The other filters apply to both: the categories (any of
+// those chosen; none chosen is every category) and one day of the appeal.
+// The day is the OPERATOR's day: its edges are this browser's local
+// midnights, sent as instants with their zone (the backend refuses an
+// edge without one -- only the screen knows the operator's zone).
 //
-// STAKE B (gate): a COPY of Ф-2's bubbles/composer, not a shared
-//   component. See the cross-reference comment in
-//   views/investor/InvestorSupportView.vue's own header. Cost of
-//   extracting was named and rejected: it would have meant editing an
-//   already-shipped screen for one that did not exist yet, to save
-//   two small blocks that differ in submit logic and in how "which
-//   side" is computed anyway.
-//
-// STAKE C (gate): side is computed from `message.sender ===
-//   selectedThread.client`, never from identity. comms' own message
-//   body carries only `sender` (a bare uuid, no role) -- verified by
-//   re-reading comms' _message_out serializer -- so a message from a
-//   PREVIOUS operator on a transferred thread lands on the same
-//   (right) side as one from the current viewer, unlabelled by name.
-//   Accepted price for a proof-of-concept tool; T-75 (names instead
-//   of uuids) is the registered fix for showing WHICH operator wrote
-//   it, not for which SIDE it is on -- that question is answered
-//   correctly already, by the same rule comms itself uses in
-//   notify_new_message.
-//
-// STATUS ACTIONS ARE NOT GATED ON "MINE" (found while re-reading
-//   service.py for this same question). comms lets ANY active
-//   operator change ANY section thread's status, claimed by them or
-//   not -- service.py documents this as accepted, not a gap. This
-//   view narrows it anyway: status controls render on ALREADY-CLAIMED
-//   rows (mine or a colleague's, the latter visible to a supervisor
-//   only), never on a still-unclaimed pool row. That narrowing is
-//   this screen's own choice, not a backend limit -- closing a
-//   request nobody has even looked at yet has no described use case
-//   here, so it isn't built, but it is not being called impossible
-//   either.
-//
-// "CLAIMED, QUEUE NOT YET REFRESHED" (gate requirement).
-//   claimThread() mutates the SAME row object in `support.queue` in
-//   place (store's _replaceQueueRow) -- it does not remove/reinsert
-//   it and does not trigger a fetchQueue(). The three group lists
-//   below (poolRows/mineRows/foreignRows) are plain `computed`
-//   filters over that one array, so the instant the claim resolves,
-//   the row reclassifies from "unclaimed" to "mine" in the same
-//   render -- no network round-trip needed to see it move. The one
-//   thing that does NOT update until a real fetchQueue(): `unread`
-//   (claim's response never carries it -- store preserves whatever
-//   the row had) and the row's position in the server's own
-//   recency order. Neither reads as loss: an unclaimed row never
-//   carried `unread` to begin with, so the absence continues exactly
-//   as it was: absent means "not applicable", never a lied-about
-//   zero.
-//
-// TRANSLATION (H39 P-129). Staff read and write the support language; the
-// feed comes already decided (backend translation.staff_feed). A client's
-// message shows its translation, with "Show original" to see what the
-// client wrote; a reply to a client of another language shows the
-// operator's own text, with what the client reads one tap away. Under
-// every message stands its translation state -- translating, failed,
-// cannot be translated -- and "Retry translation" only where the feed
-// says `retryable`: after the transport failed, never after the model
-// declined (a variant is final in comms; the way on is a new message).
-// While anything is translating the conversation re-reads itself every
-// three seconds, for up to two minutes (useTranslationPoll).
+// Newest appeal first; the next page is the backend's cursor, "Show more"
+// at the foot of the list.
 // =============================================================================
 
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
-import CAlert from '@/components/ui/CAlert.vue'
+import { RefreshCw } from '@/components/ui/icons'
+import { CBadge, CButton, CEmptyState, CInput, CSelect } from '@/components/ui'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
-import { useAuthStore } from '@/stores/auth'
-import { useTranslationPoll } from '@/composables/useTranslationPoll'
+import { SUPPORT_CATEGORIES } from '@/api/support'
 import type { SupportActionError } from '@/stores/support'
-import type { SupportOperatorThreadRow, SupportStaffMessage } from '@/api/support'
+import type {
+  ListTicketsParams,
+  SupportCategory,
+  SupportPerson,
+  SupportTicketRow,
+  SupportTicketStatus,
+} from '@/api/support'
+import { dayEdges, personName, statusVariant } from './supportPeople'
 
 const { t, locale } = useI18n()
 const support = useSupportStore()
-const auth = useAuthStore()
 
-const myOperatorId = computed<string | null>(() => auth.user?.id ?? null)
+type Tab = 'all' | 'spam'
 
-// The queue's refresh is the screen's one title-side action, so the frame's header
-// carries it (an icon button, named by its label); the open conversation has none.
-// The conversation is a state of this screen, not a route, so its way back is the
-// screen's own handler, drawn by the header as its back button.
-useScreenHeader({
-  back: () => (openThreadId.value === null ? undefined : { handler: closeThread }),
-  actions: () =>
-    openThreadId.value === null
-      ? [
-          {
-            id: 'refresh',
-            label: t('staff.support.refresh'),
-            icon: RefreshCw,
-            onClick: retryQueue,
-          },
-        ]
-      : [],
+const tab = ref<Tab>('all')
+const categories = ref<SupportCategory[]>([])
+const status = ref<'' | Exclude<SupportTicketStatus, 'spam'>>('')
+const day = ref('') // yyyy-mm-dd from the date input, or ''
+
+const statusOptions = computed(() =>
+  (['open', 'resolved', 'rejected', 'duplicate'] as const).map((code) => ({
+    value: code,
+    label: t(`staff.support.status.${code}`),
+  })),
+)
+
+const filter = computed<ListTicketsParams>(() => {
+  const edges = dayEdges(day.value)
+  return {
+    category: categories.value.length > 0 ? categories.value : undefined,
+    status: tab.value === 'spam' ? 'spam' : status.value || undefined,
+    created_from: edges?.from,
+    created_to: edges?.to,
+  }
 })
 
-// -- Queue --------------------------------------------------------------
-
-const poolRows = computed<SupportOperatorThreadRow[]>(() =>
-  support.queue.filter((row) => row.assignee === null),
-)
-const mineRows = computed<SupportOperatorThreadRow[]>(() =>
-  support.queue.filter((row) => row.assignee === myOperatorId.value),
-)
-// Non-empty only for a supervisor: a plain operator's own queue never
-// contains a colleague's claimed thread at all (comms' own visibility
-// filter), so this group is naturally empty for everyone else.
-const foreignRows = computed<SupportOperatorThreadRow[]>(() =>
-  support.queue.filter((row) => row.assignee !== null && row.assignee !== myOperatorId.value),
-)
-
-function retryQueue(): void {
-  void support.fetchQueue()
+function load(): void {
+  void support.fetchTickets(filter.value)
 }
 
-async function handleClaim(threadId: string): Promise<void> {
-  await support.claimThread(threadId)
+watch(filter, load, { deep: true })
+
+function toggleCategory(code: SupportCategory): void {
+  const i = categories.value.indexOf(code)
+  categories.value =
+    i === -1 ? [...categories.value, code] : categories.value.filter((c) => c !== code)
 }
 
-// -- Selection: which conversation panel is open, if any ----------------
-
-const openThreadId = ref<string | null>(null)
-
-// Derived LIVE from the queue array, not a separate fetched copy --
-// see stake A header: the moment claimThread() updates a row, this
-// picks up the change for free, in the same render.
-const selectedThread = computed<SupportOperatorThreadRow | null>(
-  () => support.queue.find((row) => row.id === openThreadId.value) ?? null,
-)
-
-const isMine = computed<boolean>(
-  () => selectedThread.value !== null && selectedThread.value.assignee === myOperatorId.value,
-)
-const isPool = computed<boolean>(
-  () => selectedThread.value !== null && selectedThread.value.assignee === null,
-)
-const isForeign = computed<boolean>(
-  () =>
-    selectedThread.value !== null &&
-    selectedThread.value.assignee !== null &&
-    selectedThread.value.assignee !== myOperatorId.value,
-)
-
-function openThread(threadId: string): void {
-  openThreadId.value = threadId
-  for (const key of Object.keys(flipped)) delete flipped[key]
-  void support.fetchStaffMessages(threadId).then(() => restartTranslationPoll())
-}
-
-function closeThread(): void {
-  openThreadId.value = null
-}
-
-function sentAt(message: SupportStaffMessage): string | null {
-  return message.created_at ? formatDateTime(message.created_at, locale.value) : null
-}
-
-function retryFeed(): void {
-  if (openThreadId.value !== null) {
-    void support.fetchStaffMessages(openThreadId.value)
-  }
-}
-
-// Store hands back comms' own order ("newest first"); read "oldest
-// first" here -- same rule as Ф-2, re-applied rather than shared
-// (stake B).
-const chronologicalMessages = computed<SupportStaffMessage[]>(() =>
-  [...support.staffMessages].reverse(),
-)
-
-// -- Translation (H39) ------------------------------------------------------
-
-// The states in which a translation is still on its way. `not_requested`
-// is among them: the backend has just queued it (the catch-up), and the
-// request reaches comms a moment later.
-const IN_FLIGHT = new Set(['preparing', 'not_requested'])
-
-// Per message: true = the other text is on screen (the original of a
-// client's message, or what the client reads of a reply). Cleared when
-// another conversation is opened.
-const flipped = reactive<Record<string, boolean>>({})
-
-function fromClient(message: SupportStaffMessage): boolean {
-  return selectedThread.value !== null && message.sender === selectedThread.value.client
-}
-
-// The text the toggle swaps in, or null when there is nothing to swap:
-// a client's message whose translation is ready and differs from what the
-// client wrote; a reply whose translation for the client is ready.
-function otherText(message: SupportStaffMessage): string | null {
-  const tr = message.translation
-  if (tr === null || tr.state !== 'ready') return null
-  if (fromClient(message)) {
-    return message.original !== null && message.original !== message.body
-      ? message.original
-      : null
-  }
-  return tr.variant_body ?? null
-}
-
-function shownText(message: SupportStaffMessage): string {
-  const other = otherText(message)
-  if (other !== null && flipped[message.id]) return other
-  return message.body ?? message.original ?? ''
-}
-
-function toggleLabel(message: SupportStaffMessage): string {
-  const on = flipped[message.id] === true
-  if (fromClient(message)) {
-    return on ? t('staff.support.translation.hideOriginal') : t('staff.support.translation.showOriginal')
-  }
-  return on
-    ? t('staff.support.translation.hideClientVersion')
-    : t('staff.support.translation.showClientVersion')
-}
-
-function toggle(message: SupportStaffMessage): void {
-  flipped[message.id] = !flipped[message.id]
-}
-
-// The line under a message, or null when there is nothing to say (no
-// translation needed). A state the backend may add later reads as
-// "cannot be translated" -- never as success.
-function translationNote(message: SupportStaffMessage): string | null {
-  const tr = message.translation
-  if (tr === null || tr.state === 'not_needed') return null
-  const client = fromClient(message)
-  if (tr.state === 'ready') {
-    if (client) {
-      return tr.source_locale
-        ? t('staff.support.translation.translatedFrom', { lang: tr.source_locale.toUpperCase() })
-        : null
-    }
-    return t('staff.support.translation.clientReads', { lang: tr.locale.toUpperCase() })
-  }
-  if (IN_FLIGHT.has(tr.state)) {
-    return client
-      ? t('staff.support.translation.translating')
-      : t('staff.support.translation.translatingForClient')
-  }
-  if (tr.retryable) {
-    return client
-      ? t('staff.support.translation.failed')
-      : t('staff.support.translation.failedForClient')
-  }
-  return client
-    ? t('staff.support.translation.declined')
-    : t('staff.support.translation.declinedForClient')
-}
-
-function handleRetryTranslation(message: SupportStaffMessage): void {
-  const id = openThreadId.value
-  if (id === null) return
-  void support.retryTranslation(id, message.id).then(() => restartTranslationPoll())
-}
-
-const { restart: restartTranslationPoll } = useTranslationPoll({
-  translating: () =>
-    openThreadId.value !== null &&
-    support.staffMessages.some(
-      (m) => m.translation !== null && IN_FLIGHT.has(m.translation.state),
-    ),
-  refresh: async () => {
-    const id = openThreadId.value
-    if (id !== null) await support.fetchStaffMessages(id, { silent: true })
-  },
-})
-
-// -- Who is asking (T-75) -----------------------------------------------
-//
-// TWO IDENTIFIERS ON THIS SCREEN, and they are not interchangeable. The
-// THREAD id is what the operator quotes to a colleague or looks up in
-// comms, and it keeps its place. The CLIENT id identifies the person and
-// was never on screen at all -- it appears now, but only underneath the
-// name, and only when there is no name to show.
-//
-// The join rule is StaffUsersView.fullName's, deliberately: same section
-// of the product, same way of rendering a person. It differs in the
-// fallback only, because "—" tells an operator nothing they can act on
-// whereas an email or a uuid identifies the person they are answering.
-function clientName(row: SupportOperatorThreadRow): string {
-  const parts = [row.client_profile?.first_name, row.client_profile?.last_name].filter(Boolean)
-  if (parts.length > 0) return parts.join(' ')
-  return row.client_profile?.email ?? row.client
-}
-
-// True when the line above is already the client's identifier, so the
-// secondary line would repeat it.
-function clientNameIsIdentifier(row: SupportOperatorThreadRow): boolean {
-  return clientName(row) === row.client
-}
-
-// STAKE C: side by comparison with the thread's fixed client id, never
-// by identity -- see header.
-function isRight(message: SupportStaffMessage): boolean {
-  return selectedThread.value !== null && message.sender !== selectedThread.value.client
+function selectTab(next: Tab): void {
+  tab.value = next
 }
 
 function errorMessage(err: SupportActionError | null): string {
   if (!err) return ''
-  if (err.status === 502 || err.status === 504) {
-    return t('staff.support.errorUnavailable')
-  }
+  if (err.status === 502 || err.status === 504) return t('staff.support.errorUnavailable')
   return t('staff.support.errorGeneric')
 }
 
-// -- Reply ----------------------------------------------------------------
-
-const composerText = ref('')
-
-async function handleSend(): Promise<void> {
-  const id = openThreadId.value
-  const text = composerText.value.trim()
-  if (id === null || text === '' || support.replying[id]) return
-
-  await support.replyToThread(id, text)
-  if (support.replyErrors[id]) return
-
-  composerText.value = ''
-  void support.fetchStaffMessages(id).then(() => restartTranslationPoll())
+function appealedAt(row: SupportTicketRow): string {
+  return row.created_at ? formatDateTime(row.created_at, locale.value) : ''
 }
 
-// -- Status -----------------------------------------------------------
-
-// Only rendered on an ALREADY-CLAIMED thread (mine or a colleague's) --
-// see header on why a still-unclaimed pool row gets none.
-const canChangeStatus = computed<boolean>(
-  () => selectedThread.value !== null && selectedThread.value.assignee !== null,
-)
-
-async function handleResolve(): Promise<void> {
-  const id = openThreadId.value
-  if (id === null) return
-  await support.setThreadStatus(id, 'resolved')
+function takerLine(person: SupportPerson | null): string {
+  return person === null
+    ? t('staff.support.unclaimed')
+    : t('staff.support.takenBy', { name: personName(person) })
 }
 
-async function handleClose(): Promise<void> {
-  const id = openThreadId.value
-  if (id === null) return
-  await support.setThreadStatus(id, 'closed')
-}
-
-onMounted(() => {
-  void support.fetchQueue()
+useScreenHeader({
+  actions: () => [
+    { id: 'refresh', label: t('staff.support.refresh'), icon: RefreshCw, onClick: load },
+  ],
 })
+
+onMounted(load)
 </script>
 
 <template>
   <div class="ssup">
-    <!-- ============================== QUEUE ============================== -->
-    <template v-if="openThreadId === null">
-      <CAlert tone="info">
-        {{ t('staff.support.hint') }}
-      </CAlert>
-
-      <CListSkeleton v-if="support.queueLoading && !support.queueLoaded" />
-
-      <CEmptyState
-        v-else-if="support.queueError"
-        tone="danger"
-        :description="errorMessage(support.queueError)"
+    <div class="ssup__tabs" role="tablist" :aria-label="t('staff.support.title')">
+      <CButton
+        role="tab"
+        :aria-selected="tab === 'all'"
+        :variant="tab === 'all' ? 'primary' : 'outline'"
+        size="sm"
+        inline
+        @click="selectTab('all')"
       >
-        <template #actions>
-          <CButton variant="primary" size="sm" inline @click="retryQueue">
-            {{ t('common.retry') }}
-          </CButton>
-        </template>
-      </CEmptyState>
+        {{ t('staff.support.tabAll') }}
+      </CButton>
+      <CButton
+        role="tab"
+        :aria-selected="tab === 'spam'"
+        :variant="tab === 'spam' ? 'primary' : 'outline'"
+        size="sm"
+        inline
+        @click="selectTab('spam')"
+      >
+        {{ t('staff.support.tabSpam') }}
+      </CButton>
+    </div>
 
-      <CEmptyState v-else-if="support.queue.length === 0" :title="t('staff.support.empty')" />
-
-      <div v-else class="ssup__groups">
-        <section v-if="poolRows.length > 0" class="ssup__group">
-          <h2 class="ds-section-title">
-            {{ t('staff.support.groupPool') }}
-          </h2>
-          <!-- Pool rows never carry an unread count, and that is a
-               property of comms rather than a gap on this screen: the
-               count is attached only to threads the operator takes part
-               in, and nobody takes part in an unclaimed one. Said on
-               screen because its absence is otherwise read as a bug. -->
-          <p class="ds-note">{{ t('staff.support.poolNoUnread') }}</p>
-          <ul class="ds-rows">
-            <li v-for="row in poolRows" :key="row.id" class="ds-row ssup__row">
-              <span class="ds-row__body">
-                <button type="button" class="ds-row__link" @click="openThread(row.id)">
-                  <span class="ds-row__title">{{ clientName(row) }}</span>
-                </button>
-                <span class="ds-row__meta">
-                  {{ row.id.slice(0, 8) }}
-                  <template v-if="row.last_message_at">
-                    &bull; {{ new Date(row.last_message_at).toLocaleString() }}
-                  </template>
-                </span>
-                <CAlert v-if="support.claimErrors[row.id]" tone="danger">
-                  {{
-                    support.claimErrors[row.id]?.status === 409
-                      ? t('staff.support.claimConflict')
-                      : errorMessage(support.claimErrors[row.id])
-                  }}
-                </CAlert>
-              </span>
-              <span class="ds-row__trail">
-                <CButton
-                  variant="primary"
-                  size="sm"
-                  inline
-                  :loading="support.claiming[row.id]"
-                  :disabled="support.claiming[row.id]"
-                  @click="handleClaim(row.id)"
-                >
-                  {{ t('staff.support.claim') }}
-                </CButton>
-              </span>
-            </li>
-          </ul>
-        </section>
-
-        <section v-if="mineRows.length > 0" class="ssup__group">
-          <h2 class="ds-section-title">
-            {{ t('staff.support.groupMine') }}
-          </h2>
-          <ul class="ds-rows">
-            <li v-for="row in mineRows" :key="row.id" class="ds-row ssup__row">
-              <span class="ds-row__body">
-                <button type="button" class="ds-row__link" @click="openThread(row.id)">
-                  <span class="ds-row__title">{{ clientName(row) }}</span>
-                </button>
-                <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
-              </span>
-              <span class="ds-row__trail">
-                <CBadge
-                  v-if="typeof row.unread === 'number' && row.unread > 0"
-                  variant="primary"
-                  :text="String(row.unread)"
-                />
-              </span>
-            </li>
-          </ul>
-        </section>
-
-        <section v-if="foreignRows.length > 0" class="ssup__group">
-          <h2 class="ds-section-title">
-            {{ t('staff.support.groupForeign') }}
-          </h2>
-          <ul class="ds-rows">
-            <li v-for="row in foreignRows" :key="row.id" class="ds-row ssup__row">
-              <span class="ds-row__body">
-                <button type="button" class="ds-row__link" @click="openThread(row.id)">
-                  <span class="ds-row__title">{{ clientName(row) }}</span>
-                </button>
-                <span class="ds-row__meta">{{ row.id.slice(0, 8) }}</span>
-              </span>
-            </li>
-          </ul>
-        </section>
+    <fieldset class="ssup__filters">
+      <legend class="ds-sr-only">{{ t('staff.support.filters') }}</legend>
+      <div class="ssup__chips" role="group" :aria-label="t('staff.support.category')">
+        <CButton
+          v-for="code in SUPPORT_CATEGORIES"
+          :key="code"
+          :aria-pressed="categories.includes(code)"
+          :variant="categories.includes(code) ? 'primary' : 'outline'"
+          size="sm"
+          inline
+          @click="toggleCategory(code)"
+        >
+          {{ t(`staff.support.categories.${code}`) }}
+        </CButton>
       </div>
-    </template>
+      <div class="ssup__fields">
+        <CSelect
+          v-if="tab === 'all'"
+          v-model="status"
+          :label="t('staff.support.statusFilter')"
+          :placeholder="t('staff.support.statusAny')"
+          :options="statusOptions"
+        />
+        <CInput v-model="day" type="date" :label="t('staff.support.day')" />
+      </div>
+    </fieldset>
 
-    <!-- =========================== CONVERSATION =========================== -->
-    <template v-else>
-      <CEmptyState v-if="selectedThread === null" :title="t('staff.support.empty')" />
-      <!-- The row left the queue mid-view (a colleague's claim
-           changed visibility, or a refresh dropped it). Reading is
-           still allowed by the backend, but this screen has nothing
-           left in `support.queue` to gate actions against, so it
-           sends the person back rather than guess. -->
+    <CListSkeleton v-if="support.ticketsLoading && !support.ticketsLoaded" />
 
-      <template v-else>
-        <div class="ssup__panel-head">
-          <h2 class="ds-section-title ssup__panel-client">{{ clientName(selectedThread) }}</h2>
-          <p class="ssup__panel-ids">
-            <span v-if="!clientNameIsIdentifier(selectedThread)">
-              {{ selectedThread.client }}
-            </span>
-            <span>
-              {{ t('staff.support.threadId', { id: selectedThread.id.slice(0, 8) }) }}
-            </span>
-          </p>
-        </div>
-
-        <div v-if="isMine || isForeign" class="ssup__actions">
-          <CButton
-            v-if="canChangeStatus"
-            variant="outline"
-            size="sm"
-            inline
-            :loading="support.changingStatus[selectedThread.id]"
-            :disabled="support.changingStatus[selectedThread.id]"
-            @click="handleResolve"
-          >
-            {{ t('staff.support.statusResolve') }}
-          </CButton>
-          <CButton
-            v-if="canChangeStatus"
-            variant="outline"
-            size="sm"
-            inline
-            :loading="support.changingStatus[selectedThread.id]"
-            :disabled="support.changingStatus[selectedThread.id]"
-            @click="handleClose"
-          >
-            {{ t('staff.support.statusClose') }}
-          </CButton>
-        </div>
-        <CAlert v-if="support.statusErrors[selectedThread.id]" tone="danger">
-          {{ errorMessage(support.statusErrors[selectedThread.id]) }}
-        </CAlert>
-
-        <div v-if="isPool" class="ssup__actions">
-          <p class="ds-note">{{ t('staff.support.readOnlyHint') }}</p>
-          <CButton
-            variant="primary"
-            size="sm"
-            inline
-            :loading="support.claiming[selectedThread.id]"
-            :disabled="support.claiming[selectedThread.id]"
-            @click="handleClaim(selectedThread.id)"
-          >
-            {{ t('staff.support.claim') }}
-          </CButton>
-        </div>
-        <CAlert v-if="isPool && support.claimErrors[selectedThread.id]" tone="danger">
-          {{
-            support.claimErrors[selectedThread.id]?.status === 409
-              ? t('staff.support.claimConflict')
-              : errorMessage(support.claimErrors[selectedThread.id])
-          }}
-        </CAlert>
-
-        <CAlert v-if="isForeign" tone="info">
-          {{ t('staff.support.foreignHint') }}
-        </CAlert>
-
-        <!-- The feed and the composer (K51) -->
-        <section class="ds-thread ssup__thread" :aria-label="clientName(selectedThread)">
-          <CLoader v-if="support.staffMessagesLoading" centered />
-
-          <CEmptyState
-            v-else-if="support.staffMessagesError"
-            tone="danger"
-            :title="t('staff.support.feedErrorTitle')"
-            :description="errorMessage(support.staffMessagesError)"
-          >
-            <template #actions>
-              <CButton variant="outline" size="sm" inline @click="retryFeed">
-                {{ t('common.retry') }}
-              </CButton>
-            </template>
-          </CEmptyState>
-
-          <CEmptyState
-            v-else-if="chronologicalMessages.length === 0"
-            :title="t('staff.support.empty')"
-          />
-
-          <ul v-else class="ds-thread__feed" role="log" aria-live="polite" tabindex="0">
-            <li
-              v-for="message in chronologicalMessages"
-              :key="message.id"
-              class="ds-message"
-              :data-from="isRight(message) ? 'own' : 'other'"
-            >
-              <span class="ds-message__author">
-                {{
-                  isRight(message)
-                    ? t('staff.support.sender.operator')
-                    : t('staff.support.sender.client')
-                }}
-              </span>
-              <p class="ds-message__bubble">
-                {{ shownText(message) }}
-              </p>
-              <p v-if="translationNote(message)" class="ssup__tr-note">
-                {{ translationNote(message) }}
-              </p>
-              <span
-                v-if="otherText(message) !== null || message.translation?.retryable"
-                class="ssup__tr-actions"
-              >
-                <CButton
-                  v-if="otherText(message) !== null"
-                  variant="link"
-                  size="sm"
-                  inline
-                  @click="toggle(message)"
-                >
-                  {{ toggleLabel(message) }}
-                </CButton>
-                <CButton
-                  v-if="message.translation?.retryable"
-                  variant="outline"
-                  size="sm"
-                  inline
-                  :loading="support.retryingTranslation[message.id]"
-                  :disabled="support.retryingTranslation[message.id]"
-                  @click="handleRetryTranslation(message)"
-                >
-                  {{ t('staff.support.translation.retry') }}
-                </CButton>
-              </span>
-              <p v-if="support.retryTranslationErrors[message.id]" class="ds-field__error">
-                <AlertTriangle size="sm" />
-                <span>{{ t('staff.support.translation.retryError') }}</span>
-              </p>
-              <time
-                v-if="sentAt(message)"
-                class="ds-message__time"
-                :datetime="message.created_at ?? undefined"
-              >
-                {{ sentAt(message) }}
-              </time>
-            </li>
-          </ul>
-
-          <form v-if="isMine" class="ds-composer" @submit.prevent="handleSend">
-            <div class="ds-field ds-composer__input">
-              <label class="ds-sr-only" for="ssup-message">{{
-                t('staff.support.placeholder')
-              }}</label>
-              <textarea
-                id="ssup-message"
-                v-model="composerText"
-                class="ds-input"
-                rows="2"
-                maxlength="4000"
-                :placeholder="t('staff.support.placeholder')"
-                :disabled="support.replying[selectedThread.id]"
-                :aria-invalid="support.replyErrors[selectedThread.id] ? 'true' : undefined"
-                :aria-describedby="
-                  support.replyErrors[selectedThread.id] ? 'ssup-message-error' : undefined
-                "
-              />
-              <p
-                v-if="support.replyErrors[selectedThread.id]"
-                id="ssup-message-error"
-                class="ds-field__error"
-              >
-                <AlertTriangle size="sm" />
-                <span>
-                  {{
-                    support.replyErrors[selectedThread.id]?.status === 409
-                      ? t('staff.support.readOnlyHint')
-                      : errorMessage(support.replyErrors[selectedThread.id])
-                  }}
-                </span>
-              </p>
-            </div>
-            <CButton
-              variant="primary"
-              inline
-              :loading="support.replying[selectedThread.id]"
-              :disabled="composerText.trim() === '' || support.replying[selectedThread.id]"
-            >
-              {{ t('staff.support.send') }}
-            </CButton>
-          </form>
-        </section>
+    <CEmptyState
+      v-else-if="support.ticketsError"
+      tone="danger"
+      :description="errorMessage(support.ticketsError)"
+    >
+      <template #actions>
+        <CButton variant="primary" size="sm" inline @click="load">
+          {{ t('common.retry') }}
+        </CButton>
       </template>
+    </CEmptyState>
+
+    <CEmptyState v-else-if="support.tickets.length === 0" :title="t('staff.support.empty')" />
+
+    <template v-else>
+      <ul class="ds-rows">
+        <li v-for="row in support.tickets" :key="row.id" class="ds-row">
+          <span class="ds-row__body">
+            <RouterLink
+              class="ds-row__link"
+              :to="{ name: 'staff-support-ticket', params: { id: row.id } }"
+            >
+              <span class="ds-row__title">{{ personName(row.opener) }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">
+              {{ t(`inv.support.topics.${row.topic}`) }} &bull; {{ appealedAt(row) }}
+            </span>
+            <span class="ds-row__meta">{{ takerLine(row.claimed_by) }}</span>
+          </span>
+          <span class="ds-row__trail">
+            <CBadge
+              :variant="statusVariant(row.status)"
+              :text="t(`staff.support.status.${row.status}`)"
+            />
+          </span>
+        </li>
+      </ul>
+      <p v-if="support.moreTicketsError" class="ds-field__error">
+        {{ errorMessage(support.moreTicketsError) }}
+      </p>
+      <CButton
+        v-if="support.ticketsNextCursor !== null"
+        variant="outline"
+        size="sm"
+        inline
+        :loading="support.moreTicketsLoading"
+        :disabled="support.moreTicketsLoading"
+        @click="support.fetchMoreTickets"
+      >
+        {{ t('staff.support.more') }}
+      </CButton>
     </template>
   </div>
 </template>
@@ -704,55 +226,23 @@ onMounted(() => {
   align-content: start;
   min-inline-size: 0;
 }
-
-.ssup__groups {
-  display: grid;
-  gap: var(--space-5);
-}
-.ssup__group {
-  display: grid;
+.ssup__tabs,
+.ssup__chips {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
-.ssup__panel-head {
+.ssup__filters {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
   min-inline-size: 0;
 }
-.ssup__panel-client {
-  overflow-wrap: anywhere;
-}
-.ssup__panel-ids {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--text-secondary);
-}
-
-.ssup__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* The translation state under a message, and its two actions (H39). */
-.ssup__tr-note {
-  margin: 0;
-  font-size: var(--fs-xs);
-  font-style: italic;
-  color: var(--text-secondary);
-}
-.ssup__tr-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* The screen gives the thread its height (K51). */
-.ssup__thread {
-  block-size: calc(var(--center-lg) + var(--center-md));
+.ssup__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
 }
 </style>

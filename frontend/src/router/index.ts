@@ -774,12 +774,20 @@ export const router = createRouter({
               component: () => import('@/views/staff/StaffAvatarView.vue'),
             },
             {
-              // Ф-3: one route, list + conversation panel toggled by local
-              // state inside the view -- no child route for a single
-              // thread (see StaffSupportView's own header for why).
+              // H40: the list of support tickets -- every operator sees
+              // every ticket (StaffSupportView's own header).
               path: 'support',
               name: 'staff-support',
               component: () => import('@/views/staff/StaffSupportView.vue'),
+            },
+            {
+              // H40: one ticket's card, by its comms thread id -- opened
+              // from the list and from an operator signal, which carries
+              // only the id (utils/notificationTarget.ts). Inside the
+              // support section, so its chip stays current.
+              path: 'support/:id',
+              name: 'staff-support-ticket',
+              component: () => import('@/views/staff/StaffSupportTicketView.vue'),
             },
           ],
         },

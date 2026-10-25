@@ -87,4 +87,47 @@ describe('notificationTarget', () => {
     })
     expect(notificationTarget({ ...company, type: 'deposit.confirmed' })).toBeNull()
   })
+
+  it('an operator signal opens the card of its ticket (H40)', () => {
+    const id = '0b0b0b0b-0000-4000-8000-000000000001'
+    const actionData = { action: 'open_support_ticket', params: { id } }
+    for (const type of [
+      'support.message_received',
+      'support.ticket_assigned',
+      'support.ticket_released',
+    ]) {
+      expect(notificationTarget({ ...base, shell: 'staff', type, actionData })).toEqual({
+        name: 'staff-support-ticket',
+        params: { id },
+      })
+    }
+  })
+
+  it('a staff support notice without a ticket leads to the list (H40)', () => {
+    // comms' own ping, if an operator turned its category back on.
+    expect(notificationTarget({ ...base, shell: 'staff', type: 'msg.support_message' })).toEqual({
+      name: 'staff-support',
+    })
+    // A signal whose action carries no id.
+    const actionData = { action: 'open_support_ticket', params: {} }
+    expect(
+      notificationTarget({ ...base, shell: 'staff', type: 'support.ticket_released', actionData }),
+    ).toEqual({ name: 'staff-support' })
+    // The pair: another type is not swept along.
+    expect(
+      notificationTarget({ ...base, shell: 'staff', type: 'support.translate_for_user' }),
+    ).toBeNull()
+    expect(notificationTarget({ ...base, shell: 'staff', type: 'deposit.confirmed' })).toBeNull()
+  })
+
+  it("the integrator's support notices lead to its own support screen (H40)", () => {
+    for (const type of ['msg.participant_message', 'support.translation_unavailable']) {
+      expect(notificationTarget({ ...base, shell: 'agent', type })).toEqual({
+        name: 'agent-support',
+      })
+    }
+    expect(
+      notificationTarget({ ...base, shell: 'agent', type: 'support.ticket_assigned' }),
+    ).toBeNull()
+  })
 })

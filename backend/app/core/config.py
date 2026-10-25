@@ -415,6 +415,21 @@ class Settings(BaseSettings):
     # language nobody chose for them.
     support_language: str = ""
 
+    # -- Support spam bin (H40 item 7; modules/support/purge.py) --
+    # A ticket marked spam can come back ("not spam") for this many days;
+    # then the bin deletes it with its conversation, here and in comms,
+    # and the statistics keep only its date and category (owner ruling).
+    support_spam_retention_days: int = 30
+    # How often the bin looks. An hour: a spam ticket lives at most this
+    # much past its retention, and a step that finds nothing costs one
+    # indexed query.
+    support_spam_purge_interval_seconds: float = 3600.0
+    # How often the operators' comms mutes are carried out (H40,
+    # support/mute.py). A minute: a new operator's first comms ping is
+    # muted within about that much after their recipient reaches comms; a
+    # step with nothing queued costs one indexed query.
+    support_operator_mute_interval_seconds: float = 60.0
+
     # -- Payments service (H7) --
     #
     # The product is a client of the crypto payments service: it creates

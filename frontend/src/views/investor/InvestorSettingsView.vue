@@ -129,6 +129,8 @@ import NotificationPreferencesSection from '@/components/shared/NotificationPref
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import IntegratorApplicationModal from '@/components/shared/IntegratorApplicationModal.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSupportStore } from '@/stores/support'
+import { getShell } from '@/router/helpers'
 import { updateMe } from '@/api/users'
 import { submitAgentApplication } from '@/api/agent-apps'
 import { useAgentApplicationStatus } from '@/composables/useAgentApplicationStatus'
@@ -489,8 +491,20 @@ async function handleLogout(): Promise<void> {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
+// -- Support row (H40 item 10) ------------------------------------------------
+// The row leads to the shell's own support screen -- this view is mounted
+// in the buyer's and the integrator's shells -- and shows what is unread in
+// the person's conversation. A failed count keeps no badge rather than a
+// guessed 0 (support store's `unread` is null until known).
+const support = useSupportStore()
+const supportRouteName = computed<string>(() =>
+  getShell(route) === 'agent' ? 'agent-support' : 'investor-support',
+)
+const supportUnread = computed<number>(() => support.unread ?? 0)
+
 onMounted(() => {
   void fetchAgentApps()
+  void support.fetchUnread()
 })
 </script>
 
@@ -694,11 +708,19 @@ onMounted(() => {
         <li class="ds-row">
           <span class="ds-row__lead"><MessageCircle size="sm" /></span>
           <span class="ds-row__body">
-            <RouterLink class="ds-row__link" :to="{ name: 'investor-support' }">
+            <RouterLink class="ds-row__link" :to="{ name: supportRouteName }">
               <span class="ds-row__title">{{ t('inv.settings.actions.support') }}</span>
             </RouterLink>
           </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+          <span class="ds-row__trail">
+            <CBadge
+              v-if="supportUnread > 0"
+              variant="primary"
+              :text="String(supportUnread)"
+              :aria-label="t('inv.support.unread', { n: supportUnread })"
+            />
+            <ChevronRight size="sm" />
+          </span>
         </li>
 
         <li class="ds-row">

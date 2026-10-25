@@ -2,7 +2,7 @@
 // AIVIS.ONE Frontend -- Where a notification leads
 // =============================================================================
 //
-// The inbox row of an investor opens the screen of its own event. The server
+// The inbox row opens the screen of its own event. The server
 // carries no navigation target for these notifications, so the screen is
 // chosen here from the notification's TYPE (the dotted names the comms profile
 // declares: `kyc.approved`, `deposit.confirmed`, ...). When a notification does
@@ -10,6 +10,10 @@
 //
 // A type with no screen of its own (a letter-only type, a type of another
 // role) leads nowhere: the row is only marked read.
+//
+// H40: the staff shell's operator signals open the ticket's card, by the
+// thread id in their action_data; the integrator's support notices open
+// its support screen, as the buyer's and the project's do.
 // =============================================================================
 
 import type { RouteLocationRaw } from 'vue-router'
@@ -58,6 +62,33 @@ function companyTarget(
   return null
 }
 
+// The action of every operator signal (backend support/service.py
+// OPEN_TICKET_ACTION): open the ticket's card, whose id is the one param.
+const OPEN_SUPPORT_TICKET = 'open_support_ticket'
+
+// The operator signals (comms-profile/types.yaml, H40 item 8).
+const OPERATOR_SIGNALS = new Set([
+  'support.message_received',
+  'support.ticket_assigned',
+  'support.ticket_released',
+])
+
+// The staff member's notices. The operator signals of H40 (support.*) open
+// the card of their ticket. comms' own ping (msg.support_message) carries
+// no ticket -- comms mutes it for operators (backend support/mute.py), and
+// an operator who turned it back on lands on the list.
+function staffTarget(
+  type: string,
+  actionData: NotificationTargetInput['actionData'],
+): RouteLocationRaw | null {
+  if (actionData?.action === OPEN_SUPPORT_TICKET) {
+    const id = paramId(actionData.params)
+    if (id) return { name: 'staff-support-ticket', params: { id } }
+  }
+  if (type.startsWith('msg.') || OPERATOR_SIGNALS.has(type)) return { name: 'staff-support' }
+  return null
+}
+
 export function notificationTarget(input: NotificationTargetInput): RouteLocationRaw | null {
   const { type, actionData, kycStatus, shell } = input
 
@@ -67,6 +98,10 @@ export function notificationTarget(input: NotificationTargetInput): RouteLocatio
   }
 
   if (shell === 'company') return companyTarget(type, actionData)
+  if (shell === 'staff') return staffTarget(type, actionData)
+
+  // The integrator's shell: its own conversation with support.
+  if (shell === 'agent') return isSupportNotice(type) ? { name: 'agent-support' } : null
 
   if (shell !== 'investor') return null
 

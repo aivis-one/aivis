@@ -1,862 +1,626 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support channel, user side (T-65)
+# AIVIS.ONE Backend -- Support, the person's side (T-65, H40 tickets)
 # =============================================================================
 #
-# What is pinned here is mostly what must NOT happen. comms authenticates
-# the PRODUCT and trusts every actor id it is handed, so the checks in
-# this module are the only thing standing between one user and another
-# user's conversation. Four properties carry that weight:
+# Rewritten for H40: the person no longer opens "their thread" -- they have
+# ONE conversation of many tickets, and no route names a thread. What the
+# T-65 suite pinned and still holds is kept here, on the new routes:
 #
-#   1. a thread that is not the caller's is a 404 -- and so is one that
-#      does not exist, indistinguishably;
-#   2. no actor name is readable from a request, on any of the three
-#      surfaces a request has (body / query / path);
-#   3. comms being down produces an answer, never a 500 and never a
-#      silent success;
-#   4. opening the channel twice is the same conversation and one row.
+#   1. no actor name is readable from a request (body, query), and the
+#      session is what reaches comms;
+#   2. a session is required;
+#   3. comms being down, or not knowing the person yet, is an answer --
+#      never a 500 and never a silent success;
+#   4. one press of "send" is one message: the same Idempotency-Key is the
+#      same message (and the same ticket), another text under it a 409.
 #
-# comms is faked at the module boundary (app.core.comms.httpx), the same
-# way test_comms_client.py fakes it and for the same reason: the outcomes
-# under test include ones a live service cannot be asked for on demand.
-# The fake answers the whole surface this module uses, so a call to a
-# path nobody implemented shows up as a test failure rather than as a
-# plausible default.
+# What H40 adds:
 #
-# REGISTER FIRST, ARM FAILURES SECOND. Registration itself calls comms
-# (the recipient upsert), and a failed upsert commits an outbox row --
-# which test_comms_relay.py would then find and fail on, an exact-count
-# assertion. Every test here therefore registers its user while the fake
-# is healthy and only then breaks it.
+#   5. the form: every submit is a new ticket of the chosen topic, its
+#      category from the one table (models.TOPICS);
+#   6. a message in the conversation goes to the latest open ticket, else
+#      the latest ticket (back to work), else a new ticket "other" -- the
+#      pre-H40 history is never written into;
+#   7. the feed is every thread of the person glued into one, newest first,
+#      every message exactly once across the pages -- and nobody else's;
+#   8. unread is summed over the person's threads; with none, 0 without
+#      asking comms.
+#
+# comms is the stateful fake of tests/support_fake.py.
 # =============================================================================
 
-import json as json_module
 from typing import Any
 from uuid import UUID, uuid4
 
-import httpx
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import comms as comms_module
-from app.core.config import settings
-from app.modules.support import service as support_service
-from app.modules.support.models import SupportThread
+from app.core.comms import CommsRejectedError, CommsTimeoutError
+from app.core.events.models import OutboxEvent
+from app.modules.support.models import TOPICS, SupportThread, SupportTicket
+from app.modules.support.schemas import TicketIn
 from tests.helpers import auth_headers, register_user
+from tests.support_fake import FakeComms, install
 
-_URL = "http://comms.test"
-_TOKEN = "t65-service-token"
-_SECTION_ID = "11111111-1111-4111-8111-111111111111"
-
-# Sentinel: a 200 whose body is not JSON at all.
-_NOT_JSON = object()
-
-
-# ---------------------------------------------------------------------------
-# The fake comms
-# ---------------------------------------------------------------------------
-
-
-class _FakeResponse:
-    def __init__(self, status_code: int, payload: Any = None) -> None:
-        self.status_code = status_code
-        self._payload = payload
-        self.text = "" if payload is _NOT_JSON else str(payload)
-
-    def json(self) -> Any:
-        if self._payload is _NOT_JSON:
-            raise ValueError("not json")
-        return self._payload
-
-
-# comms 3.0.0's one refusal body (its INTEGRATION.md section 5). The
-# product branches on the class, so every refusal the fake produces
-# carries the class comms would put on that status.
-_CLASS_FOR_STATUS = {
-    401: "unauthorized",
-    403: "forbidden",
-    404: "not_found",
-    405: "method_not_allowed",
-    409: "conflict",
-    422: "validation",
-    500: "internal",
-}
-
-
-def _refusal(status: int, message: str = "comms said no") -> _FakeResponse:
-    return _FakeResponse(
-        status,
-        {
-            "error": {
-                "class": _CLASS_FOR_STATUS.get(status, "internal"),
-                "message": message,
-                "fields": [],
-            }
-        },
-    )
-
-
-class _FakeComms:
-    """An in-memory comms with the create-or-get behaviour that matters.
-
-    Dedup is keyed on (client, operator_value) exactly as comms dedups a
-    subjectless dm, because "opening twice is the same thread" is the
-    property the product leans on -- faking it as "always a new thread"
-    would test a service this one is not.
-    """
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.threads: dict[tuple[str, str], dict[str, Any]] = {}
-        self.unread: dict[str, int] = {}
-        # Armed by a test to break the next call. An exception instance
-        # is raised from the wire; an int is answered as that status.
-        self.fail_with: Any = None
-        # Same, but for the thread-create call ONLY. Separate because a
-        # status armed globally lands on the section resolve first, and
-        # a test aimed at "comms refused to create the thread" would
-        # then be measuring a different call than its name claims.
-        self.create_fails_with: int | None = None
-        # Overrides the create response, for the malformed-payload test.
-        self.thread_payload: Any = None
-        # comms 3.0.0's Idempotency-Key store for the two calls that
-        # create: key -> (request fingerprint, stored answer). The same
-        # key with the same method, path and body answers with the SAME
-        # object; the same key with anything else is a 409 conflict.
-        self.keys: dict[str, tuple[tuple[str, str, str], dict[str, Any]]] = {}
-
-    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = self
-
-        class _FakeClient:
-            def __init__(self, **kwargs: Any) -> None:
-                self.kwargs = kwargs
-
-            async def __aenter__(self) -> "_FakeClient":
-                return self
-
-            async def __aexit__(self, *exc_info: Any) -> bool:
-                return False
-
-            async def request(
-                self,
-                method: str,
-                url: str,
-                params: dict | None = None,
-                json: dict | None = None,
-                headers: dict | None = None,
-            ) -> _FakeResponse:
-                return fake.handle(method, url, params, json, headers)
-
-        monkeypatch.setattr(comms_module.httpx, "AsyncClient", _FakeClient)
-
-    def handle(
-        self,
-        method: str,
-        url: str,
-        params: dict | None,
-        json: dict | None,
-        headers: dict | None,
-    ) -> _FakeResponse:
-        path = url[len(_URL) :]
-        self.calls.append(
-            {
-                "method": method,
-                "path": path,
-                "params": params,
-                "json": json,
-                "headers": headers,
-            }
-        )
-
-        # The recipient upsert (registration) is deliberately NOT broken
-        # by fail_with: see the module header on outbox residue.
-        if path.startswith("/api/v1/recipients/"):
-            return _FakeResponse(200, {})
-
-        if isinstance(self.fail_with, Exception):
-            raise self.fail_with
-        if isinstance(self.fail_with, int):
-            return _refusal(self.fail_with)
-
-        if path == "/api/v1/sections":
-            return _FakeResponse(
-                200, {"id": _SECTION_ID, "key": "support", "label": "Support"}
-            )
-
-        if path == "/api/v1/threads":
-            return self._idempotent(
-                method, path, json, headers,
-                lambda: self._create_thread(json or {}),
-            )
-
-        if path == "/api/v1/threads/unread-counts":
-            wanted = (json or {}).get("thread_ids") or []
-            counts = {
-                tid: self.unread[tid] for tid in wanted if tid in self.unread
-            }
-            return _FakeResponse(200, {"counts": counts})
-
-        if path.endswith("/messages") and method == "POST":
-            return self._idempotent(
-                method, path, json, headers,
-                lambda: _FakeResponse(
-                    201,
-                    {
-                        "id": str(uuid4()),
-                        "thread_id": path.split("/")[4],
-                        "sender": (json or {}).get("sender"),
-                        "body": (json or {}).get("body"),
-                    },
-                ),
-            )
-
-        if path.endswith("/messages") and method == "GET":
-            return _FakeResponse(200, {"items": [], "next_cursor": None})
-
-        if path.endswith("/read"):
-            return _FakeResponse(200, {"unread": 0})
-
-        raise AssertionError(f"fake comms has no route for {method} {path}")
-
-    def _idempotent(
-        self,
-        method: str,
-        path: str,
-        body: dict | None,
-        headers: dict | None,
-        create: Any,
-    ) -> _FakeResponse:
-        """comms' key rule for a call that creates."""
-        key = (headers or {}).get("Idempotency-Key")
-        if not key:
-            return _refusal(422, "the Idempotency-Key header is required")
-        # comms fingerprints the RAW body bytes; the fake has the parsed
-        # body, and json.dumps of it in insertion order is those bytes
-        # for a body httpx serialised.
-        fingerprint = (method, path, json_module.dumps(body))
-        stored = self.keys.get(key)
-        if stored is not None:
-            if stored[0] != fingerprint:
-                return _refusal(409, "key taken by another request")
-            return _FakeResponse(200, stored[1])
-        response = create()
-        if response.status_code < 400:
-            self.keys[key] = (fingerprint, response.json())
-        return response
-
-    def _create_thread(self, body: dict[str, Any]) -> _FakeResponse:
-        if self.create_fails_with is not None:
-            return _refusal(
-                self.create_fails_with,
-                f"client recipient {body.get('client')} does not exist",
-            )
-        if self.thread_payload is not None:
-            return _FakeResponse(200, self.thread_payload)
-        key = (str(body.get("client")), str(body.get("operator_value")))
-        existing = self.threads.get(key)
-        if existing is not None:
-            return _FakeResponse(200, {**existing, "created": False})
-        thread = {
-            "id": str(uuid4()),
-            "client": body.get("client"),
-            "operator_kind": body.get("operator_kind"),
-            "operator_value": body.get("operator_value"),
-            "kind": body.get("kind"),
-            "status": "open",
-            "assignee": None,
-        }
-        self.threads[key] = thread
-        return _FakeResponse(200, {**thread, "created": True})
-
-    def bodies(self, path_suffix: str) -> list[dict[str, Any]]:
-        """Bodies of the calls whose path ends with `path_suffix`."""
-        return [
-            call["json"]
-            for call in self.calls
-            if call["path"].endswith(path_suffix) and call["json"] is not None
-        ]
+_BASE = "/api/v1/support"
 
 
 @pytest.fixture
-def comms(monkeypatch: pytest.MonkeyPatch) -> _FakeComms:
-    """A configured comms address plus the fake behind it.
-
-    The section id cache is cleared per test: it is process-global, and a
-    value cached by a neighbour would hide a failed resolve here.
-    """
-    monkeypatch.setattr(settings, "comms_api_url", _URL)
-    monkeypatch.setattr(settings, "comms_service_token", _TOKEN)
-    monkeypatch.setattr(support_service, "_support_section_id", None)
-    fake = _FakeComms()
-    fake.install(monkeypatch)
-    return fake
+def comms(monkeypatch: pytest.MonkeyPatch) -> FakeComms:
+    return install(monkeypatch)
 
 
-async def _registered(client: AsyncClient) -> tuple[dict[str, str], UUID]:
-    """A registered user: auth headers and their id."""
+async def _person(client: AsyncClient) -> tuple[dict[str, str], UUID]:
     body = await register_user(client)
     return auth_headers(body["session_token"]), UUID(body["user"]["id"])
 
 
-def _with_key(headers: dict[str, str]) -> dict[str, str]:
-    """The headers of one press of "send": a fresh Idempotency-Key.
-
-    The client mints the key when the person presses send (see
-    frontend stores/support.ts); a test that sends one message does the
-    same. A retry of the SAME message reuses the key -- the tests that
-    retry build their headers once and send them twice.
-    """
-    return {**headers, "Idempotency-Key": str(uuid4())}
+def _key(headers: dict[str, str], key: str | None = None) -> dict[str, str]:
+    """The headers of one press of "send": the client's Idempotency-Key."""
+    return {**headers, "Idempotency-Key": key or str(uuid4())}
 
 
-async def _pointer_count(session: AsyncSession, user_id: UUID) -> int:
-    result = await session.execute(
-        select(func.count())
-        .select_from(SupportThread)
-        .where(SupportThread.user_id == user_id)
+async def _appeal(
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    topic: str = "payments",
+    body: str = "help",
+    key: str | None = None,
+) -> Any:
+    return await client.post(
+        f"{_BASE}/tickets",
+        json={"topic": topic, "body": body},
+        headers=_key(headers, key),
     )
-    return int(result.scalar_one())
+
+
+async def _write(
+    client: AsyncClient,
+    headers: dict[str, str],
+    body: str = "hello",
+    key: str | None = None,
+) -> Any:
+    return await client.post(
+        f"{_BASE}/messages",
+        json={"body": body},
+        headers=_key(headers, key),
+    )
+
+
+async def _tickets(session: AsyncSession, user_id: UUID) -> list[SupportTicket]:
+    session.expire_all()
+    return list(
+        (
+            await session.execute(
+                select(SupportTicket)
+                .join(
+                    SupportThread, SupportThread.id == SupportTicket.support_thread_id
+                )
+                .where(SupportThread.user_id == user_id)
+                .order_by(SupportTicket.created_at)
+            )
+        ).scalars()
+    )
+
+
+async def _history(session: AsyncSession, comms: FakeComms, user_id: UUID) -> str:
+    """The person's pre-H40 conversation: a dm thread with a pointer and
+    no ticket."""
+    thread_id = comms.add_thread(client=user_id, kind="dm")
+    session.add(SupportThread(user_id=user_id, comms_thread_id=UUID(thread_id)))
+    await session.commit()
+    return thread_id
+
+
+@pytest.fixture(autouse=True)
+async def _no_signal_residue(db_session: AsyncSession) -> Any:
+    """The operator signals these tests cause are outbox rows; the relay
+    suite counts the outbox, so they do not outlive the test."""
+    yield
+    await db_session.execute(
+        delete(OutboxEvent).where(
+            OutboxEvent.payload["type"].astext.like("support.%")
+            | OutboxEvent.payload["idempotency_key"].astext.like(
+                "aivis:llm-support-tr:%"
+            )
+        )
+    )
+    await db_session.commit()
 
 
 # ---------------------------------------------------------------------------
-# 1. Trust model: no actor name is readable from a request
+# 1-2. Who is asking
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_actor_fields_in_a_body_are_refused(
-    client: AsyncClient, comms: _FakeComms
+@pytest.mark.parametrize(
+    "field", ["sender", "participant", "client", "operator", "user_id"]
+)
+async def test_an_actor_name_in_a_body_is_refused(
+    client: AsyncClient, comms: FakeComms, field: str
 ) -> None:
-    """Every model forbids extra fields, so an actor sent in a body is a
-    422 rather than a field quietly ignored. Ignoring would be safe and
-    mute; this leaves a trace."""
-    headers, _ = await _registered(client)
-
-    opened = await client.post("/api/v1/support/threads", headers=headers)
-    assert opened.status_code == 200, opened.text
-    thread_id = opened.json()["id"]
-
-    for path, payload in (
-        ("/api/v1/support/threads", {"client": str(uuid4())}),
-        (
-            "/api/v1/support/threads/messages",
-            {"body": "hi", "sender": str(uuid4())},
-        ),
-        (
-            f"/api/v1/support/threads/{thread_id}/read",
-            {"participant": str(uuid4())},
-        ),
+    headers, _ = await _person(client)
+    for path, body in (
+        ("/tickets", {"topic": "payments", "body": "x"}),
+        ("/messages", {"body": "x"}),
     ):
-        # The message route also requires Idempotency-Key; it is sent, so
-        # the 422 measured here is the actor field's and nothing else's.
-        response = await client.post(
-            path,
-            json=payload,
-            headers=_with_key(headers) if path.endswith("/messages") else headers,
+        resp = await client.post(
+            f"{_BASE}{path}",
+            json={**body, field: str(uuid4())},
+            headers=_key(headers),
         )
-        assert response.status_code == 422, f"{path}: {response.text}"
-        assert "Idempotency-Key" not in response.text
+        assert resp.status_code == 422, (path, resp.text)
+    assert comms.calls_to("POST", "/messages") == []
+    assert comms.calls_to("POST", "/api/v1/threads") == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method, path",
+    [
+        ("POST", "/tickets"),
+        ("POST", "/messages"),
+        ("GET", "/messages"),
+        ("POST", "/read"),
+        ("GET", "/unread"),
+    ],
+)
+async def test_an_actor_name_in_a_query_is_refused(
+    client: AsyncClient, comms: FakeComms, method: str, path: str
+) -> None:
+    headers, _ = await _person(client)
+    bodies = {
+        ("POST", "/tickets"): {"topic": "payments", "body": "x"},
+        ("POST", "/messages"): {"body": "x"},
+    }
+    resp = await client.request(
+        method,
+        f"{_BASE}{path}?participant={uuid4()}",
+        json=bodies.get((method, path)),
+        headers=_key(headers),
+    )
+    assert resp.status_code == 400, resp.text
+    assert "participant" in resp.text
 
 
 @pytest.mark.asyncio
 async def test_the_session_is_what_reaches_comms(
-    client: AsyncClient, comms: _FakeComms
+    client: AsyncClient, comms: FakeComms
 ) -> None:
-    """The positive twin of the refusals above: with no actor on the
-    wire, the ids comms receives are the session's -- and they are the
-    ONLY ones it could have received."""
-    headers, user_id = await _registered(client)
-
-    opened = await client.post("/api/v1/support/threads", headers=headers)
-    thread_id = opened.json()["id"]
-    await client.post(
-        "/api/v1/support/threads/messages",
-        json={"body": "my card was declined"},
-        headers=_with_key(headers),
-    )
-    await client.post(
-        f"/api/v1/support/threads/{thread_id}/read", headers=headers
-    )
-
-    assert comms.bodies("/api/v1/threads")[0]["client"] == str(user_id)
-    assert comms.bodies("/messages")[0]["sender"] == str(user_id)
-    read_body = comms.bodies("/read")[0]
-    assert read_body["participant"] == str(user_id)
-    # last_read_at is not accepted from the wire and not sent: comms
-    # stamps now.
-    assert "last_read_at" not in read_body
+    headers, user_id = await _person(client)
+    assert (await _appeal(client, headers)).status_code == 200
+    assert (await _write(client, headers)).status_code == 200
+    created = comms.calls_to("POST", "/api/v1/threads")
+    assert [c["json"]["client"] for c in created] == [str(user_id)]
+    assert created[0]["json"]["kind"] == "ticket"
+    senders = {c["json"]["sender"] for c in comms.calls_to("POST", "/messages")}
+    assert senders == {str(user_id)}
 
 
 @pytest.mark.asyncio
-async def test_actor_params_in_a_query_are_refused(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Same guarantee on the query surface, by a different mechanism: a
-    400 that names the offender, on every route."""
-    headers, _ = await _registered(client)
-    opened = await client.post("/api/v1/support/threads", headers=headers)
-    thread_id = opened.json()["id"]
-
-    base = "/api/v1/support/threads"
-    for method, path in (
-        ("POST", base),
-        ("GET", base),
-        ("POST", f"{base}/messages"),
-        ("GET", f"{base}/{thread_id}/messages"),
-        ("POST", f"{base}/{thread_id}/read"),
-    ):
-        for query in (
-            "participant=" + str(uuid4()),
-            "operator=" + str(uuid4()),
-            "is_supervisor=true",
-        ):
-            response = await client.request(
-                method,
-                f"{path}?{query}",
-                headers=(
-                    _with_key(headers)
-                    if method == "POST" and path.endswith("/messages")
-                    else headers
-                ),
-                json={"body": "hi"} if path.endswith("/messages") else None,
-            )
-            assert response.status_code == 400, (
-                f"{method} {path}?{query}: {response.text}"
-            )
-            assert query.split("=")[0] in response.json()["message"]
-
-
-# ---------------------------------------------------------------------------
-# 2. Ownership: a thread that is not yours does not exist
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_a_foreign_thread_is_not_readable(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """The whole point of the local pointer. comms would have answered
-    both of these happily -- its feed endpoint has no gate of its own."""
-    owner_headers, _ = await _registered(client)
-    opened = await client.post(
-        "/api/v1/support/threads", headers=owner_headers
-    )
-    thread_id = opened.json()["id"]
-
-    stranger_headers, _ = await _registered(client)
-    feed = await client.get(
-        f"/api/v1/support/threads/{thread_id}/messages",
-        headers=stranger_headers,
-    )
-    read = await client.post(
-        f"/api/v1/support/threads/{thread_id}/read",
-        headers=stranger_headers,
-    )
-    assert feed.status_code == 404, feed.text
-    assert read.status_code == 404, read.text
-
-    # The twin: the owner still gets in. A check that only proved the
-    # door was shut would pass just as well if it were welded.
-    own_feed = await client.get(
-        f"/api/v1/support/threads/{thread_id}/messages",
-        headers=owner_headers,
-    )
-    assert own_feed.status_code == 200, own_feed.text
-
-
-@pytest.mark.asyncio
-async def test_an_unknown_thread_looks_exactly_like_a_foreign_one(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Existence must not leak: a real thread belonging to someone else
-    and an id that names nothing answer identically."""
-    owner_headers, _ = await _registered(client)
-    opened = await client.post(
-        "/api/v1/support/threads", headers=owner_headers
-    )
-    real_but_foreign = opened.json()["id"]
-
-    stranger_headers, _ = await _registered(client)
-    foreign = await client.get(
-        f"/api/v1/support/threads/{real_but_foreign}/messages",
-        headers=stranger_headers,
-    )
-    nowhere = await client.get(
-        f"/api/v1/support/threads/{uuid4()}/messages",
-        headers=stranger_headers,
-    )
-
-    assert foreign.status_code == nowhere.status_code == 404
-    assert foreign.json() == nowhere.json()
-
-
-@pytest.mark.asyncio
-async def test_support_requires_a_session(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """No route here is reachable without authentication."""
-    response = await client.get("/api/v1/support/threads")
-    assert response.status_code == 401, response.text
-
-
-# ---------------------------------------------------------------------------
-# 3. Repetition: one conversation, one row
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_reopening_returns_the_same_thread_and_one_row(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Opening the channel is idempotent -- the client calls it before
-    every send, so a second call must not mean a second conversation."""
-    headers, user_id = await _registered(client)
-
-    first = await client.post("/api/v1/support/threads", headers=headers)
-    second = await client.post("/api/v1/support/threads", headers=headers)
-
-    assert first.status_code == second.status_code == 200
-    assert first.json()["id"] == second.json()["id"]
-    assert await _pointer_count(db_session, user_id) == 1
-    # The seam flag is comms' business, not the caller's.
-    assert "created" not in second.json()
-
-
-@pytest.mark.asyncio
-async def test_the_thread_is_a_pooled_conversation_not_a_ticket(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """The shape decision, pinned where it can be read: a section
-    operator (so the request lands in a pool) and a dm kind (so it is one
-    eternal conversation). A subjectless ticket would dedup to nothing
-    and multiply rows on every press."""
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-
-    body = comms.bodies("/api/v1/threads")[0]
-    assert body["operator_kind"] == "section"
-    assert body["kind"] == "dm"
-    assert body["operator_value"] == _SECTION_ID
-    assert "subject_type" not in body and "subject_id" not in body
-
-
-# ---------------------------------------------------------------------------
-# 4. Emptiness
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_a_user_with_no_request_gets_an_empty_list(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Nothing to show is a list of nothing, not a 404."""
-    headers, _ = await _registered(client)
-
-    response = await client.get("/api/v1/support/threads", headers=headers)
-
-    assert response.status_code == 200, response.text
-    assert response.json() == {"items": [], "next_cursor": None}
-
-
-@pytest.mark.asyncio
-async def test_an_empty_or_missing_message_is_refused(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """A message with no text is not a message."""
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-
-    empty = await client.post(
-        "/api/v1/support/threads/messages",
-        json={"body": ""},
-        headers=_with_key(headers),
-    )
-    missing = await client.post(
-        "/api/v1/support/threads/messages", json={}, headers=_with_key(headers)
-    )
-
-    assert empty.status_code == 422, empty.text
-    assert missing.status_code == 422, missing.text
-
-
-@pytest.mark.asyncio
-async def test_opening_needs_no_body_at_all(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Everything the verb needs is in the session, so an absent body is
-    the normal case rather than a missing argument."""
-    headers, _ = await _registered(client)
-
-    response = await client.post("/api/v1/support/threads", headers=headers)
-
-    assert response.status_code == 200, response.text
-
-
-# ---------------------------------------------------------------------------
-# 5. Shortage: comms is not there, or answers something unusable
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_comms_down_on_open_refuses_and_writes_no_pointer(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """A refusal the user can act on -- and no pointer, because a row
-    aimed at a thread that may not exist answers every later ownership
-    question wrongly.
-
-    The second half is the twin: the same process opens the channel
-    successfully once comms is back, which also proves the failed
-    section resolve did not poison the in-process cache.
-    """
-    headers, user_id = await _registered(client)
-    comms.fail_with = httpx.ConnectError("comms is down")
-
-    refused = await client.post("/api/v1/support/threads", headers=headers)
-
-    assert refused.status_code == 502, refused.text
-    assert refused.json()["error"] == "comms_unavailable"
-    assert await _pointer_count(db_session, user_id) == 0
-
-    comms.fail_with = None
-    recovered = await client.post("/api/v1/support/threads", headers=headers)
-    assert recovered.status_code == 200, recovered.text
-    assert await _pointer_count(db_session, user_id) == 1
-
-
-@pytest.mark.asyncio
-async def test_comms_timeout_on_send_is_answered_not_crashed(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """504, not a 500: the person pressed send and is owed the outcome.
-    A 500 would say nothing and look like our bug to them."""
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-    comms.fail_with = httpx.ReadTimeout("timed out")
-
-    response = await client.post(
-        "/api/v1/support/threads/messages",
-        json={"body": "still there?"},
-        headers=_with_key(headers),
-    )
-
-    assert response.status_code == 504, response.text
-    assert response.json()["error"] == "comms_timeout"
-
-
-@pytest.mark.asyncio
-async def test_sending_before_opening_is_a_404(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """There is no thread to resolve, and auto-opening here would make a
-    failed open indistinguishable from a failed send."""
-    headers, _ = await _registered(client)
-
-    response = await client.post(
-        "/api/v1/support/threads/messages",
-        json={"body": "hello?"},
-        headers=_with_key(headers),
-    )
-
-    assert response.status_code == 404, response.text
-
-
-@pytest.mark.asyncio
-async def test_a_malformed_comms_answer_is_a_refusal_not_a_crash(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """comms' answer is input too. A 200 with no thread id must not
-    become a KeyError on a request somebody is watching."""
-    headers, user_id = await _registered(client)
-    comms.thread_payload = {"status": "open"}  # no "id"
-
-    response = await client.post("/api/v1/support/threads", headers=headers)
-
-    assert response.status_code == 502, response.text
-    assert await _pointer_count(db_session, user_id) == 0
-
-
-@pytest.mark.asyncio
-async def test_an_unsynced_recipient_is_reported_as_not_ready(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """comms delivers to known recipients only, and the sync can lag.
-    That is transient and not the user's doing, so it is reported as
-    "not ready" -- and comms' own wording about missing rows stays
-    inside."""
-    headers, _ = await _registered(client)
-    comms.create_fails_with = 404
-
-    response = await client.post("/api/v1/support/threads", headers=headers)
-
-    assert response.status_code == 502, response.text
-    assert response.json()["error"] == "comms_recipient_pending"
-    # comms' own words ("client recipient <uuid> does not exist") name an
-    # internal row and must not reach a product response.
-    assert "recipient" not in response.json()["message"].lower()
-
-
-# ---------------------------------------------------------------------------
-# 6. The list degrades without lying
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_unread_is_reported_when_comms_answers(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    headers, _ = await _registered(client)
-    opened = await client.post("/api/v1/support/threads", headers=headers)
-    comms.unread[opened.json()["id"]] = 3
-
-    response = await client.get("/api/v1/support/threads", headers=headers)
-
-    assert response.status_code == 200, response.text
-    assert response.json()["items"][0]["unread"] == 3
-
-
-@pytest.mark.asyncio
-async def test_unread_is_absent_never_zero_when_it_is_unknown(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Two ways the count can be unknown -- comms down, and a thread it
-    does not count for the caller -- and both answer the same way: no
-    key. A zero would read as "nothing unread here" and be
-    indistinguishable from a fully read conversation.
-
-    The list itself still answers: those rows are ours, and refusing a
-    read the product can serve would be a worse trade than an absent
-    enrichment.
-    """
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-
-    # a) comms does not count this thread for the caller
-    not_counted = await client.get(
-        "/api/v1/support/threads", headers=headers
-    )
-    assert not_counted.status_code == 200, not_counted.text
-    assert "unread" not in not_counted.json()["items"][0]
-
-    # b) comms is unreachable
-    comms.fail_with = httpx.ConnectError("comms is down")
-    degraded = await client.get("/api/v1/support/threads", headers=headers)
-
-    assert degraded.status_code == 200, degraded.text
-    rows = degraded.json()["items"]
-    assert len(rows) == 1
-    assert "unread" not in rows[0]
-
-
-# ---------------------------------------------------------------------------
-# 7. comms 3.0.0: the Idempotency-Key (H23 P-112)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_a_retried_message_is_one_message(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """Repeat axis: the same press of send, retried, is stored once.
-
-    The headers are built ONCE and sent twice, as the frontend store does
-    after a timeout; the answer to the retry is the stored message.
-    """
-    headers, user_id = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-    one_press = _with_key(headers)
-
-    first = await client.post(
-        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
-    )
-    retry = await client.post(
-        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
-    )
-
-    assert first.status_code in (200, 201), first.text
-    assert retry.status_code in (200, 201), retry.text
-    assert retry.json()["id"] == first.json()["id"]
-    sent_keys = [
-        call["headers"]["Idempotency-Key"]
-        for call in comms.calls
-        if call["path"].endswith("/messages") and call["method"] == "POST"
-    ]
-    assert len(set(sent_keys)) == 1
-    assert sent_keys[0] == (
-        f"aivis:msg:{user_id}:{one_press['Idempotency-Key']}"
-    )
-
-
-@pytest.mark.asyncio
-async def test_the_same_key_with_other_text_is_a_conflict(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    """A client defect, answered as comms answers it -- not as a second
-    message under an old key."""
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-    one_press = _with_key(headers)
-
-    await client.post(
-        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=one_press
-    )
-    other = await client.post(
-        "/api/v1/support/threads/messages", json={"body": "bye"}, headers=one_press
-    )
-
-    assert other.status_code == 409, other.text
-
-
 @pytest.mark.parametrize(
-    "key",
-    [None, "", "x" * 101, "has space", "a:b"],
-    ids=["missing", "empty", "too_long", "space", "colon"],
+    "method, path",
+    [
+        ("POST", "/tickets"),
+        ("POST", "/messages"),
+        ("GET", "/messages"),
+        ("POST", "/read"),
+        ("GET", "/unread"),
+    ],
 )
-@pytest.mark.asyncio
-async def test_a_message_without_a_usable_key_never_reaches_comms(
-    client: AsyncClient, comms: _FakeComms, key: str | None
+async def test_support_requires_a_session(
+    client: AsyncClient, comms: FakeComms, method: str, path: str
 ) -> None:
-    """Emptiness and shortage axes: refused by this product, before comms.
+    resp = await client.request(method, f"{_BASE}{path}")
+    assert resp.status_code == 401
+    assert comms.calls == []
 
-    The 100 limit keeps the namespaced key inside comms' 200 (the sum is
-    at support/service.py's _MESSAGE_KEY_PREFIX); a colon is refused so no
-    client key can impersonate the namespace's separators.
-    """
-    headers, _ = await _registered(client)
-    await client.post("/api/v1/support/threads", headers=headers)
-    before = len(comms.calls)
 
+# ---------------------------------------------------------------------------
+# 5. The form
+# ---------------------------------------------------------------------------
+
+
+def test_the_wire_offers_exactly_the_topics_of_the_table() -> None:
+    """The form's Literal and the one table are the same set -- a topic in
+    one and not the other would be a 422 for a real choice, or a choice
+    with no category."""
+    offered = set(TicketIn.model_fields["topic"].annotation.__args__)
+    assert offered == set(TOPICS)
+    assert offered, "the pair: the set is not empty"
+
+
+@pytest.mark.asyncio
+async def test_every_submit_is_a_new_ticket_with_its_topic_and_category(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    first = await _appeal(client, headers, topic="kyc", body="my documents")
+    second = await _appeal(client, headers, topic="withdrawal", body="my money")
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert first.json()["ticket"]["id"] != second.json()["ticket"]["id"]
+
+    tickets = await _tickets(db_session, user_id)
+    assert [(t.topic, t.category, t.status) for t in tickets] == [
+        ("kyc", "verification", "open"),
+        ("withdrawal", "withdrawals", "open"),
+    ]
+    # Each ticket's first message is the text, in its own thread.
+    for answer, text in ((first, "my documents"), (second, "my money")):
+        tid = answer.json()["ticket"]["id"]
+        assert [m["body"] for m in comms.messages[tid]] == [text]
+
+
+@pytest.mark.asyncio
+async def test_the_same_key_is_the_same_ticket_and_the_same_message(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    key = str(uuid4())
+    one = await _appeal(client, headers, key=key)
+    two = await _appeal(client, headers, key=key)
+    assert one.status_code == two.status_code == 200
+    assert one.json() == two.json()
+    assert len(await _tickets(db_session, user_id)) == 1
+    assert len(comms.threads) == 1
+    assert sum(len(v) for v in comms.messages.values()) == 1
+
+
+@pytest.mark.asyncio
+async def test_another_text_under_the_same_key_is_a_conflict(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    key = str(uuid4())
+    assert (await _appeal(client, headers, key=key, body="one")).status_code == 200
+    resp = await _appeal(client, headers, key=key, body="two")
+    assert resp.status_code == 409, resp.text
+    assert len(await _tickets(db_session, user_id)) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"topic": "lottery", "body": "x"},
+        {"topic": "payments", "body": ""},
+        {"topic": "payments"},
+        {"body": "x"},
+    ],
+)
+async def test_a_bad_appeal_is_refused_before_comms(
+    client: AsyncClient, comms: FakeComms, body: dict
+) -> None:
+    headers, _ = await _person(client)
+    resp = await client.post(f"{_BASE}/tickets", json=body, headers=_key(headers))
+    assert resp.status_code == 422, resp.text
+    assert comms.calls_to("POST", "/api/v1/threads") == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("key", [None, "", "x" * 300, "bad key"])
+async def test_a_message_without_a_usable_key_never_reaches_comms(
+    client: AsyncClient, comms: FakeComms, key: str | None
+) -> None:
+    headers, _ = await _person(client)
     sent = dict(headers)
     if key is not None:
         sent["Idempotency-Key"] = key
-    response = await client.post(
-        "/api/v1/support/threads/messages", json={"body": "hi"}, headers=sent
-    )
+    for path, body in (
+        ("/tickets", {"topic": "payments", "body": "x"}),
+        ("/messages", {"body": "x"}),
+    ):
+        resp = await client.post(f"{_BASE}{path}", json=body, headers=sent)
+        assert resp.status_code == 422, (path, resp.text)
+    assert comms.calls_to("POST", "/api/v1/threads") == []
+    assert comms.calls_to("POST", "/messages") == []
 
-    assert response.status_code == 422, response.text
-    assert len(comms.calls) == before
+
+# ---------------------------------------------------------------------------
+# 6. Where a message in the conversation goes
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_opening_twice_sends_the_same_key_and_the_same_bytes(
-    client: AsyncClient, comms: _FakeComms
+async def test_a_first_message_opens_a_ticket_other(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """comms fingerprints the raw body: the thread-create request of one
-    person must be byte-identical on every repeat, or a repeat would be a
-    409 instead of the same thread."""
-    headers, user_id = await _registered(client)
+    headers, user_id = await _person(client)
+    resp = await _write(client, headers, "is anybody there?")
+    assert resp.status_code == 200, resp.text
+    tickets = await _tickets(db_session, user_id)
+    assert [(t.topic, t.category) for t in tickets] == [("other", "other")]
 
-    first = await client.post("/api/v1/support/threads", headers=headers)
-    second = await client.post("/api/v1/support/threads", headers=headers)
 
-    creates = [
-        call for call in comms.calls
-        if call["path"] == "/api/v1/threads" and call["method"] == "POST"
-    ]
-    assert first.json()["id"] == second.json()["id"]
-    assert {c["headers"]["Idempotency-Key"] for c in creates} == {
-        f"aivis:thread:{user_id}"
+@pytest.mark.asyncio
+async def test_a_retried_first_message_is_one_ticket_and_one_message(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    """The retry finds the ticket the first attempt opened and posts into
+    it under the same key -- comms answers with the message it has."""
+    headers, user_id = await _person(client)
+    key = str(uuid4())
+    one = await _write(client, headers, "hi", key=key)
+    two = await _write(client, headers, "hi", key=key)
+    assert one.status_code == two.status_code == 200
+    assert one.json()["id"] == two.json()["id"]
+    assert len(await _tickets(db_session, user_id)) == 1
+    assert sum(len(v) for v in comms.messages.values()) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_message_goes_to_the_latest_open_ticket(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    older = (await _appeal(client, headers, topic="kyc")).json()["ticket"]["id"]
+    newer = (await _appeal(client, headers, topic="technical")).json()["ticket"]["id"]
+    # The newer one is closed: the open one is the latest OPEN.
+    tickets = await _tickets(db_session, user_id)
+    tickets[1].status = "resolved"
+    await db_session.commit()
+
+    assert (await _write(client, headers, "about kyc")).status_code == 200
+    assert comms.messages[older][0]["body"] == "about kyc"
+    assert comms.messages[newer][0]["body"] != "about kyc"
+
+
+@pytest.mark.asyncio
+async def test_with_none_open_the_latest_ticket_returns_to_work(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    await _appeal(client, headers, topic="kyc")
+    latest = (await _appeal(client, headers, topic="payments")).json()["ticket"]["id"]
+    for ticket in await _tickets(db_session, user_id):
+        ticket.status = "resolved"
+    await db_session.commit()
+    before = (await _tickets(db_session, user_id))[1].version
+
+    assert (await _write(client, headers, "again")).status_code == 200
+    tickets = await _tickets(db_session, user_id)
+    assert [t.status for t in tickets] == ["resolved", "open"]
+    assert tickets[1].version == before + 1
+    assert comms.messages[latest][0]["body"] == "again"
+    assert comms.threads[latest]["status"] == "open"
+
+
+@pytest.mark.asyncio
+async def test_a_message_into_spam_stays_spam(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    tid = (await _appeal(client, headers)).json()["ticket"]["id"]
+    ticket = (await _tickets(db_session, user_id))[0]
+    ticket.status = "spam"
+    await db_session.commit()
+
+    assert (await _write(client, headers, "buy now")).status_code == 200
+    assert (await _tickets(db_session, user_id))[0].status == "spam"
+    assert comms.messages[tid][0]["body"] == "buy now"  # the pair: it was posted
+
+
+@pytest.mark.asyncio
+async def test_the_history_is_never_written_into(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    history = await _history(db_session, comms, user_id)
+    assert (await _write(client, headers, "new question")).status_code == 200
+    assert comms.messages.get(history, []) == []
+    tickets = await _tickets(db_session, user_id)
+    assert [t.topic for t in tickets] == ["other"]
+
+
+# ---------------------------------------------------------------------------
+# 7. One feed
+# ---------------------------------------------------------------------------
+
+
+async def _feed_pages(
+    client: AsyncClient, headers: dict[str, str], limit: int
+) -> list[list[str]]:
+    pages: list[list[str]] = []
+    cursor: str | None = None
+    while True:
+        params: dict[str, Any] = {"limit": limit}
+        if cursor is not None:
+            params["cursor"] = cursor
+        resp = await client.get(f"{_BASE}/messages", params=params, headers=headers)
+        assert resp.status_code == 200, resp.text
+        page = resp.json()
+        pages.append([m["body"] for m in page["items"]])
+        cursor = page["next_cursor"]
+        if cursor is None:
+            return pages
+        assert len(pages) < 50, "the cursor never ends"
+
+
+@pytest.mark.asyncio
+async def test_the_feed_glues_every_thread_newest_first(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    history = await _history(db_session, comms, user_id)
+    comms.post(history, user_id, "h1")
+    a = (await _appeal(client, headers, body="a1")).json()["ticket"]["id"]
+    comms.post(history, user_id, "h2")
+    b = (await _appeal(client, headers, body="b1")).json()["ticket"]["id"]
+    comms.post(a, user_id, "a2")
+    comms.post(b, user_id, "b2")
+
+    expected = ["b2", "a2", "b1", "h2", "a1", "h1"]
+    for limit in (1, 2, 4, 100):
+        pages = await _feed_pages(client, headers, limit)
+        flat = [body for page in pages for body in page]
+        assert flat == expected, (limit, pages)
+        assert all(len(page) <= limit for page in pages)
+
+
+@pytest.mark.asyncio
+async def test_the_feed_shows_nobody_elses_messages(
+    client: AsyncClient, comms: FakeComms
+) -> None:
+    mine, _ = await _person(client)
+    theirs, _ = await _person(client)
+    await _appeal(client, theirs, body="their secret")
+    await _appeal(client, mine, body="my question")
+    pages = await _feed_pages(client, mine, 20)
+    assert pages == [["my question"]]
+
+
+@pytest.mark.asyncio
+async def test_an_empty_conversation_is_an_empty_page(
+    client: AsyncClient, comms: FakeComms
+) -> None:
+    headers, _ = await _person(client)
+    resp = await client.get(f"{_BASE}/messages", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json() == {"items": [], "next_cursor": None}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cursor", ["garbage", "e30", "eyJhIjoxfQ"])
+async def test_a_malformed_cursor_is_a_400(
+    client: AsyncClient, comms: FakeComms, cursor: str
+) -> None:
+    headers, _ = await _person(client)
+    await _appeal(client, headers)
+    resp = await client.get(
+        f"{_BASE}/messages", params={"cursor": cursor}, headers=headers
+    )
+    assert resp.status_code == 400, resp.text
+
+
+# ---------------------------------------------------------------------------
+# 8. Read and unread
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unread_is_summed_and_read_clears_every_thread(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    staff = uuid4()
+    history = await _history(db_session, comms, user_id)
+    a = (await _appeal(client, headers)).json()["ticket"]["id"]
+    comms.post(history, staff, "old reply")
+    comms.post(a, staff, "reply 1")
+    comms.post(a, staff, "reply 2")
+
+    resp = await client.get(f"{_BASE}/unread", headers=headers)
+    assert resp.json() == {"unread": 3}
+    resp = await client.post(f"{_BASE}/read", headers=headers)
+    assert resp.json() == {"unread": 0}
+    assert len(comms.calls_to("POST", "/read")) == 2  # one per thread
+    assert (await client.get(f"{_BASE}/unread", headers=headers)).json() == {
+        "unread": 0
     }
-    assert len({json_module.dumps(c["json"]) for c in creates}) == 1
+
+
+@pytest.mark.asyncio
+async def test_no_conversation_is_zero_without_asking_comms(
+    client: AsyncClient, comms: FakeComms
+) -> None:
+    headers, _ = await _person(client)
+    resp = await client.get(f"{_BASE}/unread", headers=headers)
+    assert resp.json() == {"unread": 0}
+    assert comms.calls_to("POST", "/unread-counts") == []
+
+
+# ---------------------------------------------------------------------------
+# 3. comms failing is an answer
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_comms_down_is_a_502_and_no_ticket(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    comms.down = True
+    for resp in (
+        await _appeal(client, headers),
+        await _write(client, headers),
+    ):
+        assert resp.status_code == 502, resp.text
+    assert await _tickets(db_session, user_id) == []
+
+
+@pytest.mark.asyncio
+async def test_a_timeout_is_an_answer(client: AsyncClient, comms: FakeComms) -> None:
+    headers, _ = await _person(client)
+    await _appeal(client, headers)
+    comms.fail[("POST", "/messages")] = CommsTimeoutError()
+    resp = await _write(client, headers)
+    assert resp.status_code == 504, resp.text
+
+
+@pytest.mark.asyncio
+async def test_a_person_comms_does_not_know_yet_is_not_ready(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    headers, user_id = await _person(client)
+    comms.recipients.discard(str(user_id))
+    resp = await _appeal(client, headers)
+    assert resp.status_code == 502
+    assert resp.json()["error"] == "comms_recipient_pending"
+    assert await _tickets(db_session, user_id) == []
+
+
+@pytest.mark.asyncio
+async def test_a_malformed_thread_answer_is_a_refusal_not_a_crash(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    comms: FakeComms,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    headers, user_id = await _person(client)
+
+    async def _no_id(*args: Any, **kwargs: Any) -> Any:
+        if args[:2] == ("POST", "/api/v1/threads"):
+            return {"status": "open"}
+        return await comms(*args, **kwargs)
+
+    monkeypatch.setattr("app.modules.support.service.comms_request", _no_id)
+    resp = await _appeal(client, headers)
+    assert resp.status_code == 502, resp.text
+    assert await _tickets(db_session, user_id) == []
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_comms_models_is_forwarded_in_its_class(
+    client: AsyncClient, comms: FakeComms
+) -> None:
+    headers, _ = await _person(client)
+    await _appeal(client, headers)
+    comms.fail[("POST", "/messages")] = CommsRejectedError(
+        status_code=422, error_class="validation"
+    )
+    resp = await _write(client, headers)
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
+async def test_two_people_never_share_a_ticket(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    """The same client key from two people is two tickets: the key the
+    product sends comms carries the person."""
+    one, one_id = await _person(client)
+    two, two_id = await _person(client)
+    key = str(uuid4())
+    assert (await _appeal(client, one, key=key)).status_code == 200
+    assert (await _appeal(client, two, key=key)).status_code == 200
+    assert len(await _tickets(db_session, one_id)) == 1
+    assert len(await _tickets(db_session, two_id)) == 1
+    keys = {c["key"] for c in comms.calls_to("POST", "/api/v1/threads")}
+    assert len(keys) == 2
+    count = await db_session.execute(select(func.count()).select_from(SupportTicket))
+    assert count.scalar_one() >= 2

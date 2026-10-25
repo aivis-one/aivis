@@ -73,6 +73,7 @@ import ActiveSessionsSection from '@/components/shared/ActiveSessionsSection.vue
 import NotificationPreferencesSection from '@/components/shared/NotificationPreferencesSection.vue'
 import DeactivateAccountSection from '@/components/shared/DeactivateAccountSection.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSupportStore } from '@/stores/support'
 import { useCompanyProfileStore } from '@/stores/companyProfile'
 import { useCompanyDashboardStore } from '@/stores/companyDashboard'
 import { safeNavigate } from '@/composables/safeNavigate'
@@ -552,8 +553,14 @@ async function loadProfile(): Promise<void> {
   if (dashboardStore.summary === null) void dashboardStore.refresh()
 }
 
+// The Support tile shows what is unread in the project's conversation with
+// support (H40 item 10); no badge until the count is known.
+const support = useSupportStore()
+const supportUnread = computed<number>(() => support.unread ?? 0)
+
 onMounted(() => {
   void loadProfile()
+  void support.fetchUnread()
 })
 </script>
 
@@ -725,6 +732,12 @@ onMounted(() => {
           <span class="ds-navtile__title">{{ t('comp.settings.support.title') }}</span>
           <span class="ds-navtile__desc">{{ t('comp.settings.support.cta') }}</span>
         </span>
+        <CBadge
+          v-if="supportUnread > 0"
+          variant="primary"
+          :text="String(supportUnread)"
+          :aria-label="t('inv.support.unread', { n: supportUnread })"
+        />
         <ChevronRight class="ds-navtile__go" size="sm" />
       </RouterLink>
       <!-- This is the company's OWN, SEPARATE FAQ (owner ruling) -- see CompanyFaqView.vue -->

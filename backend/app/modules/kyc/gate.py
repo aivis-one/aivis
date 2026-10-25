@@ -177,13 +177,17 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         # kyc_required), so a verification revoked in between still stops it.
         ("POST", "/api/v1/purchases/{purchase_id}/accept-gift"),
         # -- Support ---------------------------------------------------
-        ("POST", "/api/v1/support/threads"),
-        ("POST", "/api/v1/support/threads/messages"),
-        ("POST", "/api/v1/support/threads/{thread_id}/read"),
+        # An appeal through the form and a message in the conversation
+        # (H40). Neither moves money; a person who cannot pass KYC is the
+        # first who needs to write to support.
+        ("POST", "/api/v1/support/tickets"),
+        ("POST", "/api/v1/support/messages"),
+        # Read up to now: comms' read pointers, nothing local.
+        ("POST", "/api/v1/support/read"),
         # Reading the conversation WRITES since H39: a reply nobody asked a
         # translation for yet is queued by the read (support/translation.py,
         # the catch-up). It moves no money; open like the rest of support.
-        ("GET", "/api/v1/support/threads/{thread_id}/messages"),
+        ("GET", "/api/v1/support/messages"),
     }
 )
 

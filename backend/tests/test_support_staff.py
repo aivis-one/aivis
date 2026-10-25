@@ -1,961 +1,708 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support channel, operator side (T-66)
+# AIVIS.ONE Backend -- Support, the operator's side (T-66, H40 tickets)
 # =============================================================================
 #
-# The stake here is wider than on the user side. comms does not verify
-# `operator` and cannot verify `is_supervisor` -- it has no role registry
-# -- and a true `is_supervisor` makes it skip its scope filter and return
-# EVERY thread of EVERY user. So the properties pinned here are:
+# Rewritten for H40. The T-66 suite pinned comms' own queue, scoped by an
+# `is_supervisor` the product stamped; both are gone (owner ruling): the
+# list is the product's table and EVERY operator sees EVERY ticket. What
+# T-66 pinned and still holds is kept on the new routes:
 #
-#   1. only an active staff member with a profile gets through at all;
-#   2. `operator` and `is_supervisor` reaching comms are what the session
-#      and the staff profile say, and nothing a request can carry;
-#   3. claiming is idempotent for its owner and a conflict for anyone
-#      else, and a claimed thread leaves everybody else's pool;
-#   4. replying without claiming is refused in a way that says what to do
-#      -- not as "service unavailable";
-#   5. status moves forward only, and comms being down is an answer.
+#   1. only an active staff member gets through at all;
+#   2. no actor name is readable from a request; `operator` reaching comms
+#      is the session's;
+#   3. taking is idempotent for its holder and a conflict for anyone else;
+#   4. replying without taking is refused in a way that says what to do;
+#   5. comms being down is an answer.
 #
-# THE FAKE MODELS THE OPERATOR SURFACE, and it is a second fake rather
-# than an import from test_support_threads.py on purpose: that one models
-# the CLIENT surface (create-or-get dedup, unread batches), this one
-# models visibility, the claim race guard and the D5 status matrix.
-# Sharing one fake would mean a change made for one side could quietly
-# weaken the other side's suite -- the sameness would be in the code, not
-# in what is being asserted.
+# What H40 adds: the list's filters and cursor, the card, the handover
+# (assign / release) with its signals, the four closing statuses with the
+# compare-and-set, the way back to work (spam only within its retention),
+# the person's history read-only, the signal on every message of a person.
 #
-# The rules the fake reproduces are read from comms' bodies, not guessed:
-#   visible(me)        = assignee == me OR (section AND unassigned)
-#                        -- messaging/operators.list_visible_threads
-#   claim              = "is it yours now": claimed=true for the operator
-#                        the thread belongs to (a repeat by its holder
-#                        included), 409 `conflict` for anyone else --
-#                        comms 3.0.0, INTEGRATION.md section 5
-#   can_post_message   = client or assignee, no supervisor bypass
-#   status matrix      = open -> resolved|closed, resolved -> closed,
-#                        X -> X no-op, everything else 422 -- status.py
-#
-# REGISTER FIRST, ARM FAILURES SECOND -- same reason as the user-side
-# suite: registration calls comms, and a failed call commits an outbox
-# row that test_comms_relay.py would find.
+# comms is the stateful fake of tests/support_fake.py; the operators are
+# put on its roster by hand (create_staff_user writes the profile directly,
+# not through the membership emitter).
 # =============================================================================
 
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
-import httpx
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import comms as comms_module
-from app.core.config import settings
-from app.modules.support import service as support_service
-from app.modules.support.models import SupportThread
-from tests.helpers import (
-    auth_headers,
-    create_admin_user,
-    create_staff_user,
-    register_user,
-)
+from app.core.events.models import OutboxEvent
+from app.modules.staff.models import StaffProfile
+from app.modules.support.models import SupportThread, SupportTicket
+from tests.helpers import auth_headers, create_staff_user, register_user
+from tests.support_fake import FakeComms, install
 
-_URL = "http://comms.test"
-_TOKEN = "t66-service-token"
-_SECTION_ID = "22222222-2222-4222-8222-222222222222"
-
-_STAFF_BASE = "/api/v1/staff/support/threads"
-
-# The manual transitions comms permits, copied from status.py so a
-# divergence shows up here rather than in production.
-# comms 3.11's manual status matrix (its INTEGRATION.md section 14): the
-# return to `open` exists from both other states. This product never asks
-# for it (SetStatusIn refuses `open` before comms is called), so the fake
-# answers it only to stay a faithful copy of the service it stands for.
-_ALLOWED: dict[str, set[str]] = {
-    "open": {"resolved", "closed"},
-    "resolved": {"open", "closed"},
-    "closed": {"open"},
-}
-
-
-# ---------------------------------------------------------------------------
-# The fake comms
-# ---------------------------------------------------------------------------
-
-
-def _reply_headers(token: str) -> dict[str, str]:
-    """One press of "reply": the session plus a fresh Idempotency-Key."""
-    return {**auth_headers(token), "Idempotency-Key": str(uuid4())}
-
-
-def _refusal(status: int, error_class: str, message: str) -> "_FakeResponse":
-    """comms 3.0.0's one refusal body; the product branches on the class."""
-    return _FakeResponse(
-        status,
-        {"error": {"class": error_class, "message": message, "fields": []}},
-    )
-
-
-class _FakeResponse:
-    def __init__(self, status_code: int, payload: Any = None) -> None:
-        self.status_code = status_code
-        self._payload = payload
-        self.text = str(payload)
-
-    def json(self) -> Any:
-        return self._payload
-
-
-class _FakeComms:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.threads: dict[str, dict[str, Any]] = {}
-        self.unread: dict[str, int] = {}
-        # thread id -> messages, newest first (as comms orders them).
-        self.messages: dict[str, list[dict[str, Any]]] = {}
-        self.fail_with: Any = None
-
-    # -- wiring ---------------------------------------------------------
-    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fake = self
-
-        class _FakeClient:
-            def __init__(self, **kwargs: Any) -> None:
-                self.kwargs = kwargs
-
-            async def __aenter__(self) -> "_FakeClient":
-                return self
-
-            async def __aexit__(self, *exc_info: Any) -> bool:
-                return False
-
-            async def request(
-                self,
-                method: str,
-                url: str,
-                params: dict | None = None,
-                json: dict | None = None,
-                headers: dict | None = None,
-            ) -> _FakeResponse:
-                return fake.handle(method, url, params, json, headers)
-
-        monkeypatch.setattr(comms_module.httpx, "AsyncClient", _FakeClient)
-
-    # -- state ----------------------------------------------------------
-    def add_thread(
-        self,
-        *,
-        client_id: UUID,
-        assignee: UUID | None = None,
-        status: str = "open",
-    ) -> str:
-        thread_id = str(uuid4())
-        self.threads[thread_id] = {
-            "id": thread_id,
-            "client": str(client_id),
-            "operator_kind": "section",
-            "operator_value": _SECTION_ID,
-            "kind": "dm",
-            "status": status,
-            "assignee": str(assignee) if assignee else None,
-        }
-        return thread_id
-
-    # -- routing --------------------------------------------------------
-    def handle(
-        self,
-        method: str,
-        url: str,
-        params: dict | None,
-        json: dict | None,
-        headers: dict | None = None,
-    ) -> _FakeResponse:
-        path = url[len(_URL) :]
-        self.calls.append(
-            {"method": method, "path": path, "params": params, "json": json}
-        )
-
-        if path.startswith("/api/v1/recipients/"):
-            return _FakeResponse(200, {})
-
-        if isinstance(self.fail_with, Exception):
-            raise self.fail_with
-
-        if path == "/api/v1/sections":
-            return _FakeResponse(200, {"id": _SECTION_ID})
-
-        if path == "/api/v1/threads" and method == "GET":
-            return self._list(params or {})
-
-        parts = path.strip("/").split("/")
-        # /api/v1/threads/{id}/{verb}
-        if len(parts) == 5 and parts[2] == "threads":
-            thread = self.threads.get(parts[3])
-            if thread is None:
-                return _refusal(404, "not_found", "thread does not exist")
-            if parts[4] == "claim":
-                return self._claim(thread, json or {})
-            # METHOD-AWARE, since T-66-fix. Until the operator side had
-            # a feed route this branch only ever saw POST, so it did not
-            # look at the method -- and a GET would have been answered
-            # with a MESSAGE object instead of a page of them. A test
-            # written against that fake would have gone green while
-            # asserting a shape the service never returns.
-            if parts[4] == "messages" and method == "POST":
-                return self._post_message(thread, json or {}, headers)
-            if parts[4] == "messages" and method == "GET":
-                return self._feed(thread, params or {})
-            if parts[4] == "status":
-                return self._status(thread, json or {})
-
-        raise AssertionError(f"fake comms has no route for {method} {path}")
-
-    def _list(self, params: dict[str, Any]) -> _FakeResponse:
-        operator = str(params.get("operator"))
-        supervisor = bool(params.get("is_supervisor"))
-        rows = []
-        for thread in self.threads.values():
-            visible = supervisor or (
-                thread["assignee"] == operator
-                or (
-                    thread["operator_kind"] == "section"
-                    and thread["assignee"] is None
-                )
-            )
-            if not visible:
-                continue
-            row = dict(thread)
-            # The unread key rides only on threads the operator TAKES
-            # PART IN. An unclaimed pool thread belongs to nobody, so it
-            # never gets one -- absence, never a zero.
-            if params.get("with_unread") and thread["assignee"] == operator:
-                row["unread"] = self.unread.get(thread["id"], 0)
-            rows.append(row)
-        return _FakeResponse(200, {"items": rows, "next_cursor": None})
-
-    def _claim(
-        self, thread: dict[str, Any], body: dict[str, Any]
-    ) -> _FakeResponse:
-        # comms 3.0.0 answers "is it yours now": claimed=true for the
-        # operator the thread belongs to -- a repeat by its holder
-        # included -- and a 409 conflict for anyone else.
-        operator = str(body.get("operator"))
-        if thread["assignee"] is None:
-            thread["assignee"] = operator
-        if thread["assignee"] == operator:
-            return _FakeResponse(200, {"claimed": True, "thread": dict(thread)})
-        return _refusal(409, "conflict", "thread claimed by another operator")
-
-    def _feed(
-        self, thread: dict[str, Any], params: dict[str, Any]
-    ) -> _FakeResponse:
-        """The thread's messages, newest first, as comms serves them."""
-        messages = self.messages.get(thread["id"], [])
-        limit = int(params.get("limit") or 20)
-        return _FakeResponse(
-            200,
-            {"items": messages[:limit], "next_cursor": None},
-        )
-
-    def _post_message(
-        self,
-        thread: dict[str, Any],
-        body: dict[str, Any],
-        headers: dict[str, Any] | None,
-    ) -> _FakeResponse:
-        sender = str(body.get("sender"))
-        if not (headers or {}).get("Idempotency-Key"):
-            return _refusal(
-                422, "validation", "the Idempotency-Key header is required"
-            )
-        if sender not in (thread["client"], thread["assignee"]):
-            return _refusal(
-                403,
-                "forbidden",
-                "sender is neither a participant nor the serving operator "
-                "of this thread",
-            )
-        message = {
-            "id": str(uuid4()),
-            "thread_id": thread["id"],
-            "sender": sender,
-            "body": body.get("body"),
-        }
-        # Kept so the feed route can serve it back: a fake that accepted
-        # messages and then showed none would make "the operator reads
-        # the conversation" untestable.
-        self.messages.setdefault(thread["id"], []).insert(0, message)
-        return _FakeResponse(200, message)
-
-    def _status(
-        self, thread: dict[str, Any], body: dict[str, Any]
-    ) -> _FakeResponse:
-        target = str(body.get("status"))
-        current = thread["status"]
-        if target == current:
-            return _FakeResponse(200, dict(thread))
-        if target not in _ALLOWED[current]:
-            return _refusal(
-                422, "validation", f"invalid status transition {current} -> {target}"
-            )
-        thread["status"] = target
-        return _FakeResponse(200, dict(thread))
-
-    # -- reading the log ------------------------------------------------
-    def params_of(self, path: str) -> list[dict[str, Any]]:
-        return [
-            call["params"]
-            for call in self.calls
-            if call["path"] == path and call["params"] is not None
-        ]
-
-    def bodies_of(self, suffix: str) -> list[dict[str, Any]]:
-        return [
-            call["json"]
-            for call in self.calls
-            if call["path"].endswith(suffix) and call["json"] is not None
-        ]
+_PERSON = "/api/v1/support"
+_STAFF = "/api/v1/staff/support"
 
 
 @pytest.fixture
-def comms(monkeypatch: pytest.MonkeyPatch) -> _FakeComms:
-    monkeypatch.setattr(settings, "comms_api_url", _URL)
-    monkeypatch.setattr(settings, "comms_service_token", _TOKEN)
-    monkeypatch.setattr(support_service, "_support_section_id", None)
-    fake = _FakeComms()
-    fake.install(monkeypatch)
-    return fake
+def comms(monkeypatch: pytest.MonkeyPatch) -> FakeComms:
+    return install(monkeypatch)
 
 
-# ---------------------------------------------------------------------------
-# Fixtures for people and threads
-# ---------------------------------------------------------------------------
+class Op:
+    def __init__(self, user: Any, token: str) -> None:
+        self.id = user.id
+        self.headers = auth_headers(token)
 
 
-async def _a_client_user(client: AsyncClient) -> UUID:
-    """A registered ordinary user -- the person who asks for support."""
+async def _operator(client: AsyncClient, session: AsyncSession, comms: FakeComms) -> Op:
+    user, token = await create_staff_user(client, session)
+    comms.serve(user.id)
+    return Op(user, token)
+
+
+async def _person(client: AsyncClient) -> tuple[dict[str, str], UUID]:
     body = await register_user(client)
-    return UUID(body["user"]["id"])
+    return auth_headers(body["session_token"]), UUID(body["user"]["id"])
 
 
-async def _a_request(
+def _key(headers: dict[str, str]) -> dict[str, str]:
+    return {**headers, "Idempotency-Key": str(uuid4())}
+
+
+async def _ticket(
     client: AsyncClient,
-    session: AsyncSession,
-    comms: _FakeComms,
     *,
-    assignee: UUID | None = None,
-    status: str = "open",
-) -> str:
-    """A support conversation that exists on BOTH sides.
-
-    A FRESH client user every time, because support_threads holds one row
-    per user (uq_support_threads_user) -- the product's own rule that a
-    person has one eternal conversation, not a pile of tickets. A fixture
-    that gave one user three threads would be building a state this
-    database refuses, which is exactly what the first run of this suite
-    found.
-
-    The pointer row is written directly rather than through the user-side
-    endpoint: what is under test is the operator side, and driving the
-    other half of the product to set up a fixture would make these tests
-    fail for reasons that have nothing to do with them.
-    """
-    client_id = await _a_client_user(client)
-    thread_id = comms.add_thread(
-        client_id=client_id, assignee=assignee, status=status
+    topic: str = "payments",
+    body: str = "help",
+    person: tuple[dict[str, str], UUID] | None = None,
+) -> tuple[str, dict[str, str], UUID]:
+    """A ticket opened through the form: (its id, the person's headers, id)."""
+    headers, user_id = person or await _person(client)
+    resp = await client.post(
+        f"{_PERSON}/tickets",
+        json={"topic": topic, "body": body},
+        headers=_key(headers),
     )
-    session.add(
-        SupportThread(user_id=client_id, comms_thread_id=UUID(thread_id))
+    assert resp.status_code == 200, resp.text
+    return resp.json()["ticket"]["id"], headers, user_id
+
+
+async def _row(session: AsyncSession, thread_id: str) -> SupportTicket:
+    session.expire_all()
+    return (
+        await session.execute(
+            select(SupportTicket)
+            .join(SupportThread, SupportThread.id == SupportTicket.support_thread_id)
+            .where(SupportThread.comms_thread_id == UUID(thread_id))
+        )
+    ).scalar_one()
+
+
+async def _set(session: AsyncSession, thread_id: str, **values: Any) -> None:
+    row = await _row(session, thread_id)
+    await session.execute(
+        update(SupportTicket)
+        .where(SupportTicket.support_thread_id == row.support_thread_id)
+        .values(**values)
     )
     await session.commit()
-    return thread_id
+
+
+async def _signals(session: AsyncSession, thread_id: str) -> list[dict[str, Any]]:
+    session.expire_all()
+    rows = (
+        await session.execute(
+            select(OutboxEvent)
+            .where(
+                OutboxEvent.payload["type"].astext.like("support.%"),
+                OutboxEvent.payload["action_data"]["params"]["id"].astext == thread_id,
+            )
+            .order_by(OutboxEvent.id)
+        )
+    ).scalars()
+    return [r.payload for r in rows]
+
+
+async def _post(client: AsyncClient, op: Op, path: str, body: Any = None) -> Any:
+    return await client.post(f"{_STAFF}{path}", json=body, headers=op.headers)
+
+
+@pytest.fixture(autouse=True)
+async def _no_signal_residue(db_session: AsyncSession) -> Any:
+    yield
+    await db_session.execute(
+        delete(OutboxEvent).where(
+            OutboxEvent.payload["type"].astext.like("support.%")
+            | OutboxEvent.payload["idempotency_key"].astext.like(
+                "aivis:llm-support-tr:%"
+            )
+        )
+    )
+    await db_session.commit()
 
 
 # ---------------------------------------------------------------------------
-# 1. Who is let in
+# 1-2. Who is let in, and who reaches comms
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_an_ordinary_user_is_not_an_operator(
-    client: AsyncClient, comms: _FakeComms
+    client: AsyncClient, comms: FakeComms
 ) -> None:
-    """A support queue is not a place an investor can look into."""
-    body = await register_user(client)
-
-    response = await client.get(
-        _STAFF_BASE, headers=auth_headers(body["session_token"])
-    )
-
-    assert response.status_code == 403, response.text
-    assert comms.calls == [] or all(
-        call["path"].startswith("/api/v1/recipients/")
-        for call in comms.calls
-    ), "a refused caller must not reach comms at all"
+    headers, _ = await _person(client)
+    for path in ("/tickets", "/operators"):
+        resp = await client.get(f"{_STAFF}{path}", headers=headers)
+        assert resp.status_code == 403, resp.text
+    assert comms.calls == []
 
 
 @pytest.mark.asyncio
 async def test_a_deactivated_staff_profile_is_refused(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """Deactivation has to mean something the same day it happens."""
-    from sqlalchemy import select
-
-    from app.modules.staff.models import StaffProfile
-
-    user, token = await create_staff_user(client, db_session)
+    op = await _operator(client, db_session, comms)
     profile = (
         await db_session.execute(
-            select(StaffProfile).where(StaffProfile.user_id == user.id)
+            select(StaffProfile).where(StaffProfile.user_id == op.id)
         )
     ).scalar_one()
     profile.is_active = False
     await db_session.commit()
+    try:
+        resp = await client.get(f"{_STAFF}/tickets", headers=op.headers)
+        assert resp.status_code == 403, resp.text
+    finally:
+        profile.is_active = True
+        await db_session.commit()
 
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
 
-    assert response.status_code == 403, response.text
+@pytest.mark.asyncio
+async def test_the_operator_side_needs_a_session(
+    client: AsyncClient, comms: FakeComms
+) -> None:
+    assert (await client.get(f"{_STAFF}/tickets")).status_code == 401
 
-    # Restored so the shared run is not left with a broken staff member.
-    profile.is_active = True
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field", ["operator", "sender", "is_supervisor", "participant"]
+)
+async def test_an_actor_name_is_refused_in_a_query_and_in_a_body(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms, field: str
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    resp = await client.get(f"{_STAFF}/tickets?{field}=x", headers=op.headers)
+    assert resp.status_code == 400, resp.text
+    resp = await _post(client, op, f"/tickets/{tid}/claim", {field: str(uuid4())})
+    assert resp.status_code == 422, resp.text
+    assert comms.calls_to("POST", "/claim") == []
+
+
+@pytest.mark.asyncio
+async def test_operator_reaching_comms_is_the_session(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    assert (await _post(client, op, f"/tickets/{tid}/claim")).status_code == 200
+    resp = await client.post(
+        f"{_STAFF}/threads/{tid}/messages",
+        json={"body": "on it"},
+        headers=_key(op.headers),
+    )
+    assert resp.status_code == 200, resp.text
+    assert comms.calls_to("POST", "/claim")[0]["json"] == {"operator": str(op.id)}
+    sent = comms.calls_to("POST", f"{tid}/messages")[-1]
+    assert sent["json"]["sender"] == str(op.id)
+
+
+# ---------------------------------------------------------------------------
+# The list: every ticket, its filters, its cursor
+# ---------------------------------------------------------------------------
+
+
+async def _ids(client: AsyncClient, op: Op, **params: Any) -> list[str]:
+    out: list[str] = []
+    cursor = None
+    while True:
+        query = {k: v for k, v in params.items() if v is not None}
+        if cursor:
+            query["cursor"] = cursor
+        resp = await client.get(f"{_STAFF}/tickets", params=query, headers=op.headers)
+        assert resp.status_code == 200, resp.text
+        page = resp.json()
+        out += [row["id"] for row in page["items"]]
+        cursor = page["next_cursor"]
+        if cursor is None:
+            return out
+
+
+@pytest.mark.asyncio
+async def test_every_operator_sees_every_ticket(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    taker = await _operator(client, db_session, comms)
+    other = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    assert (await _post(client, taker, f"/tickets/{tid}/claim")).status_code == 200
+    assert tid in await _ids(client, other, limit=100)
+    card = await client.get(f"{_STAFF}/tickets/{tid}", headers=other.headers)
+    assert card.json()["claimed_by"]["user_id"] == str(taker.id)
+
+
+@pytest.mark.asyncio
+async def test_the_list_is_newest_first_and_the_cursor_takes_each_once(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    person = await _person(client)
+    made = [(await _ticket(client, person=person))[0] for _ in range(5)]
+    for limit in (1, 2, 100):
+        listed = [i for i in await _ids(client, op, limit=limit) if i in made]
+        assert listed == list(reversed(made)), limit
+
+
+@pytest.mark.asyncio
+async def test_spam_is_its_own_tab(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    spam, _, _ = await _ticket(client)
+    kept, _, _ = await _ticket(client)
+    await _set(db_session, spam, status="spam")
+    every = await _ids(client, op, limit=100)
+    assert kept in every
+    assert spam not in every
+    tab = await _ids(client, op, status="spam", limit=100)
+    assert spam in tab
+    assert kept not in tab
+
+
+@pytest.mark.asyncio
+async def test_categories_repeat_as_or(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    kyc, _, _ = await _ticket(client, topic="kyc")
+    pay, _, _ = await _ticket(client, topic="payments")
+    tech, _, _ = await _ticket(client, topic="technical")
+    resp = await client.get(
+        f"{_STAFF}/tickets",
+        params=[
+            ("category", "verification"),
+            ("category", "tech"),
+            ("category", "tech"),
+            ("limit", 100),
+        ],
+        headers=op.headers,
+    )
+    ids = {row["id"] for row in resp.json()["items"]}
+    assert {kyc, tech} <= ids
+    assert pay not in ids
+    resp = await client.get(f"{_STAFF}/tickets?category=lottery", headers=op.headers)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_a_day_is_the_operators_with_its_zone(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    created = (await _row(db_session, tid)).created_at
+    # The edges are instants with their zone: written in UTC+3 they are
+    # the same instants as in UTC.
+    plus3 = timezone(timedelta(hours=3))
+    edge_from = (created - timedelta(minutes=1)).astimezone(plus3)
+    edge_to = (created + timedelta(minutes=1)).astimezone(plus3)
+    inside = await _ids(
+        client,
+        op,
+        created_from=edge_from.isoformat(),
+        created_to=edge_to.isoformat(),
+        limit=100,
+    )
+    assert tid in inside
+    after = await _ids(client, op, created_from=edge_to.isoformat(), limit=100)
+    assert tid not in after
+    naive = datetime(2026, 10, 25, 0, 0).isoformat()
+    resp = await client.get(
+        f"{_STAFF}/tickets", params={"created_from": naive}, headers=op.headers
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "support_date_without_zone"
+
+
+@pytest.mark.asyncio
+async def test_a_card_is_a_tickets_and_nothing_elses(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, _, user_id = await _ticket(client, topic="kyc")
+    card = await client.get(f"{_STAFF}/tickets/{tid}", headers=op.headers)
+    assert card.status_code == 200
+    assert card.json()["opener"]["user_id"] == str(user_id)
+    assert (card.json()["topic"], card.json()["category"]) == ("kyc", "verification")
+    assert card.json()["history_thread_id"] is None
+    history = comms.add_thread(client=user_id)
+    db_session.add(SupportThread(user_id=user_id, comms_thread_id=UUID(history)))
     await db_session.commit()
-
-
-@pytest.mark.asyncio
-async def test_the_queue_needs_a_session(
-    client: AsyncClient, comms: _FakeComms
-) -> None:
-    response = await client.get(_STAFF_BASE)
-    assert response.status_code == 401, response.text
+    for other in (history, str(uuid4())):
+        resp = await client.get(f"{_STAFF}/tickets/{other}", headers=op.headers)
+        assert resp.status_code == 404
+    # The pair: the card now names the person's history.
+    card = await client.get(f"{_STAFF}/tickets/{tid}", headers=op.headers)
+    assert card.json()["history_thread_id"] == history
 
 
 # ---------------------------------------------------------------------------
-# 2. The stamp: what actually reaches comms
+# 3. Taking and handing over
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_a_plain_operator_is_stamped_without_supervision(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_taking_is_the_holders_and_a_conflict_for_anyone_else(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """The positive half of the guarantee: not merely "no override
-    accepted", but the values comms received are the session's and the
-    profile's."""
-    user, token = await create_staff_user(client, db_session)
-
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
-
-    assert response.status_code == 200, response.text
-    params = comms.params_of("/api/v1/threads")[0]
-    assert params["operator"] == str(user.id)
-    assert params["is_supervisor"] is False
+    me = await _operator(client, db_session, comms)
+    colleague = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    first = await _post(client, me, f"/tickets/{tid}/claim")
+    again = await _post(client, me, f"/tickets/{tid}/claim")
+    assert first.status_code == again.status_code == 200
+    assert again.json()["claimed_by"]["user_id"] == str(me.id)
+    resp = await _post(client, colleague, f"/tickets/{tid}/claim")
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "support_thread_already_claimed"
+    assert (await _row(db_session, tid)).claimed_by_user_id == me.id
 
 
 @pytest.mark.asyncio
-async def test_an_admin_is_stamped_as_supervisor(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_handing_over_tells_the_new_taker_and_returning_tells_everyone(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """Supervision is the product's existing admin mark -- every
-    permission true -- resolved from the profile, never from a request."""
-    user, token = await create_admin_user(client, db_session)
+    me = await _operator(client, db_session, comms)
+    colleague = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client, topic="kyc")
+    await _post(client, me, f"/tickets/{tid}/claim")
 
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
+    to_colleague = {"assignee": str(colleague.id)}
+    resp = await _post(client, me, f"/tickets/{tid}/assign", to_colleague)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["claimed_by"]["user_id"] == str(colleague.id)
+    assert comms.threads[tid]["assignee"] == str(colleague.id)
+    # The same operator again: nothing changes, nobody is told twice.
+    again = await _post(client, me, f"/tickets/{tid}/assign", to_colleague)
+    assert again.status_code == 200
 
-    assert response.status_code == 200, response.text
-    params = comms.params_of("/api/v1/threads")[0]
-    assert params["operator"] == str(user.id)
-    assert params["is_supervisor"] is True
+    resp = await _post(client, colleague, f"/tickets/{tid}/release")
+    assert resp.status_code == 200
+    assert resp.json()["claimed_by"] is None
+
+    handovers = [
+        s
+        for s in await _signals(db_session, tid)
+        if s["type"] != "support.message_received"
+    ]
+    assert [(s["type"], s["target_type"], s["target_value"]) for s in handovers] == [
+        ("support.ticket_assigned", "user", str(colleague.id)),
+        ("support.ticket_released", "group", "support_operators"),
+    ]
+    assigned = handovers[0]["action_data"]
+    assert assigned["action"] == "open_support_ticket"
+    assert assigned["params"] == {"id": tid}
+    assert assigned["topic_en"] == "Verification (KYC)"
+    assert assigned["actor_name"]
 
 
 @pytest.mark.asyncio
-async def test_supervision_cannot_be_forced_from_a_query(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_handing_over_to_a_non_operator_never_reaches_comms(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """The one that matters most: a true is_supervisor makes comms skip
-    its scope filter entirely."""
-    _user, token = await create_staff_user(client, db_session)
-
-    for query in ("is_supervisor=true", "operator=" + str(uuid4())):
-        response = await client.get(
-            f"{_STAFF_BASE}?{query}", headers=auth_headers(token)
+    me = await _operator(client, db_session, comms)
+    tid, _, person_id = await _ticket(client)
+    for target in (person_id, uuid4()):
+        resp = await _post(
+            client, me, f"/tickets/{tid}/assign", {"assignee": str(target)}
         )
-        assert response.status_code == 400, f"{query}: {response.text}"
-        assert query.split("=")[0] in response.json()["message"]
+        assert resp.status_code == 422, resp.text
+        assert resp.json()["error"] == "support_assignee_not_operator"
+    assert comms.calls_to("POST", "/assign") == []
+
+
+# ---------------------------------------------------------------------------
+# 4. Replying
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_actor_fields_in_an_operator_body_are_refused(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_replying_without_taking_says_what_to_do(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    _user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    resp = await client.post(
+        f"{_STAFF}/threads/{tid}/messages",
+        json={"body": "hi"},
+        headers=_key(op.headers),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "support_thread_not_claimed"
 
-    for path, payload in (
-        (f"{_STAFF_BASE}/{thread_id}/claim", {"operator": str(uuid4())}),
-        (
-            f"{_STAFF_BASE}/{thread_id}/messages",
-            {"body": "hi", "sender": str(uuid4())},
-        ),
-        (
-            f"{_STAFF_BASE}/{thread_id}/status",
-            {"status": "closed", "is_supervisor": True},
-        ),
+
+@pytest.mark.asyncio
+async def test_the_history_reads_but_never_takes_a_reply(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    _, user_id = await _person(client)
+    history = comms.add_thread(client=user_id, assignee=op.id)
+    comms.post(history, user_id, "from before")
+    db_session.add(SupportThread(user_id=user_id, comms_thread_id=UUID(history)))
+    await db_session.commit()
+    feed = await client.get(f"{_STAFF}/threads/{history}/messages", headers=op.headers)
+    assert [m["body"] for m in feed.json()["items"]] == ["from before"]
+    resp = await client.post(
+        f"{_STAFF}/threads/{history}/messages",
+        json={"body": "x"},
+        headers=_key(op.headers),
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "support_history_read_only"
+    assert comms.calls_to("POST", f"{history}/messages") == []
+
+
+@pytest.mark.asyncio
+async def test_an_unknown_thread_never_reaches_comms(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    stranger = comms.add_thread(client=uuid4())  # in comms, not ours
+    for method, path in (
+        ("GET", f"/threads/{stranger}/messages"),
+        ("POST", f"/tickets/{stranger}/claim"),
+        ("POST", f"/tickets/{stranger}/reopen"),
     ):
-        # The reply route also requires Idempotency-Key; it is sent, so
-        # the 422 measured here is the actor field's and nothing else's.
-        response = await client.post(
-            path,
-            json=payload,
-            headers=(
-                _reply_headers(token)
-                if path.endswith("/messages")
-                else auth_headers(token)
-            ),
-        )
-        assert response.status_code == 422, f"{path}: {response.text}"
-        assert "Idempotency-Key" not in response.text
-
-
-# ---------------------------------------------------------------------------
-# 3. What each operator sees
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_a_plain_operator_sees_the_pool_and_their_own(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """comms' visibility rule, seen through the proxy: the unclaimed pool
-    plus what this operator claimed -- and nothing a colleague holds."""
-    mine, token = await create_staff_user(client, db_session)
-    colleague, _ = await create_staff_user(client, db_session)
-
-    unclaimed = await _a_request(client, db_session, comms)
-    ours = await _a_request(client, db_session, comms, assignee=mine.id)
-    theirs = await _a_request(client, db_session, comms, assignee=colleague.id)
-
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
-
-    seen = {row["id"] for row in response.json()["items"]}
-    assert unclaimed in seen
-    assert ours in seen
-    assert theirs not in seen
-
-
-@pytest.mark.asyncio
-async def test_a_supervisor_sees_every_thread(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    _admin, token = await create_admin_user(client, db_session)
-    colleague, _ = await create_staff_user(client, db_session)
-    theirs = await _a_request(client, db_session, comms, assignee=colleague.id)
-
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
-
-    assert theirs in {row["id"] for row in response.json()["items"]}
-
-
-@pytest.mark.asyncio
-async def test_a_pool_row_carries_no_unread_count(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Named cost of asking for counts at all: nobody takes part in an
-    unclaimed thread, so it never gets a number -- and an absent key must
-    not become a zero on the way through."""
-    mine, token = await create_staff_user(client, db_session)
-    unclaimed = await _a_request(client, db_session, comms)
-    ours = await _a_request(client, db_session, comms, assignee=mine.id)
-    comms.unread[ours] = 2
-
-    response = await client.get(_STAFF_BASE, headers=auth_headers(token))
-
-    rows = {row["id"]: row for row in response.json()["items"]}
-    assert "unread" not in rows[unclaimed]
-    assert rows[ours]["unread"] == 2
-
-
-# ---------------------------------------------------------------------------
-# 4. Claiming
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_claiming_an_unclaimed_request_takes_it(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/claim", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 200, response.text
-    assert response.json()["assignee"] == str(user.id)
-    assert comms.bodies_of("/claim")[0] == {"operator": str(user.id)}
-
-
-@pytest.mark.asyncio
-async def test_claiming_your_own_request_again_changes_nothing(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Idempotence, not failure: the button may be pressed twice."""
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/claim", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 200, response.text
-    assert response.json()["assignee"] == str(user.id)
-    assert comms.threads[thread_id]["assignee"] == str(user.id)
-
-
-@pytest.mark.asyncio
-async def test_claiming_what_a_colleague_took_is_a_conflict(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """409 with a reason -- not a 500, and not a success that quietly
-    left the thread with its original owner."""
-    _mine, token = await create_staff_user(client, db_session)
-    colleague, _ = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=colleague.id)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/claim", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 409, response.text
-    assert response.json()["error"] == "support_thread_already_claimed"
-    assert comms.threads[thread_id]["assignee"] == str(colleague.id)
-
-
-@pytest.mark.asyncio
-async def test_a_claimed_request_leaves_everybody_elses_pool(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """The consequence the queue depends on: two operators do not answer
-    the same person because both still see the request."""
-    _mine, mine_token = await create_staff_user(client, db_session)
-    _other, other_token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    before = await client.get(
-        _STAFF_BASE, headers=auth_headers(other_token)
-    )
-    assert thread_id in {r["id"] for r in before.json()["items"]}
-
-    await client.post(
-        f"{_STAFF_BASE}/{thread_id}/claim", headers=auth_headers(mine_token)
-    )
-
-    after = await client.get(_STAFF_BASE, headers=auth_headers(other_token))
-    assert thread_id not in {r["id"] for r in after.json()["items"]}
-
-
-@pytest.mark.asyncio
-async def test_an_unknown_thread_id_never_reaches_comms(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """The local pointer is the boundary: a guessed id is refused here,
-    before the service is asked anything about it."""
-    _user, token = await create_staff_user(client, db_session)
-    stranger_id = uuid4()
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{stranger_id}/claim", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 404, response.text
-    assert not any(str(stranger_id) in call["path"] for call in comms.calls)
-
-
-# ---------------------------------------------------------------------------
-# 5. Replying
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_a_reply_goes_out_as_the_session_operator(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/messages",
-        json={"body": "Looking into it now"},
-        headers=_reply_headers(token),
-    )
-
-    assert response.status_code == 200, response.text
-    assert comms.bodies_of("/messages")[0]["sender"] == str(user.id)
-
-
-@pytest.mark.asyncio
-async def test_replying_without_claiming_says_what_to_do(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """comms refuses the write (client or assignee only). That refusal
-    must arrive as "claim it first", not as "service unavailable" -- the
-    two call for opposite reactions from whoever is looking at it."""
-    _user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/messages",
-        json={"body": "let me help"},
-        headers=_reply_headers(token),
-    )
-
-    assert response.status_code == 409, response.text
-    assert response.json()["error"] == "support_thread_not_claimed"
-
-
-@pytest.mark.asyncio
-async def test_a_supervisor_still_has_to_claim_before_replying(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Reading everything is not writing everything: comms has no
-    supervisor bypass on can_post_message, and neither do we."""
-    _admin, token = await create_admin_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/messages",
-        json={"body": "stepping in"},
-        headers=_reply_headers(token),
-    )
-
-    assert response.status_code == 409, response.text
+        resp = await client.request(method, f"{_STAFF}{path}", headers=op.headers)
+        assert resp.status_code == 404, (path, resp.text)
+    assert [c for c in comms.calls if stranger in c["path"]] == []
 
 
 @pytest.mark.asyncio
 async def test_an_empty_reply_is_refused(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/messages",
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    await _post(client, op, f"/tickets/{tid}/claim")
+    resp = await client.post(
+        f"{_STAFF}/threads/{tid}/messages",
         json={"body": ""},
-        headers=_reply_headers(token),
+        headers=_key(op.headers),
     )
-
-    assert response.status_code == 422, response.text
+    assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------
-# 6. Status
+# Closing and returning to work
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_closing_moves_the_thread_and_repeating_it_is_a_no_op(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+@pytest.mark.parametrize("status", ["resolved", "rejected", "duplicate", "spam"])
+async def test_an_open_ticket_closes_four_ways_and_comms_hears_resolved(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms, status: str
 ) -> None:
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-
-    first = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/status",
-        json={"status": "closed"},
-        headers=auth_headers(token),
-    )
-    again = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/status",
-        json={"status": "closed"},
-        headers=auth_headers(token),
-    )
-
-    assert first.status_code == 200, first.text
-    assert again.status_code == 200, again.text
-    assert comms.threads[thread_id]["status"] == "closed"
-    assert comms.bodies_of("/status")[0]["operator"] == str(user.id)
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    seen = (await _row(db_session, tid)).version  # a number, not the row
+    resp = await _post(client, op, f"/tickets/{tid}/status", {"status": status})
+    assert resp.status_code == 200, resp.text
+    after = await _row(db_session, tid)
+    assert (after.status, after.version) == (status, seen + 1)
+    assert comms.threads[tid]["status"] == "resolved"  # never `closed`
+    again = await _post(client, op, f"/tickets/{tid}/status", {"status": "resolved"})
+    assert again.status_code == 409
+    assert again.json()["error"] == "support_ticket_not_open"
 
 
 @pytest.mark.asyncio
-async def test_a_backward_transition_is_refused_by_the_matrix(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+@pytest.mark.parametrize("status", ["open", "closed", "lost"])
+async def test_a_status_outside_the_four_is_refused_before_comms(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms, status: str
 ) -> None:
-    """closed -> resolved does not exist in comms' matrix: 422. (comms
-    3.11 has a manual return from closed to `open`; this product does not
-    offer it yet -- see the test below.)"""
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(
-        client, db_session, comms, assignee=user.id, status="closed"
-    )
-
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/status",
-        json={"status": "resolved"},
-        headers=auth_headers(token),
-    )
-
-    assert response.status_code == 422, response.text
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    resp = await _post(client, op, f"/tickets/{tid}/status", {"status": status})
+    assert resp.status_code == 422
+    assert comms.calls_to("POST", "/status") == []
 
 
 @pytest.mark.asyncio
-async def test_reopening_is_not_even_offered(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_a_change_made_meanwhile_wins_and_this_one_is_refused(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    comms: FakeComms,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Refused by our own schema, before comms is asked. comms 3.11 would
-    take it (a manual return to `open`), so the refusal is this product's:
-    staff reopening a request is the ticket work of H40, and until then a
-    thread comes back when the client writes into it."""
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(
-        client, db_session, comms, assignee=user.id, status="closed"
-    )
-    before = len(comms.calls)
+    """The person writes while the operator closes: the version the close
+    read is gone when it writes, so the close is refused and the ticket
+    stays as the message left it."""
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    row = await _row(db_session, tid)
 
-    response = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/status",
-        json={"status": "open"},
-        headers=auth_headers(token),
-    )
+    async def _meanwhile(*args: Any, **kwargs: Any) -> Any:
+        if args[1].endswith("/status"):
+            await db_session.execute(
+                update(SupportTicket)
+                .where(SupportTicket.support_thread_id == row.support_thread_id)
+                .values(version=SupportTicket.version + 1)
+            )
+            await db_session.commit()
+        return await comms(*args, **kwargs)
 
-    assert response.status_code == 422, response.text
-    assert len(comms.calls) == before, "the schema refuses it locally"
+    monkeypatch.setattr("app.modules.support.service.comms_request", _meanwhile)
+    resp = await _post(client, op, f"/tickets/{tid}/status", {"status": "resolved"})
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "support_ticket_changed"
+    assert (await _row(db_session, tid)).status == "open"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["resolved", "rejected", "duplicate", "spam"])
+async def test_back_to_work_from_every_closing(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms, status: str
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    await _post(client, op, f"/tickets/{tid}/status", {"status": status})
+    resp = await _post(client, op, f"/tickets/{tid}/reopen")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "open"
+    assert comms.threads[tid]["status"] == "open"
+    again = await _post(client, op, f"/tickets/{tid}/reopen")
+    assert again.status_code == 409
+    assert again.json()["error"] == "support_ticket_open"
+
+
+@pytest.mark.asyncio
+async def test_spam_past_its_retention_does_not_come_back(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    from app.core.config import settings
+
+    op = await _operator(client, db_session, comms)
+    old, _, _ = await _ticket(client)
+    young, _, _ = await _ticket(client)
+    retention = timedelta(days=settings.support_spam_retention_days)
+    now = datetime.now(UTC)
+    await _set(
+        db_session,
+        old,
+        status="spam",
+        status_changed_at=now - retention - timedelta(minutes=1),
+    )
+    await _set(
+        db_session,
+        young,
+        status="spam",
+        status_changed_at=now - retention + timedelta(minutes=5),
+    )
+    resp = await _post(client, op, f"/tickets/{old}/reopen")
+    assert resp.status_code == 409
+    assert resp.json()["error"] == "support_spam_expired"
+    assert comms.calls_to("POST", f"{old}/status") == []
+    assert (await _post(client, op, f"/tickets/{young}/reopen")).status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# The signal on a person's message
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_persons_message_signals_every_operator_until_one_takes_it(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    op = await _operator(client, db_session, comms)
+    tid, person, _ = await _ticket(client, topic="withdrawal")
+    await _post(client, op, f"/tickets/{tid}/claim")
+    resp = await client.post(
+        f"{_PERSON}/messages", json={"body": "and?"}, headers=_key(person)
+    )
+    assert resp.status_code == 200
+
+    received = [
+        s
+        for s in await _signals(db_session, tid)
+        if s["type"] == "support.message_received"
+    ]
+    assert [(s["target_type"], s["target_value"]) for s in received] == [
+        ("group", "support_operators"),
+        ("user", str(op.id)),
+    ]
+    first = received[0]
+    assert first["title"] == "New message to support"  # SUPPORT_LANGUAGE=en here
+    assert "Withdrawals" in first["body"]
+    data = first["action_data"]
+    assert (data["action"], data["params"]) == ("open_support_ticket", {"id": tid})
+    assert (data["topic_en"], data["topic_ru"]) == ("Withdrawals", "Вывод средств")
+    assert data["sender_name"]
+    # One message, one signal: keyed by the comms message.
+    keys = [s["idempotency_key"] for s in received]
+    assert len(set(keys)) == 2
+    assert all(k.startswith("aivis:support-message:") for k in keys)
+
+
+@pytest.mark.asyncio
+async def test_a_message_into_spam_signals_nobody(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
+) -> None:
+    tid, person, _ = await _ticket(client)
+    await _set(db_session, tid, status="spam")
+    before = len(await _signals(db_session, tid))
+    resp = await client.post(
+        f"{_PERSON}/messages", json={"body": "buy"}, headers=_key(person)
+    )
+    assert resp.status_code == 200
+    assert len(await _signals(db_session, tid)) == before
+    assert before == 1, "the pair: the appeal itself was signalled"
+
+
+# ---------------------------------------------------------------------------
+# 5. comms down, and the operator list
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_comms_being_down_is_an_answer_not_a_crash(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """Every operator verb degrades the same way: a status the caller can
-    act on, never a 500."""
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-    comms.fail_with = httpx.ConnectError("comms is down")
-
-    closing = await client.post(
-        f"{_STAFF_BASE}/{thread_id}/status",
-        json={"status": "closed"},
-        headers=auth_headers(token),
-    )
-    listing = await client.get(_STAFF_BASE, headers=auth_headers(token))
-
-    assert closing.status_code == 502, closing.text
-    assert listing.status_code == 502, listing.text
-    assert comms.threads[thread_id]["status"] == "open"
-
-
-# ---------------------------------------------------------------------------
-# 7. Reading the conversation (T-66-fix)
-# ---------------------------------------------------------------------------
-#
-# T-66 shipped four operator verbs and no way to read what was being
-# answered. The route added here is the missing half; what it must NOT
-# become is a second door into other people's conversations, so the
-# boundary is the same pointer table the write verbs use.
+    op = await _operator(client, db_session, comms)
+    tid, _, _ = await _ticket(client)
+    comms.down = True
+    for path, body in (
+        (f"/tickets/{tid}/claim", None),
+        (f"/tickets/{tid}/status", {"status": "resolved"}),
+        (f"/tickets/{tid}/release", None),
+    ):
+        resp = await _post(client, op, path, body)
+        assert resp.status_code == 502, (path, resp.text)
+    assert (await _row(db_session, tid)).status == "open"
+    # The list is our table: comms down changes nothing there.
+    assert tid in await _ids(client, op, limit=100)
 
 
 @pytest.mark.asyncio
-async def test_an_operator_reads_a_known_conversation(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
+async def test_the_operator_list_is_the_active_staff(
+    client: AsyncClient, db_session: AsyncSession, comms: FakeComms
 ) -> None:
-    """The positive half, and it comes first: a test that only proved
-    outsiders are refused would pass just as well if the route were
-    broken for everyone."""
-    user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms, assignee=user.id)
-    await client.post(
-        f"{_STAFF_BASE}/{thread_id}/messages",
-        json={"body": "on it"},
-        headers=_reply_headers(token),
-    )
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert [m["body"] for m in body["items"]] == ["on it"]
-    assert body["next_cursor"] is None
-
-
-@pytest.mark.asyncio
-async def test_the_pool_is_readable_before_it_is_claimed(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Reading is not gated on claiming, on purpose: an operator has to
-    see what a request says before deciding to take it. Claiming gates
-    WRITING -- that is a different test in this file."""
-    _user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 200, response.text
-
-
-@pytest.mark.asyncio
-async def test_an_ordinary_user_cannot_read_a_conversation(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """The operator dependency is the gate, same as on the other four."""
-    thread_id = await _a_request(client, db_session, comms)
-    body = await register_user(client)
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{thread_id}/messages",
-        headers=auth_headers(body["session_token"]),
-    )
-
-    assert response.status_code == 403, response.text
-
-
-@pytest.mark.asyncio
-async def test_an_unknown_thread_is_refused_before_comms_is_asked(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Shortage axis, and the assertion is about the fake's call log
-    rather than about the status alone: a 404 that comms produced would
-    look identical from outside and would mean a guessed id reaches the
-    service."""
-    _user, token = await create_staff_user(client, db_session)
-    stranger_id = uuid4()
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{stranger_id}/messages", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 404, response.text
-    assert not any(str(stranger_id) in call["path"] for call in comms.calls)
-
-
-@pytest.mark.asyncio
-async def test_an_empty_conversation_reads_as_an_empty_page(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    """Emptiness axis: nothing said yet is a page of nothing, not a 404."""
-    _user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 200, response.text
-    assert response.json()["items"] == []
-
-
-@pytest.mark.asyncio
-async def test_comms_being_down_refuses_the_read_rather_than_crashing(
-    client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
-) -> None:
-    _user, token = await create_staff_user(client, db_session)
-    thread_id = await _a_request(client, db_session, comms)
-    comms.fail_with = httpx.ConnectError("comms is down")
-
-    response = await client.get(
-        f"{_STAFF_BASE}/{thread_id}/messages", headers=auth_headers(token)
-    )
-
-    assert response.status_code == 502, response.text
+    op = await _operator(client, db_session, comms)
+    _, person_id = await _person(client)
+    resp = await client.get(f"{_STAFF}/operators", headers=op.headers)
+    ids = [p["user_id"] for p in resp.json()["items"]]
+    assert str(op.id) in ids
+    assert str(person_id) not in ids

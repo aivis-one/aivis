@@ -1,87 +1,71 @@
 // =============================================================================
-// AIVIS.ONE Frontend -- Support Store (Ф-1)
+// AIVIS.ONE Frontend -- Support Store (Ф-1, H40 tickets)
 // =============================================================================
 //
-// Pinia store for the support/request channel. Feeds Ф-2 (the user's
-// own thread) and Ф-3 (the operator's queue). No screen exists yet --
-// this batch only proves the state shape works against the live
-// backend; UI decisions (polling, optimistic append, layout) belong
-// to those later deliveries.
+// Pinia store for support. Two separate sections: the PERSON's one
+// conversation (InvestorSupportView, shared by the buyer, the integrator and
+// the project), and the OPERATOR's tickets -- the list (StaffSupportView)
+// and one ticket's card (StaffSupportTicketView).
 //
 // WHY ONE STORE, NOT TWO (per stores/portfolio.ts's own header, same
-// question for a different pair of surfaces).
-//   The user thread and the operator queue are conceptually distinct,
-//   but the coupling is direct: an operator claiming a thread opens
-//   the SAME conversation a user is writing into. Splitting would
-//   need either a shared subscription between two stores or a
-//   duplicated notion of "this thread", for state that together is
-//   still small. One store, two clearly separated sections.
+// question for a different pair of surfaces): a staff member is also a
+// person with their own conversation, and both halves share the send
+// discipline below. The two sections share no state.
 //
-// WHY PER-THREAD FLAGS ON THE OPERATOR SIDE, NOT ONE FLAG PER VERB.
-//   The queue is a LIST of conversations. A single `claiming: boolean`
-//   would light up every row's spinner (or every row's error banner)
-//   the moment any ONE claim was in flight -- exactly the class of bug
-//   a shared counter caused in portfolio.ts before it was split into
-//   two epochs (see that file's header). Here the fan-out is wider
-//   (N rows, not two code paths), so the fix is a map keyed by thread
-//   id rather than a second boolean. This goes one level deeper than
-//   the handoff's "each surface has its own flags" -- the operator
-//   surface is itself many independent rows, and each needs its own.
+// ERROR SHAPE: `{ message, status } | null`, never a bare boolean. A
+// 502/504 (comms unreachable) is a NORMAL backend answer, not a frontend
+// fault -- see app/core/comms.py comms_request docstring. Carrying `status`
+// lets a screen tell "support is temporarily down" (502/504) apart from
+// "you can't do that" (404/409).
 //
-// ERROR SHAPE: `{ message, status } | null`, never a bare boolean.
-//   A 502/504 (comms unreachable) is a NORMAL backend answer, not a
-//   frontend fault -- see app/core/comms.py comms_request docstring.
-//   Carrying `status` lets a screen tell "support is temporarily down"
-//   (502/504) apart from "you can't do that yet" (404/409) without
-//   this store inventing a second vocabulary on top of ApiResponseError.
-//   `message` is the backend's own text (already extracted by
-//   api/client.ts), never re-worded here.
+// ONE PRESS OF SEND, ONE KEY. The Idempotency-Key is minted when the person
+// presses send and kept with the text until comms confirms it, so a retry
+// after a failure or a timeout sends under the SAME key and comms answers
+// with what it already stored. A different text is a different message
+// and gets a new key. The form's appeal follows the same rule, keyed by
+// topic and text together.
 //
-// NO OPTIMISTIC MUTATION ON SEND (see gate, stake D).
-//   The feed is comms' own order ("newest first"), and this store does
-//   not know -- and must not guess -- which end of the local array
-//   that corresponds to for whichever screen ends up rendering it. A
-//   successful send updates `lastSentMessage` and nothing else; the
-//   caller re-fetches the page it cares about. Guessing "front" or
-//   "back" would look fine at three messages and misorder at thirty.
+// NO OPTIMISTIC MUTATION ON SEND. A successful send stores nothing in the
+// feed; the screen re-reads the first page.
 //
-// EPOCH GUARDS (same FP-17 pattern as portfolio.ts / transactions.ts).
-//   Two independent counters: `threadEpoch` for the user-thread group
-//   (open / list / messages / send / read), `queueEpoch` for the
-//   operator queue LIST fetch only. Per-thread operator actions
-//   (claim / reply / status) are guarded by their own in-flight map
-//   instead of an epoch -- there is no "stale superseded call" for an
-//   action keyed by thread id the way there is for a single list or
-//   detail fetch; the in-flight flag already prevents a second click
-//   from racing the first.
+// EPOCH GUARDS (same FP-17 pattern as portfolio.ts / transactions.ts): one
+// counter per surface that loads -- the person's feed, the staff list, the
+// staff card, the staff feed. A superseded load never writes over a newer
+// one. Per-ticket actions are guarded by an in-flight flag instead: a
+// second click while the first is in flight is a no-op.
 // =============================================================================
 
-import { reactive, ref } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
-  claimStaffSupportThread,
-  getStaffSupportThreadMessages,
-  getSupportThreadMessages,
-  listStaffSupportQueue,
-  listSupportThreads,
-  markSupportThreadRead,
-  openSupportThread,
-  replyToStaffSupportThread,
+  assignStaffTicket,
+  claimStaffTicket,
+  createSupportTicket,
+  getStaffThreadMessages,
+  getStaffTicket,
+  getSupportMessages,
+  getSupportUnread,
+  listStaffOperators,
+  listStaffTickets,
+  markSupportRead,
+  releaseStaffTicket,
+  reopenStaffTicket,
+  replyToStaffThread,
   retryStaffSupportTranslation,
   sendSupportMessage,
-  setStaffSupportThreadStatus,
+  setStaffTicketStatus,
 } from '@/api/support'
 import { ApiResponseError } from '@/api/client'
 import type {
+  ListTicketsParams,
   SupportClientMessage,
-  SupportMessageResponse,
-  SupportOperatorThreadRow,
+  SupportClosingStatus,
+  SupportPerson,
   SupportStaffMessage,
-  SupportThreadListItem,
-  SupportThreadResponse,
+  SupportTicketRow,
+  SupportTopic,
 } from '@/api/support'
-import type { SetStatusIn } from '@/api/generated'
 
 export interface SupportActionError {
   message: string
@@ -95,249 +79,330 @@ function toActionError(err: unknown): SupportActionError {
   return { message: err instanceof Error ? err.message : String(err) }
 }
 
-/** One message on its way to comms, with the key it is sent under. */
-interface PendingMessage {
-  body: string
+/** One send on its way to comms, with the key it is sent under. */
+interface Pending {
+  what: string
   key: string
 }
 
 /**
- * The key for sending `body`: the pending one when this is a retry of the
- * same text, a fresh one otherwise. The key is minted here, on the press
- * of send -- never per HTTP attempt.
+ * The key for sending `what`: the pending one when this is a retry of the
+ * same thing, a fresh one otherwise. Minted here, on the press of send --
+ * never per HTTP attempt.
  */
-function keyFor(pending: PendingMessage | null, body: string): PendingMessage {
-  if (pending !== null && pending.body === body) return pending
-  return { body, key: crypto.randomUUID() }
+function keyFor(pending: Pending | null, what: string): Pending {
+  if (pending !== null && pending.what === what) return pending
+  return { what, key: crypto.randomUUID() }
 }
+
+/** What a staff ticket action is, for its in-flight flag and its error. */
+export type TicketAction = 'claim' | 'assign' | 'release' | 'status' | 'reopen'
 
 export const useSupportStore = defineStore('support', () => {
   // ---------------------------------------------------------------------
-  // User side -- the caller's own thread
+  // The person -- one conversation
   // ---------------------------------------------------------------------
-  const thread = ref<SupportThreadResponse | null>(null)
-  const threadLoading = ref<boolean>(false)
-  const threadError = ref<SupportActionError | null>(null)
-
-  const threads = ref<SupportThreadListItem[]>([])
-  const threadsLoaded = ref<boolean>(false)
-  const threadsLoading = ref<boolean>(false)
-  const threadsError = ref<SupportActionError | null>(null)
-
   const messages = ref<SupportClientMessage[]>([])
   const messagesNextCursor = ref<string | null>(null)
+  const messagesLoaded = ref<boolean>(false)
   const messagesLoading = ref<boolean>(false)
   const messagesError = ref<SupportActionError | null>(null)
+  const olderLoading = ref<boolean>(false)
+  const olderError = ref<SupportActionError | null>(null)
 
-  // Set on a successful send, cleared the moment a new send starts.
-  // Not appended into `messages` -- see header, stake D.
-  const lastSentMessage = ref<SupportMessageResponse | null>(null)
   const sending = ref<boolean>(false)
-  // The message the person is trying to send and the Idempotency-Key it
-  // was given when they pressed send. Kept until comms confirms it, so a
-  // retry after a failure or a timeout re-sends under the SAME key and
-  // comms answers with the message it already stored instead of storing
-  // a second one. A different text is a different message and gets a
-  // new key: comms would refuse the old key with another body (409).
-  let pendingSend: PendingMessage | null = null
   const sendError = ref<SupportActionError | null>(null)
+  let pendingSend: Pending | null = null
 
-  const marking = ref<boolean>(false)
-  const markError = ref<SupportActionError | null>(null)
+  const creatingTicket = ref<boolean>(false)
+  const createTicketError = ref<SupportActionError | null>(null)
+  let pendingTicket: Pending | null = null
 
-  let threadEpoch = 0
+  // The Support row's badge. null = not known yet (or the last read
+  // failed) -- never a guessed 0.
+  const unread = ref<number | null>(null)
 
-  /**
-   * Open (or re-open) the caller's conversation. Safe to call
-   * repeatedly -- comms returns the same thread every time.
-   */
-  async function openThread(): Promise<void> {
-    const epoch = ++threadEpoch
-    threadLoading.value = true
-    threadError.value = null
-    try {
-      const resp = await openSupportThread()
-      if (epoch !== threadEpoch) return
-      thread.value = resp
-    } catch (err) {
-      if (epoch !== threadEpoch) return
-      threadError.value = toActionError(err)
-    } finally {
-      if (epoch === threadEpoch) {
-        threadLoading.value = false
-      }
-    }
-  }
+  let feedEpoch = 0
 
   /**
-   * The caller's own thread list. Rows without `unread` (comms was
-   * unreachable, or the row is otherwise not counted) are a normal
-   * result, not surfaced as `threadsError` -- see api/support.ts.
-   */
-  async function fetchThreads(): Promise<void> {
-    const epoch = ++threadEpoch
-    threadsLoading.value = true
-    threadsError.value = null
-    try {
-      const resp = await listSupportThreads()
-      if (epoch !== threadEpoch) return
-      threads.value = resp.items
-      threadsLoaded.value = true
-    } catch (err) {
-      if (epoch !== threadEpoch) return
-      threadsError.value = toActionError(err)
-    } finally {
-      if (epoch === threadEpoch) {
-        threadsLoading.value = false
-      }
-    }
-  }
-
-  /**
-   * First page (or a fresh reload) of the caller's own thread feed.
+   * First page (or a fresh reload) of the conversation.
    *
    * `silent` (H39): the re-read while a translation is on its way
-   * (useTranslationPoll). It neither shows the loader nor touches
-   * `messagesError` -- the person is reading the feed, and a missed
-   * re-read is simply the next tick's work, not an error screen over a
-   * conversation that is still there.
+   * (useTranslationPoll). It neither shows the loader nor touches the
+   * error -- a missed re-read is simply the next tick's work.
    */
-  async function fetchMessages(threadId: string, opts?: { silent?: boolean }): Promise<void> {
+  async function fetchMessages(opts?: { silent?: boolean }): Promise<void> {
     const silent = opts?.silent === true
-    const epoch = ++threadEpoch
+    const epoch = ++feedEpoch
     if (!silent) {
       messagesLoading.value = true
       messagesError.value = null
     }
     try {
-      const resp = await getSupportThreadMessages(threadId)
-      if (epoch !== threadEpoch) return
+      const resp = await getSupportMessages()
+      if (epoch !== feedEpoch) return
       messages.value = resp.items
       messagesNextCursor.value = resp.next_cursor
+      messagesLoaded.value = true
+      olderError.value = null
     } catch (err) {
-      if (epoch !== threadEpoch || silent) return
+      if (epoch !== feedEpoch || silent) return
       messagesError.value = toActionError(err)
     } finally {
-      if (epoch === threadEpoch && !silent) {
-        messagesLoading.value = false
-      }
+      if (epoch === feedEpoch && !silent) messagesLoading.value = false
+    }
+  }
+
+  /** The next, older page of the conversation, appended (newest first). */
+  async function fetchOlderMessages(): Promise<void> {
+    const cursor = messagesNextCursor.value
+    if (cursor === null || olderLoading.value) return
+    const epoch = feedEpoch
+    olderLoading.value = true
+    olderError.value = null
+    try {
+      const resp = await getSupportMessages({ cursor })
+      if (epoch !== feedEpoch) return
+      const seen = new Set(messages.value.map((m) => m.id))
+      messages.value = [...messages.value, ...resp.items.filter((m) => !seen.has(m.id))]
+      messagesNextCursor.value = resp.next_cursor
+    } catch (err) {
+      if (epoch !== feedEpoch) return
+      olderError.value = toActionError(err)
+    } finally {
+      olderLoading.value = false
     }
   }
 
   /**
-   * Send one message into the caller's own conversation.
-   *
-   * `sendError` is cleared at the start and set only on a real
-   * failure -- so "not yet attempted" and "attempted and failed" are
-   * distinguishable by (`sendError === null` vs not) the same way
-   * "attempted and succeeded" is by `lastSentMessage`. A 404 here
-   * means the channel was never opened; the caller should route back
-   * to `openThread`, this store does not auto-open on their behalf
-   * (see service.py -- auto-opening was rejected there for the same
-   * reason: it would hide which of the two calls failed).
+   * A message written in the conversation. The backend decides where it
+   * goes (the latest open ticket, else the latest, else a new "other").
    */
-  async function sendMessage(body: string): Promise<void> {
-    // A second press while the first is in flight is the same intent:
-    // it neither sends again nor mints a second key.
-    if (sending.value) return
+  async function sendMessage(body: string): Promise<boolean> {
+    if (sending.value) return false
     pendingSend = keyFor(pendingSend, body)
     sending.value = true
     sendError.value = null
-    lastSentMessage.value = null
     try {
-      const resp = await sendSupportMessage(body, pendingSend.key)
-      lastSentMessage.value = resp
+      await sendSupportMessage(body, pendingSend.key)
       pendingSend = null
+      return true
     } catch (err) {
       sendError.value = toActionError(err)
+      return false
     } finally {
       sending.value = false
     }
   }
 
-  /**
-   * Mark the caller's thread read; updates the open thread's row in
-   * `threads` if present, so a badge reflects the fresh count without
-   * a full re-fetch.
-   */
-  async function markRead(threadId: string): Promise<void> {
-    marking.value = true
-    markError.value = null
+  /** An appeal through the form: a new ticket, every time. */
+  async function createTicket(topic: SupportTopic, body: string): Promise<boolean> {
+    if (creatingTicket.value) return false
+    pendingTicket = keyFor(pendingTicket, `${topic}\n${body}`)
+    creatingTicket.value = true
+    createTicketError.value = null
     try {
-      const resp = await markSupportThreadRead(threadId)
-      const row = threads.value.find((t) => t.id === threadId)
-      if (row) {
-        row.unread = resp.unread
-      }
+      await createSupportTicket(topic, body, pendingTicket.key)
+      pendingTicket = null
+      return true
     } catch (err) {
-      markError.value = toActionError(err)
+      createTicketError.value = toActionError(err)
+      return false
     } finally {
-      marking.value = false
+      creatingTicket.value = false
+    }
+  }
+
+  /**
+   * Read up to now. Fire-and-forget for the screen: a failure leaves the
+   * badge as it was -- read bookkeeping is nothing the person can retry.
+   */
+  async function markRead(): Promise<void> {
+    try {
+      const resp = await markSupportRead()
+      unread.value = resp.unread
+    } catch {
+      // The badge keeps its last known value; the next read corrects it.
+    }
+  }
+
+  /** The Support row's badge. A failure keeps the last known value. */
+  async function fetchUnread(): Promise<void> {
+    try {
+      const resp = await getSupportUnread()
+      unread.value = resp.unread
+    } catch {
+      // Same rule as the bell (notifications store): never reset to 0 on
+      // an error.
     }
   }
 
   // ---------------------------------------------------------------------
-  // Staff side -- the operator's queue
+  // The operator -- the ticket list
   // ---------------------------------------------------------------------
-  const queue = ref<SupportOperatorThreadRow[]>([])
-  const queueNextCursor = ref<string | null>(null)
-  const queueLoaded = ref<boolean>(false)
-  const queueLoading = ref<boolean>(false)
-  const queueError = ref<SupportActionError | null>(null)
+  const tickets = ref<SupportTicketRow[]>([])
+  const ticketsNextCursor = ref<string | null>(null)
+  const ticketsLoaded = ref<boolean>(false)
+  const ticketsLoading = ref<boolean>(false)
+  const ticketsError = ref<SupportActionError | null>(null)
+  const moreTicketsLoading = ref<boolean>(false)
+  const moreTicketsError = ref<SupportActionError | null>(null)
+  let ticketsFilter: ListTicketsParams = {}
+  let ticketsEpoch = 0
 
-  // Per-thread in-flight + error maps -- see header on why a single
-  // flag per verb would misrepresent a list of independent rows.
-  const claiming = reactive<Record<string, boolean>>({})
-  const claimErrors = reactive<Record<string, SupportActionError | null>>({})
+  /** The first page under `filter`; remembered for the next pages. */
+  async function fetchTickets(filter: ListTicketsParams): Promise<void> {
+    const epoch = ++ticketsEpoch
+    ticketsFilter = { ...filter, cursor: undefined }
+    ticketsLoading.value = true
+    ticketsError.value = null
+    moreTicketsError.value = null
+    try {
+      const resp = await listStaffTickets(ticketsFilter)
+      if (epoch !== ticketsEpoch) return
+      tickets.value = resp.items
+      ticketsNextCursor.value = resp.next_cursor
+      ticketsLoaded.value = true
+    } catch (err) {
+      if (epoch !== ticketsEpoch) return
+      ticketsError.value = toActionError(err)
+    } finally {
+      if (epoch === ticketsEpoch) ticketsLoading.value = false
+    }
+  }
 
-  const replying = reactive<Record<string, boolean>>({})
-  // Per thread: the reply being sent and its Idempotency-Key -- the same
-  // rule as pendingSend on the user side, one pending reply per thread.
-  const pendingReplies: Record<string, PendingMessage> = {}
-  const replyErrors = reactive<Record<string, SupportActionError | null>>({})
+  /** The next page under the same filter, appended. */
+  async function fetchMoreTickets(): Promise<void> {
+    const cursor = ticketsNextCursor.value
+    if (cursor === null || moreTicketsLoading.value) return
+    const epoch = ticketsEpoch
+    moreTicketsLoading.value = true
+    moreTicketsError.value = null
+    try {
+      const resp = await listStaffTickets({ ...ticketsFilter, cursor })
+      if (epoch !== ticketsEpoch) return
+      const seen = new Set(tickets.value.map((row) => row.id))
+      tickets.value = [...tickets.value, ...resp.items.filter((row) => !seen.has(row.id))]
+      ticketsNextCursor.value = resp.next_cursor
+    } catch (err) {
+      if (epoch !== ticketsEpoch) return
+      moreTicketsError.value = toActionError(err)
+    } finally {
+      moreTicketsLoading.value = false
+    }
+  }
 
-  const changingStatus = reactive<Record<string, boolean>>({})
-  const statusErrors = reactive<Record<string, SupportActionError | null>>({})
+  // ---------------------------------------------------------------------
+  // The operator -- one ticket's card
+  // ---------------------------------------------------------------------
+  const ticket = ref<SupportTicketRow | null>(null)
+  const ticketLoading = ref<boolean>(false)
+  const ticketError = ref<SupportActionError | null>(null)
+  let ticketEpoch = 0
 
-  // The operator's view of ONE conversation. Kept apart from the user
-  // side's `messages` on purpose: one browser session can hold both --
-  // a staff member has their own support thread as a person too -- and
-  // sharing the array would let one screen overwrite the other's
-  // contents behind its back.
+  const acting = ref<TicketAction | null>(null)
+  const actionError = ref<{ action: TicketAction; error: SupportActionError } | null>(null)
+
+  const operators = ref<SupportPerson[]>([])
+  const operatorsLoaded = ref<boolean>(false)
+  const operatorsError = ref<SupportActionError | null>(null)
+
+  /** The card of one ticket, by its thread id. */
+  async function fetchTicket(threadId: string): Promise<void> {
+    const epoch = ++ticketEpoch
+    if (ticket.value?.id !== threadId) ticket.value = null
+    ticketLoading.value = true
+    ticketError.value = null
+    actionError.value = null
+    try {
+      const resp = await getStaffTicket(threadId)
+      if (epoch !== ticketEpoch) return
+      ticket.value = resp
+    } catch (err) {
+      if (epoch !== ticketEpoch) return
+      ticketError.value = toActionError(err)
+    } finally {
+      if (epoch === ticketEpoch) ticketLoading.value = false
+    }
+  }
+
+  // The card's answer replaces the card, and the same row of the list if
+  // the list holds it -- so going back shows the change without a reload.
+  function adopt(updated: SupportTicketRow): void {
+    if (ticket.value?.id === updated.id) ticket.value = updated
+    const idx = tickets.value.findIndex((row) => row.id === updated.id)
+    if (idx !== -1) tickets.value[idx] = updated
+  }
+
+  async function act(
+    action: TicketAction,
+    call: () => Promise<SupportTicketRow>,
+  ): Promise<boolean> {
+    if (acting.value !== null) return false
+    acting.value = action
+    actionError.value = null
+    try {
+      adopt(await call())
+      return true
+    } catch (err) {
+      actionError.value = { action, error: toActionError(err) }
+      return false
+    } finally {
+      acting.value = null
+    }
+  }
+
+  const claimTicket = (id: string) => act('claim', () => claimStaffTicket(id))
+  const assignTicket = (id: string, assignee: string) =>
+    act('assign', () => assignStaffTicket(id, assignee))
+  const releaseTicket = (id: string) => act('release', () => releaseStaffTicket(id))
+  const setTicketStatus = (id: string, status: SupportClosingStatus) =>
+    act('status', () => setStaffTicketStatus(id, status))
+  const reopenTicket = (id: string) => act('reopen', () => reopenStaffTicket(id))
+
+  /** Every active operator, for "hand over to". Loaded once. */
+  async function fetchOperators(): Promise<void> {
+    if (operatorsLoaded.value) return
+    operatorsError.value = null
+    try {
+      const resp = await listStaffOperators()
+      operators.value = resp.items
+      operatorsLoaded.value = true
+    } catch (err) {
+      operatorsError.value = toActionError(err)
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // The operator -- one thread's feed (a ticket's, or a history's)
+  // ---------------------------------------------------------------------
   const staffMessages = ref<SupportStaffMessage[]>([])
+  const staffMessagesThreadId = ref<string | null>(null)
   const staffMessagesNextCursor = ref<string | null>(null)
   const staffMessagesLoading = ref<boolean>(false)
   const staffMessagesError = ref<SupportActionError | null>(null)
-
-  let queueEpoch = 0
-
-  // A THIRD epoch, not queueEpoch. Refreshing the queue and reading a
-  // conversation are independent surfaces: sharing an epoch would make
-  // a queue refresh silently discard a feed load that was already in
-  // flight, and the screen would sit empty with no error to show for
-  // it.
   let staffFeedEpoch = 0
 
-  /**
-   * First page of one request's conversation, for an operator.
-   *
-   * First page only, like the user-side feed: `staffMessagesNextCursor`
-   * is stored so a caller can see there is more, and paging it is left
-   * to whoever builds the screen -- machinery with no consumer would be
-   * a guess about a UI nobody has drawn yet.
-   *
-   * `silent`: as on the user side (fetchMessages) -- the re-read while a
-   * translation is on its way, with no loader and no error screen.
-   */
+  const replying = ref<boolean>(false)
+  const replyError = ref<SupportActionError | null>(null)
+  // One pending reply per thread: the same rule as the person's send.
+  const pendingReplies: Record<string, Pending> = {}
+
+  /** First page of one thread, for an operator. `silent` as on the person's side. */
   async function fetchStaffMessages(threadId: string, opts?: { silent?: boolean }): Promise<void> {
     const silent = opts?.silent === true
     const epoch = ++staffFeedEpoch
+    if (staffMessagesThreadId.value !== threadId) {
+      staffMessages.value = []
+      staffMessagesNextCursor.value = null
+    }
+    staffMessagesThreadId.value = threadId
     if (!silent) {
       staffMessagesLoading.value = true
       staffMessagesError.value = null
     }
     try {
-      const resp = await getStaffSupportThreadMessages(threadId)
+      const resp = await getStaffThreadMessages(threadId)
       if (epoch !== staffFeedEpoch) return
       staffMessages.value = resp.items
       staffMessagesNextCursor.value = resp.next_cursor
@@ -345,123 +410,52 @@ export const useSupportStore = defineStore('support', () => {
       if (epoch !== staffFeedEpoch || silent) return
       staffMessagesError.value = toActionError(err)
     } finally {
-      if (epoch === staffFeedEpoch && !silent) {
-        staffMessagesLoading.value = false
-      }
+      if (epoch === staffFeedEpoch && !silent) staffMessagesLoading.value = false
     }
   }
 
-  // Per MESSAGE, for the same reason the thread actions are per thread:
-  // a feed holds many messages, and one retry in flight must not light up
-  // every other message's button.
-  const retryingTranslation = reactive<Record<string, boolean>>({})
-  const retryTranslationErrors = reactive<Record<string, SupportActionError | null>>({})
+  /**
+   * Answer the person in a ticket this operator took. A 409 is the
+   * backend saying "take it first" (or "a history is read-only").
+   */
+  async function replyToThread(threadId: string, body: string): Promise<boolean> {
+    if (replying.value) return false
+    const pending = keyFor(pendingReplies[threadId] ?? null, body)
+    pendingReplies[threadId] = pending
+    replying.value = true
+    replyError.value = null
+    try {
+      await replyToStaffThread(threadId, body, pending.key)
+      delete pendingReplies[threadId]
+      return true
+    } catch (err) {
+      replyError.value = toActionError(err)
+      return false
+    } finally {
+      replying.value = false
+    }
+  }
+
+  // Per MESSAGE: a feed holds many messages, and one retry in flight must
+  // not light up every other message's button.
+  const retryingTranslation = ref<Record<string, boolean>>({})
+  const retryTranslationErrors = ref<Record<string, SupportActionError | null>>({})
 
   /**
-   * Ask again for a message whose translation failed (H39). Offered only
-   * on a message the feed marks `retryable`; on success the feed is
-   * re-read silently, so the message shows "translating" again.
+   * Ask again for a message whose translation failed (H39); on success
+   * the feed is re-read silently, so the message shows "translating".
    */
   async function retryTranslation(threadId: string, messageId: string): Promise<void> {
-    if (retryingTranslation[messageId]) return
-    retryingTranslation[messageId] = true
-    retryTranslationErrors[messageId] = null
+    if (retryingTranslation.value[messageId]) return
+    retryingTranslation.value[messageId] = true
+    retryTranslationErrors.value[messageId] = null
     try {
       await retryStaffSupportTranslation(threadId, messageId)
       await fetchStaffMessages(threadId, { silent: true })
     } catch (err) {
-      retryTranslationErrors[messageId] = toActionError(err)
+      retryTranslationErrors.value[messageId] = toActionError(err)
     } finally {
-      retryingTranslation[messageId] = false
-    }
-  }
-
-  async function fetchQueue(): Promise<void> {
-    const epoch = ++queueEpoch
-    queueLoading.value = true
-    queueError.value = null
-    try {
-      const resp = await listStaffSupportQueue()
-      if (epoch !== queueEpoch) return
-      queue.value = resp.items
-      queueNextCursor.value = resp.next_cursor
-      queueLoaded.value = true
-    } catch (err) {
-      if (epoch !== queueEpoch) return
-      queueError.value = toActionError(err)
-    } finally {
-      if (epoch === queueEpoch) {
-        queueLoading.value = false
-      }
-    }
-  }
-
-  function _replaceQueueRow(updated: SupportThreadResponse): void {
-    const idx = queue.value.findIndex((t) => t.id === updated.id)
-    if (idx !== -1) {
-      // Preserve `unread` -- the write endpoints return the bare
-      // _thread_out shape and never carry it (see api/support.ts).
-      queue.value[idx] = { ...updated, unread: queue.value[idx].unread }
-    }
-  }
-
-  /**
-   * Claim an unclaimed request. A repeat claim by this same operator
-   * is a success (idempotent); a 409 means a colleague won the race.
-   * Guarded per thread id: a second click while the first is still in
-   * flight is a no-op rather than a second request.
-   */
-  async function claimThread(threadId: string): Promise<void> {
-    if (claiming[threadId]) return
-    claiming[threadId] = true
-    claimErrors[threadId] = null
-    try {
-      const resp = await claimStaffSupportThread(threadId)
-      _replaceQueueRow(resp)
-    } catch (err) {
-      claimErrors[threadId] = toActionError(err)
-    } finally {
-      claiming[threadId] = false
-    }
-  }
-
-  /**
-   * Answer as this operator. A 409 (`support_thread_not_claimed`) is
-   * the backend's way of saying "claim it first" -- surfaced as-is in
-   * `replyErrors[threadId]`, not translated here.
-   */
-  async function replyToThread(threadId: string, body: string): Promise<void> {
-    if (replying[threadId]) return
-    const pending = keyFor(pendingReplies[threadId] ?? null, body)
-    pendingReplies[threadId] = pending
-    replying[threadId] = true
-    replyErrors[threadId] = null
-    try {
-      await replyToStaffSupportThread(threadId, body, pending.key)
-      delete pendingReplies[threadId]
-    } catch (err) {
-      replyErrors[threadId] = toActionError(err)
-    } finally {
-      replying[threadId] = false
-    }
-  }
-
-  /**
-   * Resolve or close a thread. `open` is not offered as a target --
-   * see SetStatusIn on the backend: comms has a manual reopen, and
-   * offering it is the ticket work of H40.
-   */
-  async function setThreadStatus(threadId: string, status: SetStatusIn['status']): Promise<void> {
-    if (changingStatus[threadId]) return
-    changingStatus[threadId] = true
-    statusErrors[threadId] = null
-    try {
-      const resp = await setStaffSupportThreadStatus(threadId, status)
-      _replaceQueueRow(resp)
-    } catch (err) {
-      statusErrors[threadId] = toActionError(err)
-    } finally {
-      changingStatus[threadId] = false
+      retryingTranslation.value[messageId] = false
     }
   }
 
@@ -470,126 +464,123 @@ export const useSupportStore = defineStore('support', () => {
   // ---------------------------------------------------------------------
 
   /**
-   * Full reset, wired into stores/sessionReset.ts. Bumps both epochs
-   * first so an in-flight fetch from either group cannot repopulate
-   * cleared state after resolving (same FP-17 pattern as
-   * portfolio.ts). Per-thread maps are cleared wholesale -- there is
-   * no per-row epoch to guard them, but every in-flight action is for
-   * a queue that is about to be dropped anyway, so a stale write into
-   * a cleared object key is harmless (nothing reads it once the arrays
-   * are empty and the screen has unmounted on logout).
+   * Full reset, wired into stores/sessionReset.ts. Bumps every epoch
+   * first so an in-flight load cannot repopulate cleared state after it
+   * resolves (same FP-17 pattern as portfolio.ts).
    */
   function reset(): void {
-    ++threadEpoch
-    ++queueEpoch
+    ++feedEpoch
+    ++ticketsEpoch
+    ++ticketEpoch
     ++staffFeedEpoch
-
-    thread.value = null
-    threadLoading.value = false
-    threadError.value = null
-
-    threads.value = []
-    threadsLoaded.value = false
-    threadsLoading.value = false
-    threadsError.value = null
 
     messages.value = []
     messagesNextCursor.value = null
+    messagesLoaded.value = false
     messagesLoading.value = false
     messagesError.value = null
-
-    lastSentMessage.value = null
+    olderLoading.value = false
+    olderError.value = null
     sending.value = false
     sendError.value = null
     pendingSend = null
-    for (const threadId of Object.keys(pendingReplies)) delete pendingReplies[threadId]
+    creatingTicket.value = false
+    createTicketError.value = null
+    pendingTicket = null
+    unread.value = null
 
-    marking.value = false
-    markError.value = null
+    tickets.value = []
+    ticketsNextCursor.value = null
+    ticketsLoaded.value = false
+    ticketsLoading.value = false
+    ticketsError.value = null
+    moreTicketsLoading.value = false
+    moreTicketsError.value = null
+    ticketsFilter = {}
+
+    ticket.value = null
+    ticketLoading.value = false
+    ticketError.value = null
+    acting.value = null
+    actionError.value = null
+    operators.value = []
+    operatorsLoaded.value = false
+    operatorsError.value = null
 
     staffMessages.value = []
+    staffMessagesThreadId.value = null
     staffMessagesNextCursor.value = null
     staffMessagesLoading.value = false
     staffMessagesError.value = null
-
-    queue.value = []
-    queueNextCursor.value = null
-    queueLoaded.value = false
-    queueLoading.value = false
-    queueError.value = null
-
-    for (const key of Object.keys(claiming)) delete claiming[key]
-    for (const key of Object.keys(claimErrors)) delete claimErrors[key]
-    for (const key of Object.keys(replying)) delete replying[key]
-    for (const key of Object.keys(replyErrors)) delete replyErrors[key]
-    for (const key of Object.keys(changingStatus)) delete changingStatus[key]
-    for (const key of Object.keys(statusErrors)) delete statusErrors[key]
-    for (const key of Object.keys(retryingTranslation)) delete retryingTranslation[key]
-    for (const key of Object.keys(retryTranslationErrors)) delete retryTranslationErrors[key]
+    replying.value = false
+    replyError.value = null
+    for (const threadId of Object.keys(pendingReplies)) delete pendingReplies[threadId]
+    retryingTranslation.value = {}
+    retryTranslationErrors.value = {}
   }
 
   return {
-    // user thread
-    thread,
-    threadLoading,
-    threadError,
-    openThread,
-
-    // user thread list
-    threads,
-    threadsLoaded,
-    threadsLoading,
-    threadsError,
-    fetchThreads,
-
-    // user message feed
+    // the person's conversation
     messages,
     messagesNextCursor,
+    messagesLoaded,
     messagesLoading,
     messagesError,
+    olderLoading,
+    olderError,
     fetchMessages,
-
-    // user send
-    lastSentMessage,
+    fetchOlderMessages,
     sending,
     sendError,
     sendMessage,
-
-    // user read
-    marking,
-    markError,
+    creatingTicket,
+    createTicketError,
+    createTicket,
+    unread,
     markRead,
+    fetchUnread,
 
-    // operator queue
-    queue,
-    queueNextCursor,
-    queueLoaded,
-    queueLoading,
-    queueError,
-    fetchQueue,
+    // the operator's list
+    tickets,
+    ticketsNextCursor,
+    ticketsLoaded,
+    ticketsLoading,
+    ticketsError,
+    moreTicketsLoading,
+    moreTicketsError,
+    fetchTickets,
+    fetchMoreTickets,
 
-    // operator message feed
+    // the operator's card
+    ticket,
+    ticketLoading,
+    ticketError,
+    fetchTicket,
+    acting,
+    actionError,
+    claimTicket,
+    assignTicket,
+    releaseTicket,
+    setTicketStatus,
+    reopenTicket,
+    operators,
+    operatorsLoaded,
+    operatorsError,
+    fetchOperators,
+
+    // the operator's feed
     staffMessages,
+    staffMessagesThreadId,
     staffMessagesNextCursor,
     staffMessagesLoading,
     staffMessagesError,
     fetchStaffMessages,
-
-    // operator translation retry, per message (H39)
+    replying,
+    replyError,
+    replyToThread,
     retryingTranslation,
     retryTranslationErrors,
     retryTranslation,
-
-    // operator per-thread actions
-    claiming,
-    claimErrors,
-    claimThread,
-    replying,
-    replyErrors,
-    replyToThread,
-    changingStatus,
-    statusErrors,
-    setThreadStatus,
 
     // session boundary
     reset,

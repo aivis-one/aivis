@@ -86,7 +86,14 @@ from app.core.events.models import CommsFeedCursor, OutboxEvent  # noqa: F401
 
 # T-65: support thread pointer. Same reason as the line above -- an
 # unimported model is a table --autogenerate proposes to drop.
-from app.modules.support.models import SupportThread, SupportTranslationJob  # noqa: F401
+from app.modules.support.models import (  # noqa: F401
+    SupportOperatorMute,
+    SupportSpamTombstone,
+    SupportThread,
+    SupportThreadPurge,
+    SupportTicket,
+    SupportTranslationJob,
+)
 
 # ---------------------------------------------------------------------------
 

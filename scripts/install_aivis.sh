@@ -1815,6 +1815,23 @@ deliver_comms_llm() {
     success "Model key set llm.text delivered to comms (LLM_KEY_SETS)"
 }
 
+# comms closes a thread itself after THREAD_AUTO_CLOSE_DAYS of silence
+# (comms default 30; deploy/INTEGRATION.md). aivis turns that OFF (H40):
+# a support ticket's status is the product's (support_tickets, five
+# statuses, of which comms knows only open/resolved), and comms' own
+# close would move a thread behind the ticket's back -- with a notice to
+# the person. And an operator's reopen writes no message, so with
+# auto-close on, a ticket reopened after a quiet month would be closed
+# again by comms' next pass. Product policy, so it is ours to deliver.
+#
+# Written on every install, the same value: there is no answer to keep.
+deliver_comms_thread_policy() {
+    local comms_env="$1"
+
+    upsert_env_var "$comms_env" "THREAD_AUTO_CLOSE_DAYS" "0"
+    success "THREAD_AUTO_CLOSE_DAYS=0 delivered to comms (support tickets own their status)"
+}
+
 setup_comms() {
     log "Setting up the comms stack (orchestrated)..."
 
@@ -1888,6 +1905,8 @@ setup_comms() {
     # H39: before pass 2 starts comms on the product profile, which names
     # the key set -- without it comms does not start.
     deliver_comms_llm "$comms_env"
+    # H40: comms must not close support threads on its own schedule.
+    deliver_comms_thread_policy "$comms_env"
 
     # -- 4. Pass 2: idempotent re-run -- executes the hand-over -----------
     log "comms-deploy install, pass 2 (COMMS_* hand-over into backend/.env)..."

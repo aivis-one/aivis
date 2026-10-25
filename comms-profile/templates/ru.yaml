@@ -145,3 +145,26 @@ installment.plan_defaulted:
       Вопросы: {support_url} или {support_email}
 
       AIVIS.ONE
+
+# -- Сигналы операторам поддержки (H40 item 8; кому -- в types.yaml).
+#    Только telegram: запись в кабинете показывает сохранённые title и
+#    body. Переменные -- action_data сигнала (support/service.py
+#    _emit_signal): sender_name, actor_name, topic_ru / topic_en. --
+
+support.message_received:
+  telegram:
+    title: "<b>Новое сообщение в поддержку</b>"
+    body: "{sender_name} написал(а) в поддержку.\n\nТема: {topic_ru}"
+    button_text: "Открыть обращение"
+
+support.ticket_assigned:
+  telegram:
+    title: "<b>Вам передали обращение</b>"
+    body: "{actor_name} передал(а) вам обращение от {sender_name}.\n\nТема: {topic_ru}"
+    button_text: "Открыть обращение"
+
+support.ticket_released:
+  telegram:
+    title: "<b>Обращение вернулось в общий список</b>"
+    body: "{actor_name} вернул(а) обращение от {sender_name} в общий список -- его можно взять.\n\nТема: {topic_ru}"
+    button_text: "Открыть обращение"

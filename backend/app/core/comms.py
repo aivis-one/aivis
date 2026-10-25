@@ -470,7 +470,7 @@ async def comms_request(
             would hide the one state the operator side needs to show.
 
     Returns:
-        The response body, parsed as JSON.
+        The response body, parsed as JSON; None for a 204 (no content).
 
     Raises:
         CommsTimeoutError: comms did not answer in time (504).
@@ -552,6 +552,12 @@ async def comms_request(
             detail=detail,
         )
         raise CommsRejectedError(status_code=status, error_class=error_class)
+
+    # H40: comms' DELETE /threads/{id} answers 204 with no body (its
+    # INTEGRATION.md section 14) -- the one route that does. No content is
+    # an answer, not a malformed one.
+    if status == 204:
+        return None
 
     try:
         return response.json()

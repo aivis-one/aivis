@@ -32,7 +32,7 @@ vi.mock('@/api/admin', () => ({
   fetchAgentApplications: vi.fn(),
   fetchWithdrawalsStaff: vi.fn(),
 }))
-vi.mock('@/api/support', () => ({ listStaffSupportQueue: vi.fn() }))
+vi.mock('@/api/support', () => ({ listStaffTickets: vi.fn() }))
 vi.mock('@/api/products', () => ({ listProducts: vi.fn() }))
 vi.mock('@/api/staff-products', async (importActual) => ({
   ...(await importActual<typeof import('@/api/staff-products')>()),
@@ -68,7 +68,7 @@ import StaffCompanyDocumentsSection from './platform/StaffCompanyDocumentsSectio
 const fetchDashboardStats = vi.mocked(admin.fetchDashboardStats)
 const fetchAgentApplications = vi.mocked(admin.fetchAgentApplications)
 const fetchWithdrawalsStaff = vi.mocked(admin.fetchWithdrawalsStaff)
-const listStaffSupportQueue = vi.mocked(support.listStaffSupportQueue)
+const listStaffTickets = vi.mocked(support.listStaffTickets)
 const listProducts = vi.mocked(products.listProducts)
 const createStaffProduct = vi.mocked(staffProducts.createStaffProduct)
 const fetchStaffCompanyProducts = vi.mocked(staffProducts.fetchStaffCompanyProducts)
@@ -110,7 +110,7 @@ describe('the staff Home', () => {
     } as never)
     fetchWithdrawalsStaff.mockResolvedValue({ items: [], total: 0, page: 1, per_page: 1 } as never)
     fetchAgentApplications.mockResolvedValue({ items: [], total: 0, page: 1, per_page: 1 } as never)
-    listStaffSupportQueue.mockResolvedValue({ items: [], next_cursor: null } as never)
+    listStaffTickets.mockResolvedValue({ items: [], next_cursor: null } as never)
   }
 
   it('draws a counter for each queue the member may work and for nothing else', async () => {

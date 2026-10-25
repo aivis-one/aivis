@@ -19,7 +19,7 @@
 import { defineStore } from 'pinia'
 
 import { fetchAgentApplications, fetchDashboardStats, fetchWithdrawalsStaff } from '@/api/admin'
-import { listStaffSupportQueue } from '@/api/support'
+import { listStaffTickets } from '@/api/support'
 import type { StaffPermissionKey } from '@/composables/useStaffPermissions'
 
 export type QueueKey = 'kyc' | 'topups' | 'withdrawals' | 'agentApps' | 'support'
@@ -165,9 +165,12 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
       if (wants('support')) {
         reads.push(
           this.read('support', async () => {
-            const queue = await listStaffSupportQueue({ limit: SUPPORT_WINDOW })
-            const unclaimed = queue.items.filter((row) => row.assignee === null).length
-            return { count: unclaimed, more: queue.next_cursor !== null }
+            // H40: open tickets nobody has taken. The list has no "not
+            // taken" filter, so one window of open tickets is read and
+            // counted here; a longer list shows as a floor ("N+").
+            const page = await listStaffTickets({ status: 'open', limit: SUPPORT_WINDOW })
+            const unclaimed = page.items.filter((row) => row.claimed_by === null).length
+            return { count: unclaimed, more: page.next_cursor !== null }
           }),
         )
       }

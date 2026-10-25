@@ -21,12 +21,12 @@ vi.mock('@/api/admin', () => ({
   fetchAgentApplications: vi.fn(),
   fetchWithdrawalsStaff: vi.fn(),
 }))
-vi.mock('@/api/support', () => ({ listStaffSupportQueue: vi.fn() }))
+vi.mock('@/api/support', () => ({ listStaffTickets: vi.fn() }))
 
 const fetchDashboardStats = vi.mocked(admin.fetchDashboardStats)
 const fetchAgentApplications = vi.mocked(admin.fetchAgentApplications)
 const fetchWithdrawalsStaff = vi.mocked(admin.fetchWithdrawalsStaff)
-const listStaffSupportQueue = vi.mocked(support.listStaffSupportQueue)
+const listStaffTickets = vi.mocked(support.listStaffTickets)
 
 const ALL = () => true
 const only =
@@ -49,8 +49,9 @@ function mockAllOk() {
   fetchDashboardStats.mockResolvedValue(stats())
   fetchWithdrawalsStaff.mockResolvedValue({ items: [], total: 4, page: 1, per_page: 1 } as never)
   fetchAgentApplications.mockResolvedValue({ items: [], total: 5, page: 1, per_page: 1 } as never)
-  listStaffSupportQueue.mockResolvedValue({
-    items: [{ assignee: null }, { assignee: 'op-1' }, { assignee: null }],
+  // H40: open tickets; who took one is `claimed_by` (a person, or null).
+  listStaffTickets.mockResolvedValue({
+    items: [{ claimed_by: null }, { claimed_by: { user_id: 'op-1' } }, { claimed_by: null }],
     next_cursor: null,
   } as never)
 }
@@ -62,7 +63,7 @@ describe('the staff Home counters', () => {
       fetchDashboardStats,
       fetchAgentApplications,
       fetchWithdrawalsStaff,
-      listStaffSupportQueue,
+      listStaffTickets,
     ]) {
       fn.mockReset()
     }
@@ -78,6 +79,8 @@ describe('the staff Home counters', () => {
     expect(store.queues.agentApps).toMatchObject({ status: 'ready', count: 5 })
     // Two of the three support requests nobody has taken.
     expect(store.queues.support).toMatchObject({ status: 'ready', count: 2, more: false })
+    // The window read is of OPEN tickets: a closed one is nobody's work.
+    expect(listStaffTickets).toHaveBeenCalledWith(expect.objectContaining({ status: 'open' }))
     expect(store.users).toMatchObject({ status: 'ready', count: 7 })
     expect(store.anyFailed).toBe(false)
   })
@@ -126,14 +129,14 @@ describe('the staff Home counters', () => {
     await store.loadAll(only('kyc_approve'))
     expect(fetchWithdrawalsStaff).not.toHaveBeenCalled()
     expect(fetchAgentApplications).not.toHaveBeenCalled()
-    expect(listStaffSupportQueue).toHaveBeenCalledTimes(1) // support is open to every member
+    expect(listStaffTickets).toHaveBeenCalledTimes(1) // support is open to every member
     expect(store.queues.kyc).toMatchObject({ status: 'ready', count: 3 })
   })
 
   it('counts a floor ("N+") when the support list is longer than the page read', async () => {
     mockAllOk()
-    listStaffSupportQueue.mockResolvedValue({
-      items: [{ assignee: null }],
+    listStaffTickets.mockResolvedValue({
+      items: [{ claimed_by: null }],
       next_cursor: 'more',
     } as never)
     const store = useStaffQueuesStore()

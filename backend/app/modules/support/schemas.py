@@ -18,6 +18,7 @@
 # =============================================================================
 
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,9 +60,10 @@ SUPPORT_CLIENT_KEY_PATTERN = r"^[A-Za-z0-9_-]+$"
 class SendMessageIn(BaseModel):
     """One message into the caller's own conversation.
 
-    `body` is the whole request. There is no thread id: the caller has
-    exactly one conversation and it is resolved from the local pointer,
-    never from the wire.
+    `body` is the whole request. There is no thread id: the caller's
+    conversation is ONE for them however many tickets it holds, and where
+    the message goes is decided from the local pointers, never from the
+    wire (service.send_dialog_message).
 
     T-66: the operator side reuses this model for its reply. Same field,
     same ceiling, and a second model would be a second place to change
@@ -73,16 +75,51 @@ class SendMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
 
 
-class SetStatusIn(BaseModel):
-    """An operator moving a conversation along (T-66).
+# The codes of the support form's topics -- models.TOPICS is THE table;
+# this literal must name exactly its keys (tests/test_support_tickets.py
+# compares the two), because a schema cannot read a dict at type level.
+TopicCode = Literal["payments", "withdrawal", "kyc", "purchases", "technical", "other"]
+# The categories an operator filters by -- models.CATEGORIES, compared the
+# same way.
+CategoryCode = Literal[
+    "payments", "withdrawals", "verification", "purchases", "tech", "other",
+]
+# Every status of a ticket (the list's filter) and the four an OPEN ticket
+# is moved to (models.STATUSES / CLOSING_STATUSES). Back to `open` is its
+# own verb, reopen: it has its own rules (the spam window).
+TicketStatusCode = Literal["open", "resolved", "rejected", "duplicate", "spam"]
+ClosingStatusCode = Literal["resolved", "rejected", "duplicate", "spam"]
 
-    `open` IS NOT AN OPTION. comms 3.11 does allow a manual return to
-    `open` (from `resolved` and from `closed`), so its absence here is
-    this product's choice, not comms' limit: staff reopening a request is
-    part of the ticket statuses H40 decides. Until then a thread comes
-    back to life when the CLIENT writes into it.
+
+class TicketIn(BaseModel):
+    """One appeal through the support form (H40 item 1): a topic of the
+    six and the text. The thread, the category and the status are ours to
+    decide; the person names none of them."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    topic: TopicCode
+    body: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+
+
+class SetTicketStatusIn(BaseModel):
+    """An operator closing an OPEN ticket one of four ways (H40 item 4).
+
+    `open` is not here: back to work is its own route (reopen), with its
+    own rule for spam. comms' `closed` is not a status of ours at all --
+    nothing moves a ticket's thread there (comms would tell the person).
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    status: Literal["resolved", "closed"]
+    status: ClosingStatusCode
+
+
+class AssignIn(BaseModel):
+    """Hand a ticket to another operator (H40 item 5). `assignee` is the
+    TARGET of the handover, not the actor: the actor is the session's
+    operator, always."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignee: UUID

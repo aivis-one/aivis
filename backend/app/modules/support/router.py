@@ -1,48 +1,34 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support: user-facing routes (T-65)
+# AIVIS.ONE Backend -- Support: the person's routes (T-65, H40)
 # =============================================================================
 #
-#   POST /api/v1/support/threads                    -- open the caller's
-#     support conversation, or return the existing one.
-#   GET  /api/v1/support/threads                    -- the caller's own
-#     conversations, read from the local pointer.
-#   POST /api/v1/support/threads/messages           -- send one message
-#     into the caller's own conversation. No thread id on the wire.
-#   GET  /api/v1/support/threads/{id}/messages      -- that thread's feed.
-#   POST /api/v1/support/threads/{id}/read          -- mark it read.
+#   POST /api/v1/support/tickets   -- an appeal through the form: a topic
+#     and the text -> a new ticket and its first message.
+#   POST /api/v1/support/messages  -- a message written in the
+#     conversation: into the latest open ticket, else the latest ticket,
+#     else a new ticket "other" (service.send_dialog_message).
+#   GET  /api/v1/support/messages  -- the conversation: every support
+#     thread of the caller, history and tickets, glued into one feed.
+#   POST /api/v1/support/read      -- read up to now, in every thread.
+#   GET  /api/v1/support/unread    -- what is unread, summed over them.
+#
+# NO THREAD ID ON ANY OF THESE. The person has one conversation however
+# many tickets it holds, and its threads are read from the local pointer
+# table, never from the wire -- so there is no id here for a caller to
+# point at somebody else's conversation. (Until H40 these routes took a
+# thread id under /threads/{id}; they are gone, with no fallback.)
 #
 # WHO THE CALLER IS COMES FROM THE SESSION, ALWAYS. comms authenticates
-# the PRODUCT, not the person, and trusts every actor id it is handed --
-# its own handler docstrings call forwarding a client-supplied
-# is_supervisor a full read-authz bypass. So the actor names are refused
-# on all three surfaces a request has, and each refusal is a different
-# mechanism:
+# the PRODUCT, not the person, and trusts every actor id it is handed. So
+# the actor names are refused on the two surfaces a request has here:
 #
 #   body  -- extra="forbid" on every model (schemas.py) -> 422;
-#   query -- _reject_actor_override below -> 400, naming the field;
-#   path  -- there is no actor in any path here; the only path parameter
-#            is a thread id, and it is checked against the local pointer
-#            before comms is called at all (service._require_own_thread).
+#   query -- reject_actor_override -> 400, naming the field.
 #
-# The query check is explicit rather than implicit because a handler
-# that simply does not declare a parameter ignores it in silence: the
-# attempt would leave no trace and the guarantee would rest on nobody
-# ever adding the parameter later.
-#
-# STAFF WORK THE OTHER SIDE THROUGH staff_router.py (T-66): the queue,
-# claim, reply, close.
-#
-# A request opened here DOES reach the operators now (T-67): comms pings
-# every operator declared as serving the support section, and this
-# product declares them -- see service.emit_support_membership. The
-# pointer that used to stand at this spot, at comms' deferred pool-push
-# marker, was removed when that marker was: a reference to a resolved
-# ceiling is worse than none, because it tells the next reader to go
-# looking for a limitation that is no longer there.
+# STAFF WORK THE OTHER SIDE THROUGH staff_router.py.
 # =============================================================================
 
 from typing import Any
-from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,139 +41,116 @@ from app.modules.support.schemas import (
     SUPPORT_CLIENT_KEY_PATTERN,
     EmptyBodyIn,
     SendMessageIn,
+    TicketIn,
 )
 from app.modules.support.service import (
-    get_support_messages,
-    list_support_threads,
-    mark_support_thread_read,
-    open_support_thread,
-    send_support_message,
+    client_support_messages,
+    create_ticket,
+    mark_support_read,
+    send_dialog_message,
+    support_unread,
 )
 from app.modules.users.models import User
 
 router = APIRouter(prefix="/api/v1/support", tags=["support"])
 
-# The actor-name guard MOVED to support/dependencies.py in T-66, when the
-# operator side needed the same refusal: one tuple and one function serve
-# both routers, because two copies of this list would mean the newer one
-# eventually forgets a name. The name kept below is a local alias, so
-# every call site in this file reads exactly as it did before.
-_reject_actor_override = reject_actor_override
 
-
-@router.post("/threads")
-async def open_thread(
-    request: Request,
-    body: EmptyBodyIn | None = Body(default=None),
-    user: User = Depends(get_current_user_write),
-    session: AsyncSession = Depends(get_db_session),
-) -> Any:
-    """Open the caller's support conversation, or return the existing one.
-
-    Idempotent by construction: comms returns the same thread for a
-    repeated call and the pointer table keeps one row per user. Safe to
-    call before every send.
-
-    get_current_user_write (TD-029): this route writes the pointer, so
-    the user is loaded on the same write session the write uses.
-    """
-    _reject_actor_override(request)
-    return await open_support_thread(session, user=user)
-
-
-@router.get("/threads")
-async def list_threads(
-    request: Request,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_reader),
-) -> Any:
-    """The caller's own conversations.
-
-    Answered from the local pointer; comms is asked only for the unread
-    counts, and the list still answers without them if comms is down.
-    Not paginated: the shape of this channel is one conversation per
-    user (see service.py), and a cursor over one row would be a promise
-    the data cannot break.
-    """
-    _reject_actor_override(request)
-    return await list_support_threads(session, user=user)
-
-
-# Declared ABOVE the /{thread_id} routes: a literal segment must not be
-# reachable as a thread id. Nothing shadows it today -- there is no bare
-# POST /threads/{thread_id} -- and the ordering is what keeps that true
-# when one is added.
-@router.post("/threads/messages")
-async def send_message(
-    request: Request,
-    body: SendMessageIn,
-    idempotency_key: str = Header(
+def _key_header() -> Any:
+    """The client's Idempotency-Key for one press of "send" -- required,
+    bounded and of a closed alphabet (schemas.py says why)."""
+    return Header(
         alias="Idempotency-Key",
         min_length=1,
         max_length=SUPPORT_CLIENT_KEY_MAX_LEN,
         pattern=SUPPORT_CLIENT_KEY_PATTERN,
-    ),
-    user: User = Depends(get_current_user_write),
-    session: AsyncSession = Depends(get_db_session),
-) -> Any:
-    """Send one message into the caller's own conversation.
-
-    Idempotency-Key is required: the client's key for this one message,
-    reused on every retry of it (support/service.py says why the key is
-    the client's). A retry with the same key answers with the same
-    message and notifies nobody again.
-
-    404 if the caller has never opened it. A WRITE session since H39: the
-    message lives in comms, and its translation is queued here -- a row of
-    the translation queue and its outbox event (translation.py), committed
-    with this request (get_current_user_write, TD-029).
-    """
-    _reject_actor_override(request)
-    return await send_support_message(
-        session, user=user, body=body.body, idempotency_key=idempotency_key
     )
 
 
-@router.get("/threads/{thread_id}/messages")
-async def get_thread_messages(
+@router.post("/tickets")
+async def open_ticket(
     request: Request,
-    thread_id: UUID,
+    body: TicketIn,
+    idempotency_key: str = _key_header(),
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> Any:
+    """An appeal through the support form: `{ticket, message}`.
+
+    Every submit is a new ticket, even with one open; a retry under the
+    same Idempotency-Key is the same ticket and the same message. An
+    unknown topic is a 422 before comms is called. A write session: the
+    ticket, its translation job and the operator signal commit together
+    (get_current_user_write, TD-029).
+    """
+    reject_actor_override(request)
+    return await create_ticket(
+        session,
+        user=user,
+        topic=body.topic,
+        body=body.body,
+        idempotency_key=idempotency_key,
+    )
+
+
+@router.post("/messages")
+async def send_message(
+    request: Request,
+    body: SendMessageIn,
+    idempotency_key: str = _key_header(),
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> Any:
+    """A message written in the conversation, not through the form: it
+    goes to the latest open ticket, else the latest ticket (back to work),
+    else opens a ticket "other". Answers comms' message."""
+    reject_actor_override(request)
+    return await send_dialog_message(
+        session, user=user, body=body.body, idempotency_key=idempotency_key,
+    )
+
+
+@router.get("/messages")
+async def get_messages(
+    request: Request,
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
     user: User = Depends(get_current_user_write),
     session: AsyncSession = Depends(get_db_session),
 ) -> Any:
-    """One of the caller's own threads, newest messages first.
-
-    404 if `thread_id` is not this caller's -- including when it names a
-    perfectly real thread belonging to somebody else. Existence never
-    leaks.
+    """The caller's conversation, newest first, `{items, next_cursor}`.
 
     H39: every staff reply comes in the caller's language or as a state
     without text (translation.render_for_client). A write session: a
     reply nobody asked a translation for yet is queued by this read (the
-    catch-up, translation.client_feed).
+    catch-up). A malformed cursor is a 400.
     """
-    _reject_actor_override(request)
-    return await get_support_messages(
-        session, user=user, thread_id=thread_id, limit=limit, cursor=cursor,
+    reject_actor_override(request)
+    return await client_support_messages(
+        session, user=user, limit=limit, cursor=cursor,
     )
 
 
-@router.post("/threads/{thread_id}/read")
-async def mark_thread_read(
+@router.post("/read")
+async def mark_read(
     request: Request,
-    thread_id: UUID,
     body: EmptyBodyIn | None = Body(default=None),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
 ) -> Any:
-    """Mark the caller's thread read; returns the fresh unread count.
+    """Read up to now in the whole conversation; returns what is still
+    unread. The read pointers are comms', so nothing is written locally --
+    hence the reader session."""
+    reject_actor_override(request)
+    return await mark_support_read(session, user=user)
 
-    The read pointer belongs to comms, so nothing is written locally
-    here either -- hence the reader session, same as the feed.
-    """
-    _reject_actor_override(request)
-    return await mark_support_thread_read(
-        session, user=user, thread_id=thread_id
-    )
+
+@router.get("/unread")
+async def unread(
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> Any:
+    """`{unread}`: what the caller has not read in their conversation --
+    the badge of the Support row. 0 for a person with no conversation."""
+    reject_actor_override(request)
+    return await support_unread(session, user=user)

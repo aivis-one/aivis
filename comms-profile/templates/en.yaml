@@ -149,3 +149,26 @@ installment.plan_defaulted:
       Questions: {support_url} or {support_email}
 
       AIVIS.ONE
+
+# -- Support operator signals (H40 item 8; types.yaml says who gets them).
+#    Telegram only: the in-app entry shows the stored title and body. The
+#    variables are the signal's action_data (support/service.py
+#    _emit_signal): sender_name, actor_name, topic_en / topic_ru. --
+
+support.message_received:
+  telegram:
+    title: "<b>New message to support</b>"
+    body: "{sender_name} wrote to support.\n\nTopic: {topic_en}"
+    button_text: "Open the request"
+
+support.ticket_assigned:
+  telegram:
+    title: "<b>A support request was handed to you</b>"
+    body: "{actor_name} handed you a request from {sender_name}.\n\nTopic: {topic_en}"
+    button_text: "Open the request"
+
+support.ticket_released:
+  telegram:
+    title: "<b>A support request is back in the pool</b>"
+    body: "{actor_name} returned a request from {sender_name} to the pool -- anyone can take it.\n\nTopic: {topic_en}"
+    button_text: "Open the request"

@@ -494,3 +494,50 @@ types:
 
   support.translation_unavailable:
     category: support_messages
+
+  # =============================================================================
+  # Support operator signals (H40 item 8)
+  # =============================================================================
+  #
+  # comms pings an operator on its own (msg.support_message above) only for
+  # a thread's assignee or, unassigned, the section roster, and says nothing
+  # on a handover (INTEGRATION.md section 14). These three are aivis' own,
+  # emitted by backend/app/modules/support/service.py (_emit_signal):
+  #
+  #   support.message_received -- every message of a person: to the operator
+  #     who took the ticket, else to every operator (group support_operators,
+  #     written together with the roster by emit_support_membership);
+  #   support.ticket_assigned -- a ticket handed to this operator;
+  #   support.ticket_released -- a ticket back in the pool: every operator.
+  #
+  # The staff bell does not show msg.support_message: these cover it and
+  # more (frontend, the staff notifications screen, says why).
+  #
+  # NO CATEGORY: an operator cannot mute support's own signals -- a message
+  # nobody hears is a person nobody answers. `recipient_schedule: bypass`
+  # for the same reason: they reach the operator at any hour (a mute would
+  # still hold; there is none to set).
+  #
+  # [in_app, telegram] (owner ruling, H40 gate). Telegram renders the
+  # sheets in templates/{en,ru}.yaml in the operator's language; the in-app
+  # entry shows the stored title and body in SUPPORT_LANGUAGE. The button
+  # opens the ticket's card: action_data {action: open_support_ticket,
+  # params: {id}} -> startapp=open_support_ticket__<uuid> (57 of 64 chars).
+  #
+  # EXPECTED NOISE: an operator signed up by e-mail has no telegram_id;
+  # comms creates that telegram delivery and fails it as `no_address` (the
+  # job ends `partial_sent`), counted against the channel in comms' health
+  # report. The in-app entry still arrives. It goes away as operators link
+  # Telegram -- which comes with the Telegram sign-in (P-133), not here.
+
+  support.message_received:
+    channels: [in_app, telegram]
+    recipient_schedule: bypass
+
+  support.ticket_assigned:
+    channels: [in_app, telegram]
+    recipient_schedule: bypass
+
+  support.ticket_released:
+    channels: [in_app, telegram]
+    recipient_schedule: bypass

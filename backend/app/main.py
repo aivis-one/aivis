@@ -138,6 +138,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from app.core.background import publish_background_tasks
 from app.core.body_limit import RequestBodyLimitMiddleware
+from app.core.comms import comms_configured
 from app.core.comms_listener import configured as comms_listener_configured
 from app.core.comms_listener import run_listener as run_comms_listener
 from app.core.config import APP_VERSION, settings
@@ -227,6 +228,8 @@ from app.modules.staff.admin_router import dashboard_router, kyc_admin_router
 from app.modules.staff.avatar_router import router as avatar_router
 from app.modules.staff.consistency.router import router as consistency_router
 from app.modules.staff.router import router as staff_users_router
+from app.modules.support.mute import run_support_operator_mutes
+from app.modules.support.purge import run_support_spam_purge
 from app.modules.support.router import router as support_router
 from app.modules.support.staff_router import router as staff_support_router
 from app.modules.transactions.router import router as transactions_router
@@ -435,6 +438,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             redis_url_configured=bool(settings.comms_redis_url),
         )
 
+    # Start the support spam bin (H40 item 7, modules/support/purge.py).
+    # Gated on comms like the listener: a box without comms has no
+    # tickets to bury and no threads to delete. Every worker starts it;
+    # the step is safe to run in parallel (SKIP LOCKED, idempotent DELETE).
+    spam_purge_task: asyncio.Task[None] | None = None
+    # And the operators' comms mutes (H40, modules/support/mute.py): comms
+    # takes a recipient's preferences over HTTP only, so the mutes queued
+    # with each membership are carried out here. Gated the same way; safe
+    # in parallel the same way (SKIP LOCKED, an idempotent PATCH).
+    operator_mutes_task: asyncio.Task[None] | None = None
+    if comms_configured():
+        spam_purge_task = asyncio.create_task(
+            run_support_spam_purge(),
+            name="support_spam_purge",
+        )
+        operator_mutes_task = asyncio.create_task(
+            run_support_operator_mutes(),
+            name="support_operator_mutes",
+        )
+    else:
+        logger.info(
+            "support_background_tasks_disabled",
+            tasks=["support_spam_purge", "support_operator_mutes"],
+            api_url_configured=False,
+        )
+
     # Start background daemons.
     confirmation_task = asyncio.create_task(
         _payment_confirmation_worker(),
@@ -473,6 +502,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         listener_task.cancel()
         with suppress(asyncio.CancelledError):
             await listener_task
+
+    for support_task in (spam_purge_task, operator_mutes_task):
+        if support_task is not None:
+            support_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await support_task
 
     # Stop background daemons.
     confirmation_task.cancel()

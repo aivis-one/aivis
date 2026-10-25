@@ -43,7 +43,11 @@ from app.core.events.relay import LLM_LETTER_REDACTED, relay_pending_batch
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.llm import LlmResult, decide, enqueue_llm_job
 from app.modules.support import translation
-from app.modules.support.models import SupportThread, SupportTranslationJob
+from app.modules.support.models import (
+    SupportThread,
+    SupportTicket,
+    SupportTranslationJob,
+)
 from app.modules.users.models import User
 from tests.helpers import auth_headers, create_staff_user, register_user
 
@@ -54,7 +58,7 @@ _SEAMS = (
     "app.core.comms_listener.comms_request",
 )
 
-_CLIENT_BASE = "/api/v1/support/threads"
+_CLIENT_BASE = "/api/v1/support"
 _STAFF_BASE = "/api/v1/staff/support/threads"
 
 
@@ -322,6 +326,21 @@ async def _setup(
     )
     pointer = SupportThread(user_id=person_id, comms_thread_id=uuid4())
     db_session.add(pointer)
+    await db_session.flush()
+    # H40: a TICKET -- a pointer alone is the person's pre-H40 history,
+    # read-only for staff, and a message of the person would open a new
+    # ticket beside it. What is under test here is translation, in the
+    # one thread the person writes and staff answer in.
+    db_session.add(
+        SupportTicket(
+            support_thread_id=pointer.id,
+            topic="other",
+            category="other",
+            status="open",
+            status_changed_at=datetime.now(UTC),
+            version=1,
+        )
+    )
     await db_session.commit()
     _, staff_token = await create_staff_user(client, db_session)
     return Setup(
@@ -368,7 +387,7 @@ async def _staff_feed(client: AsyncClient, s: Setup) -> dict[str, dict]:
 
 async def _person_feed(client: AsyncClient, s: Setup) -> dict[str, dict]:
     resp = await client.get(
-        f"{_CLIENT_BASE}/{s.thread_id}/messages",
+        f"{_CLIENT_BASE}/messages",
         headers=auth_headers(s.person_token),
     )
     assert resp.status_code == 200, resp.text

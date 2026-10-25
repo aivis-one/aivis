@@ -39,9 +39,9 @@
 #
 #   CONFIGURED BUT UNREACHABLE / REJECTED / TIMED OUT is the opposite
 #   case -- a real failure of a service this box expects to be up --
-#   and here nothing is swallowed. Unlike support's list, which still
-#   has local rows to answer from when comms cannot add unread counts
-#   (see support/service.py:list_support_threads), this module has NO
+#   and here nothing is swallowed. Unlike support's ticket list, which
+#   is a local table and asks comms nothing (see
+#   support/service.py:list_tickets), this module has NO
 #   local data to fall back to: the inbox IS comms' answer, not an
 #   enrichment on top of something else. Degrading to an empty page or
 #   a zero badge here would not be honest degradation, it would be

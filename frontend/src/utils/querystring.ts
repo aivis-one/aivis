@@ -19,6 +19,10 @@
 //     Block B for the ?is_published= / ?upcoming= staff filters.
 //   - everything else is coerced via String() (numbers, dates already
 //     serialised as ISO strings by the caller).
+//   - an array is a REPEATED key, one `key=value` per element in order
+//     (`?category=a&category=b`) -- FastAPI's form of a list query param
+//     (H40: the staff ticket list's category filter). Its elements follow
+//     the rules above; an empty array, like an absent value, emits nothing.
 //
 // Keys are emitted in insertion order, which matches the ordering
 // the inline callers produced. This keeps backend request logs and
@@ -30,7 +34,9 @@
 // batch B1.1 of the same phase.
 // =============================================================================
 
-export type QueryValue = string | number | boolean | undefined | null
+export type QueryScalar = string | number | boolean | undefined | null
+
+export type QueryValue = QueryScalar | readonly QueryScalar[]
 
 export type QueryParams = Record<string, QueryValue>
 
@@ -42,9 +48,16 @@ export type QueryParams = Record<string, QueryValue>
  */
 export function buildQueryString(params: QueryParams): string {
   const q = new URLSearchParams()
+  const present = (v: QueryScalar): v is string | number | boolean =>
+    v !== undefined && v !== null && v !== ''
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === '') continue
-    q.set(key, String(value))
+    if (Array.isArray(value)) {
+      for (const item of value as readonly QueryScalar[]) {
+        if (present(item)) q.append(key, String(item))
+      }
+      continue
+    }
+    if (present(value as QueryScalar)) q.set(key, String(value))
   }
   const qs = q.toString()
   return qs ? `?${qs}` : ''

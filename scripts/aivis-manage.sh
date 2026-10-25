@@ -363,7 +363,9 @@ case_test() {
                 echo -e "${RED}✗ Test DB provisioning failed${NC}"
                 exit 1
             fi
-            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short; then
+            # --durations=25: the slowest tests at the end of the run -- see
+            # the test step of update_product for why.
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25; then
                 FAILED=1
             fi
             ;;
@@ -401,7 +403,9 @@ case_test() {
                 echo -e "${RED}✗ Test DB provisioning failed${NC}"
                 exit 1
             fi
-            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short; then
+            # --durations=25: the slowest tests at the end of the run -- see
+            # the test step of update_product for why.
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25; then
                 FAILED=1
             fi
             ;;
@@ -1357,7 +1361,13 @@ update_product() {
         fi
         echo ""
         echo "Running backend tests (against aivis_test)..."
-        docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short \
+        # --durations=25: pytest ends the run with the 25 slowest tests
+        # (setup, call and teardown each). Output only -- what runs and its
+        # outcome do not change. Here because the suite's time on the box
+        # grew from 8 to 18 minutes while its test count grew by a quarter,
+        # and the list says where the time goes. The same flag stands on
+        # both runs of case_test.
+        docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25 \
             || pytest_status=$?
 
         if [ $pytest_status -eq 0 ]; then

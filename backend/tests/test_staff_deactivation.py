@@ -125,15 +125,18 @@ async def test_a_deactivated_operator_stops_passing_the_support_gate(
     target, target_token = await create_staff_user(client, db_session)
     profile = await _profile_of(db_session, target.id)
 
+    # H40: the operator's list is the product's own table (no comms call),
+    # so the open door is a plain 200 -- before H40 this read comms' queue
+    # and a 502 also proved the gate let the operator through.
     before = await client.get(
-        "/api/v1/staff/support/threads", headers=auth_headers(target_token)
+        "/api/v1/staff/support/tickets", headers=auth_headers(target_token)
     )
-    assert before.status_code in (200, 502), before.text
+    assert before.status_code == 200, before.text
 
     await client.post(_url(profile.id), headers=auth_headers(admin_token))
 
     after = await client.get(
-        "/api/v1/staff/support/threads", headers=auth_headers(target_token)
+        "/api/v1/staff/support/tickets", headers=auth_headers(target_token)
     )
     assert after.status_code in (401, 403), after.text
 
