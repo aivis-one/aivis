@@ -1802,9 +1802,9 @@ case_seed() {
     if [ "$app_env" = "production" ] && [ -z "${AIVIS_SEED_DEMO:-}" ]; then
         echo -e "${RED}✗ Refusing to seed demo data on APP_ENV=production${NC}"
         echo ""
-        echo "The seed creates demo people with a well-known password and"
-        echo "demo companies on the storefront. On a production contour that"
-        echo "is a live account set anybody can log into."
+        echo "The seed creates demo people and demo projects on the"
+        echo "storefront. On a production contour that is fake accounts and"
+        echo "fake offers next to real ones."
         echo ""
         echo "If this box really is a stand that merely calls itself"
         echo "production, opt in explicitly:"

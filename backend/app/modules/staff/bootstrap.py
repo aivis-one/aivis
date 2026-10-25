@@ -10,8 +10,8 @@
 #
 #   write_admin_promotion() -- the three writes create_staff makes
 #       internally (role, StaffProfile, membership event), with every
-#       permission True. Used by both callers below; there is no second
-#       copy of these writes anywhere.
+#       permission True. Used by bootstrap_first_admin; there is no
+#       second copy of these writes anywhere.
 #   find_any_admin()        -- "does this box already have an admin".
 #   bootstrap_first_admin() -- the production path: `aivis bootstrap-admin
 #       <email>` (scripts/bootstrap_admin.py). Promotes an ALREADY
@@ -19,9 +19,10 @@
 #       no companies, no passwords. Every refusal leaves the database
 #       untouched.
 #
-# scripts/seed.py::ensure_admin is the other caller. It keeps its own
-# decisions (an existing admin is reused, an existing profile is left
-# alone) and calls write_admin_promotion for the writes.
+# Since H37 (P-130) write_admin_promotion has that one caller: the seed
+# (scripts/seed.py) no longer makes an admin -- it refuses a stand without
+# one and points at `aivis bootstrap-admin`. It still calls find_any_admin
+# to find the admin it acts as.
 #
 # Every later staff member goes through create_staff with an admin as the
 # actor; once an admin exists, bootstrap_first_admin refuses for good.

@@ -1,128 +1,151 @@
 {
-  "description": "Default demo stand -- support channel, storefront, one agent chain",
+  "description": "Default demo stand -- test investors and a whole demo project",
   "marker": "default",
-  "email_domain": "example.com",
-  "demo_password": "seedpass123",
   "_notes": [
-    "WHAT THIS PROFILE IS FOR: after `aivis seed` on a clean stand an",
-    "investor can sign in and open a support request, and a support",
-    "staff member can sign in, see the queue and answer. Everything",
-    "else here exists to make those two screens non-empty.",
+    "WHAT THIS PROFILE IS FOR: after `aivis seed` the storefront shows a",
+    "project with its logo, cover, documents and roadmap from our storage,",
+    "and five test investors can be entered through the admin's avatar",
+    "mode, one of them already holding parts.",
     "",
-    "demo_password IS A FIXTURE, NOT A SECRET, and the admin uses it",
-    "too. This is the TEST server's repository, there is no production",
-    "stand seeded from here, and `aivis seed` refuses a production",
-    "contour outright -- so a separate admin secret would protect",
-    "nothing and cost a prompt plus an environment variable.",
+    "NO PASSWORDS, NO DOMAIN, NO ADMIN HERE (H37). Every account gets a",
+    "random password nobody sees; addresses are <email_local>@<host of",
+    "FRONTEND_BASE_URL>; the seed acts as the stand's live admin, made by",
+    "`aivis bootstrap-admin <email>`, and refuses a stand without one.",
     "",
-    "NO DATES ANYWHERE. Nothing in this profile takes a caller-chosen",
-    "date through its application path; see the seed.py header.",
+    "NO staff AND NO agents on purpose: a profile that declares staff must",
+    "run with --allow-live-staff, because declaring operators would take",
+    "the live admin off the support queue. This default runs without it.",
     "",
-    "distribution_config is the minimal valid one: the company keeps",
-    "everything and no agent level pays out. The agent below therefore",
-    "has a link and a referred investor but earns no commission -- the",
-    "referral CHAIN is what this profile demonstrates, not the money.",
+    "PROJECTS: each entry of `companies` has a `key` and a folder",
+    "scripts/templates/projects/<key>/; file paths are relative to it.",
+    "Texts a screen shows are {\"en\": ..., \"ru\": ...}; the seed takes en.",
     "",
-    "package_size must fit the pool: total_supply 1000000 at",
-    "equity_percent 10 gives 100000 options, and the three packages",
-    "below are far under that."
+    "distribution_config is SANKORD's: company_pct must be strictly under",
+    "1.0 (validate_distribution_config); the 1.0 the T-72 profile carried",
+    "refused every seed run at create_company.",
+    "",
+    "NUMBERS: total_supply 1000000 at equity_percent 10 gives a pool of",
+    "100000 options; the packages are far under it. The installment of the",
+    "Growth package splits its price (100 x 250 = 25000 cents) in two."
   ],
 
-  "admin": {
-    "email_local": "admin",
-    "first_name": "Admin",
-    "last_name": "AIVIS",
-    "country": "NL"
-  },
-
-  "staff": [
+  "companies": [
     {
-      "email_local": "support1",
-      "first_name": "Maria",
-      "last_name": "Operator",
-      "country": "NL"
-    },
-    {
-      "email_local": "support2",
-      "first_name": "Tomas",
-      "last_name": "Operator",
-      "country": "NL"
-    }
-  ],
-
-  "company": {
-    "email_local": "company",
-    "first_name": "Company",
-    "last_name": "Owner",
-    "country": "NL",
-    "name": "Northwind Robotics",
-    "description": "Demo tenant: warehouse robotics, Series A.",
-    "price_per_unit_cents": 250,
-    "total_supply": 1000000,
-    "shares_per_option": 1,
-    "distribution_config": {
-      "company_pct": 1.0,
-      "agent_levels": []
-    },
-    "pool": {
-      "equity_percent": 10
-    },
-    "products": [
-      {
-        "name": "Starter package",
-        "package_size": 10,
-        "description": "Ten options. The entry ticket."
+      "key": "demo",
+      "email_local": "demo",
+      "first_name": "Demo",
+      "last_name": "Owner",
+      "country": "NL",
+      "name": {"en": "Demo Project", "ru": "Демо-проект"},
+      "description": {
+        "en": "A demo project laid down by the seed: logo, cover, a presentation and a roadmap.",
+        "ru": "Демо-проект, созданный засевом: логотип, обложка, презентация и роадмап."
       },
-      {
-        "name": "Growth package",
-        "package_size": 100,
-        "description": "One hundred options."
-      },
-      {
-        "name": "Anchor package",
-        "package_size": 1000,
-        "description": "One thousand options."
-      }
-    ]
-  },
-
-  "agents": [
-    {
-      "key": "lead",
-      "email_local": "agent",
-      "first_name": "Sofia",
-      "last_name": "Agent",
-      "country": "NL"
+      "price_per_unit_cents": 250,
+      "total_supply": 1000000,
+      "shares_per_option": 1,
+      "distribution_config": {"company_pct": 0.83, "agent_levels": [0.10, 0.03, 0.01]},
+      "pool": {"equity_percent": 10},
+      "logo": "media/logo.png",
+      "logo_dark": "media/logo-dark.png",
+      "cover": "media/cover.png",
+      "products": [
+        {
+          "name": {"en": "Starter package", "ru": "Стартовый пакет"},
+          "description": {"en": "Ten options. The entry ticket.", "ru": "Десять опционов. Входной билет."},
+          "package_size": 10,
+          "cover": "media/product.png",
+          "purchase_config": {"bonuses": []}
+        },
+        {
+          "name": {"en": "Growth package", "ru": "Пакет роста"},
+          "description": {"en": "One hundred options, payable in two parts.", "ru": "Сто опционов, оплата в две части."},
+          "package_size": 100,
+          "installments": [
+            {
+              "name": "Two payments",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 12500, "units_percent": 50},
+                  {"amount_cents": 12500, "units_percent": 50}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            }
+          ]
+        }
+      ],
+      "attachments": [
+        {
+          "file": "documents/en/marketing/presentations/deck.pdf",
+          "meta": {
+            "title": "Demo Project presentation",
+            "category": "marketing/presentations",
+            "language": "en",
+            "is_published": true,
+            "is_public": true,
+            "order": 0
+          }
+        }
+      ],
+      "roadmap": [
+        {
+          "key": "launch",
+          "title": {"en": "Platform launch", "ru": "Запуск платформы"},
+          "description": {"en": "The project opened to its first investors.", "ru": "Проект открылся первым инвесторам."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-09-01",
+          "cover": "roadmap/launch.png"
+        },
+        {
+          "key": "first-sale",
+          "title": {"en": "First thousand parts sold", "ru": "Продана первая тысяча частей"},
+          "kind": "milestone",
+          "status": "planned",
+          "target_date": "2026-12-01",
+          "cover": "roadmap/first-sale.png"
+        }
+      ]
     }
   ],
 
   "investors": [
     {
-      "email_local": "investor1",
-      "first_name": "Anna",
-      "last_name": "Investor",
+      "email_local": "test01",
+      "first_name": "Test",
+      "last_name": "One",
       "country": "NL",
-      "portfolio": {
-        "deposit_cents": 10000000,
-        "purchases": 2
-      }
+      "portfolio": {"deposit_cents": 10000000, "purchases": 2}
     },
     {
-      "email_local": "investor2",
-      "first_name": "Pavel",
-      "last_name": "Investor",
+      "email_local": "test02",
+      "first_name": "Test",
+      "last_name": "Two",
+      "country": "NL",
+      "portfolio": {"deposit_cents": 10000000}
+    },
+    {
+      "email_local": "test03",
+      "first_name": "Test",
+      "last_name": "Three",
       "country": "DE",
-      "referred_by_agent": "lead",
-      "portfolio": {
-        "deposit_cents": 5000000,
-        "purchases": 1
-      }
+      "portfolio": {"deposit_cents": 10000000}
     },
     {
-      "email_local": "investor3",
-      "first_name": "Irina",
-      "last_name": "Investor",
-      "country": "NL"
+      "email_local": "test04",
+      "first_name": "Test",
+      "last_name": "Four",
+      "country": "NL",
+      "portfolio": {"deposit_cents": 10000000}
+    },
+    {
+      "email_local": "test05",
+      "first_name": "Test",
+      "last_name": "Five",
+      "country": "NL",
+      "portfolio": {"deposit_cents": 10000000}
     }
   ]
 }

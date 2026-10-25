@@ -29,18 +29,30 @@
 # whichever .env the box happens to run pytest with.
 #
 # ISOLATION. conftest gives per-RUN isolation only, so every test here
-# builds its own tiny profile with a uuid-suffixed marker and e-mail
-# domain. Two tests can then seed, reset and refuse without seeing each
-# other's rows.
+# builds its own tiny profile with a uuid-suffixed marker and uuid-tagged
+# e-mail local parts. (Until H37 the tag sat in the profile's
+# email_domain; the domain is now the host of FRONTEND_BASE_URL, which the
+# `stand` fixture pins.) Two tests can then seed, reset and refuse without
+# seeing each other's rows.
+#
+# THE ADMIN (H37). The seed no longer makes the first admin: it acts as
+# the stand's active admin and refuses a stand without one. The `stand`
+# fixture therefore provides a real admin and pins the lookup to it --
+# the shared database decides nothing about which branch a test takes.
 # =============================================================================
 
 from __future__ import annotations
 
+import argparse
+import copy
+import json
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import func, select
 
 import scripts.seed as seed
@@ -53,27 +65,45 @@ from app.core.events.service import (
 )
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import OnboardingStep, User, UserRole
+from tests.helpers import create_admin_user
 
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture
-def clean_stand(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pretend this stand has no administrator yet.
+SEED_HOST = "seedtest.example.com"
 
-    Not a convenience: the admin bootstrap is defined by the absence of
-    an admin, and the test database is SHARED across the whole run, so
-    any other test file that promotes somebody to staff would otherwise
-    decide which branch these tests take. Patching the lookup fixes the
-    STATE the branch keys on, not the branch.
+
+@pytest.fixture
+async def stand(
+    client: AsyncClient, db_session: Any, monkeypatch: pytest.MonkeyPatch
+) -> User:
+    """A stand with one active admin, and the box address pinned.
+
+    The admin is a real one (helpers.create_admin_user), and the seed's
+    lookup is pinned to it: the test database is SHARED across the run, so
+    without the pin another file's admins would decide which one acts.
+    FRONTEND_BASE_URL is pinned because the seeded addresses are built on
+    its host (H37); the test default (localhost) is refused by design.
     """
+    monkeypatch.setattr(seed_settings, "frontend_base_url", f"https://{SEED_HOST}")
+    admin, _token = await create_admin_user(client, db_session)
+    admin = await db_session.get(User, admin.id)
+
+    async def _this_admin(_session: object) -> User:
+        return admin
+
+    monkeypatch.setattr(seed, "find_any_admin", _this_admin)
+    return admin
+
+
+@pytest.fixture
+def no_admin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A stand with no active admin (the lookup answers None)."""
+    monkeypatch.setattr(seed_settings, "frontend_base_url", f"https://{SEED_HOST}")
 
     async def _none(_session: object) -> None:
         return None
 
-    # The lookup moved to app/modules/staff/bootstrap.py (H30 P-118, one
-    # copy shared with `aivis bootstrap-admin`); seed.py imports it by
-    # name, so the name inside seed is what its branch reads.
     monkeypatch.setattr(seed, "find_any_admin", _none)
 
 
@@ -83,22 +113,15 @@ def clean_stand(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _profile(**overrides: Any) -> dict[str, Any]:
-    """A minimal profile with a marker no other test can collide with."""
+    """A minimal profile with a marker and addresses no other test can
+    collide with."""
     tag = uuid.uuid4().hex[:8]
     profile: dict[str, Any] = {
         "description": f"test profile {tag}",
         "marker": f"pytest_{tag}",
-        "email_domain": f"{tag}.seedtest.invalid",
-        "demo_password": "seedpass123",
-        "admin": {
-            "email_local": "admin",
-            "first_name": "Admin",
-            "last_name": "Test",
-            "country": "NL",
-        },
         "staff": [
             {
-                "email_local": "support1",
+                "email_local": f"support1-{tag}",
                 "first_name": "Sup",
                 "last_name": "One",
                 "country": "NL",
@@ -106,7 +129,7 @@ def _profile(**overrides: Any) -> dict[str, Any]:
         ],
         "investors": [
             {
-                "email_local": "investor1",
+                "email_local": f"investor1-{tag}",
                 "first_name": "Inv",
                 "last_name": "One",
                 "country": "NL",
@@ -115,6 +138,10 @@ def _profile(**overrides: Any) -> dict[str, Any]:
     }
     profile.update(overrides)
     return profile
+
+
+def _investor_email(profile: dict[str, Any]) -> str:
+    return seed._email(profile["investors"][0]["email_local"])
 
 
 async def _seeded_users(session: Any, marker: str) -> list[User]:
@@ -147,7 +174,7 @@ async def _events(session: Any, event_type: str, user_ids: set[str]) -> int:
 
 
 async def test_seed_runs_with_comms_unconfigured_and_writes_no_outbox_rows(
-    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
+    db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """comms absent: the seed completes, and emits no recipient events.
 
@@ -176,14 +203,16 @@ async def test_seed_runs_with_comms_unconfigured_and_writes_no_outbox_rows(
     await db_session.flush()
 
     users = await _seeded_users(db_session, profile["marker"])
-    assert len(users) == 3, "admin + support + investor"
+    # admin + support + investor until H37, when the seed stopped making
+    # the admin: it acts as the stand's own, which carries no marker.
+    assert len(users) == 2, "support + investor"
 
     ids = {str(u.id) for u in users}
     assert await _events(db_session, EVENT_USER_UPSERTED, ids) == 0
 
 
 async def test_seed_defers_recipients_to_outbox_when_comms_is_unreachable(
-    db_session: Any, monkeypatch: pytest.MonkeyPatch, clean_stand: None
+    db_session: Any, monkeypatch: pytest.MonkeyPatch, stand: User
 ) -> None:
     """comms configured but down: every seeded user gets one event.
 
@@ -206,9 +235,12 @@ async def test_seed_defers_recipients_to_outbox_when_comms_is_unreachable(
 
 
 async def test_every_seeded_staff_member_is_declared_to_the_section(
-    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
+    db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Membership is emitted for the admin and for the support staff.
+    """Membership is emitted for the seeded support staff.
+
+    Until H37 the bootstrapped admin was seeded too and counted here; the
+    seed now acts as the stand's own admin and makes none.
 
     The comms address is set here rather than assumed. Until T-93 this
     emitter wrote whatever the box was configured with, and the test
@@ -224,7 +256,7 @@ async def test_every_seeded_staff_member_is_declared_to_the_section(
 
     users = await _seeded_users(db_session, profile["marker"])
     staff_ids = {str(u.id) for u in users if u.role == UserRole.STAFF}
-    assert len(staff_ids) == 2, "the bootstrapped admin and one operator"
+    assert len(staff_ids) == 1, "the one seeded operator"
 
     assert await _events(
         db_session, EVENT_SECTION_MEMBERSHIP_CHANGED, staff_ids
@@ -237,7 +269,7 @@ async def test_every_seeded_staff_member_is_declared_to_the_section(
 
 
 async def test_second_run_without_reset_is_a_no_op(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     profile = _profile()
     await seed.seed_profile(db_session, profile)
@@ -252,7 +284,7 @@ async def test_second_run_without_reset_is_a_no_op(
 
 
 async def test_seed_refuses_to_adopt_a_user_it_did_not_create(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     """A live person at a seeded address is not taken over.
 
@@ -264,7 +296,7 @@ async def test_seed_refuses_to_adopt_a_user_it_did_not_create(
     await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
-    investor_email = seed._email(profile, "investor1")
+    investor_email = _investor_email(profile)
     user = await seed.find_user_by_email(db_session, investor_email)
     assert user is not None
     user.seeded_profile = None
@@ -279,15 +311,27 @@ async def test_seed_refuses_to_adopt_a_user_it_did_not_create(
 # ---------------------------------------------------------------------------
 
 
-async def test_profile_without_required_keys_is_refused_before_any_write(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_retired_profile_keys_are_refused_by_name(
+    no_admin: None,
 ) -> None:
-    monkeypatch.setattr(seed, "PROFILES_DIR", tmp_path)
-    (tmp_path / "broken.json").write_text('{"marker": "x"}', encoding="utf-8")
+    """A profile still carrying the keys H37 retired is refused, naming
+    the key, before any write.
 
-    with pytest.raises(seed.SeedRefusedError) as excinfo:
-        seed.load_profile("broken")
-    assert "email_domain" in str(excinfo.value)
+    Until H37 this test checked that a profile WITHOUT email_domain was
+    refused: email_domain and demo_password were required then. Both are
+    gone (the domain is the box's, passwords are random), and so are
+    `admin` and the single `company`; a profile that still has one of
+    them must not run with it silently ignored.
+    """
+    for key, value in (
+        ("email_domain", "example.com"),
+        ("demo_password", "x" * 12),
+        ("admin", {"email_local": "admin"}),
+        ("company", {"name": "Old"}),
+    ):
+        with pytest.raises(seed.SeedRefusedError) as excinfo:
+            seed.validate_profile(_profile(**{key: value}))
+        assert repr(key) in str(excinfo.value)
 
 
 async def test_unknown_profile_names_the_ones_that_exist(
@@ -308,20 +352,20 @@ async def test_empty_profiles_directory_lists_nothing(
     assert seed.list_profiles() == []
 
 
-async def test_shipped_default_profile_parses_and_declares_the_demo(
-    db_session: Any,
+async def test_shipped_default_profile_passes_the_pre_write_checks(
+    no_admin: None,
 ) -> None:
-    """The profile the stand actually runs is not left unchecked.
-
-    Parsing only -- seeding it here would put its fixed e-mail addresses
-    into the shared test database and collide with the next run.
-    """
+    """The profile the stand runs is valid as a whole, before any write:
+    its texts, its project files, its configs against the services'
+    validators. That it actually SEEDS is the next test's job
+    (test_the_shipped_default_profile_seeds_resets_and_seeds_again)."""
     profile = seed.load_profile("default")
     assert profile["marker"] == "default"
-    assert profile["email_domain"] == "example.com"
-    assert profile["admin"], "the demo has to be able to bootstrap staff"
-    assert profile["staff"], "the support queue needs somebody to serve it"
-    assert profile["company"]["products"], "the storefront cannot be empty"
+    seed.validate_profile(profile)
+    assert profile["companies"], "the storefront cannot be empty"
+    assert not profile.get("staff"), "the default must run without --allow-live-staff"
+    locals_ = [i["email_local"] for i in profile["investors"]]
+    assert locals_ == ["test01", "test02", "test03", "test04", "test05"]
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +374,7 @@ async def test_shipped_default_profile_parses_and_declares_the_demo(
 
 
 async def test_refuses_when_active_staff_are_not_this_profiles(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     """Declaring seeded operators can silence live ones -- so it refuses.
 
@@ -357,7 +401,7 @@ async def test_refuses_when_active_staff_are_not_this_profiles(
 
 
 async def test_the_refusal_never_counts_this_profiles_own_staff(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     """Our own operators are not "live staff" to us.
 
@@ -402,7 +446,7 @@ async def test_the_refusal_never_counts_this_profiles_own_staff(
 
 
 async def test_reset_undeclares_staff_before_deleting_them(
-    db_session: Any, clean_stand: None, monkeypatch: pytest.MonkeyPatch
+    db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The row that says "no longer an operator" is written, not skipped.
 
@@ -464,7 +508,7 @@ async def test_reset_undeclares_staff_before_deleting_them(
 
 
 async def test_reset_deletes_only_rows_carrying_this_marker(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     mine = _profile()
     theirs = _profile()
@@ -485,13 +529,13 @@ async def test_reset_deletes_only_rows_carrying_this_marker(
 
 
 async def test_reset_leaves_unmarked_people_alone(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     profile = _profile()
     await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
-    investor_email = seed._email(profile, "investor1")
+    investor_email = _investor_email(profile)
     user = await seed.find_user_by_email(db_session, investor_email)
     assert user is not None
     # This person "registered by hand" at the demo domain.
@@ -524,7 +568,7 @@ async def test_reset_on_a_marker_with_no_rows_is_a_no_op(
 
 
 async def test_seeded_investor_finishes_the_onboarding_funnel(
-    db_session: Any, clean_stand: None
+    db_session: Any, stand: User
 ) -> None:
     """A seeded person can actually sign in and use the product.
 
@@ -538,60 +582,410 @@ async def test_seeded_investor_finishes_the_onboarding_funnel(
     await db_session.flush()
 
     user = await seed.find_user_by_email(
-        db_session, seed._email(profile, "investor1")
+        db_session, _investor_email(profile)
     )
     assert user is not None
     assert user.onboarding_step == OnboardingStep.ONBOARDING_COMPLETE
     assert user.credentials["email"]["verified"] is True
 
 
-async def test_an_existing_admin_is_reused_and_no_second_one_is_minted(
-    db_session: Any
+async def test_the_seed_acts_as_the_stands_admin_and_mints_none(
+    db_session: Any, stand: User
 ) -> None:
-    """The bypass runs once per stand, not once per seed run.
+    """Every seeded row is made with the stand's admin as the actor, and
+    no seeded user becomes an admin.
 
-    No clean_stand fixture here on purpose: this test is about the
-    branch that fires when an admin already exists, and the profile
-    seeded first is what makes it exist.
+    Until H37 this test said "an existing admin is reused and no second
+    one is minted": the seed then bootstrapped an admin when the stand
+    had none. It no longer can (the next test), so the property left is
+    the stronger one -- the seed never makes an admin at all.
     """
-    first = _profile()
-    await seed.seed_profile(db_session, first)
-    await db_session.flush()
-
-    second = _profile()
-    await seed.seed_profile(db_session, second)
-    await db_session.flush()
-
-    second_users = await _seeded_users(db_session, second["marker"])
-    emails = {
-        (u.credentials or {}).get("email", {}).get("email")
-        for u in second_users
-    }
-    assert seed._email(second, "admin") not in emails, (
-        "an admin already existed, so the second run must have used it "
-        "as its actor instead of creating another administrator"
-    )
-
-
-async def test_the_bootstrapped_admin_has_every_permission(
-    db_session: Any, clean_stand: None
-) -> None:
     profile = _profile()
     await seed.seed_profile(db_session, profile)
     await db_session.flush()
 
-    admin = await seed.find_user_by_email(
-        db_session, seed._email(profile, "admin")
-    )
-    assert admin is not None
-    assert admin.role == UserRole.STAFF
-
-    staff_profile = (
+    seeded_ids = {u.id for u in await _seeded_users(db_session, profile["marker"])}
+    assert stand.id not in seeded_ids
+    admins = (
         await db_session.execute(
-            select(StaffProfile).where(StaffProfile.user_id == admin.id)
+            select(StaffProfile).where(StaffProfile.user_id.in_(seeded_ids))
+        )
+    ).scalars().all()
+    assert all(not all(p.permissions.values()) for p in admins), (
+        "a seeded staff member holds every permission -- the seed made an admin"
+    )
+
+
+async def test_a_stand_without_an_admin_is_refused_before_any_write(
+    db_session: Any, no_admin: None
+) -> None:
+    """No active admin -> refused, naming `aivis bootstrap-admin`, with
+    not one row written.
+
+    Replaces test_the_bootstrapped_admin_has_every_permission, which
+    checked the admin the seed used to bootstrap on such a stand (right
+    while the seed was a path to the first admin; H37 removed that path,
+    the first admin comes only from `aivis bootstrap-admin`).
+    """
+    profile = _profile()
+    with pytest.raises(seed.SeedRefusedError) as excinfo:
+        await seed.seed_profile(db_session, profile)
+    assert "aivis bootstrap-admin" in str(excinfo.value)
+    assert await _seeded_users(db_session, profile["marker"]) == []
+
+
+# ---------------------------------------------------------------------------
+# H37: projects, files, passwords, domain
+# ---------------------------------------------------------------------------
+#
+# Axes:
+#   REPEAT    -- the shipped profile seeded twice: no new row, no new object;
+#                every account's password different from every other
+#   EMPTINESS -- a profile without staff on a stand with a live admin; a
+#                project without files; a reset whose objects are gone
+#   SHORTAGE  -- a missing file, a refused type, an oversized logo, no "en",
+#                an invalid distribution_config, a package bigger than the
+#                pool, a host that carries no mail: refused before any row
+#                or object; a delete_object failure at reset is a warning
+#
+# These talk to the real storage of the test environment (RustFS), like
+# test_project_media.py: the seed uploads through the services.
+
+_DEMO_DIR = Path(seed.__file__).resolve().parent / "templates" / "projects" / "demo"
+
+
+async def _objects(prefix: str = "companies/") -> set[str]:
+    from app.core.storage import list_objects
+
+    return set(await list_objects(prefix))
+
+
+async def _company_of(db_session: Any, marker: str) -> Any:
+    from app.modules.companies.models import CompanyProfile
+
+    stmt = (
+        select(CompanyProfile)
+        .join(User, User.id == CompanyProfile.user_id)
+        .where(User.seeded_profile == marker)
+    )
+    return (await db_session.execute(stmt)).scalars().all()
+
+
+def _demo_project(**overrides: Any) -> dict[str, Any]:
+    """The shipped demo project entry, for a profile of the test's own."""
+    shipped = json.loads(
+        (seed.PROFILES_DIR / "default.json").read_text(encoding="utf-8")
+    )
+    project = copy.deepcopy(shipped["companies"][0])
+    project["email_local"] = f"demo-{uuid.uuid4().hex[:8]}"
+    project.update(overrides)
+    return project
+
+
+async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
+    db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The profile the stand runs, seeded WHOLE: project, files, investors.
+
+    Until H37 this was refused on principle -- "parsing only -- seeding it
+    here would put its fixed e-mail addresses into the shared test
+    database and collide with the next run". That was right while the
+    domain was written in the profile: every run would have created the
+    same <local>@example.com addresses. H37 moved the domain to
+    FRONTEND_BASE_URL, so a test pins a host of its own and the shipped
+    addresses no longer collide; the marker is the test's own for the same
+    reason.
+
+    And the refusal cost exactly what this test exists for: the shipped
+    profile could never seed (company_pct 1.0 refused by create_company,
+    and ensure_pool tripped on get_active_pool raising), and nothing
+    noticed for two months because nothing ran it.
+    """
+    tag = uuid.uuid4().hex[:8]
+    monkeypatch.setattr(
+        seed_settings, "frontend_base_url", f"https://{tag}.{SEED_HOST}"
+    )
+    profile = seed.load_profile("default")
+    profile["marker"] = f"pytest_default_{tag}"
+
+    stats = await seed.seed_profile(db_session, profile)
+    await db_session.commit()
+    assert stats["companies"] == 1
+    assert stats["investors"] == 5
+    assert stats["purchases"] > 0
+    assert stats["pictures"] == 3
+    assert stats["attachments"] == 1
+    assert stats["roadmap_items"] == 2
+
+    (company,) = await _company_of(db_session, profile["marker"])
+    prefix = f"companies/{company.id}/"
+    assert company.logo_storage_key and company.logo_dark_storage_key
+    assert company.cover_storage_key
+    objects = await _objects(prefix)
+    # logo, dark logo, cover, product cover, the deck, two roadmap covers
+    assert len(objects) == 7
+    assert {company.logo_storage_key, company.cover_storage_key} <= objects
+
+    from app.modules.companies.models import CompanyAttachment, CompanyRoadmapItem
+    from app.modules.products.models import Product, ProductInstallment
+
+    products = (
+        await db_session.execute(select(Product).where(Product.company_id == company.id))
+    ).scalars().all()
+    assert sorted(p.name for p in products) == ["Growth package", "Starter package"]
+    assert all(p.status == "active" for p in products)
+    installments = (
+        await db_session.execute(
+            select(ProductInstallment).where(
+                ProductInstallment.product_id.in_([p.id for p in products])
+            )
+        )
+    ).scalars().all()
+    assert [i.name for i in installments] == ["Two payments"]
+    items = (
+        await db_session.execute(
+            select(CompanyRoadmapItem).where(CompanyRoadmapItem.company_id == company.id)
+        )
+    ).scalars().all()
+    assert all(i.cover_storage_key for i in items) and len(items) == 2
+
+    # REPEAT: the second run writes nothing.
+    again = await seed.seed_profile(db_session, profile)
+    await db_session.commit()
+    for key in ("pictures", "attachments", "roadmap_items", "purchases"):
+        assert again[key] == 0, key
+    assert await _objects(prefix) == objects
+    count = (
+        await db_session.execute(
+            select(func.count()).select_from(CompanyAttachment).where(
+                CompanyAttachment.company_id == company.id
+            )
         )
     ).scalar_one()
-    assert all(staff_profile.permissions.values())
+    assert count == 1
+
+    # Reset: the rows, then -- after the commit -- the objects.
+    ids = await seed.seeded_company_ids(db_session, profile["marker"])
+    assert ids == [company.id]
+    counts = await seed.reset_seed_data(db_session, profile["marker"])
+    await db_session.commit()
+    assert counts["attachments"] == 1 and counts["roadmap_items"] == 2
+    assert counts["users"] == 6
+    purged = await seed.purge_seeded_objects(ids)
+    assert purged == {"objects": 7, "failed": 0}
+    assert await _objects(prefix) == set()
+    assert await _seeded_users(db_session, profile["marker"]) == []
+
+
+async def test_every_seeded_account_has_its_own_password_and_none_is_shown(
+    db_session: Any,
+    stand: User,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """REPEAT: each account's password is drawn for it alone, it is the
+    one its hash verifies, and it appears in no output and no log."""
+    from app.modules.auth.service import verify_password
+
+    drawn: list[str] = []
+    real = seed._random_password
+
+    def _spy() -> str:
+        value = real()
+        drawn.append(value)
+        return value
+
+    monkeypatch.setattr(seed, "_random_password", _spy)
+    profile = _profile(
+        staff=[],
+        companies=[_demo_project()],
+        investors=[
+            {"email_local": f"pw{i}-{uuid.uuid4().hex[:6]}", "first_name": "P"}
+            for i in range(3)
+        ],
+    )
+    drawn.clear()
+    await seed.seed_profile(db_session, profile)
+    await db_session.commit()
+
+    users = await _seeded_users(db_session, profile["marker"])
+    assert len(users) == 4, "three investors and the project's owner"
+    assert len(set(drawn)) == len(drawn) >= 4
+    hashes = [u.credentials["email"]["password_hash"] for u in users]
+    for user_hash in hashes:
+        assert sum([await verify_password(p, user_hash) for p in drawn]) == 1
+
+    shown = capsys.readouterr()
+    logged = caplog.text
+    for password in drawn:
+        assert password not in shown.out
+        assert password not in shown.err
+        assert password not in logged
+
+
+async def test_a_profile_without_staff_runs_beside_a_live_admin(
+    stand: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """EMPTINESS: no staff[] -> no live-staff check, no flag needed. With
+    staff[], the same stand refuses, and says the admin is staff too."""
+    monkeypatch.setattr(seed, "PROFILES_DIR", tmp_path)
+    plain = _profile(staff=[])
+    (tmp_path / "plain.json").write_text(json.dumps(plain), encoding="utf-8")
+    with_staff = _profile()
+    (tmp_path / "staffed.json").write_text(json.dumps(with_staff), encoding="utf-8")
+
+    def _args(name: str) -> argparse.Namespace:
+        return argparse.Namespace(
+            profile=name, reset=False, reset_only=False, dry_run=False,
+            allow_live_staff=False,
+        )
+
+    assert await seed._run_profile(_args("plain")) == 0
+    capsys.readouterr()
+    assert await seed._run_profile(_args("staffed")) == 2
+    message = capsys.readouterr().out
+    assert "--allow-live-staff" in message
+    assert "admin is staff too" in message
+
+
+@pytest.mark.parametrize(
+    "breakage, needle",
+    [
+        ("missing_file", "no file at"),
+        ("attachment_type", "attachments[0]"),
+        ("big_logo", "over the 1048576-byte limit"),
+        ("no_en", '.name has no "en" text'),
+        ("ru_only_string", "must be a dictionary of languages"),
+        ("distribution", "distribution_config"),
+        ("package_over_pool", "exceeds the pool's"),
+        ("outside_folder", "leaves the project folder"),
+        ("bad_installment", "installments[0]"),
+    ],
+)
+async def test_a_bad_project_is_refused_before_any_row_or_object(
+    db_session: Any,
+    stand: User,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    breakage: str,
+    needle: str,
+) -> None:
+    """SHORTAGE: every refusal a project can earn comes from
+    validate_profile, before the first write -- no seeded row, no new
+    object. A refusal mid-run would leave uploaded objects behind (the
+    KNOWN CEILING in seed_profile)."""
+    root = tmp_path / "projects"
+    shutil.copytree(_DEMO_DIR, root / "demo")
+    monkeypatch.setattr(seed, "PROJECTS_DIR", root)
+    project = _demo_project()
+
+    if breakage == "missing_file":
+        (root / "demo" / "media" / "cover.png").unlink()
+    elif breakage == "attachment_type":
+        (root / "demo" / "documents" / "en" / "evil.exe").write_bytes(b"MZ")
+        project["attachments"][0]["file"] = "documents/en/evil.exe"
+    elif breakage == "big_logo":
+        big = root / "demo" / "media" / "logo.png"
+        big.write_bytes(big.read_bytes() + b"\0" * (1024 * 1024))
+    elif breakage == "no_en":
+        project["name"] = {"ru": "Только по-русски"}
+    elif breakage == "ru_only_string":
+        project["name"] = "Demo"
+    elif breakage == "distribution":
+        project["distribution_config"] = {"company_pct": 1.0, "agent_levels": []}
+    elif breakage == "package_over_pool":
+        project["products"][0]["package_size"] = 10_000_000
+    elif breakage == "outside_folder":
+        project["cover"] = "../../escape.png"
+    elif breakage == "bad_installment":
+        project["products"][1]["installments"][0]["plan_config"]["tranches"][0][
+            "amount_cents"
+        ] = 1
+
+    profile = _profile(staff=[], companies=[project])
+    before = await _objects()
+    with pytest.raises(seed.SeedRefusedError) as excinfo:
+        await seed.seed_profile(db_session, profile)
+    assert needle in str(excinfo.value)
+    assert await _seeded_users(db_session, profile["marker"]) == []
+    assert await _objects() == before
+
+
+async def test_investor_entries_are_checked_before_any_write(
+    db_session: Any, stand: User
+) -> None:
+    """SHORTAGE: an unknown agent key and a negative deposit are refused
+    by validate_profile, not half-way through the run."""
+    tag = uuid.uuid4().hex[:6]
+    for investor, needle in (
+        ({"email_local": f"r-{tag}", "referred_by_agent": "ghost"}, "names no agent"),
+        (
+            {"email_local": f"d-{tag}", "portfolio": {"deposit_cents": -1}},
+            "deposit_cents must be a whole number",
+        ),
+    ):
+        profile = _profile(staff=[], investors=[investor])
+        with pytest.raises(seed.SeedRefusedError) as excinfo:
+            await seed.seed_profile(db_session, profile)
+        assert needle in str(excinfo.value)
+        assert await _seeded_users(db_session, profile["marker"]) == []
+
+
+@pytest.mark.parametrize(
+    "address", ["http://localhost:5173", "https://127.0.0.1", "https://[::1]:8080", ""]
+)
+async def test_a_host_that_carries_no_mail_is_refused(
+    monkeypatch: pytest.MonkeyPatch, address: str
+) -> None:
+    """SHORTAGE: the seeded addresses are <local>@<host of FRONTEND_BASE_URL>;
+    a host without a dot or an IP refuses, naming the setting."""
+    monkeypatch.setattr(seed_settings, "frontend_base_url", address)
+    with pytest.raises(seed.SeedRefusedError) as excinfo:
+        seed.validate_profile(_profile(staff=[]))
+    assert "FRONTEND_BASE_URL" in str(excinfo.value)
+
+
+async def test_a_reset_survives_an_object_it_cannot_delete(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SHORTAGE at the end: the rows are gone; a storage failure leaves an
+    orphan and a warning, not a failed reset."""
+    from app.core.storage import upload_object
+
+    company_id = uuid.uuid4()
+    key = f"companies/{company_id}/media/logo.png"
+    await upload_object(key, b"x", "image/png")
+
+    async def _refuse(_key: str) -> None:
+        raise seed.StorageError("delete refused")
+
+    monkeypatch.setattr(seed, "delete_object", _refuse)
+    stats = await seed.purge_seeded_objects([company_id])
+    assert stats == {"objects": 0, "failed": 1}
+    assert "could not delete" in capsys.readouterr().out
+    monkeypatch.undo()
+    assert await seed.purge_seeded_objects([company_id]) == {"objects": 1, "failed": 0}
+
+
+async def test_two_roadmap_items_with_one_title_are_not_guessed_between(
+    db_session: Any, stand: User
+) -> None:
+    """A second item with the seeded title, made by hand, makes the next
+    run refuse rather than pick one."""
+    from app.modules.companies.service import create_roadmap_item
+
+    profile = _profile(staff=[], companies=[_demo_project()])
+    await seed.seed_profile(db_session, profile)
+    await db_session.commit()
+    (company,) = await _company_of(db_session, profile["marker"])
+    await create_roadmap_item(company.id, "Platform launch", stand, db_session)
+    await db_session.flush()
+
+    with pytest.raises(seed.SeedRefusedError) as excinfo:
+        await seed.seed_profile(db_session, profile)
+    assert "Platform launch" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------

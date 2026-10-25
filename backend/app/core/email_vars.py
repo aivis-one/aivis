@@ -19,6 +19,9 @@
 #
 # The language of a letter is not decided here: comms takes it from the
 # recipient's `locale` (core/comms.py::user_snapshot sends the user's own).
+#
+# site_host() is the same parse of FRONTEND_BASE_URL, public for the seed
+# (scripts/seed.py), which builds its addresses on the box's own host.
 # =============================================================================
 
 from typing import Any
@@ -35,6 +38,16 @@ def _site(frontend_base_url: str) -> tuple[str, str]:
     if not parts.scheme or not parts.netloc:
         return "", ""
     return f"{parts.scheme}://{parts.netloc}", parts.hostname or ""
+
+
+def site_host() -> str:
+    """The host of the cabinet's address (FRONTEND_BASE_URL), or "".
+
+    The one parse of that address, shared: the letters build their
+    hello@<host> from it, and the seed (scripts/seed.py, H37) builds every
+    seeded e-mail address on it.
+    """
+    return _site(settings.frontend_base_url)[1]
 
 
 def email_action_data(**fields: Any) -> dict[str, Any]:

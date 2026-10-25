@@ -4,9 +4,9 @@
 # =============================================================================
 #
 # Makes the already registered, verified user with this address the first
-# admin of the box. Runs on APP_ENV=production -- it is the production
-# path to the first admin; `aivis seed` is the test stands' one and
-# refuses production.
+# admin of the box. Runs on APP_ENV=production. It is the only path to
+# the first admin: `aivis seed` needs one already and refuses a stand
+# without it (H37).
 #
 # This file only reads the argument, runs the transaction and reports. The
 # decisions and the writes live in app/modules/staff/bootstrap.py, where

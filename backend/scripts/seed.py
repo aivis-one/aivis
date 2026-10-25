@@ -44,6 +44,12 @@
 #   companies    -> companies.service.create_company   (recipient free)
 #   pools        -> pools.service.create_pool
 #   products     -> products.service.create_product
+#   installments -> products.service.create_installment
+#   pictures     -> companies.service.set_company_media,
+#                   products.service.set_product_cover    (H36)
+#   attachments  -> companies.service.create_attachment
+#   roadmap      -> companies.service.create_roadmap_item
+#                   + set_roadmap_cover
 #   money        -> ledgers.service.record_active_ledger
 #   purchases    -> purchases.service.execute_purchase
 #
@@ -59,27 +65,37 @@
 # is what makes it the right door for a fixture.
 #
 # -----------------------------------------------------------------------------
-# THE ONE BYPASS: THE FIRST ADMIN
+# NO ADMIN IS MADE HERE (H37 P-130)
 #
-# create_staff(target_user_id, admin, session) promotes an existing user
-# and takes an admin as the actor. On a stand with no admin there is
-# nobody to be that actor, so the first one cannot be made through the
-# path -- chicken and egg, not an oversight. The bypass is therefore as
-# narrow as it can be: the admin's USER goes through the full ladder like
-# everybody else, and only the promotion is written without an actor --
-# the role flip, the StaffProfile row, and the membership event, which
-# are the three things create_staff does internally. Those three writes
-# live in app/modules/staff/bootstrap.py (write_admin_promotion), the one
-# copy shared with `aivis bootstrap-admin`, the production path to the
-# first admin. Every later staff member goes through create_staff with
-# this admin as the actor.
+# The seed needs an admin: create_staff, create_company, create_pool and
+# create_product all take one as the actor. It no longer makes one. The
+# first admin of a box comes from `aivis bootstrap-admin <email>` (the
+# production path, app/modules/staff/bootstrap.py), and a seed run on a
+# box without an active admin is refused before anything is written --
+# the reset included -- with that command in the message. --reset-only
+# needs no actor and runs without an admin.
 #
-# The admin signs in with the profile's demo_password like everybody
-# else. This repository is the TEST server's, the seed refuses to run on
-# a production contour, and there is no production stand to protect --
-# so a separate secret for the admin would buy nothing and cost a
-# prompt, an environment variable and two code paths. It had all three
-# for a while; owner ruling: do not complicate for imagined safety.
+# Until H37 the seed bootstrapped the admin itself, from a profile
+# section, with the profile's shared demo password. Both are gone.
+#
+# -----------------------------------------------------------------------------
+# PASSWORDS ARE RANDOM AND NEVER SHOWN (H37 P-130)
+#
+# Every account the seed creates gets its own secrets.token_urlsafe
+# password, handed straight to register_email / create_company and kept
+# nowhere: not printed, not logged, not written to the profile or the
+# repository. A second run does not touch an existing account's
+# password. The owner enters seeded accounts through the administrator's
+# avatar mode, not by password.
+#
+# -----------------------------------------------------------------------------
+# THE E-MAIL DOMAIN IS THE BOX'S (H37 P-130)
+#
+# A profile names local parts only (`test01`, `demo`). The domain is the
+# host of FRONTEND_BASE_URL -- the same source the letters read
+# (core/email_vars.py) -- so a seeded address is <local>@<this box>, and
+# no deployment address is written into the repository. A host that
+# cannot carry mail (no dot, an IP address) refuses the run.
 #
 # -----------------------------------------------------------------------------
 # PROFILES
@@ -98,6 +114,40 @@
 # would have no consumer, and a seed that backdated rows behind the
 # services' backs would be exactly the hand-writing this file exists to
 # end. If a dated entity appears later, the field arrives with it.
+#
+# The one caller-chosen date there is now -- a roadmap item's target_date
+# / valid_until (H37) -- is a fact of the project (the day a milestone
+# was reached or is planned), written as an absolute date on purpose: a
+# roadmap that drifted with the day the seed ran would be untrue.
+#
+# -----------------------------------------------------------------------------
+# PROJECTS (H37 P-130)
+#
+# `companies` is a list. Each project has a `key` and a folder
+# scripts/templates/projects/<key>/ holding its files:
+#
+#   media/                       logo.png, logo-dark.png, cover.png, product.png
+#   roadmap/<item-key>.png       roadmap covers
+#   documents/<lang>/<category>/<file>.pdf    attachments
+#
+# (media/<lang>/ and roadmap/<lang>/ are allowed in the folder and not read
+# yet: projects have no languages.) Paths in the profile are relative to
+# that folder and may not leave it.
+#
+# Texts a screen shows (company and product name and description, roadmap
+# title and description) are written as {"en": ..., "ru": ...}; the seed
+# takes "en". Every refusal that a profile can earn -- a missing "en", a
+# missing file, a file type the services would refuse, a picture over its
+# size limit, a metadata block its schema rejects -- happens in
+# validate_profile(), BEFORE the first write, so a refused run leaves no
+# row and no object behind.
+#
+# Each piece is idempotent on its own natural key: a picture on the key
+# column being set, an attachment on (category, title, language) among the
+# undeleted ones (the match reconcile_attachments.py uses), a roadmap item
+# on its English title, an installment on its name. A changed file in the
+# folder is NOT re-uploaded over an existing one; --reset is how a project
+# is laid down afresh.
 #
 # -----------------------------------------------------------------------------
 # LIVE PEOPLE ARE NEVER TOUCHED BY --reset
@@ -131,6 +181,13 @@
 # publication (PAYLOAD_RETENTION_DAYS). On any stand older than a week
 # the honest answer is "unknown".
 #
+# THE CHECK RUNS ONLY FOR A PROFILE THAT DECLARES staff[] (H37). A
+# profile of projects and investors declares nobody and cannot take
+# anybody off the queue. And since a seed run needs a live admin, which is
+# itself staff the seed did not make, a profile that DOES declare staff
+# always meets this refusal: that is the risk being real, not a false
+# alarm -- declaring operators would take the admin off the queue too.
+#
 # So the seed does not ask the question it cannot answer. It asks a local
 # one -- "is there an ACTIVE staff profile that is not mine" -- and
 # refuses the whole run when there is, before writing anything, naming
@@ -144,11 +201,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import io
+import ipaddress
 import json
+import secrets
 import sys
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 # -- sys.path bootstrap (same shape as the scripts this file replaces) -------
 _SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -158,10 +218,19 @@ for _p in (_SCRIPTS_DIR, _BACKEND_DIR):
         sys.path.insert(0, str(_p))
 
 import structlog  # noqa: E402
+from pydantic import EmailStr, TypeAdapter  # noqa: E402
 from sqlalchemy import delete, func, select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
+from app.core.config import settings  # noqa: E402
 from app.core.database import dispose_engine, get_session_factory  # noqa: E402
+from app.core.email_vars import site_host  # noqa: E402
+from app.core.exceptions import BadRequestError  # noqa: E402
+from app.core.storage import (  # noqa: E402
+    StorageError,
+    delete_object,
+    list_objects,
+)
 from app.core.logging import setup_logging  # noqa: E402
 from app.modules.agent_applications.models import AgentApplication  # noqa: E402
 from app.modules.agent_applications.service import (  # noqa: E402
@@ -174,18 +243,39 @@ from app.modules.auth.service import (  # noqa: E402
     register_email,
     verify_email_code,
 )
-from app.modules.companies.constants import CompanyStatus  # noqa: E402
+from app.modules.companies.constants import (  # noqa: E402
+    ROADMAP_COVER_MAX_BYTES,
+    CompanyMediaSlot,
+    CompanyStatus,
+    RoadmapItemStatus,
+    validate_distribution_config,
+)
+from app.modules.companies.media import (  # noqa: E402
+    COMPANY_MEDIA_COLUMN,
+    company_media_max_bytes,
+)
 from app.modules.companies.models import (  # noqa: E402
+    CompanyAttachment,
+    CompanyDocumentTemplate,
     CompanyPriceHistory,
     CompanyProfile,
+    CompanyRoadmapItem,
 )
 from app.modules.companies.schemas import (  # noqa: E402
+    AttachmentInboxMetadata,
     CreateCompanyRequest,
+    CreateRoadmapItemRequest,
     UpdateCompanyRequest,
 )
 from app.modules.companies.service import (  # noqa: E402
+    create_attachment,
     create_company,
+    create_roadmap_item,
+    set_company_media,
+    set_roadmap_cover,
     update_company,
+    validate_attachment_mime_by_filename,
+    validate_roadmap_cover_mime_by_filename,
 )
 from app.modules.documents.models import (  # noqa: E402
     Document,
@@ -206,11 +296,27 @@ from app.modules.ledgers.service import (  # noqa: E402
 )
 from app.modules.pools.models import OptionPool  # noqa: E402
 from app.modules.pools.schemas import CreatePoolRequest  # noqa: E402
-from app.modules.pools.service import create_pool, get_active_pool  # noqa: E402
-from app.modules.products.constants import ProductStatus  # noqa: E402
+from app.modules.pools.service import (  # noqa: E402
+    _compute_total_options,
+    create_pool,
+    get_active_pool_or_none,
+)
+from app.modules.products.constants import (  # noqa: E402
+    ProductStatus,
+    validate_plan_config,
+)
 from app.modules.products.models import Product, ProductInstallment  # noqa: E402
+from app.modules.products.schemas import (  # noqa: E402
+    CreateInstallmentRequest,
+    CreateProductRequest,
+)
+from app.modules.processors.validators import (  # noqa: E402
+    validate_purchase_config,
+)
 from app.modules.products.service import (  # noqa: E402
+    create_installment,
     create_product,
+    set_product_cover,
     update_product_status,
 )
 from app.modules.purchases.models import Purchase  # noqa: E402
@@ -220,10 +326,7 @@ from app.modules.referrals.models import (  # noqa: E402
     ReferralLink,
 )
 from app.modules.referrals.service import create_link  # noqa: E402
-from app.modules.staff.bootstrap import (  # noqa: E402
-    find_any_admin,
-    write_admin_promotion,
-)
+from app.modules.staff.bootstrap import find_any_admin  # noqa: E402
 from app.modules.staff.models import StaffProfile  # noqa: E402
 from app.modules.staff.service import create_staff  # noqa: E402
 from app.modules.support.service import emit_support_membership  # noqa: E402
@@ -240,6 +343,9 @@ from app.modules.users.service import select_role, update_user  # noqa: E402
 logger = structlog.get_logger()
 
 PROFILES_DIR = _SCRIPTS_DIR / "seed_profiles"
+# One folder per project, keyed by the project's `key` (H37). The platform
+# templates live beside it in templates/_default/ and are not read here.
+PROJECTS_DIR = _SCRIPTS_DIR / "templates" / "projects"
 
 # The seed acts as a person would; sign_document records where from.
 _SEED_IP = "127.0.0.1"
@@ -286,14 +392,8 @@ def list_profiles() -> list[str]:
 
 
 def load_profile(name: str) -> dict[str, Any]:
-    """Read one profile and check the keys this file dereferences.
-
-    The check is deliberately shallow -- presence and type of the top
-    level only. A profile that is missing a section gets a message
-    naming the section; a profile that is malformed deeper down fails
-    at the service that rejects it, which gives a better message than
-    anything this function could invent.
-    """
+    """Read one profile from disk. Its content is checked by
+    validate_profile(), which every seed run calls before writing."""
     path = PROFILES_DIR / f"{name}.json"
     if not path.is_file():
         available = ", ".join(list_profiles()) or "(none)"
@@ -305,18 +405,342 @@ def load_profile(name: str) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         profile: dict[str, Any] = json.load(handle)
 
-    for key in ("email_domain", "demo_password"):
-        if not profile.get(key):
-            raise SeedRefusedError(f"Profile {name!r} has no {key!r}")
-
     # The marker written into users.seeded_profile. Defaults to the file
     # name so a profile cannot silently share another profile's rows.
     profile.setdefault("marker", name)
     return profile
 
 
-def _email(profile: dict[str, Any], local: str) -> str:
-    return f"{local}@{profile['email_domain']}".lower()
+# Keys a profile used to carry and does not any more (H37). Present ->
+# refused by name, so an old profile cannot run with its passwords,
+# domain or admin silently ignored.
+_RETIRED_KEYS = {
+    "email_domain": "the domain is the host of FRONTEND_BASE_URL",
+    "demo_password": "every seeded account gets its own random password",
+    "admin": "the seed does not make an admin; run `aivis bootstrap-admin <email>`",
+    "company": "projects are a list now: `companies`",
+}
+
+# EmailStr as the request schemas apply it, for the seeded addresses.
+_EMAIL = TypeAdapter(EmailStr)
+
+# The keys of a roadmap entry; everything else is refused by name.
+_ROADMAP_KEYS = {
+    "key", "title", "description", "kind", "status", "target_date",
+    "valid_until", "external_url", "cover",
+}
+
+
+def mail_domain() -> str:
+    """The domain of every seeded address: the host of FRONTEND_BASE_URL.
+
+    Raises:
+        SeedRefusedError: the host is empty, has no dot, or is an IP
+            address -- none of them carries mail, and create_company's
+            e-mail validation would refuse the address half-way through.
+    """
+    host = site_host()
+    refusal = (
+        f"FRONTEND_BASE_URL host {host!r} cannot carry seeded e-mail "
+        f"addresses: the seed writes <local>@<host of FRONTEND_BASE_URL>, "
+        f"which needs a domain name with a dot. Nothing has been written."
+    )
+    if not host or "." not in host:
+        raise SeedRefusedError(refusal)
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return host.lower()
+    raise SeedRefusedError(refusal)
+
+
+def _email(local: str) -> str:
+    return f"{local}@{mail_domain()}".lower()
+
+
+def _random_password() -> str:
+    """A fresh password for one seeded account. Returned to the caller,
+    which hands it to the service; never printed, logged or stored."""
+    return secrets.token_urlsafe(24)
+
+
+def _text(value: Any, where: str) -> str:
+    """The English text of a {"en": ..., "ru": ...} field.
+
+    Raises:
+        SeedRefusedError: not a dictionary, no "en", or an empty one.
+    """
+    if not isinstance(value, dict):
+        raise SeedRefusedError(
+            f"{where} must be a dictionary of languages, "
+            f'{{"en": ..., "ru": ...}}; got {type(value).__name__}'
+        )
+    text = value.get("en")
+    if not isinstance(text, str) or not text.strip():
+        raise SeedRefusedError(f'{where} has no "en" text')
+    return text
+
+
+def _optional_text(spec: dict[str, Any], field: str, where: str) -> str | None:
+    if field not in spec or spec[field] is None:
+        return None
+    return _text(spec[field], f"{where}.{field}")
+
+
+def _project_file(company_key: str, relative: Any, where: str) -> Path:
+    """The file a project entry names, inside the project's folder.
+
+    Raises:
+        SeedRefusedError: not a string, outside the folder, or missing.
+    """
+    if not isinstance(relative, str) or not relative:
+        raise SeedRefusedError(f"{where} must be a path inside the project folder")
+    root = (PROJECTS_DIR / company_key).resolve()
+    path = (root / relative).resolve()
+    if root not in path.parents:
+        raise SeedRefusedError(
+            f"{where} = {relative!r} leaves the project folder {root}"
+        )
+    if not path.is_file():
+        raise SeedRefusedError(f"{where}: no file at {path}")
+    return path
+
+
+def _check_picture(path: Path, max_bytes: int, where: str) -> None:
+    """The checks the picture services make, made before any write."""
+    try:
+        validate_roadmap_cover_mime_by_filename(path.name)
+    except BadRequestError as exc:
+        raise SeedRefusedError(f"{where}: {exc.message}") from exc
+    size = path.stat().st_size
+    if size <= 0:
+        raise SeedRefusedError(f"{where}: {path} is empty")
+    if size > max_bytes:
+        raise SeedRefusedError(
+            f"{where}: {path} is {size} bytes, over the {max_bytes}-byte limit"
+        )
+
+
+def _check_address(spec: dict[str, Any], where: str) -> str:
+    """The seeded address of one account, as the services would validate it."""
+    local = spec.get("email_local")
+    if not isinstance(local, str) or not local:
+        raise SeedRefusedError(f"{where} has no `email_local`")
+    try:
+        return str(_EMAIL.validate_python(_email(local)))
+    except ValueError as exc:
+        raise SeedRefusedError(f"{where}.email_local {local!r}: {exc}") from exc
+
+
+def _check_company(spec: dict[str, Any], where: str) -> None:
+    key = spec.get("key")
+    if not isinstance(key, str) or not key:
+        raise SeedRefusedError(f"{where} has no `key`")
+    email = _check_address(spec, where)
+    name = _text(spec.get("name"), f"{where}.name")
+    description = _optional_text(spec, "description", where)
+
+    # The create body as the staff endpoint gets it (the password is a
+    # stand-in: the real one is drawn at creation), then the service's own
+    # distribution check, which the schema does not make.
+    try:
+        body = CreateCompanyRequest(
+            email=email,
+            password=_random_password(),
+            name=name,
+            description=description,
+            price_per_unit_cents=spec.get("price_per_unit_cents"),
+            distribution_config=spec.get("distribution_config"),
+            total_supply=spec.get("total_supply"),
+            shares_per_option=spec.get("shares_per_option", 1),
+        )
+    except ValueError as exc:
+        raise SeedRefusedError(f"{where}: {exc}") from exc
+    try:
+        validate_distribution_config(body.distribution_config)
+    except BadRequestError as exc:
+        raise SeedRefusedError(f"{where}.distribution_config: {exc.message}") from exc
+
+    # The pool: the schema's bounds, and create_pool's "at least one option".
+    try:
+        pool = CreatePoolRequest.model_validate(spec.get("pool"))
+    except ValueError as exc:
+        raise SeedRefusedError(f"{where}.pool: {exc}") from exc
+    total_options = _compute_total_options(body.total_supply, pool.equity_percent)
+    if total_options <= 0:
+        raise SeedRefusedError(
+            f"{where}.pool: equity_percent {pool.equity_percent} of "
+            f"total_supply {body.total_supply} gives no options"
+        )
+
+    for slot in CompanyMediaSlot:
+        if spec.get(slot.value) is not None:
+            path = _project_file(key, spec[slot.value], f"{where}.{slot.value}")
+            _check_picture(path, company_media_max_bytes(slot), f"{where}.{slot.value}")
+
+    price = body.price_per_unit_cents
+    for i, product in enumerate(spec.get("products", [])):
+        pwhere = f"{where}.products[{i}]"
+        # The create body as the staff endpoint gets it (company_id is a
+        # stand-in), then create_product's "a package fits in the pool".
+        try:
+            product_body = CreateProductRequest(
+                company_id=uuid4(),
+                name=_text(product.get("name"), f"{pwhere}.name"),
+                description=_optional_text(product, "description", pwhere),
+                package_size=product.get("package_size"),
+                purchase_config=product.get("purchase_config"),
+            )
+        except ValueError as exc:
+            raise SeedRefusedError(f"{pwhere}: {exc}") from exc
+        if product_body.package_size > total_options:
+            raise SeedRefusedError(
+                f"{pwhere}.package_size {product_body.package_size} exceeds "
+                f"the pool's {total_options} options"
+            )
+        if product.get("cover") is not None:
+            path = _project_file(key, product["cover"], f"{pwhere}.cover")
+            _check_picture(path, ROADMAP_COVER_MAX_BYTES, f"{pwhere}.cover")
+        try:
+            if product.get("purchase_config") is not None:
+                validate_purchase_config(product["purchase_config"])
+            for j, installment in enumerate(product.get("installments", [])):
+                try:
+                    plan = CreateInstallmentRequest.model_validate(installment)
+                except ValueError as exc:
+                    raise SeedRefusedError(
+                        f"{pwhere}.installments[{j}]: {exc}"
+                    ) from exc
+                try:
+                    validate_plan_config(
+                        plan.plan_config,
+                        product_units=product_body.package_size,
+                        price_per_unit_cents=price,
+                    )
+                except BadRequestError as exc:
+                    raise SeedRefusedError(
+                        f"{pwhere}.installments[{j}]: {exc.message}"
+                    ) from exc
+        except BadRequestError as exc:
+            raise SeedRefusedError(f"{pwhere}: {exc.message}") from exc
+
+    for i, attachment in enumerate(spec.get("attachments", [])):
+        awhere = f"{where}.attachments[{i}]"
+        path = _project_file(key, attachment.get("file"), f"{awhere}.file")
+        try:
+            validate_attachment_mime_by_filename(path.name)
+        except BadRequestError as exc:
+            raise SeedRefusedError(f"{awhere}: {exc.message}") from exc
+        size = path.stat().st_size
+        if size <= 0:
+            raise SeedRefusedError(f"{awhere}: {path} is empty")
+        if size > settings.storage_max_file_size_bytes:
+            raise SeedRefusedError(
+                f"{awhere}: {path} is {size} bytes, over the "
+                f"{settings.storage_max_file_size_bytes}-byte attachment limit"
+            )
+        try:
+            AttachmentInboxMetadata.model_validate(attachment.get("meta"))
+        except ValueError as exc:
+            raise SeedRefusedError(f"{awhere}.meta: {exc}") from exc
+
+    seen_items: set[str] = set()
+    seen_titles: set[str] = set()
+    for i, item in enumerate(spec.get("roadmap", [])):
+        rwhere = f"{where}.roadmap[{i}]"
+        unknown = sorted(set(item) - _ROADMAP_KEYS)
+        if unknown:
+            raise SeedRefusedError(f"{rwhere} has unknown keys: {unknown}")
+        item_key = item.get("key")
+        if not isinstance(item_key, str) or not item_key:
+            raise SeedRefusedError(f"{rwhere} has no `key`")
+        if item_key in seen_items:
+            raise SeedRefusedError(f"{rwhere}: key {item_key!r} is used twice")
+        seen_items.add(item_key)
+        title = _text(item.get("title"), f"{rwhere}.title")
+        # The English title is how a second run finds the item again.
+        if title in seen_titles:
+            raise SeedRefusedError(f"{rwhere}: title {title!r} is used twice")
+        seen_titles.add(title)
+        _roadmap_request(item, rwhere)
+        if item.get("cover") is not None:
+            path = _project_file(key, item["cover"], f"{rwhere}.cover")
+            _check_picture(path, ROADMAP_COVER_MAX_BYTES, f"{rwhere}.cover")
+
+
+def _roadmap_request(item: dict[str, Any], where: str) -> CreateRoadmapItemRequest:
+    """The create body of one roadmap entry, as the staff endpoint gets it."""
+    status = item.get("status")
+    if status is not None and status not in {s.value for s in RoadmapItemStatus}:
+        raise SeedRefusedError(f"{where}.status {status!r} is not a roadmap status")
+    try:
+        return CreateRoadmapItemRequest.model_validate(
+            {
+                "kind": item.get("kind", "milestone"),
+                "title": _text(item.get("title"), f"{where}.title"),
+                "description": _optional_text(item, "description", where),
+                "target_date": item.get("target_date"),
+                "valid_until": item.get("valid_until"),
+                "status": status,
+                "external_url": item.get("external_url"),
+            }
+        )
+    except ValueError as exc:
+        raise SeedRefusedError(f"{where}: {exc}") from exc
+
+
+def validate_profile(profile: dict[str, Any]) -> None:
+    """Every refusal a profile can earn, before the first write.
+
+    Retired keys, the shape of `companies`, the English texts, the
+    project files (present, inside their folder, of a type and size the
+    services accept), the metadata and roadmap bodies against their
+    schemas, purchase and plan configs against their validators, and the
+    mail domain. What is left for the run to refuse is what only the
+    database knows (a user at a seeded address who is not ours, a second
+    roadmap item with the same title made by hand).
+
+    Raises:
+        SeedRefusedError: naming the field or the path.
+    """
+    for retired, reason in _RETIRED_KEYS.items():
+        if retired in profile:
+            raise SeedRefusedError(
+                f"Profile key {retired!r} is retired: {reason}."
+            )
+
+    # The domain first: every address below is built on it.
+    mail_domain()
+    for section in ("staff", "agents", "investors"):
+        for i, spec in enumerate(profile.get(section, [])):
+            _check_address(spec, f"{section}[{i}]")
+
+    # An investor's agent and portfolio: a wrong agent key used to surface
+    # as a KeyError half-way through the run, after the agents were made.
+    agent_keys = {spec.get("key") for spec in profile.get("agents", [])}
+    for i, spec in enumerate(profile.get("investors", [])):
+        referrer = spec.get("referred_by_agent")
+        if referrer is not None and referrer not in agent_keys:
+            raise SeedRefusedError(
+                f"investors[{i}].referred_by_agent {referrer!r} names no agent "
+                f"in `agents`"
+            )
+        for field in ("deposit_cents", "purchases"):
+            value = (spec.get("portfolio") or {}).get(field, 0)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise SeedRefusedError(
+                    f"investors[{i}].portfolio.{field} must be a whole number >= 0"
+                )
+
+    companies = profile.get("companies", [])
+    if not isinstance(companies, list):
+        raise SeedRefusedError("`companies` must be a list of projects")
+    keys: set[str] = set()
+    for i, spec in enumerate(companies):
+        _check_company(spec, f"companies[{i}]")
+        if spec["key"] in keys:
+            raise SeedRefusedError(f"companies[{i}]: key {spec['key']!r} is used twice")
+        keys.add(spec["key"])
 
 
 # ---------------------------------------------------------------------------
@@ -355,17 +779,41 @@ async def assert_no_live_staff(
         return
 
     raise SeedRefusedError(
-        "This stand has active staff profiles that this seed did not "
-        "create (for example "
+        "This profile declares staff, and this stand has active staff "
+        "profiles that this seed did not create (for example "
         + ", ".join(str(i) for i in foreign[:3])
-        + "). Declaring seeded operators for the support section would "
-        "stop every operator that is NOT declared from serving that "
-        "section -- and whether these are declared is a fact that lives "
-        "in comms, not here, so it cannot be checked. Nothing has been "
-        "written. Either re-run with --allow-live-staff if you know "
-        "those people are declared (or that this stand is yours to "
-        "change), or clear the stand first."
+        + "). The live admin the seed runs under is one of them: an admin "
+        "is staff too. Declaring seeded operators for the support section "
+        "would stop every operator that is NOT declared -- the admin "
+        "included -- from serving that section, and whether the live ones "
+        "are declared is a fact that lives in comms, not here, so it "
+        "cannot be checked. Nothing has been written. Either re-run with "
+        "--allow-live-staff if you know those people are declared (or "
+        "that this stand is yours to change), or drop `staff` from the "
+        "profile."
     )
+
+
+async def require_admin(session: AsyncSession) -> User:
+    """The active admin a seed run acts as, or a refusal (H37).
+
+    The seed does not make an admin any more. Called before anything is
+    written -- before the reset too -- so a refused run changes nothing.
+
+    Raises:
+        SeedRefusedError: no active admin on this stand.
+    """
+    admin = await find_any_admin(session)
+    if admin is None:
+        raise SeedRefusedError(
+            "This stand has no active admin, and the seed needs one to act "
+            "as (staff, companies, pools and products are created by an "
+            "admin). The seed does not make one. Register on the site, "
+            "confirm the address, then run: aivis bootstrap-admin <email>. "
+            "Nothing has been written."
+        )
+    info(f"Acting as the admin: {admin.id}")
+    return admin
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +946,7 @@ async def ensure_user(
     person the seed never created.
     """
     marker = profile["marker"]
-    email = _email(profile, spec["email_local"])
+    email = _email(spec["email_local"])
 
     existing = await find_user_by_email(session, email)
     if existing is not None:
@@ -507,7 +955,7 @@ async def ensure_user(
                 f"{email} already exists and was not created by profile "
                 f"{marker!r} (marker: {existing.seeded_profile!r}). The "
                 f"seed does not take over rows it did not make. Pick "
-                f"another e-mail domain in the profile, or clear that "
+                f"another email_local in the profile, or clear that "
                 f"user by hand."
             )
         # Idempotent path: finish any step a previous run left undone.
@@ -515,9 +963,11 @@ async def ensure_user(
             session, existing, role=role, marker=marker
         )
 
+    # A random password per account, handed straight to the service and
+    # kept nowhere (see the header). An existing account above keeps its own.
     user = await register_email(
         email,
-        profile["demo_password"],
+        _random_password(),
         session,
         referral_code=referral_code,
     )
@@ -545,69 +995,6 @@ async def ensure_user(
 # ---------------------------------------------------------------------------
 # Staff
 # ---------------------------------------------------------------------------
-
-
-async def ensure_admin(
-    session: AsyncSession, profile: dict[str, Any]
-) -> User:
-    """Return the admin every later call uses as its actor.
-
-    An admin that already exists is used as-is -- the seed does not mint
-    a second administrator on a stand that has one. Only when there is
-    none does the bypass described in the header run.
-    """
-    existing = await find_any_admin(session)
-    if existing is not None:
-        info(f"Using the existing admin as actor: {existing.id}")
-        return existing
-
-    spec = profile.get("admin")
-    if not spec:
-        raise SeedRefusedError(
-            "This stand has no admin and the profile declares none, so "
-            "there is nobody to create staff, companies or products."
-        )
-
-    user = await ensure_user(session, profile, spec, role=UserRole.INVESTOR)
-
-    # -- THE BYPASS. The three writes (role, StaffProfile with every
-    # permission, membership event) live in ONE place,
-    # app.modules.staff.bootstrap.write_admin_promotion, shared with
-    # `aivis bootstrap-admin`. The user above came through the ordinary
-    # ladder, so the comms recipient is already there and is NOT part of
-    # this.
-    #
-    # GATED ON THE ROW IT WOULD WRITE, like every other step in this
-    # file. Reaching here does NOT prove there is no staff profile for
-    # this person: find_any_admin answers "is there an ACTIVE profile
-    # whose permissions are all True", and a profile that is inactive,
-    # or that an operator has since taken a permission away from, makes
-    # it say None while staff_profiles.user_id -- which is UNIQUE --
-    # still holds a row. Without this check the insert dies on
-    # uq_staff_profiles_user_id and takes the whole run with it.
-    existing_profile = (
-        await session.execute(
-            select(StaffProfile).where(StaffProfile.user_id == user.id)
-        )
-    ).scalar_one_or_none()
-
-    if existing_profile is not None:
-        # Already promoted by an earlier run. The permissions are left
-        # exactly as they are: this function's job is to produce an
-        # actor, not to restore rights somebody may have removed on
-        # purpose. The membership event is not re-emitted either -- the
-        # first promotion already sent it, and a second one would make
-        # a repeat run write to the outbox, which is precisely what
-        # "a second run is a no-op" forbids.
-        user.role = UserRole.STAFF
-        await session.flush()
-        await session.refresh(user)
-        return user
-
-    await write_admin_promotion(session, user)
-
-    ok(f"Bootstrapped the first admin: {user.id}")
-    return user
 
 
 async def ensure_staff(
@@ -642,7 +1029,7 @@ async def ensure_company(
 ) -> CompanyProfile:
     """Create the company account and its profile through the service."""
     marker = profile["marker"]
-    email = _email(profile, spec["email_local"])
+    email = _email(spec["email_local"])
 
     existing_user = await find_user_by_email(session, email)
     if existing_user is not None:
@@ -664,9 +1051,9 @@ async def ensure_company(
     company = await create_company(
         CreateCompanyRequest(
             email=email,
-            password=profile["demo_password"],
-            name=spec["name"],
-            description=spec.get("description"),
+            password=_random_password(),
+            name=_text(spec["name"], "name"),
+            description=_optional_text(spec, "description", "company"),
             price_per_unit_cents=spec["price_per_unit_cents"],
             distribution_config=spec["distribution_config"],
             total_supply=spec["total_supply"],
@@ -724,8 +1111,13 @@ async def ensure_pool(
     spec: dict[str, Any],
     admin: User,
 ) -> OptionPool:
-    """Create the company's single active pool, or return it."""
-    existing = await get_active_pool(company.id, session)
+    """Create the company's single active pool, or return it.
+
+    get_active_pool_or_none, not get_active_pool: the latter RAISES when
+    there is no pool, so this check used to stop every first seed of a
+    company here (H37 found it; nothing had run this path before).
+    """
+    existing = await get_active_pool_or_none(company.id, session)
     if existing is not None:
         return existing
 
@@ -740,35 +1132,208 @@ async def ensure_pool(
 async def ensure_product(
     session: AsyncSession,
     company: CompanyProfile,
+    company_key: str,
     spec: dict[str, Any],
     admin: User,
 ) -> Product:
-    """Create one product, or return the one with this name."""
+    """Create one product with its installments and cover, or finish it.
+
+    Found again by its English name inside the company. Installments are
+    found by name among the undeleted ones; the cover is uploaded only
+    while the product has none (H37).
+    """
+    name = _text(spec["name"], "product.name")
     stmt = select(Product).where(
         Product.company_id == company.id,
-        Product.name == spec["name"],
+        Product.name == name,
     )
-    existing = (await session.execute(stmt)).scalar_one_or_none()
-    if existing is not None:
-        if existing.status == ProductStatus.ACTIVE:
-            return existing
-        return await update_product_status(
-            existing.id, ProductStatus.ACTIVE, admin, session
+    product = (await session.execute(stmt)).scalar_one_or_none()
+    if product is None:
+        product = await create_product(
+            company.id,
+            name,
+            spec["package_size"],
+            admin,
+            session,
+            description=_optional_text(spec, "description", "product"),
+            purchase_config=spec.get("purchase_config"),
         )
 
-    product = await create_product(
-        company.id,
-        spec["name"],
-        spec["package_size"],
-        admin,
-        session,
-        description=spec.get("description"),
-    )
-    # Same reason as the company above: create_product writes HIDDEN,
-    # and execute_purchase refuses anything that is not ACTIVE.
+    for installment in spec.get("installments", []):
+        exists_stmt = select(ProductInstallment.id).where(
+            ProductInstallment.product_id == product.id,
+            ProductInstallment.name == installment["name"],
+            ProductInstallment.is_deleted.is_(False),
+        )
+        if (await session.execute(exists_stmt)).first() is None:
+            await create_installment(
+                product.id,
+                installment["name"],
+                installment["plan_config"],
+                admin,
+                session,
+            )
+
+    if spec.get("cover") is not None and product.cover_storage_key is None:
+        path = _project_file(company_key, spec["cover"], "product.cover")
+        content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
+        data = path.read_bytes()
+        await set_product_cover(
+            session,
+            company.id,
+            product.id,
+            admin,
+            file_data=io.BytesIO(data),
+            file_size_bytes=len(data),
+            content_type=content_type,
+            file_extension=ext,
+        )
+
+    # Same reason as the company: create_product writes HIDDEN, and
+    # execute_purchase refuses anything that is not ACTIVE.
+    if product.status == ProductStatus.ACTIVE:
+        return product
     return await update_product_status(
         product.id, ProductStatus.ACTIVE, admin, session
     )
+
+
+# ---------------------------------------------------------------------------
+# Project files: pictures, attachments, roadmap (H37 P-130)
+# ---------------------------------------------------------------------------
+
+
+async def ensure_company_media(
+    session: AsyncSession,
+    company: CompanyProfile,
+    spec: dict[str, Any],
+    admin: User,
+) -> int:
+    """Upload the logo, dark logo and cover the profile names, each only
+    while its slot is empty. Returns how many were uploaded."""
+    uploaded = 0
+    for slot in CompanyMediaSlot:
+        relative = spec.get(slot.value)
+        if relative is None or getattr(company, COMPANY_MEDIA_COLUMN[slot]):
+            continue
+        path = _project_file(spec["key"], relative, slot.value)
+        content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
+        data = path.read_bytes()
+        await set_company_media(
+            session,
+            company.id,
+            admin,
+            slot=slot,
+            file_data=io.BytesIO(data),
+            file_size_bytes=len(data),
+            content_type=content_type,
+            file_extension=ext,
+        )
+        uploaded += 1
+    return uploaded
+
+
+async def ensure_attachments(
+    session: AsyncSession,
+    company: CompanyProfile,
+    spec: dict[str, Any],
+    admin: User,
+) -> int:
+    """Create the attachments the profile names that are not there yet.
+
+    "There" is the key reconcile_attachments.py matches on: the same
+    company, category, title and language among the undeleted rows.
+    Returns how many were created.
+    """
+    created = 0
+    for attachment in spec.get("attachments", []):
+        meta = AttachmentInboxMetadata.model_validate(attachment["meta"])
+        exists_stmt = select(CompanyAttachment.id).where(
+            CompanyAttachment.company_id == company.id,
+            CompanyAttachment.category == meta.category,
+            CompanyAttachment.title == meta.title,
+            CompanyAttachment.language == meta.language,
+            CompanyAttachment.is_deleted.is_(False),
+        )
+        if (await session.execute(exists_stmt)).first() is not None:
+            continue
+        path = _project_file(spec["key"], attachment["file"], "attachment.file")
+        data = path.read_bytes()
+        await create_attachment(
+            session,
+            company.id,
+            admin,
+            file_data=data,
+            file_size_bytes=len(data),
+            original_filename=path.name,
+            content_type=validate_attachment_mime_by_filename(path.name),
+            metadata=meta,
+        )
+        created += 1
+    return created
+
+
+async def ensure_roadmap(
+    session: AsyncSession,
+    company: CompanyProfile,
+    spec: dict[str, Any],
+    admin: User,
+) -> int:
+    """Create the roadmap items the profile names, then their covers.
+
+    An item is found again by its English title among the company's
+    undeleted items -- the roadmap has no column for the profile's key.
+    Two undeleted items with that title (one made by hand) are refused
+    rather than guessed between. A cover is uploaded only while the item
+    has none. Returns how many items were created.
+    """
+    created = 0
+    for item in spec.get("roadmap", []):
+        body = _roadmap_request(item, f"roadmap[{item['key']}]")
+        found_stmt = select(CompanyRoadmapItem).where(
+            CompanyRoadmapItem.company_id == company.id,
+            CompanyRoadmapItem.title == body.title,
+            CompanyRoadmapItem.is_deleted.is_(False),
+        )
+        found = list((await session.execute(found_stmt)).scalars())
+        if len(found) > 1:
+            raise SeedRefusedError(
+                f"Project {spec['key']!r} has {len(found)} roadmap items titled "
+                f"{body.title!r}; the seed finds an item by its title and "
+                f"will not pick one. Remove the extra item by hand."
+            )
+        if found:
+            roadmap_item = found[0]
+        else:
+            roadmap_item = await create_roadmap_item(
+                company.id,
+                body.title,
+                admin,
+                session,
+                kind=body.kind.value,
+                description=body.description,
+                target_date=body.target_date,
+                valid_until=body.valid_until,
+                status=body.status,
+                external_url=body.external_url,
+            )
+            created += 1
+
+        if item.get("cover") is not None and roadmap_item.cover_storage_key is None:
+            path = _project_file(spec["key"], item["cover"], "roadmap.cover")
+            content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
+            data = path.read_bytes()
+            await set_roadmap_cover(
+                session,
+                company.id,
+                roadmap_item.id,
+                admin,
+                file_data=io.BytesIO(data),
+                file_size_bytes=len(data),
+                content_type=content_type,
+                file_extension=ext,
+            )
+    return created
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +1454,9 @@ async def reset_seed_data(
         "companies": 0,
         "products": 0,
         "purchases": 0,
+        "attachments": 0,
+        "roadmap_items": 0,
+        "templates": 0,
     }
 
     id_stmt = select(User.id).where(User.seeded_profile == marker)
@@ -952,6 +1520,21 @@ async def reset_seed_data(
         delete(StaffProfile).where(StaffProfile.user_id.in_(user_ids)),
     ):
         await session.execute(statement)
+
+    # The project's own rows (H37): attachments, roadmap items and
+    # document templates are RESTRICT on the company. Their storage
+    # objects are NOT touched here -- purge_seeded_objects deletes them
+    # after the commit, so a reset that rolls back keeps both.
+    if company_ids:
+        for model, name in (
+            (CompanyAttachment, "attachments"),
+            (CompanyRoadmapItem, "roadmap_items"),
+            (CompanyDocumentTemplate, "templates"),
+        ):
+            result = await session.execute(
+                delete(model).where(model.company_id.in_(company_ids))
+            )
+            counts[name] = result.rowcount or 0
 
     if product_ids:
         await session.execute(
@@ -1017,44 +1600,135 @@ async def reset_seed_data(
     return counts
 
 
+async def seeded_company_ids(session: AsyncSession, marker: str) -> list[UUID]:
+    """The companies whose owner carries this marker -- the ones --reset
+    deletes, read before it does so their objects can be found after."""
+    stmt = (
+        select(CompanyProfile.id)
+        .join(User, User.id == CompanyProfile.user_id)
+        .where(User.seeded_profile == marker)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def purge_seeded_objects(company_ids: list[UUID]) -> dict[str, int]:
+    """Delete every storage object under companies/<id>/ of these companies.
+
+    Called AFTER the reset's rows are committed (H37): an object deleted
+    before the commit would be gone while its row survived a rollback.
+    Everything a project has in the storage lives under that one prefix
+    (pictures, product covers, roadmap covers, attachments, templates).
+    A failure to list or delete is a warning, not a refusal -- the rows
+    are already gone, and a leftover object is an orphan, not a lie.
+    """
+    stats = {"objects": 0, "failed": 0}
+    for company_id in company_ids:
+        prefix = f"companies/{company_id}/"
+        try:
+            keys = await list_objects(prefix)
+        except StorageError as exc:
+            warn(f"could not list {prefix}: {exc}")
+            stats["failed"] += 1
+            continue
+        for key in keys:
+            try:
+                await delete_object(key)
+                stats["objects"] += 1
+            except StorageError as exc:
+                warn(f"could not delete {key}: {exc}")
+                stats["failed"] += 1
+    return stats
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
 
 async def seed_profile(
-    session: AsyncSession, profile: dict[str, Any]
+    session: AsyncSession,
+    profile: dict[str, Any],
+    *,
+    admin: User | None = None,
 ) -> dict[str, int]:
-    """Walk the profile top to bottom and report what was made."""
+    """Walk the profile top to bottom and report what was made.
+
+    validate_profile() runs first, so everything a profile can be refused
+    for is refused before the first write. `admin` is the actor; when not
+    given, the stand's active admin is looked up and its absence refused.
+    """
+    validate_profile(profile)
+    if admin is None:
+        admin = await require_admin(session)
+
     marker = profile["marker"]
     stats = {
         "staff": 0,
         "companies": 0,
         "products": 0,
+        "pictures": 0,
+        "attachments": 0,
+        "roadmap_items": 0,
         "agents": 0,
         "investors": 0,
         "purchases": 0,
     }
-
-    admin = await ensure_admin(session, profile)
 
     for spec in profile.get("staff", []):
         await ensure_staff(session, profile, spec, admin)
         stats["staff"] += 1
     info(f"staff: {stats['staff']}")
 
+    # KNOWN CEILING -- objects of a project whose seed run fails after its
+    # uploads began.
+    #   1. Mechanics: the whole run is one transaction, but a storage upload
+    #      is not part of it. If the run fails after set_company_media /
+    #      set_product_cover / create_attachment / set_roadmap_cover wrote
+    #      objects, the rows roll back and the objects stay under
+    #      companies/<the rolled-back id>/. The next run creates the company
+    #      with a new id, so --reset never finds that prefix.
+    #   2. Status: acknowledged by design.
+    #   3. Task: P-80, "orphan files in the storage" (technical debt).
+    #   4. Trigger: the first seed run that fails after its uploads began
+    #      (an [ERROR] line or a traceback in the seed's output after
+    #      set_company_media / create_attachment had run), or P-80 leaving
+    #      the debt list.
+    #   5. Fix: the P-80 sweeper -- reconcile companies/* in the storage
+    #      against company_profiles and delete the prefixes with no row.
+    #   6. Rejected: a commit per project. It keeps the projects already
+    #      finished, and leaves the failing one's objects orphaned exactly
+    #      the same way.
+    #   Every refusal a profile can earn happens in validate_profile(),
+    #   before any upload, so only a storage or database failure mid-run
+    #   reaches this.
     products: list[Product] = []
-    company_spec = profile.get("company")
-    if company_spec:
+    for company_spec in profile.get("companies", []):
         company = await ensure_company(session, profile, company_spec, admin)
-        stats["companies"] = 1
         await ensure_pool(session, company, company_spec["pool"], admin)
         for product_spec in company_spec.get("products", []):
             products.append(
-                await ensure_product(session, company, product_spec, admin)
+                await ensure_product(
+                    session, company, company_spec["key"], product_spec, admin
+                )
             )
-        stats["products"] = len(products)
-        info(f"company: {company.name}, products: {stats['products']}")
+        await session.refresh(company)
+        stats["pictures"] += await ensure_company_media(
+            session, company, company_spec, admin
+        )
+        stats["attachments"] += await ensure_attachments(
+            session, company, company_spec, admin
+        )
+        stats["roadmap_items"] += await ensure_roadmap(
+            session, company, company_spec, admin
+        )
+        stats["companies"] += 1
+        info(f"project {company_spec['key']}: {company.name}")
+    stats["products"] = len(products)
+    info(
+        f"projects: {stats['companies']}, products: {stats['products']}, "
+        f"pictures: {stats['pictures']}, attachments: {stats['attachments']}, "
+        f"roadmap items: {stats['roadmap_items']} (new this run)"
+    )
 
     link_by_key: dict[str, ReferralLink] = {}
     for spec in profile.get("agents", []):
@@ -1094,33 +1768,45 @@ async def _run_profile(args: argparse.Namespace) -> int:
     factory = get_session_factory()
     async with factory() as session:
         try:
-            await assert_no_live_staff(
-                session, marker, allow_live_staff=args.allow_live_staff
-            )
+            # Everything that can refuse, before anything is written --
+            # the reset included. --reset-only needs neither a valid
+            # profile body nor an actor: it deletes by marker alone.
+            admin: User | None = None
+            if not args.reset_only:
+                validate_profile(profile)
+                admin = await require_admin(session)
+                if profile.get("staff"):
+                    await assert_no_live_staff(
+                        session, marker, allow_live_staff=args.allow_live_staff
+                    )
 
             if args.dry_run:
                 info(f"profile {args.profile!r}: {profile.get('description')}")
-                info(f"marker: {marker}, domain: {profile['email_domain']}")
-                info(
-                    "would seed: "
-                    f"{len(profile.get('staff', []))} staff, "
-                    f"{1 if profile.get('company') else 0} company, "
-                    f"{len(profile.get('agents', []))} agent(s), "
-                    f"{len(profile.get('investors', []))} investor(s)"
-                )
+                if not args.reset_only:
+                    info(f"marker: {marker}, domain: {mail_domain()}")
+                    info(
+                        "would seed: "
+                        f"{len(profile.get('staff', []))} staff, "
+                        f"{len(profile.get('companies', []))} project(s), "
+                        f"{len(profile.get('agents', []))} agent(s), "
+                        f"{len(profile.get('investors', []))} investor(s)"
+                    )
                 if args.reset:
                     info("would reset first")
                 return 0
 
             if args.reset:
+                company_ids = await seeded_company_ids(session, marker)
                 counts = await reset_seed_data(session, marker)
-                ok(f"reset: {counts}")
                 await session.commit()
+                ok(f"reset: {counts}")
+                # After the commit: see purge_seeded_objects.
+                ok(f"storage: {await purge_seeded_objects(company_ids)}")
 
             if args.reset_only:
                 return 0
 
-            stats = await seed_profile(session, profile)
+            stats = await seed_profile(session, profile, admin=admin)
             await session.commit()
             ok(f"seeded: {stats}")
             return 0

@@ -832,7 +832,9 @@ async def test_snapshot_uses_investor_language_at_purchase_time(
 
 
 def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
-    """No bare `User(...)` in scripts/seed.py, and one `StaffProfile(...)`.
+    """No bare `User(...)` or `StaffProfile(...)` in scripts/seed.py, and
+    no admin bypass either; exactly one StaffProfile construction in
+    app/modules/staff/bootstrap.py.
 
     THE WHOLE POINT OF T-72 was that four seed scripts built users and
     staff profiles by hand, so comms never learned about the people they
@@ -854,6 +856,12 @@ def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
     there (the bypass must not be copied inside the module either). A
     second construction anywhere is either a copied bypass -- the failure
     this guards -- or a moved ceiling, to be re-argued, not relaxed.
+
+    H37 (P-130) removed the seed's call to write_admin_promotion: the seed
+    no longer makes the first admin, it refuses a stand without one. The
+    assertion that the seed CALLS the shared bypass was right while the
+    seed was one of its two callers; it is now the opposite -- the seed
+    must not call it -- so a stand cannot get an admin by running a demo.
 
     A SUBSTRING SEARCH, DELIBERATELY. An AST walk would be tidier and
     would miss the case that matters: a call assembled as a string, or a
@@ -895,9 +903,14 @@ def test_seed_creates_users_and_staff_only_through_application_paths() -> None:
         f"staff member must go through staff.service.create_staff, which "
         f"is what emits the support-section membership event."
     )
-    assert "write_admin_promotion(" in code, (
-        "scripts/seed.py no longer calls write_admin_promotion -- the first "
-        "admin of a seeded stand must come through the one shared bypass."
+    assert "write_admin_promotion" not in code, (
+        "scripts/seed.py refers to write_admin_promotion -- the seed does "
+        "not make an admin (H37); the first admin comes only from "
+        "`aivis bootstrap-admin`."
+    )
+    assert "find_any_admin(" in code, (
+        "scripts/seed.py no longer looks for the admin it acts as -- the "
+        "refusal of a stand without an admin depends on it."
     )
 
     bootstrap_path = (
