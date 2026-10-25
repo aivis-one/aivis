@@ -340,8 +340,8 @@ async function onSign(): Promise<void> {
 // Display helpers
 // ---------------------------------------------------------------------------
 
-// Every row carries a badge: signed, to sign, accepted at each purchase, or (a
-// document that is only read) read.
+// Every row carries a badge: signed, to sign, accepted at each purchase, accepted
+// as part of the buyer agreement, or (a document that is only read) read.
 function statusVariant(doc: DocumentResponse): 'success' | 'warning' | 'neutral' {
   if (doc.is_signed) return 'success'
   return needsSigning(doc) ? 'warning' : 'neutral'
@@ -357,7 +357,7 @@ function statusLabel(doc: DocumentResponse): string {
 function metaLabel(doc: DocumentResponse): string {
   // DocumentResponse does not carry a signed_at timestamp (is_signed
   // is a derived flag built by the backend on list), so the row says
-  // signed, to sign, accepted at each purchase, or to read.
+  // signed, to sign, accepted at each purchase, part of the buyer agreement, or to read.
   if (doc.is_signed) return t('inv.docs.meta.signed')
   if (isPerPurchase(doc)) return t('inv.docs.meta.perPurchase')
   if (isPartOfAgreement(doc)) return t('inv.docs.meta.partOfAgreement')
