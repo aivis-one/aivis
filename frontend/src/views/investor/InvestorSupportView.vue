@@ -106,7 +106,14 @@ const { restart: restartTranslationPoll } = useTranslationPoll({
  */
 function errorMessage(err: SupportActionError | null): string {
   if (!err) return ''
-  if (err.status !== undefined && err.message.trim() !== '') return err.message
+  const said = err.message.trim()
+  if (
+    err.status !== undefined &&
+    said !== '' &&
+    !/^HTTP \d{3}\b/.test(said) &&
+    !said.startsWith('{')
+  )
+    return said
   if (err.status === 502 || err.status === 504) {
     return t('inv.support.errorUnavailable')
   }

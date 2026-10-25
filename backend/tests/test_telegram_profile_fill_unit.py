@@ -94,3 +94,12 @@ def test_names_are_trimmed_and_stripped_of_control_characters() -> None:
         user, {"id": 1, "first_name": "  An\x00na \n", "last_name": "   "}  # type: ignore[arg-type]
     )
     assert user.profile == {"first_name": "Anna"}
+
+
+def test_a_photo_address_over_500_characters_is_not_copied() -> None:
+    user = FakeUser({})
+    long_url = "https://photos.example.org/" + "a" * 600
+    _fill_profile_from_telegram(
+        user, {"id": 1, "photo_url": long_url}  # type: ignore[arg-type]
+    )
+    assert user.profile == {}

@@ -64,7 +64,7 @@ describe('IntegratorApplicationModal', () => {
     const text = w.text()
     expect(text).toContain('20 integrators')
     expect(text).toContain('2 percent')
-    expect(text).toContain('10 with the largest share 1 percent')
+    expect(text).toContain('10 with the largest first-line volume of the quarter share 1 percent')
     expect(text).toContain('bonus parts')
     expect(text).toContain('separate withdrawal account')
     expect(text).toContain('14 days after your request')

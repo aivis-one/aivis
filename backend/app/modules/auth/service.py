@@ -1431,7 +1431,10 @@ def _fill_profile_from_telegram(user: User, telegram_creds: dict) -> None:
     }
     # Only an http(s) address is a picture the cabinet may show.
     photo = wanted["avatar_url"]
-    if photo is not None and urlsplit(photo).scheme.lower() not in ("http", "https"):
+    if photo is not None and (
+        urlsplit(photo).scheme.lower() not in ("http", "https")
+        or len(str(telegram_creds.get("photo_url")).strip()) > 500
+    ):
         wanted["avatar_url"] = None
     changed = False
     for key, value in wanted.items():

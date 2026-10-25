@@ -181,4 +181,15 @@ describe('the support screen of F7', () => {
     expect(wrapper.get('form.ds-composer').find('button').exists()).toBe(true)
     wrapper.unmount()
   })
+
+  it('shows the unavailable text, not a raw status line, for a non-JSON answer', async () => {
+    vi.mocked(sendSupportMessage).mockRejectedValue(
+      new ApiResponseError(502, 'HTTP 502: non-JSON response'),
+    )
+    const { w } = await mountView('en')
+    await w.get('textarea').setValue('Hello')
+    await w.get('form.ds-composer').trigger('submit')
+    await flushPromises()
+    expect(w.get('.ds-field__error').text()).toBe(en.inv.support.errorUnavailable)
+  })
 })

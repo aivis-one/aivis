@@ -22,8 +22,9 @@
     "statusActive": "Active",
     "primaryNav": "Main navigation",
     "nav": {
-      "collapse": "Collapse the menu",
-      "expand": "Expand the menu"
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "logout": "Log out"
     },
     "language": {
       "current": "Language: {name}",
@@ -1841,7 +1842,7 @@
           "what": "An integrator brings people to AIVIS and earns commission on what they buy.",
           "pointLink": "You get one personal link to share.",
           "pointCommission": "You earn commission on the purchases of the people you bring, on three levels.",
-          "pointPools": "Every month the 20 integrators with the largest first-line volume share 2 percent of that month's purchases, and every quarter the 10 with the largest share 1 percent of that quarter's purchases.",
+          "pointPools": "Every month the 20 integrators with the largest first-line volume share 2 percent of that month's purchases, and every quarter the 10 with the largest first-line volume of the quarter share 1 percent of that quarter's purchases, each in proportion to their volume.",
           "pointBonus": "You receive bonus parts on a one-time purchase by a buyer who registered by your link: from 5 to 20 percent of its amount, by the size of the purchase.",
           "pointWithdrawal": "Your commission is held in a separate withdrawal account: you ask for a payout and it is paid 14 days after your request.",
           "feeLine": "Identity verification costs {fee} for each attempt.",
