@@ -712,6 +712,9 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
         seed_settings, "frontend_base_url", f"https://{tag}.{SEED_HOST}"
     )
     profile = seed.load_profile("default")
+    # This test counts the rows of the demo project; the shipped profile's
+    # other projects have their own unit tests.
+    profile["companies"] = [c for c in profile["companies"] if c["key"] == "demo"]
     profile["marker"] = f"pytest_default_{tag}"
 
     stats = await seed.seed_profile(db_session, profile)

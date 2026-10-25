@@ -110,6 +110,555 @@
           "cover": "roadmap/first-sale.png"
         }
       ]
+    },
+    {
+      "key": "sankord",
+      "email_local": "sankord",
+      "first_name": "SANKORD",
+      "last_name": "Team",
+      "country": "GE",
+      "name": {"en": "SANKORD", "ru": "SANKORD"},
+      "description": {"en": "The day-to-day leaves your head. Nothing irreversible happens without your yes. AI agents that work where your data lives, act on a plan you understand, and write down every step. The record covers what the agents do and each yes they wait for, not how your people work.", "ru": "Операционка уходит из головы. Всё необратимое ждёт вашего «да». AI-агенты работают там, где живут ваши данные, действуют по понятному вам плану и записывают каждый свой шаг. Записываются действия агентов и каждое «да», которого они ждут, — но не работа ваших людей."},
+      "price_per_unit_cents": 10,
+      "total_supply": 40000000,
+      "shares_per_option": 25,
+      "distribution_config": {
+        "company_pct": 0.83,
+        "agent_levels": [0.1, 0.03, 0.01]
+      },
+      "pool": {"equity_percent": 25},
+      "logo": "media/logo.png",
+      "logo_dark": "media/logo-dark.png",
+      "cover": "media/cover.png",
+      "products": [
+        {
+          "name": {"en": "Portfolio 200 USD", "ru": "Портфель 200 USD"},
+          "description": {"en": "Paid at once or on instalment. The buyer agreement for parts of the exclusive right to SANKORD. A part is one billionth of the right; a buyer of parts is a co-owner of the right with the company. His income is his share of the project's distributable profit, paid quarterly. The agreement is accepted by a click in the cabinet.", "ru": "Оплата сразу или в рассрочку. Договор покупателя на части исключительного права на SANKORD. Часть — это одна миллиардная права; покупатель частей — совладелец права вместе с компанией. Его доход — его доля распределяемой прибыли проекта, выплачиваемая ежеквартально. Договор принимается кликом в Кабинете."},
+          "package_size": 2000,
+          "cover": "media/product.png",
+          "purchase_config": {
+            "bonuses": []
+          },
+          "installments": [
+            {
+              "name": "6 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 3300, "units_percent": 10},
+                  {"amount_cents": 3300, "units_percent": 10},
+                  {"amount_cents": 3300, "units_percent": 10},
+                  {"amount_cents": 3300, "units_percent": 10},
+                  {"amount_cents": 3300, "units_percent": 10},
+                  {"amount_cents": 3500, "units_percent": 50}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "12 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 1600, "units_percent": 5},
+                  {"amount_cents": 2400, "units_percent": 45}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "24 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 800, "units_percent": 3},
+                  {"amount_cents": 1600, "units_percent": 31}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            }
+          ]
+        },
+        {
+          "name": {"en": "Portfolio 1,000 USD", "ru": "Портфель 1 000 USD"},
+          "description": {"en": "+5% bonus parts when paid at once. On instalment, no bonus. The buyer agreement for parts of the exclusive right to SANKORD. A part is one billionth of the right; a buyer of parts is a co-owner of the right with the company. His income is his share of the project's distributable profit, paid quarterly. The agreement is accepted by a click in the cabinet.", "ru": "+5 % бонусными частями при оплате сразу. В рассрочку — без бонуса. Договор покупателя на части исключительного права на SANKORD. Часть — это одна миллиардная права; покупатель частей — совладелец права вместе с компанией. Его доход — его доля распределяемой прибыли проекта, выплачиваемая ежеквартально. Договор принимается кликом в Кабинете."},
+          "package_size": 10000,
+          "cover": "media/product.png",
+          "purchase_config": {
+            "bonuses": [
+              {"condition": "purchase_amount_gte", "bonus_units_percent": 5, "funded_by": "company", "threshold_cents": 100000}
+            ]
+          },
+          "installments": [
+            {
+              "name": "6 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 16600, "units_percent": 10},
+                  {"amount_cents": 16600, "units_percent": 10},
+                  {"amount_cents": 16600, "units_percent": 10},
+                  {"amount_cents": 16600, "units_percent": 10},
+                  {"amount_cents": 16600, "units_percent": 10},
+                  {"amount_cents": 17000, "units_percent": 50}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "12 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8300, "units_percent": 5},
+                  {"amount_cents": 8700, "units_percent": 45}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "24 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 4100, "units_percent": 3},
+                  {"amount_cents": 5700, "units_percent": 31}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            }
+          ]
+        },
+        {
+          "name": {"en": "Portfolio 5,000 USD", "ru": "Портфель 5 000 USD"},
+          "description": {"en": "+10% bonus parts when paid at once. On instalment, no bonus. The buyer agreement for parts of the exclusive right to SANKORD. A part is one billionth of the right; a buyer of parts is a co-owner of the right with the company. His income is his share of the project's distributable profit, paid quarterly. The agreement is accepted by a click in the cabinet.", "ru": "+10 % бонусными частями при оплате сразу. В рассрочку — без бонуса. Договор покупателя на части исключительного права на SANKORD. Часть — это одна миллиардная права; покупатель частей — совладелец права вместе с компанией. Его доход — его доля распределяемой прибыли проекта, выплачиваемая ежеквартально. Договор принимается кликом в Кабинете."},
+          "package_size": 50000,
+          "cover": "media/product.png",
+          "purchase_config": {
+            "bonuses": [
+              {"condition": "purchase_amount_gte", "bonus_units_percent": 10, "funded_by": "company", "threshold_cents": 500000}
+            ]
+          },
+          "installments": [
+            {
+              "name": "6 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 83300, "units_percent": 10},
+                  {"amount_cents": 83300, "units_percent": 10},
+                  {"amount_cents": 83300, "units_percent": 10},
+                  {"amount_cents": 83300, "units_percent": 10},
+                  {"amount_cents": 83300, "units_percent": 10},
+                  {"amount_cents": 83500, "units_percent": 50}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "12 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 41600, "units_percent": 5},
+                  {"amount_cents": 42400, "units_percent": 45}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "24 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 20800, "units_percent": 3},
+                  {"amount_cents": 21600, "units_percent": 31}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            }
+          ]
+        },
+        {
+          "name": {"en": "Portfolio 25,000 USD", "ru": "Портфель 25 000 USD"},
+          "description": {"en": "+20% bonus parts when paid at once. On instalment, no bonus. The buyer agreement for parts of the exclusive right to SANKORD. A part is one billionth of the right; a buyer of parts is a co-owner of the right with the company. His income is his share of the project's distributable profit, paid quarterly. The agreement is accepted by a click in the cabinet.", "ru": "+20 % бонусными частями при оплате сразу. В рассрочку — без бонуса. Договор покупателя на части исключительного права на SANKORD. Часть — это одна миллиардная права; покупатель частей — совладелец права вместе с компанией. Его доход — его доля распределяемой прибыли проекта, выплачиваемая ежеквартально. Договор принимается кликом в Кабинете."},
+          "package_size": 250000,
+          "cover": "media/product.png",
+          "purchase_config": {
+            "bonuses": [
+              {"condition": "purchase_amount_gte", "bonus_units_percent": 20, "funded_by": "company", "threshold_cents": 2500000}
+            ]
+          },
+          "installments": [
+            {
+              "name": "6 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 416600, "units_percent": 10},
+                  {"amount_cents": 416600, "units_percent": 10},
+                  {"amount_cents": 416600, "units_percent": 10},
+                  {"amount_cents": 416600, "units_percent": 10},
+                  {"amount_cents": 416600, "units_percent": 10},
+                  {"amount_cents": 417000, "units_percent": 50}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "12 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208300, "units_percent": 5},
+                  {"amount_cents": 208700, "units_percent": 45}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            },
+            {
+              "name": "24 months",
+              "plan_config": {
+                "tranches": [
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 104100, "units_percent": 3},
+                  {"amount_cents": 105700, "units_percent": 31}
+                ],
+                "bonus_units": 0,
+                "agent_bonus_units": 0
+              }
+            }
+          ]
+        }
+      ],
+      "roadmap": [
+        {
+          "key": "s4-01",
+          "title": {"en": "A first protocol for projects", "ru": "Первый протокол для проектов"},
+          "description": {"en": "A first written protocol for working on a project is complete: rules, and steps to start and to close each cycle of work.", "ru": "Готов первый письменный протокол работы над проектом: правила и шаги, которыми начинается и закрывается каждый цикл работы."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-02-01"
+        },
+        {
+          "key": "s2-01",
+          "title": {"en": "Safeguards from the start", "ru": "Защиты с самого начала"},
+          "description": {"en": "Early on, our own runtime runs agents in separate processes, blocks forbidden actions with no way around, saves checkpoints, keeps memory, checks what agents produce, and can be stopped by one command.", "ru": "С самого начала наша собственная среда исполнения запускает агентов в отдельных процессах, блокирует запрещённые действия без обходных путей, сохраняет контрольные точки, хранит память, проверяет то, что готовят агенты, и её можно остановить одной командой."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-03-01"
+        },
+        {
+          "key": "s1-01",
+          "title": {"en": "The first skills built", "ru": "Первые навыки собраны"},
+          "description": {"en": "Our own skill architect is already at work, and the first skills enter the project: packaged expertise that an agent may load for the length of a task.", "ru": "Наш собственный архитектор навыков уже работает, и в проект входят первые навыки: упакованная экспертиза, которую агент может загрузить на время задачи."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-03-01"
+        },
+        {
+          "key": "s3-01",
+          "title": {"en": "Ready-made pipelines and presets", "ru": "Готовые конвейеры и пресеты"},
+          "description": {"en": "Ready-made pipelines of work are built on the runtime, each with its trigger, its agent, its steps that wait for a yes and its checks, and settings come as presets.", "ru": "На среде исполнения построены готовые конвейеры работы, у каждого свой запуск, свой агент, свои шаги, которые ждут «да», и свои проверки, а настройки поставляются пресетами."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-03-01"
+        },
+        {
+          "key": "s4-02",
+          "title": {"en": "Rebuilt, then version 1.0", "ru": "Перестроен, затем версия 1.0"},
+          "description": {"en": "The protocol is rebuilt around sprints with a fixed order of steps, and released as version 1.0 under a new name.", "ru": "Протокол перестроен вокруг спринтов с твёрдым порядком шагов и выходит в версии 1.0 под новым именем."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-06-01"
+        },
+        {
+          "key": "s5-01",
+          "title": {"en": "Homes, roles, handovers", "ru": "Дома, роли, передачи"},
+          "description": {"en": "Agents get homes of their own, each with a plan and rules, and roles: one plans and keeps order, another does the work. Work passes between sessions as a written handover.", "ru": "У агентов появляются свои дома, у каждого свой план и свои правила, и роли: один планирует и держит порядок, другой делает работу. Работа переходит от сессии к сессии через письменную передачу дел."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-06-01"
+        },
+        {
+          "key": "s2-02",
+          "title": {"en": "Proved on our own work", "ru": "Проверена на нашей работе"},
+          "description": {"en": "It installs on a server with one script, switches between model providers, and is proved from start to finish on our own work. In the tests, external services were simulated.", "ru": "Она ставится на сервер одним скриптом, переключается между поставщиками моделей и проверена от начала до конца на нашей собственной работе. В проверках внешние сервисы были имитированы."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-06-01"
+        },
+        {
+          "key": "s3-02",
+          "title": {"en": "A reusable set for sales", "ru": "Повторно используемый набор для продаж"},
+          "description": {"en": "The runtime and the pipelines are separated, and the first reusable set of pipelines, for sales, becomes a product of its own with our own company as its first test project.", "ru": "Среда исполнения и конвейеры разделены, а первый повторно используемый набор конвейеров, для продаж, становится отдельным продуктом, и первым пробным проектом на нём служит наша собственная компания."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-06-01"
+        },
+        {
+          "key": "s2-03",
+          "title": {"en": "It waits, it runs on a schedule", "ru": "Ждёт «да», работает по расписанию"},
+          "description": {"en": "It waits for a yes and continues, runs on a schedule, keeps two projects' data apart and masks secrets in its logs.", "ru": "Она ждёт «да» и продолжает, запускается по расписанию, держит данные двух проектов раздельно и скрывает секреты в журналах."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-07-01"
+        },
+        {
+          "key": "s4-03",
+          "title": {"en": "A project of its own", "ru": "Отдельный проект"},
+          "description": {"en": "Thirteen versions in ten weeks, then the protocol becomes a project of its own, which other projects adopt and never edit. On our first runtime it runs through sixteen sprints and more than five hundred numbered cycles in under six months.", "ru": "Тринадцать версий за десять недель, затем протокол становится отдельным проектом, который другие проекты принимают, но не правят. На нашей первой среде исполнения он проходит шестнадцать спринтов и более пятисот пронумерованных циклов менее чем за шесть месяцев."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-08-01"
+        },
+        {
+          "key": "s5-02",
+          "title": {"en": "A factory, rulings, a guard", "ru": "Фабрика, решения, проверка записи"},
+          "description": {"en": "A factory builds each new home from one pattern, and every decision of the founder is a numbered ruling from which the rules of each agent are built. A check refuses any write outside the project's own repository, the same for every agent.", "ru": "Фабрика собирает каждый новый дом по одному образцу, а каждое решение основателя записано под номером, и из этих записей собираются правила каждого агента. Проверка отказывает в любой записи за пределами собственного репозитория проекта, одинаково для любого агента."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-09-01"
+        },
+        {
+          "key": "s6-01",
+          "title": {"en": "A project of its own, an architecture", "ru": "Свой проект и архитектура"},
+          "description": {"en": "SANKORD gets a project and a repository of its own, and its architecture is written down: one runtime in three layers, execution, orchestration and discipline, with every decision of the founder recorded with his words.", "ru": "У SANKORD появляется собственный проект и собственный репозиторий, и записана его архитектура: одна среда исполнения в трёх слоях, исполнение, оркестрация и дисциплина, а каждое решение основателя записано его словами."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-09-01"
+        },
+        {
+          "key": "s1-02",
+          "title": {"en": "Version 15 and a library", "ru": "Пятнадцатая версия и библиотека"},
+          "description": {"en": "The skill architect reaches version 15, with a ten-stage machine check that passes or fails, and the skills are published as one library.", "ru": "Архитектор навыков доходит до пятнадцатой версии; у него машинная проверка в десять этапов: прошло или не прошло, а навыки опубликованы как единая библиотека."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-09-01"
+        },
+        {
+          "key": "s6-02",
+          "title": {"en": "How the parts fit", "ru": "Как сочетаются части"},
+          "description": {"en": "Every part of the system is a module; the parts talk only through the core, models connect in one place, an update is a signed package that you install yourself with your yes, and agents act only through a closed list of actions.", "ru": "Каждая часть системы — модуль; части общаются только через ядро, модели подключаются в одном месте, обновление — подписанный пакет, который вы ставите сами, со своим «да», а агенты действуют только через закрытый список действий."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-09-01"
+        },
+        {
+          "key": "s6-03",
+          "title": {"en": "Eleven blueprints, three modules with code", "ru": "Одиннадцать чертежей, три модуля с кодом"},
+          "description": {"en": "The description is gathered into eleven blueprints and a list of modules. Three of the twelve modules have substantial ready code: the agent, the model layer, the command line.", "ru": "Описание собрано в одиннадцать чертежей и список модулей. Для трёх из двенадцати модулей есть существенный готовый код: агент, слой моделей, командная строка."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-10-01"
+        },
+        {
+          "key": "s6-04",
+          "title": {"en": "The brand, the design, the first site", "ru": "Бренд, оформление, первый сайт"},
+          "description": {"en": "The brand is written as rules a script checks, one design system holds the look of the site, and the first version of the site goes live in English and in Russian.", "ru": "Бренд записан как правила, которые проверяет скрипт, единая система оформления хранит облик сайта, а первая версия сайта выходит в сеть на английском и на русском."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-10-01"
+        },
+        {
+          "key": "s6-05",
+          "title": {"en": "The SANKORD site", "ru": "Сайт SANKORD"},
+          "description": {"en": "The SANKORD site is launched on our own development: Home, comparison, architecture, how it works, roadmap, questions and answers.", "ru": "Сайт SANKORD запущен на нашей собственной разработке: главная страница, сравнение, архитектура, как работает, дорожная карта, вопросы и ответы."},
+          "kind": "milestone",
+          "status": "completed",
+          "target_date": "2026-10-01"
+        },
+        {
+          "key": "s6-06",
+          "title": {"en": "The own core", "ru": "Собственное ядро"},
+          "description": {"en": "The core of our own runtime is being written anew on the new architecture.", "ru": "Ядро собственной среды пишется заново по новой архитектуре."},
+          "kind": "milestone",
+          "status": "in_progress"
+        },
+        {
+          "key": "s6-07",
+          "title": {"en": "The blueprints are being agreed", "ru": "Чертежи согласуются"},
+          "description": {"en": "The blueprints are drafts that are being agreed one by one before the core is built on them.", "ru": "Чертежи пока черновики: их согласуют один за другим, прежде чем строить на них ядро."},
+          "kind": "milestone",
+          "status": "in_progress"
+        },
+        {
+          "key": "s7-01",
+          "title": {"en": "The demo version", "ru": "Демо-версия"},
+          "description": {"en": "The demo version shows how SANKORD works. It comes first; the working version follows.", "ru": "Демо-версия показывает, как работает SANKORD. Она идёт первой, рабочая версия — за ней."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-02",
+          "title": {"en": "The working version", "ru": "Рабочая версия"},
+          "description": {"en": "The working version comes after the demo, with licences on sale.", "ru": "Рабочая версия идёт после демо, с продажей лицензий."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-03",
+          "title": {"en": "Messengers and CRM", "ru": "Мессенджеры и CRM"},
+          "description": {"en": "Connect what you already use – a messenger, your CRM – when you decide: before you connect, you see what will go out, and your yes is written down. Your data never leaves your walls.", "ru": "Подключайте то, чем уже пользуетесь, — мессенджер, свою CRM, — когда решите: до подключения вы видите, что будет уходить наружу, и ваше «да» записано. Ваши данные не покидают ваш контур."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-04",
+          "title": {"en": "A secretary agent", "ru": "Агент-секретарь"},
+          "description": {"en": "A secretary agent answers letters and messages on your behalf within the limits you set; every reply is written down, and anything public waits for your yes.", "ru": "Агент-секретарь отвечает на письма и сообщения от вашего имени в пределах, которые задали вы; каждый ответ записан, а всё публичное ждёт вашего «да»."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-05",
+          "title": {"en": "Exchange of work with partners", "ru": "Обмен работой с партнёрами"},
+          "description": {"en": "Your agents and your partner's agents agree the work, each inside their own walls; only what both owners said yes to goes out.", "ru": "Ваши агенты и агенты партнёра договариваются о работе, каждые в своём контуре; наружу уходит только то, на что сказали «да» оба владельца."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-06",
+          "title": {"en": "The guide agent and support agents", "ru": "Агент-проводник и агенты поддержки"},
+          "description": {"en": "An agent leads the start step by step and moves on only after the owner's yes; support agents answer questions.", "ru": "Агент ведёт запуск по шагам и идёт дальше только после «да» владельца; агенты поддержки отвечают на вопросы."},
+          "kind": "milestone",
+          "status": "planned"
+        },
+        {
+          "key": "s7-12",
+          "title": {"en": "Fine settings", "ru": "Тонкие настройки"},
+          "description": {"en": "Agents, access and money, with a budget for each project.", "ru": "Агенты, доступы и деньги, с бюджетом на каждый проект."},
+          "kind": "milestone",
+          "status": "planned"
+        }
+      ]
     }
   ],
 
