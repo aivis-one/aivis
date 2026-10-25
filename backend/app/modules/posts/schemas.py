@@ -40,6 +40,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core.i18n import TranslationsIn, translations_checker
+
 
 # ---------------------------------------------------------------------------
 # Shared validators
@@ -67,6 +69,13 @@ class CreatePostRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("posts")
+    )
+
     owner_type: Literal["platform", "company"]
     owner_id: UUID | None = Field(
         default=None,
@@ -86,6 +95,13 @@ class UpdatePostRequest(BaseModel):
     """Staff partial update of a post (PATCH)."""
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("posts")
+    )
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
     body: str | None = Field(default=None, min_length=1, max_length=50000)
@@ -113,6 +129,13 @@ class CreateCompanyPostRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("posts")
+    )
+
     title: str = Field(..., min_length=1, max_length=500)
     body: str = Field(..., min_length=1, max_length=50000)
     cover_url: str | None = Field(default=None, max_length=2000)
@@ -133,6 +156,13 @@ class UpdateCompanyPostRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("posts")
+    )
+
     title: str | None = Field(default=None, min_length=1, max_length=500)
     body: str | None = Field(default=None, min_length=1, max_length=50000)
     cover_url: str | None = None
@@ -147,8 +177,18 @@ class UpdateCompanyPostRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class PostBaseTexts(BaseModel):
+    """The English base texts of a post (H38)."""
+
+    title: str
+    body: str
+
+
 class PostResponse(BaseModel):
-    """Single post with dismiss status."""
+    """Single post with dismiss status.
+
+    title / body are in the reader's language (H38).
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -168,6 +208,11 @@ class PostResponse(BaseModel):
 
     # Computed per-user: True if the user dismissed this banner.
     is_dismissed: bool = False
+
+    # For the staff and company editing screens only (H38); None in the
+    # news feed. The translations exactly as stored (no "en").
+    base: PostBaseTexts | None = None
+    translations: dict[str, dict[str, str]] | None = None
 
 
 class PostListResponse(BaseModel):

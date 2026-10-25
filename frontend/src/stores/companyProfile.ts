@@ -106,6 +106,24 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
   }
 
   /**
+   * Re-read a cached profile in place (H38: the reader's language changed,
+   * stores/localeReload.ts). No-op while nothing is cached -- the first
+   * load already speaks the new language. A failure keeps the cached
+   * profile: it is still the project, only in the previous language.
+   */
+  async function refresh(): Promise<void> {
+    if (profile.value === null) return
+    const mine = ++epoch
+    try {
+      const next = await getMyCompany()
+      if (mine !== epoch) return
+      profile.value = next
+    } catch {
+      // Kept as it was; see above.
+    }
+  }
+
+  /**
    * Clear cached state. Called on logout / role switch.
    *
    * Bumps the epoch so any in-flight loadIfMissing() that resolves
@@ -141,6 +159,7 @@ export const useCompanyProfileStore = defineStore('companyProfile', () => {
     loading,
     error,
     loadIfMissing,
+    refresh,
     reset,
     applyProfile,
   }

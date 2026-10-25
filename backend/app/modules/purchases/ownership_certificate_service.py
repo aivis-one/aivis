@@ -69,6 +69,7 @@ from app.core.comms import comms_configured
 from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.i18n import localized
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyProfile
@@ -341,7 +342,10 @@ async def render_ownership_html(
 
     context = {
         "investor_name": data.investor_name,
-        "company_name": data.company.name,
+        # H38: the name in the template's language, else English.
+        "company_name": localized(
+            data.company.translations, template.language, "name", data.company.name
+        ),
         # The logo's bytes inline (H36): a presigned link would expire,
         # and an agreement is frozen for good. Fetched only when the
         # template reads the variable.

@@ -34,6 +34,7 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
 } from '@/api/client'
 
 /** Vocabulary mirrored from backend app/modules/kyc/constants.py
@@ -143,7 +144,7 @@ export async function submitKycApplication(
     form.append('back_image', backImage)
   }
 
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) {
     headers['Authorization'] = `Bearer ${token}`

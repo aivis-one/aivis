@@ -171,7 +171,7 @@ import mimetypes
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import BinaryIO
+from typing import Any, BinaryIO
 from uuid import UUID, uuid4
 
 import structlog
@@ -183,6 +183,7 @@ from app.core.audit import record_audit
 from app.modules.documents.service import maybe_complete_onboarding
 from app.core.comms_sync import sync_recipient
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.core.redis import get_redis
 from app.core.storage import (
     StorageError,
@@ -205,9 +206,14 @@ from app.modules.companies.constants import (
 )
 from app.modules.companies.media import (
     COMPANY_MEDIA_COLUMN,
+    check_variant_language,
     company_media_key,
     company_media_max_bytes,
+    roadmap_cover_key,
+    store_key,
+    stored_key,
     validate_media_upload,
+    variant_key,
 )
 from app.modules.companies.models import (
     CompanyAttachment,
@@ -225,6 +231,7 @@ from app.modules.companies.schemas import (
     CreateCompanyRequest,
     PostSnippetResponse,
     PublicCompanyStatsResponse,
+    RoadmapBaseTexts,
     RoadmapItemResponse,
     UpdateCompanyRequest,
     UpdateOwnCompanyRequest,
@@ -309,6 +316,7 @@ async def create_company(
         user_id=company_user.id,
         name=body.name,
         description=body.description,
+        translations=body.translations or {},
         promo_video_url=body.promo_video_url,
         presentation_url=body.presentation_url,
         price_per_unit_cents=body.price_per_unit_cents,
@@ -420,6 +428,7 @@ async def assign_company(
         user_id=target.id,
         name=body.name,
         description=body.description,
+        translations=body.translations or {},
         promo_video_url=body.promo_video_url,
         presentation_url=body.presentation_url,
         price_per_unit_cents=body.price_per_unit_cents,
@@ -495,6 +504,9 @@ async def update_company(
     profile = await get_company(company_id, session)
 
     updates = body.model_dump(exclude_unset=True)
+    # translations: null is "not sent" -- the stored map stays (H38).
+    if "translations" in updates and updates["translations"] is None:
+        updates.pop("translations")
     if not updates:
         return profile
 
@@ -710,6 +722,9 @@ async def update_own_company(
     profile = await get_company(company_id, session)
 
     updates = body.model_dump(exclude_unset=True)
+    # translations: null is "not sent" -- the stored map stays (H38).
+    if "translations" in updates and updates["translations"] is None:
+        updates.pop("translations")
     if not updates:
         return profile
 
@@ -1076,7 +1091,8 @@ async def list_companies(
             the precedence keeps a future caller from being surprised.
             Value range is validated to CompanyStatus at the router
             boundary; this layer trusts the incoming string.
-    search: optional case-insensitive substring match on name. LIKE
+    search: optional case-insensitive substring match on the name in
+            any language (the English column or any translation). LIKE
             metacharacters in the needle are escaped so a user query
             like "50%" matches the literal "50%" rather than acting
             as a wildcard.
@@ -1094,8 +1110,27 @@ async def list_companies(
         needle = search.strip()
         if needle:
             escaped = _escape_like(needle)
+            pattern = f"%{escaped}%"
+            # H38: the name in ANY language -- the English column or a
+            # translation (`translations -> <lang> ->> 'name'`). The
+            # reader's language does not narrow the search: a Russian
+            # reader typing the English name finds the project too.
+            tr = func.jsonb_each(CompanyProfile.translations).table_valued(
+                "key", "value"
+            ).render_derived(with_types=False)
+            translated_name = (
+                select(1)
+                .select_from(tr)
+                .where(
+                    tr.c.value.op("->>")("name").ilike(pattern, escape="\\")
+                )
+                .exists()
+            )
             conditions.append(
-                CompanyProfile.name.ilike(f"%{escaped}%", escape="\\")
+                or_(
+                    CompanyProfile.name.ilike(pattern, escape="\\"),
+                    translated_name,
+                )
             )
 
     where_clause = and_(*conditions) if conditions else True
@@ -1250,6 +1285,8 @@ async def build_roadmap_item_response(
     _session: AsyncSession,
     *,
     cover_ttl_seconds: int,
+    language: str,
+    editing: bool = False,
 ) -> RoadmapItemResponse:
     """Render a CompanyRoadmapItem as RoadmapItemResponse (R1 §5).
 
@@ -1275,36 +1312,67 @@ async def build_roadmap_item_response(
     "intentionally unused" convention (same pattern as
     pools.service.with_consumed_remaining) so a future helper that
     needs DB access can be added without changing every call site.
+
+    H38: title / description (and the embedded post's title and excerpt)
+    are in `language`, else English; the cover is that language's variant,
+    else the common file. `editing` -- the staff and company screens --
+    adds the English base, the stored translations and every cover
+    variant as links.
     """
-    cover_url: str | None = None
-    if item.cover_storage_key:
+
+    async def _sign(key: str | None, variant: str | None = None) -> str | None:
+        if not key:
+            return None
         try:
-            cover_url = await generate_presigned_url(
-                item.cover_storage_key, cover_ttl_seconds
-            )
+            return await generate_presigned_url(key, cover_ttl_seconds)
         except StorageError as exc:
             logger.warning(
                 "roadmap_cover_presign_failed",
                 item_id=str(item.id),
-                storage_key=item.cover_storage_key,
+                storage_key=key,
+                language=variant,
                 error=str(exc),
             )
-            cover_url = None
+            return None
+
+    cover_url = await _sign(
+        variant_key(item.media_variants, language, "cover", item.cover_storage_key)
+    )
 
     post_snippet: PostSnippetResponse | None = None
     if post is not None:
         post_snippet = PostSnippetResponse(
             id=post.id,
-            title=post.title,
+            title=localized(post.translations, language, "title", post.title),
             cover_url=post.cover_url,
-            excerpt=_post_excerpt(post.body),
+            excerpt=_post_excerpt(
+                localized(post.translations, language, "body", post.body)
+            ),
         )
+
+    editing_fields: dict[str, Any] = {}
+    if editing:
+        editing_fields = {
+            "base": RoadmapBaseTexts(title=item.title, description=item.description),
+            "translations": item.translations or {},
+            # "en" is the common file (English IS the common file): the
+            # editor shows it under its own key, never the reader's variant.
+            "image_variants": {
+                BASE_LANGUAGE: {"cover_url": await _sign(item.cover_storage_key)},
+                **{
+                    variant: {"cover_url": await _sign(slots.get("cover"), variant)}
+                    for variant, slots in (item.media_variants or {}).items()
+                },
+            },
+        }
 
     return RoadmapItemResponse(
         id=item.id,
         kind=item.kind,
-        title=item.title,
-        description=item.description,
+        title=localized(item.translations, language, "title", item.title),
+        description=localized(
+            item.translations, language, "description", item.description
+        ),
         target_date=item.target_date,
         valid_until=item.valid_until,
         status=item.status,
@@ -1316,6 +1384,7 @@ async def build_roadmap_item_response(
         post=post_snippet,
         created_at=item.created_at,
         updated_at=item.updated_at,
+        **editing_fields,
     )
 
 
@@ -1453,6 +1522,7 @@ async def create_roadmap_item(
     external_url: str | None = None,
     post_id: UUID | None = None,
     linked_product_id: UUID | None = None,
+    translations: dict | None = None,  # type: ignore[type-arg]
 ) -> CompanyRoadmapItem:
     """Add a roadmap item to a company (R1 §5 extension).
 
@@ -1535,6 +1605,7 @@ async def create_roadmap_item(
         external_url=external_url,
         post_id=post_id,
         linked_product_id=linked_product_id,
+        translations=translations or {},
     )
     session.add(item)
     await session.flush()
@@ -1572,6 +1643,7 @@ async def update_roadmap_item(
     external_url: str | None = ...,  # type: ignore[assignment]
     post_id: UUID | None = ...,  # type: ignore[assignment]
     linked_product_id: UUID | None = ...,  # type: ignore[assignment]
+    translations: dict | None = ...,  # type: ignore[assignment,type-arg]
 ) -> CompanyRoadmapItem:
     """Partial update of a roadmap item (R1 §5 extension).
 
@@ -1620,6 +1692,11 @@ async def update_roadmap_item(
     if external_url is not ...:
         item.external_url = external_url
         changed_fields.append("external_url")
+
+    # Not sent (or null) keeps the stored map; sent replaces it whole (H38).
+    if translations is not ... and translations is not None:
+        item.set_jsonb("translations", translations)
+        changed_fields.append("translations")
 
     # post_id change: validate existence before assignment.
     if post_id is not ...:
@@ -1771,6 +1848,7 @@ async def set_roadmap_cover(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> CompanyRoadmapItem:
     """Upload / replace the cover image of a roadmap item (R1 §5).
 
@@ -1790,13 +1868,13 @@ async def set_roadmap_cover(
                        (the DB write has not happened yet, so this is
                        a clean rollback).
     """
+    check_variant_language(language)
     await get_company(company_id, session)
     item = await _get_roadmap_item(company_id, item_id, session)
 
-    old_storage_key = item.cover_storage_key
-    new_storage_key = (
-        f"companies/{company_id}/roadmap/{item_id}/cover{file_extension}"
-    )
+    # language (H38): that language's variant of the cover, else the common.
+    old_storage_key = stored_key(item, "cover_storage_key", "cover", language)
+    new_storage_key = roadmap_cover_key(company_id, item_id, file_extension, language)
 
     # Upload first. Orphan-on-rollback is acceptable here; a row
     # pointing at a missing object would not be.
@@ -1807,7 +1885,7 @@ async def set_roadmap_cover(
         content_length=file_size_bytes,
     )
 
-    item.cover_storage_key = new_storage_key
+    store_key(item, "cover_storage_key", "cover", language, new_storage_key)
     await session.flush()
     await session.refresh(item)
 
@@ -1837,6 +1915,7 @@ async def set_roadmap_cover(
             "storage_key": new_storage_key,
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
+            "language": language,
         },
     )
 
@@ -1857,6 +1936,8 @@ async def delete_roadmap_cover(
     item_id: UUID,
     staff: User,
     session: AsyncSession,
+    *,
+    language: str | None = None,
 ) -> None:
     """Remove the cover image from a roadmap item (R1 §5).
 
@@ -1869,14 +1950,16 @@ async def delete_roadmap_cover(
     Raises:
         NotFoundError: company / item not found, or item has no cover.
     """
+    check_variant_language(language)
     await get_company(company_id, session)
     item = await _get_roadmap_item(company_id, item_id, session)
 
-    if item.cover_storage_key is None:
-        raise NotFoundError("Roadmap item has no cover image")
+    storage_key = stored_key(item, "cover_storage_key", "cover", language)
+    if storage_key is None:
+        suffix = f" for language {language!r}" if language else ""
+        raise NotFoundError(f"Roadmap item has no cover image{suffix}")
 
-    storage_key = item.cover_storage_key
-    item.cover_storage_key = None
+    store_key(item, "cover_storage_key", "cover", language, None)
     await session.flush()
 
     try:
@@ -1899,6 +1982,7 @@ async def delete_roadmap_cover(
         data={
             "company_id": str(company_id),
             "storage_key": storage_key,
+            "language": language,
         },
     )
 
@@ -2051,6 +2135,7 @@ async def create_own_roadmap_item(
     external_url: str | None = None,
     post_id: UUID | None = None,
     linked_product_id: UUID | None = None,
+    translations: dict | None = None,  # type: ignore[type-arg]
 ) -> CompanyRoadmapItem:
     """Add a roadmap item to the caller's OWN company (TASK-30 self-service).
 
@@ -2116,6 +2201,7 @@ async def create_own_roadmap_item(
         external_url=external_url,
         post_id=post_id,
         linked_product_id=linked_product_id,
+        translations=translations or {},
     )
     session.add(item)
     await session.flush()
@@ -2148,6 +2234,7 @@ async def update_own_roadmap_item(
     external_url: str | None = ...,  # type: ignore[assignment]
     post_id: UUID | None = ...,  # type: ignore[assignment]
     linked_product_id: UUID | None = ...,  # type: ignore[assignment]
+    translations: dict | None = ...,  # type: ignore[assignment,type-arg]
 ) -> CompanyRoadmapItem:
     """Partial update of a roadmap item owned by the caller's OWN company.
 
@@ -2185,6 +2272,11 @@ async def update_own_roadmap_item(
     if external_url is not ...:
         item.external_url = external_url
         changed_fields.append("external_url")
+
+    # Not sent (or null) keeps the stored map; sent replaces it whole (H38).
+    if translations is not ... and translations is not None:
+        item.set_jsonb("translations", translations)
+        changed_fields.append("translations")
 
     if post_id is not ...:
         if post_id is not None:
@@ -2356,6 +2448,7 @@ async def set_own_roadmap_cover(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> CompanyRoadmapItem:
     """Upload / replace the cover image of a roadmap item owned by the
     caller's OWN company. Mirrors set_roadmap_cover's storage flow
@@ -2368,13 +2461,13 @@ async def set_own_roadmap_cover(
                        (the DB write has not happened yet, so this is a
                        clean rollback).
     """
+    check_variant_language(language)
     await get_company(company_id, session)
     item = await _get_roadmap_item(company_id, item_id, session)
 
-    old_storage_key = item.cover_storage_key
-    new_storage_key = (
-        f"companies/{company_id}/roadmap/{item_id}/cover{file_extension}"
-    )
+    # language (H38): that language's variant of the cover, else the common.
+    old_storage_key = stored_key(item, "cover_storage_key", "cover", language)
+    new_storage_key = roadmap_cover_key(company_id, item_id, file_extension, language)
 
     await upload_object(
         new_storage_key,
@@ -2383,7 +2476,7 @@ async def set_own_roadmap_cover(
         content_length=file_size_bytes,
     )
 
-    item.cover_storage_key = new_storage_key
+    store_key(item, "cover_storage_key", "cover", language, new_storage_key)
     await session.flush()
     await session.refresh(item)
 
@@ -2410,6 +2503,7 @@ async def set_own_roadmap_cover(
             "storage_key": new_storage_key,
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
+            "language": language,
         },
     )
 
@@ -2421,6 +2515,8 @@ async def delete_own_roadmap_cover(
     item_id: UUID,
     actor_user_id: UUID,
     session: AsyncSession,
+    *,
+    language: str | None = None,
 ) -> None:
     """Remove the cover image from a roadmap item owned by the caller's
     OWN company. 404 when no cover is set, same as delete_roadmap_cover.
@@ -2428,14 +2524,16 @@ async def delete_own_roadmap_cover(
     Raises:
         NotFoundError: company / item not found, or item has no cover.
     """
+    check_variant_language(language)
     await get_company(company_id, session)
     item = await _get_roadmap_item(company_id, item_id, session)
 
-    if item.cover_storage_key is None:
-        raise NotFoundError("Roadmap item has no cover image")
+    storage_key = stored_key(item, "cover_storage_key", "cover", language)
+    if storage_key is None:
+        suffix = f" for language {language!r}" if language else ""
+        raise NotFoundError(f"Roadmap item has no cover image{suffix}")
 
-    storage_key = item.cover_storage_key
-    item.cover_storage_key = None
+    store_key(item, "cover_storage_key", "cover", language, None)
     await session.flush()
 
     try:
@@ -2455,7 +2553,7 @@ async def delete_own_roadmap_cover(
         actor_type="user",
         target_type="company",
         target_id=company_id,
-        data={"item_id": str(item.id), "storage_key": storage_key},
+        data={"item_id": str(item.id), "storage_key": storage_key, "language": language},
     )
 
 
@@ -2484,8 +2582,11 @@ async def _store_company_media(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> CompanyProfile:
-    """Upload one picture into its slot and point the profile at it."""
+    """Upload one picture into its slot (or into one language's variant of
+    it, H38) and point the profile at it."""
+    check_variant_language(language)
     validate_media_upload(
         content_type=content_type,
         file_extension=file_extension,
@@ -2495,8 +2596,8 @@ async def _store_company_media(
     profile = await get_company(company_id, session)
 
     column = COMPANY_MEDIA_COLUMN[slot]
-    old_storage_key = getattr(profile, column)
-    new_storage_key = company_media_key(company_id, slot, file_extension)
+    old_storage_key = stored_key(profile, column, slot.value, language)
+    new_storage_key = company_media_key(company_id, slot, file_extension, language)
 
     # Upload first. Orphan-on-rollback is acceptable here; a row
     # pointing at a missing object would not be.
@@ -2507,7 +2608,7 @@ async def _store_company_media(
         content_length=file_size_bytes,
     )
 
-    setattr(profile, column, new_storage_key)
+    store_key(profile, column, slot.value, language, new_storage_key)
     await session.flush()
     await session.refresh(profile)
 
@@ -2534,6 +2635,7 @@ async def _store_company_media(
             "storage_key": new_storage_key,
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
+            "language": language,
         },
     )
 
@@ -2556,16 +2658,20 @@ async def _remove_company_media(
     *,
     actor_id: UUID,
     actor_type: str,
+    language: str | None = None,
 ) -> None:
-    """Clear one slot and delete its object (best-effort)."""
+    """Clear one slot (or one language's variant of it, H38) and delete
+    its object (best-effort)."""
+    check_variant_language(language)
     profile = await get_company(company_id, session)
 
     column = COMPANY_MEDIA_COLUMN[slot]
-    storage_key = getattr(profile, column)
+    storage_key = stored_key(profile, column, slot.value, language)
     if storage_key is None:
-        raise NotFoundError(f"Company has no {slot.value} image")
+        suffix = f" for language {language!r}" if language else ""
+        raise NotFoundError(f"Company has no {slot.value} image{suffix}")
 
-    setattr(profile, column, None)
+    store_key(profile, column, slot.value, language, None)
     await session.flush()
 
     try:
@@ -2586,7 +2692,7 @@ async def _remove_company_media(
         actor_type=actor_type,
         target_type="company",
         target_id=company_id,
-        data={"storage_key": storage_key},
+        data={"storage_key": storage_key, "language": language},
     )
 
 
@@ -2600,6 +2706,7 @@ async def set_company_media(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> CompanyProfile:
     """Upload / replace one picture of a project (staff).
 
@@ -2625,6 +2732,7 @@ async def set_company_media(
         file_size_bytes=file_size_bytes,
         content_type=content_type,
         file_extension=file_extension,
+        language=language,
     )
 
 
@@ -2633,6 +2741,8 @@ async def delete_company_media(
     slot: CompanyMediaSlot,
     staff: User,
     session: AsyncSession,
+    *,
+    language: str | None = None,
 ) -> None:
     """Remove one picture of a project (staff).
 
@@ -2644,7 +2754,8 @@ async def delete_company_media(
         NotFoundError: company not found, or the slot holds no picture.
     """
     await _remove_company_media(
-        session, company_id, slot, actor_id=staff.id, actor_type="staff"
+        session, company_id, slot, actor_id=staff.id, actor_type="staff",
+        language=language,
     )
 
 
@@ -2658,6 +2769,7 @@ async def set_own_company_media(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> CompanyProfile:
     """Upload / replace one picture of the caller's OWN project.
 
@@ -2674,6 +2786,7 @@ async def set_own_company_media(
         file_size_bytes=file_size_bytes,
         content_type=content_type,
         file_extension=file_extension,
+        language=language,
     )
 
 
@@ -2682,10 +2795,13 @@ async def delete_own_company_media(
     slot: CompanyMediaSlot,
     actor_user_id: UUID,
     session: AsyncSession,
+    *,
+    language: str | None = None,
 ) -> None:
     """Remove one picture of the caller's OWN project. 404 when empty."""
     await _remove_company_media(
-        session, company_id, slot, actor_id=actor_user_id, actor_type="user"
+        session, company_id, slot, actor_id=actor_user_id, actor_type="user",
+        language=language,
     )
 
 

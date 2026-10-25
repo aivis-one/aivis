@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import get_current_user
 from app.modules.portfolio.schemas import (
     CompanyPositionDetailResponse,
@@ -41,13 +42,14 @@ router = APIRouter(prefix="/api/v1/portfolio", tags=["portfolio"])
 async def my_portfolio(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PortfolioResponse:
     """Get detailed portfolio: positions grouped by company.
 
     Returns all companies where the user has active purchases.
     Companies are sorted by current value descending.
     """
-    return await get_portfolio(user.id, session)
+    return await get_portfolio(user.id, session, reader)
 
 
 @router.get(
@@ -60,6 +62,7 @@ async def my_company_position(
     per_page: int = Query(default=20, ge=1, le=100),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> CompanyPositionDetailResponse:
     """Get position detail for a single company with paginated purchases.
 
@@ -72,4 +75,5 @@ async def my_company_position(
         session,
         page=page,
         per_page=per_page,
+        language=reader,
     )

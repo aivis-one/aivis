@@ -84,6 +84,7 @@ import { useDashboardStore } from '@/stores/dashboard'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
 import type { PostResponse, EventResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -275,6 +276,9 @@ function openEvent(event: EventResponse): void {
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadPosts())
 
 onMounted(() => {
   // Independent probes -- a failure of one must not hide the others, and a

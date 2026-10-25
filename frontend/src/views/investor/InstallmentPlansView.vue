@@ -60,6 +60,7 @@ import { listMyPlans } from '@/api/installments'
 import { formatDateTime, formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { InstallmentPlanResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const PER_PAGE = 20
 
@@ -202,6 +203,9 @@ function retryLoadMore(): void {
 }
 
 useInfiniteScroll(sentinelRef, hasMore, loadMore, loadMoreErrored)
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => fetchFirstPage())
 
 onMounted(() => {
   void fetchFirstPage()

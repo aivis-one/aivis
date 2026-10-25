@@ -52,6 +52,17 @@ const COMPANY = {
   shares_per_option: 1,
   distribution_config: { company_pct: 10, agent_levels: [5] },
   roadmap: [],
+  // H38: an editing screen gets the English base, the stored translations
+  // and the pictures per language ("en" = the common file).
+  base: { name: 'Project One', description: 'About it' },
+  translations: {},
+  image_variants: {
+    en: {
+      logo_url: 'https://files.example.org/logo.png?sig=1',
+      logo_dark_url: null,
+      cover_url: null,
+    },
+  },
 }
 
 function signInAs(held: readonly string[]): void {
@@ -182,12 +193,17 @@ describe('the project profile section', () => {
       .find((b) => b.text().includes('staff.platform.profile.profileEditCta'))!
       .trigger('click')
     await flushPromises()
-    // The inputs of the form, in order: name, promo video, presentation.
+    // The inputs of the form, in order: the name in each language of the
+    // interface (H38: English, then Russian -- the description is a
+    // textarea), then promo video and presentation. Three inputs until H38;
+    // the name gained its translation field.
     const inputs = Array.from(
       document.body.querySelectorAll('.ds-dialog__panel input'),
     ) as HTMLInputElement[]
-    expect(inputs).toHaveLength(3)
-    const promo = inputs[1]!
+    expect(inputs).toHaveLength(4)
+    expect(inputs[0]!.value).toBe('Project One')
+    expect(inputs[1]!.value).toBe('')
+    const promo = inputs[2]!
     expect(promo.value).toBe('https://example.org/promo.mp4')
     promo.value = ''
     promo.dispatchEvent(new Event('input'))
@@ -242,7 +258,9 @@ describe('StaffCompanyProfileSection pictures', () => {
     await flushPromises()
     const file = new File(['png'], 'dark.png', { type: 'image/png' })
     await pick(fileInputs()[1]!, file)
-    expect(uploadStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo-dark', file)
+    // H38: the fourth argument is the version -- null, the common file,
+    // while the picture-language select stands on its default.
+    expect(uploadStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo-dark', file, null)
     expect(reload).toHaveBeenCalled()
     wrapper.unmount()
   })
@@ -256,7 +274,7 @@ describe('StaffCompanyProfileSection pictures', () => {
     await flushPromises()
     modalButton('common.media.remove').click()
     await flushPromises()
-    expect(deleteStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo')
+    expect(deleteStaffCompanyMedia).toHaveBeenCalledWith('proj-1', 'logo', null)
     expect(reload).toHaveBeenCalled()
     wrapper.unmount()
   })

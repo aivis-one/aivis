@@ -54,6 +54,12 @@
 // (R1 §5.7) is a search combobox over the company's posts/products, not
 // a raw UUID field -- tracked as post-MVP tech debt, so the form omits
 // both and the backend leaves them null.
+//
+// LANGUAGES (H38 P-132): title and description are edited in every language
+// of the interface (English the base, required), the cover per version --
+// the common file or one language's variant (MediaLanguageSelect). The form
+// starts from the item's base and translations, never from the displayed
+// texts, which are in the reader's language.
 // =============================================================================
 
 import { ref, computed, onMounted, inject, useId } from 'vue'
@@ -69,7 +75,21 @@ import {
   ImageUp,
   X,
 } from '@/components/ui/icons'
-import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CSelect } from '@/components/ui'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CSelect } from '@/components/ui'
+import MediaLanguageSelect from '@/components/shared/MediaLanguageSelect.vue'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  BASE_LANGUAGE,
+  baseText,
+  emptyDraft,
+  imageIn,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+  variantLanguage,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -227,8 +247,19 @@ const saving = ref(false)
 // computed boundary; it only ever holds one of STATUS_VALUES because
 // the select options are built from that tuple.
 const draftKind = ref<RoadmapItemKind>('milestone')
-const draftTitle = ref('')
-const draftDescription = ref('')
+// Title and description in every language (H38): English is the base.
+const TEXT_FIELDS = ['title', 'description'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'title', label: t('staff.platform.roadmap.fieldTitle'), maxlength: 500 },
+  {
+    key: 'description',
+    label: t('staff.platform.roadmap.fieldDescription'),
+    multiline: true,
+    rows: 4,
+    maxlength: 5000,
+  },
+])
 const draftTargetDate = ref('')
 const draftValidUntil = ref('')
 const draftStatus = ref<string>('planned')
@@ -259,8 +290,7 @@ const statusLocked = computed<boolean>(
 // Reset all draft fields to defaults for a given kind.
 function resetDraft(kind: RoadmapItemKind): void {
   draftKind.value = kind
-  draftTitle.value = ''
-  draftDescription.value = ''
+  draftTexts.value = emptyDraft(TEXT_FIELDS)
   draftTargetDate.value = ''
   draftValidUntil.value = ''
   draftStatus.value = 'planned'
@@ -282,7 +312,7 @@ function openCreate(): void {
   }
   editingId.value = null
   editingOriginal.value = null
-  coverPreviewUrl.value = ''
+  coverVariants.value = null
   resetDraft('milestone')
   showForm.value = true
 }
@@ -294,10 +324,12 @@ function openEdit(item: RoadmapItemResponse): void {
   }
   editingId.value = item.id
   editingOriginal.value = item
-  coverPreviewUrl.value = item.cover_url ?? ''
+  coverVariants.value = item.image_variants
+  coverLanguage.value = BASE_LANGUAGE
   draftKind.value = item.kind as RoadmapItemKind
-  draftTitle.value = item.title
-  draftDescription.value = item.description ?? ''
+  // From the English base and the stored translations -- the displayed
+  // title / description are in the reader's language.
+  draftTexts.value = makeDraft(TEXT_FIELDS, item.base, item.translations)
   draftTargetDate.value = item.target_date ?? ''
   draftValidUntil.value = item.valid_until ?? ''
   draftStatus.value = item.status || 'planned'
@@ -310,7 +342,7 @@ function closeForm(): void {
 }
 
 // Trimmed helpers.
-const trimmedTitle = computed<string>(() => draftTitle.value.trim())
+const trimmedTitle = computed<string>(() => baseText(draftTexts.value, 'title').trim())
 const trimmedExternalUrl = computed<string>(() => draftExternalUrl.value.trim())
 
 // External URL is optional, but if present must be http(s) -- mirror the
@@ -346,8 +378,10 @@ function buildCreateBody(): CreateRoadmapItemRequest {
     kind: draftKind.value,
     title: trimmedTitle.value,
   }
-  const desc = draftDescription.value.trim()
+  const desc = baseText(draftTexts.value, 'description').trim()
   if (desc) body.description = desc
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, {})
+  if (Object.keys(translations).length > 0) body.translations = translations
   if (trimmedExternalUrl.value) body.external_url = trimmedExternalUrl.value
 
   if (draftKind.value === 'milestone') {
@@ -372,14 +406,20 @@ function buildUpdateBody(): UpdateRoadmapItemRequest {
   const body: UpdateRoadmapItemRequest = {}
   if (!orig) return body
 
-  if (trimmedTitle.value !== orig.title) {
+  // Against the English base, not the displayed (reader's) texts.
+  if (trimmedTitle.value !== (orig.base?.title ?? '')) {
     body.title = trimmedTitle.value
   }
 
-  const desc = draftDescription.value.trim()
-  const origDesc = orig.description ?? ''
+  const desc = baseText(draftTexts.value, 'description').trim()
+  const origDesc = orig.base?.description ?? ''
   if (desc !== origDesc) {
     body.description = desc ? desc : null
+  }
+
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, orig.translations)
+  if (!sameTranslations(translations, orig.translations)) {
+    body.translations = translations
   }
 
   const url = trimmedExternalUrl.value
@@ -549,11 +589,22 @@ const COVER_MAX_BYTES = 10 * 1024 * 1024 // 10 MiB, mirrors backend cap
 // Hidden file input ref (clicked via the upload button).
 const coverLabelId = useId()
 
-// Presigned URL of the current cover for the item being edited, or '' if
-// none. Seeded in openEdit, updated from the upload response, cleared on
-// remove. Separate from editingOriginal because reload() swaps the
-// underlying roadmap array, detaching the original reference.
-const coverPreviewUrl = ref('')
+// The covers of the item being edited per language ("en" = the common file,
+// H38), and the version edited. Seeded in openEdit, updated from the upload
+// response, dropped on remove. Separate from editingOriginal because
+// reload() swaps the underlying roadmap array, detaching the original
+// reference.
+const coverVariants = ref<unknown>(null)
+const coverLanguage = ref<string>(BASE_LANGUAGE)
+const coverPreviewUrl = computed<string>(
+  () => imageIn(coverVariants.value, coverLanguage.value, 'cover_url') ?? '',
+)
+
+function dropCoverVariant(): void {
+  const variants = { ...((coverVariants.value ?? {}) as Record<string, unknown>) }
+  delete variants[coverLanguage.value]
+  coverVariants.value = variants
+}
 
 const coverUploading = ref(false)
 const coverRemoving = ref(false)
@@ -586,8 +637,13 @@ async function onCoverSelected(e: Event): Promise<void> {
 
   coverUploading.value = true
   try {
-    const updated = await uploadRoadmapCover(companyId.value, editingId.value, file)
-    coverPreviewUrl.value = updated.cover_url ?? ''
+    const updated = await uploadRoadmapCover(
+      companyId.value,
+      editingId.value,
+      file,
+      variantLanguage(coverLanguage.value),
+    )
+    coverVariants.value = updated.image_variants
     showToast(t('staff.platform.roadmap.cover.uploaded'), 'success')
     // Refresh the list so the card thumbnail reflects the new cover.
     await reload()
@@ -620,8 +676,12 @@ async function handleCoverRemove(): Promise<void> {
   }
   coverRemoving.value = true
   try {
-    await deleteRoadmapCover(companyId.value, coverRemoveTarget.value)
-    coverPreviewUrl.value = ''
+    await deleteRoadmapCover(
+      companyId.value,
+      coverRemoveTarget.value,
+      variantLanguage(coverLanguage.value),
+    )
+    dropCoverVariant()
     coverRemoveTarget.value = null
     showToast(t('staff.platform.roadmap.cover.removed'), 'success')
     await reload()
@@ -629,7 +689,7 @@ async function handleCoverRemove(): Promise<void> {
     // A 404 means the cover was already gone -- treat as success-ish:
     // clear the preview and reload rather than alarming the user.
     if (e instanceof ApiResponseError && e.status === 404) {
-      coverPreviewUrl.value = ''
+      dropCoverVariant()
       coverRemoveTarget.value = null
       await reload()
     } else {
@@ -832,19 +892,8 @@ onMounted(() => {
         </label>
       </fieldset>
 
-      <!-- Title (all kinds) -->
-      <CInput
-        v-model="draftTitle"
-        :label="t('staff.platform.roadmap.fieldTitle')"
-        :placeholder="t('staff.platform.roadmap.fieldTitle')"
-      />
-
-      <!-- Description (all kinds, optional) -->
-      <CTextarea
-        v-model="draftDescription"
-        :label="t('staff.platform.roadmap.fieldDescription')"
-        :rows="4"
-      />
+      <!-- Title (all kinds) and description (optional), per language (H38) -->
+      <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
 
       <!-- Event date hint -->
       <p v-if="draftKind === 'event'" class="ds-dialog__text">
@@ -907,6 +956,7 @@ onMounted(() => {
            and on create the row does not exist yet. Operations are immediate
            (not tied to Save). FP-23: gated on canManage (the whole
            section's controls only render for managers anyway). -->
+      <MediaLanguageSelect v-if="isEditing" v-model="coverLanguage" />
       <div v-if="isEditing" class="ds-field ds-file" :aria-busy="coverUploading || undefined">
         <span :id="coverLabelId" class="ds-field__label">
           {{ t('staff.platform.roadmap.cover.label') }}

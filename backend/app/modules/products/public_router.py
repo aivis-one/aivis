@@ -58,6 +58,7 @@ from app.core.database import get_db_reader
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
 from app.modules.companies.constants import PUBLIC_COMPANIES_RATE_LIMIT
+from app.core.i18n import localized, reader_language
 from app.modules.companies.media import product_cover_url, profile_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.products.constants import ProductStatus
@@ -127,6 +128,7 @@ async def list_public_products_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PublicProductListResponse:
     """List active products (public storefront).
 
@@ -169,7 +171,7 @@ async def list_public_products_endpoint(
     # The company's picture links, signed once per company on the page
     # rather than once per product (H36).
     company_links = {
-        cid: await profile_media_urls(company)
+        cid: await profile_media_urls(company, reader)
         for cid, company in companies_map.items()
     }
 
@@ -192,14 +194,18 @@ async def list_public_products_endpoint(
             PublicProductResponse(
                 id=p.id,
                 company_id=p.company_id,
-                name=p.name,
-                description=p.description,
+                name=localized(p.translations, reader, "name", p.name),
+                description=localized(
+                    p.translations, reader, "description", p.description
+                ),
                 package_size=p.package_size,
                 price_per_unit_cents=p.price_per_unit_cents,
                 price_per_pack_cents=p.package_size * p.price_per_unit_cents,
-                cover_url=await product_cover_url(p),
+                cover_url=await product_cover_url(p, reader),
                 available_packages=available_map.get(p.id, 0),
-                company_name=company.name,
+                company_name=localized(
+                    company.translations, reader, "name", company.name
+                ),
                 company_logo_url=company_links[p.company_id]["logo_url"],
                 company_logo_dark_url=company_links[p.company_id]["logo_dark_url"],
                 company_cover_url=company_links[p.company_id]["cover_url"],
@@ -227,6 +233,7 @@ async def get_public_product_detail_endpoint(
     product_id: UUID,
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PublicProductDetailResponse:
     """Get product detail with installment plans (public).
 
@@ -276,19 +283,21 @@ async def get_public_product_detail_endpoint(
         for inst in installments
     ]
 
-    links = await profile_media_urls(company)
+    links = await profile_media_urls(company, reader)
 
     return PublicProductDetailResponse(
         id=product.id,
         company_id=product.company_id,
-        name=product.name,
-        description=product.description,
+        name=localized(product.translations, reader, "name", product.name),
+        description=localized(
+            product.translations, reader, "description", product.description
+        ),
         package_size=product.package_size,
         price_per_unit_cents=product.price_per_unit_cents,
         price_per_pack_cents=product.package_size * product.price_per_unit_cents,
-        cover_url=await product_cover_url(product),
+        cover_url=await product_cover_url(product, reader),
         available_packages=available_map.get(product.id, 0),
-        company_name=company.name,
+        company_name=localized(company.translations, reader, "name", company.name),
         company_logo_url=links["logo_url"],
         company_logo_dark_url=links["logo_dark_url"],
         company_cover_url=links["cover_url"],

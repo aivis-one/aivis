@@ -45,6 +45,14 @@
 // through the profile form's Save. After each, the shared context reloads so
 // every section sees the new links.
 //
+// LANGUAGES (H38 P-132). The name and the description are edited in every
+// language of the interface (LocalizedTextFields): English is the base and
+// required, the others are translations. The screen shows the texts in
+// the reader's language, as every screen does. The pictures are edited per
+// version (MediaLanguageSelect): the common file, or one language's
+// variant -- the links come from the response's image_variants, so a
+// Russian-speaking editor sees the common file as the common file.
+//
 // FP-25 self-hide: optional fields (description, cover) are omitted from
 // the render when absent rather than showing empty rows.
 // =============================================================================
@@ -53,22 +61,27 @@ import { inject, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ExternalLink } from '@/components/ui/icons'
-import {
-  CLoader,
-  CBadge,
-  CButton,
-  CEmptyState,
-  CModal,
-  CSelect,
-  CInput,
-  CTextarea,
-} from '@/components/ui'
+import { CLoader, CBadge, CButton, CEmptyState, CModal, CSelect, CInput } from '@/components/ui'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { updateStaffCompany } from '@/api/staff-companies'
 import { MEDIA_LIMITS, deleteStaffCompanyMedia, uploadStaffCompanyMedia } from '@/api/media'
 import type { CompanyMediaSlot } from '@/api/media'
 import MediaImageField from '@/components/shared/MediaImageField.vue'
+import MediaLanguageSelect from '@/components/shared/MediaLanguageSelect.vue'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  BASE_LANGUAGE,
+  baseText,
+  emptyDraft,
+  imageIn,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+  variantLanguage,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import { ApiResponseError } from '@/api/client'
 import type { UpdateCompanyRequest } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
@@ -200,34 +213,46 @@ const DISTRIBUTION_ROWS: readonly { key: string; percent: number }[] = [
 
 const showProfileEdit = ref(false)
 const savingProfile = ref(false)
-const draftName = ref('')
-const draftDescription = ref('')
+const TEXT_FIELDS = ['name', 'description'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'name', label: t('staff.platform.profile.name'), maxlength: 500 },
+  {
+    key: 'description',
+    label: t('staff.platform.profile.description'),
+    multiline: true,
+    rows: 4,
+    maxlength: 5000,
+  },
+])
 const draftPromo = ref('')
 const draftPresentation = ref('')
 
 function openProfileEdit(): void {
   if (!canEditProfile.value || !company.value) return
   const c = company.value
-  draftName.value = c.name
-  draftDescription.value = c.description ?? ''
+  draftTexts.value = makeDraft(TEXT_FIELDS, c.base, c.translations)
   draftPromo.value = c.promo_video_url ?? ''
   draftPresentation.value = c.presentation_url ?? ''
   showProfileEdit.value = true
 }
 
-const canSaveProfile = computed<boolean>(() => draftName.value.trim().length > 0)
+const canSaveProfile = computed<boolean>(() => baseText(draftTexts.value, 'name').trim().length > 0)
 
 // Only the fields that changed travel (an omitted field is kept, null clears).
 function profileChanges(): UpdateCompanyRequest {
   const c = company.value
   const body: UpdateCompanyRequest = {}
   if (!c) return body
-  const name = draftName.value.trim()
-  if (name !== c.name) body.name = name
+  // The English base is compared with the base, not with the displayed
+  // name -- that one is in the reader's language.
+  const name = baseText(draftTexts.value, 'name').trim()
+  if (name !== c.base.name) body.name = name
   const text = (value: string): string | null => value.trim() || null
-  if (text(draftDescription.value) !== (c.description ?? null)) {
-    body.description = text(draftDescription.value)
-  }
+  const description = text(baseText(draftTexts.value, 'description'))
+  if (description !== (c.base.description ?? null)) body.description = description
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, c.translations)
+  if (!sameTranslations(translations, c.translations)) body.translations = translations
   if (text(draftPromo.value) !== (c.promo_video_url ?? null)) {
     body.promo_video_url = text(draftPromo.value)
   }
@@ -270,16 +295,28 @@ interface MediaSlotView {
   url: string | null
 }
 
+// The version of the pictures being edited: the common file or a variant.
+const mediaLanguage = ref<string>(BASE_LANGUAGE)
+
 const mediaSlots = computed<MediaSlotView[]>(() => {
-  const c = company.value
+  const v = company.value?.image_variants
+  const lang = mediaLanguage.value
   return [
-    { slot: 'logo', label: t('staff.platform.profile.media.logo'), url: c?.logo_url ?? null },
+    {
+      slot: 'logo',
+      label: t('staff.platform.profile.media.logo'),
+      url: imageIn(v, lang, 'logo_url'),
+    },
     {
       slot: 'logo-dark',
       label: t('staff.platform.profile.media.logoDark'),
-      url: c?.logo_dark_url ?? null,
+      url: imageIn(v, lang, 'logo_dark_url'),
     },
-    { slot: 'cover', label: t('staff.platform.profile.media.cover'), url: c?.cover_url ?? null },
+    {
+      slot: 'cover',
+      label: t('staff.platform.profile.media.cover'),
+      url: imageIn(v, lang, 'cover_url'),
+    },
   ]
 })
 
@@ -289,7 +326,7 @@ async function onMediaSelect(slot: CompanyMediaSlot, file: File): Promise<void> 
   if (!canEditProfile.value || !companyId.value || mediaBusy.value) return
   mediaBusy.value = slot
   try {
-    await uploadStaffCompanyMedia(companyId.value, slot, file)
+    await uploadStaffCompanyMedia(companyId.value, slot, file, variantLanguage(mediaLanguage.value))
     showToast(t('common.media.uploaded'), 'success')
     await ctx?.reload()
   } catch (err) {
@@ -304,7 +341,7 @@ async function onMediaRemove(slot: CompanyMediaSlot): Promise<void> {
   if (!canEditProfile.value || !companyId.value || mediaBusy.value) return
   mediaBusy.value = slot
   try {
-    await deleteStaffCompanyMedia(companyId.value, slot)
+    await deleteStaffCompanyMedia(companyId.value, slot, variantLanguage(mediaLanguage.value))
     showToast(t('common.media.removed'), 'success')
     await ctx?.reload()
   } catch (err) {
@@ -408,6 +445,7 @@ function formatPrice(cents: number): string {
         <h2 class="ds-section-title">
           {{ t('staff.platform.profile.media.title') }}
         </h2>
+        <MediaLanguageSelect v-model="mediaLanguage" />
         <MediaImageField
           v-for="m in mediaSlots"
           :key="m.slot"
@@ -482,13 +520,7 @@ function formatPrice(cents: number): string {
       :title="t('staff.platform.profile.profileEditTitle')"
       @close="showProfileEdit = false"
     >
-      <CInput v-model="draftName" :label="t('staff.platform.profile.name')" maxlength="500" />
-      <CTextarea
-        v-model="draftDescription"
-        :label="t('staff.platform.profile.description')"
-        :rows="4"
-        maxlength="5000"
-      />
+      <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
       <CInput
         v-model="draftPromo"
         :label="t('staff.platform.profile.promoVideoUrl')"

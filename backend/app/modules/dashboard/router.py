@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import get_current_user
 from app.modules.dashboard.schemas import DashboardSummaryResponse
 from app.modules.dashboard.service import get_dashboard_summary
@@ -35,10 +36,11 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 async def dashboard_summary(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> DashboardSummaryResponse:
     """Aggregated data for the investor main screen.
 
     Returns ledger balances, portfolio totals, and per-company breakdown.
     Users without purchases get zeroed-out values with empty companies list.
     """
-    return await get_dashboard_summary(user.id, session)
+    return await get_dashboard_summary(user.id, session, reader)

@@ -16,6 +16,7 @@ import { acceptGift, listPendingGifts } from '@/api/purchases'
 import { useToast } from '@/composables/useToast'
 import { formatDate, formatNumber } from '@/utils/format'
 import type { PurchaseResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const emit = defineEmits<{ accepted: [] }>()
 
@@ -56,6 +57,9 @@ async function accept(gift: PurchaseResponse): Promise<void> {
     accepting.value = null
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
 
 onMounted(() => {
   void load()

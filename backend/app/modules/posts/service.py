@@ -47,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.config import settings
 from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.companies.models import CompanyProfile
 from app.modules.posts.constants import OwnerType
 from app.modules.posts.models import Event, Post, PostDismiss
@@ -55,6 +56,7 @@ from app.modules.posts.schemas import (
     CreateEventRequest,
     CreatePostRequest,
     EventResponse,
+    PostBaseTexts,
     PostResponse,
     UpdateCompanyPostRequest,
     UpdateEventRequest,
@@ -67,6 +69,29 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # Posts
 # ---------------------------------------------------------------------------
+
+
+def build_post_response(
+    post: Post, language: str, *, editing: bool = False, is_dismissed: bool = False
+) -> PostResponse:
+    """A post for a reader: title / body in `language`, else English (H38).
+
+    `editing` -- the staff and company post editors -- adds the English
+    base and the stored translations; the news feed gets neither.
+    """
+    data = PostResponse.model_validate(post).model_dump(
+        exclude={"base", "translations", "is_dismissed"}
+    )
+    data["title"] = localized(post.translations, language, "title", post.title)
+    data["body"] = localized(post.translations, language, "body", post.body)
+    if editing:
+        return PostResponse(
+            **data,
+            is_dismissed=is_dismissed,
+            base=PostBaseTexts(title=post.title, body=post.body),
+            translations=post.translations or {},
+        )
+    return PostResponse(**data, is_dismissed=is_dismissed)
 
 
 async def create_post(
@@ -118,6 +143,7 @@ async def create_post(
         owner_id=body.owner_id,
         title=body.title,
         body=body.body,
+        translations=body.translations or {},
         cover_url=body.cover_url,
         tags=body.tags,
         is_banner=body.is_banner,
@@ -173,6 +199,9 @@ async def update_post(
     post = await _get_post_or_404(session, post_id)
 
     updates = body.model_dump(exclude_unset=True)
+    # translations (posts only): null is "not sent" -- the map stays (H38).
+    if "translations" in updates and updates["translations"] is None:
+        updates.pop("translations")
     if not updates:
         return post
 
@@ -323,6 +352,7 @@ async def create_company_post(
         owner_id=company_id,
         title=body.title,
         body=body.body,
+        translations=body.translations or {},
         cover_url=body.cover_url,
         tags=body.tags,
         is_banner=False,
@@ -381,6 +411,9 @@ async def update_company_post(
     post = await _get_company_post_or_404(session, company_id, post_id)
 
     updates = body.model_dump(exclude_unset=True)
+    # translations (posts only): null is "not sent" -- the map stays (H38).
+    if "translations" in updates and updates["translations"] is None:
+        updates.pop("translations")
     if not updates:
         return post
 
@@ -458,6 +491,7 @@ async def list_posts(
     owner_type: str | None = None,
     company_id: UUID | None = None,
     tag: str | None = None,
+    language: str = BASE_LANGUAGE,
 ) -> tuple[list[PostResponse], int]:
     """List published, non-deleted posts with optional dismiss info.
 
@@ -519,9 +553,11 @@ async def list_posts(
 
         items = []
         for post, dismiss_id in rows:
-            resp = PostResponse.model_validate(post)
-            resp.is_dismissed = dismiss_id is not None
-            items.append(resp)
+            items.append(
+                build_post_response(
+                    post, language, is_dismissed=dismiss_id is not None
+                )
+            )
     else:
         # Anonymous: no dismiss check.
         stmt = (
@@ -533,7 +569,7 @@ async def list_posts(
         )
         result = await session.execute(stmt)
         items = [
-            PostResponse.model_validate(p) for p in result.scalars().all()
+            build_post_response(p, language) for p in result.scalars().all()
         ]
 
     return items, total
@@ -632,6 +668,7 @@ async def get_post(
     session: AsyncSession,
     post_id: UUID,
     user_id: UUID | None = None,
+    language: str = BASE_LANGUAGE,
 ) -> PostResponse:
     """Get a single published post by ID.
 
@@ -667,16 +704,16 @@ async def get_post(
         if row is None:
             raise NotFoundError("Post not found")
         post, dismiss_id = row
-        resp = PostResponse.model_validate(post)
-        resp.is_dismissed = dismiss_id is not None
-        return resp
+        return build_post_response(
+            post, language, is_dismissed=dismiss_id is not None
+        )
     else:
         stmt = select(Post).where(*conditions)
         result = await session.execute(stmt)
         post = result.scalar_one_or_none()
         if post is None:
             raise NotFoundError("Post not found")
-        return PostResponse.model_validate(post)
+        return build_post_response(post, language)
 
 
 async def dismiss_post(
@@ -798,6 +835,9 @@ async def update_event(
     event = await _get_event_or_404(session, event_id)
 
     updates = body.model_dump(exclude_unset=True)
+    # translations (posts only): null is "not sent" -- the map stays (H38).
+    if "translations" in updates and updates["translations"] is None:
+        updates.pop("translations")
     if not updates:
         return event
 

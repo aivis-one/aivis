@@ -56,6 +56,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.products.calculator import calculate_installment_preview
 from app.modules.companies.media import build_product_response
@@ -101,6 +102,7 @@ async def create_product_endpoint(
     body: CreateProductRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> ProductResponse:
     """Create a new product.
 
@@ -116,8 +118,9 @@ async def create_product_endpoint(
         session,
         description=body.description,
         purchase_config=body.purchase_config,
+        translations=body.translations,
     )
-    return await build_product_response(product)
+    return await build_product_response(product, reader)
 
 
 @router.patch(
@@ -129,6 +132,7 @@ async def update_product_endpoint(
     body: UpdateProductRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> ProductResponse:
     """Update product fields.
 
@@ -146,8 +150,9 @@ async def update_product_endpoint(
         name=updates.get("name"),
         description=updates.get("description", ...),
         purchase_config=updates.get("purchase_config", ...),
+        translations=updates.get("translations", ...),
     )
-    return await build_product_response(product)
+    return await build_product_response(product, reader)
 
 
 @router.patch(
@@ -159,12 +164,13 @@ async def update_product_status_endpoint(
     body: UpdateProductStatusRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> ProductResponse:
     """Change product status."""
     product = await update_product_status(
         product_id, body.status, staff, session
     )
-    return await build_product_response(product)
+    return await build_product_response(product, reader)
 
 
 # ---------------------------------------------------------------------------

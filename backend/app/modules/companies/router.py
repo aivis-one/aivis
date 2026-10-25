@@ -63,11 +63,12 @@
 #   This mirrors update_company()'s existing (company_id, session) shape.
 # =============================================================================
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.body_limit import upload_body_limit
 from app.core.database import get_db_session
+from app.core.i18n import reader_language
 from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.media import (
@@ -94,6 +95,7 @@ router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
 )
 async def get_my_company_endpoint(
     company: CompanyProfile = Depends(get_current_company_profile),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Get the authenticated company user's full profile.
 
@@ -108,7 +110,7 @@ async def get_my_company_endpoint(
     projection (no distribution_config, no user_id) and 404s on
     non-active status.
     """
-    return await build_company_response(company)
+    return await build_company_response(company, reader)
 
 
 @router.patch(
@@ -119,6 +121,7 @@ async def update_my_company_endpoint(
     body: UpdateOwnCompanyRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Partial self-update of the authenticated company's own profile.
 
@@ -165,7 +168,7 @@ async def update_my_company_endpoint(
     into the service call.
     """
     updated = await update_own_company(company.id, body, session)
-    return await build_company_response(updated)
+    return await build_company_response(updated, reader)
 
 
 @router.put(
@@ -178,6 +181,12 @@ async def set_my_company_media_endpoint(
     file: UploadFile = File(...),
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> CompanyResponse:
     """Upload / replace the project's own logo, dark logo or cover (H36).
 
@@ -198,8 +207,9 @@ async def set_my_company_media_endpoint(
         file_size_bytes=_resolve_upload_size(file),
         content_type=content_type,
         file_extension=ext,
+        language=language,
     )
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.delete(
@@ -210,8 +220,14 @@ async def delete_my_company_media_endpoint(
     slot: CompanyMediaSlotPath,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> None:
     """Remove the project's own logo, dark logo or cover. 404 when it has none."""
     await delete_own_company_media(
-        company.id, slot_from_path(slot), company.user_id, session
+        company.id, slot_from_path(slot), company.user_id, session,
+        language=language,
     )

@@ -33,6 +33,7 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.companies.models import CompanyProfile
 from app.modules.ledgers.models import ActiveLedger
 from app.modules.products.models import Product
@@ -98,7 +99,14 @@ def build_list_statement(
 ) -> Select[Any]:
     """The page query: purchases with buyer, project and product, newest first."""
     return (
-        select(Purchase, User, CompanyProfile.name, Product.name)
+        select(
+            Purchase,
+            User,
+            CompanyProfile.name,
+            Product.name,
+            CompanyProfile.translations,
+            Product.translations,
+        )
         .join(User, User.id == Purchase.investor_id)
         .join(CompanyProfile, CompanyProfile.id == Purchase.company_id)
         .join(Product, Product.id == Purchase.product_id)
@@ -125,6 +133,7 @@ async def list_staff_purchases(
     buyer_id: UUID | None = None,
     page: int = 1,
     per_page: int = 20,
+    language: str = BASE_LANGUAGE,
 ) -> tuple[list[StaffPurchaseItem], int]:
     """One page of purchases and the total that match the filters."""
     conditions = build_purchase_filters(
@@ -142,7 +151,7 @@ async def list_staff_purchases(
     ).all()
     reasons = {
         STAFF_GIFT_REASON.format(purchase_id=purchase.id): purchase.id
-        for purchase, _, _, _ in rows
+        for purchase, *_ in rows
         if purchase.legal_basis == PurchaseLegalBasis.GIFT
         and purchase.source_purchase_id is None
     }
@@ -160,9 +169,9 @@ async def list_staff_purchases(
             buyer_email=user.email,
             buyer_name=buyer_name(user.profile),
             company_id=purchase.company_id,
-            company_name=company_name,
+            company_name=localized(company_tr, language, "name", company_name),
             product_id=purchase.product_id,
-            product_name=product_name,
+            product_name=localized(product_tr, language, "name", product_name),
             units=purchase.units,
             paid_cents=purchase.paid_cents,
             kind=purchase_kind(
@@ -174,6 +183,6 @@ async def list_staff_purchases(
             legal_basis=purchase.legal_basis,
             status=purchase.status,
         )
-        for purchase, user, company_name, product_name in rows
+        for purchase, user, company_name, product_name, company_tr, product_tr in rows
     ]
     return items, total

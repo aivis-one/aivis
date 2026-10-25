@@ -217,6 +217,32 @@ export function parseRetryAfterHeader(response: Response): number | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Reader language (H38 P-132)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Accept-Language header of every API call: the current UI locale.
+ *
+ * The backend answers project data (names, descriptions, roadmap, news,
+ * picture variants) in this language, else English. ONE helper for the
+ * JSON client and every raw fetch() in src/api/ (multipart uploads,
+ * blob downloads) -- an upload answers the edited object, and that
+ * answer must come back in the reader's language too.
+ */
+export function languageHeaders(): { 'Accept-Language': string } {
+  return { 'Accept-Language': i18n.global.locale.value }
+}
+
+/**
+ * The `?language=` of a picture endpoint (H38): a language's VARIANT of
+ * the picture, or '' for the common file. Not the reader's language --
+ * the editor picks which variant it uploads or removes.
+ */
+export function languageQuery(language?: string | null): string {
+  return language ? `?language=${encodeURIComponent(language)}` : ''
+}
+
+// ---------------------------------------------------------------------------
 // Core request function
 // ---------------------------------------------------------------------------
 
@@ -231,7 +257,7 @@ async function request<T>(
   const headers: Record<string, string> = {
     ...extraHeaders,
     Accept: 'application/json',
-    'Accept-Language': i18n.global.locale.value,
+    ...languageHeaders(),
   }
 
   if (_token) {

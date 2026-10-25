@@ -53,6 +53,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.core.exceptions import NotFoundError
 from app.core.rate_limit import check_rate_limit
 from app.modules.companies.constants import (
@@ -118,6 +119,7 @@ async def list_public_companies_endpoint(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PublicCompanyListResponse:
     """List active companies (public storefront).
 
@@ -135,7 +137,7 @@ async def list_public_companies_endpoint(
         per_page=per_page,
     )
     return PublicCompanyListResponse(
-        items=[await build_public_company_response(c) for c in companies],
+        items=[await build_public_company_response(c, reader) for c in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -155,6 +157,7 @@ async def get_public_company_detail_endpoint(
     company_id: UUID,
     request: Request,
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PublicCompanyDetailResponse:
     """Get company detail with storefront stats and roadmap items.
 
@@ -179,11 +182,12 @@ async def get_public_company_detail_endpoint(
             posts_map.get(item.post_id) if item.post_id else None,
             session,
             cover_ttl_seconds=settings.storage_presigned_ttl_public,
+            language=reader,
         )
         for item in roadmap_items
     ]
     return PublicCompanyDetailResponse(
-        **(await build_public_company_response(profile)).model_dump(),
+        **(await build_public_company_response(profile, reader)).model_dump(),
         stats=stats,
         roadmap=roadmap,
     )

@@ -60,7 +60,16 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -128,6 +137,22 @@ class Product(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     cover_storage_key: Mapped[str | None] = mapped_column(
         String(1000),
         nullable=True,
+    )
+    # Per-language picture variants (H38 P-132): {"ru": {"cover": <key>}}.
+    # The plain key column is the common file every language falls back to.
+    media_variants: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    # Translations of the texts above (H38 P-132): {"ru": {"name": ...}}.
+    # English stays in the columns; app/core/i18n.py validates and reads.
+    translations: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
     )
 
     # -- Purchase configuration (Sprint 6.1) --

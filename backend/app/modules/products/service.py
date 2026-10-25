@@ -69,7 +69,13 @@ from app.core.audit import record_audit
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.storage import StorageError, delete_object, upload_object
 from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
-from app.modules.companies.media import product_cover_key, validate_media_upload
+from app.modules.companies.media import (
+    check_variant_language,
+    product_cover_key,
+    store_key,
+    stored_key,
+    validate_media_upload,
+)
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.service import get_company
 from app.modules.products.constants import (
@@ -100,6 +106,7 @@ async def create_product(
     *,
     description: str | None = None,
     purchase_config: dict | None = None,  # type: ignore[type-arg]
+    translations: dict | None = None,  # type: ignore[type-arg]
 ) -> Product:
     """Create a new product for a company.
 
@@ -148,6 +155,7 @@ async def create_product(
         description=description,
         package_size=package_size,
         purchase_config=purchase_config,
+        translations=translations or {},
         price_per_unit_cents=company.price_per_unit_cents,
         status=ProductStatus.HIDDEN,
     )
@@ -191,6 +199,7 @@ async def update_product(
     name: str | None = None,
     description=...,
     purchase_config=...,
+    translations=...,
 ) -> Product:
     """Partial update of product fields.
 
@@ -219,6 +228,11 @@ async def update_product(
             validate_purchase_config(purchase_config)
         product.set_jsonb("purchase_config", purchase_config)
         changed_fields.append("purchase_config")
+
+    # Not sent (or null) keeps the stored map; sent replaces it whole (H38).
+    if translations is not ... and translations is not None:
+        product.set_jsonb("translations", translations)
+        changed_fields.append("translations")
 
     if changed_fields:
         await session.flush()
@@ -302,8 +316,12 @@ async def set_product_cover(
     file_size_bytes: int,
     content_type: str,
     file_extension: str,
+    language: str | None = None,
 ) -> Product:
     """Upload / replace the cover of a product (H36 P-131, staff).
+
+    With `language` (H38) it is that language's variant of the cover,
+    companies/<cid>/products/<pid>/<lang>/cover<ext>; None is the common file.
 
     The object goes to companies/<company_id>/products/<product_id>/
     (product_cover_key). Same storage flow as the roadmap cover
@@ -318,6 +336,7 @@ async def set_product_cover(
             another company's.
         StorageError: the upload failed; nothing was written.
     """
+    check_variant_language(language)
     validate_media_upload(
         content_type=content_type,
         file_extension=file_extension,
@@ -326,8 +345,8 @@ async def set_product_cover(
     )
     product = await _get_company_product(company_id, product_id, session)
 
-    old_storage_key = product.cover_storage_key
-    new_storage_key = product_cover_key(company_id, product_id, file_extension)
+    old_storage_key = stored_key(product, "cover_storage_key", "cover", language)
+    new_storage_key = product_cover_key(company_id, product_id, file_extension, language)
 
     await upload_object(
         new_storage_key,
@@ -336,7 +355,7 @@ async def set_product_cover(
         content_length=file_size_bytes,
     )
 
-    product.cover_storage_key = new_storage_key
+    store_key(product, "cover_storage_key", "cover", language, new_storage_key)
     await session.flush()
     await session.refresh(product)
 
@@ -363,6 +382,7 @@ async def set_product_cover(
             "storage_key": new_storage_key,
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
+            "language": language,
         },
     )
 
@@ -383,8 +403,11 @@ async def delete_product_cover(
     product_id: UUID,
     staff: User,
     session: AsyncSession,
+    *,
+    language: str | None = None,
 ) -> None:
-    """Remove the cover of a product (H36 P-131, staff).
+    """Remove the cover of a product (H36 P-131, staff); with `language`
+    (H38), only that language's variant.
 
     404 when no cover is set, as for the roadmap cover. The object delete
     is best-effort.
@@ -393,13 +416,15 @@ async def delete_product_cover(
         NotFoundError: company or product not found, the product is
             another company's, or it has no cover.
     """
+    check_variant_language(language)
     product = await _get_company_product(company_id, product_id, session)
 
-    if product.cover_storage_key is None:
-        raise NotFoundError("Product has no cover image")
+    storage_key = stored_key(product, "cover_storage_key", "cover", language)
+    if storage_key is None:
+        suffix = f" for language {language!r}" if language else ""
+        raise NotFoundError(f"Product has no cover image{suffix}")
 
-    storage_key = product.cover_storage_key
-    product.cover_storage_key = None
+    store_key(product, "cover_storage_key", "cover", language, None)
     await session.flush()
 
     try:
@@ -419,7 +444,11 @@ async def delete_product_cover(
         actor_type="staff",
         target_type="product",
         target_id=product.id,
-        data={"company_id": str(company_id), "storage_key": storage_key},
+        data={
+            "company_id": str(company_id),
+            "storage_key": storage_key,
+            "language": language,
+        },
     )
 
 

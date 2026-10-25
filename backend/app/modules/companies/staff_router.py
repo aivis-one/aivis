@@ -83,6 +83,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.body_limit import upload_body_limit
 from app.core.database import get_db_session, get_db_reader
+from app.core.i18n import reader_language
 from app.core.exceptions import BadRequestError
 from app.modules.auth.dependencies import (
     get_current_user_write,
@@ -173,6 +174,7 @@ async def list_companies_endpoint(
     per_page: int = Query(default=20, ge=1, le=100),
     staff: User = Depends(require_staff_permission("company_manage")),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> CompanyListResponse:
     """List all companies (active / hidden / archived) with pagination.
 
@@ -200,7 +202,7 @@ async def list_companies_endpoint(
         per_page=per_page,
     )
     return CompanyListResponse(
-        items=[await build_company_response(c) for c in companies],
+        items=[await build_company_response(c, reader) for c in companies],
         total=total,
         page=page,
         per_page=per_page,
@@ -215,6 +217,7 @@ async def get_company_detail_endpoint(
     company_id: UUID,
     staff: User = Depends(require_staff_permission("company_manage")),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> CompanyDetailResponse:
     """Get one company's full detail (any status) plus its roadmap.
 
@@ -242,6 +245,8 @@ async def get_company_detail_endpoint(
         await build_roadmap_item_response(
             item, posts_map.get(item.post_id), session,
             cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+            language=reader,
+            editing=True,
         )
         for item in roadmap_items
     ]
@@ -249,7 +254,7 @@ async def get_company_detail_endpoint(
     # CompanyDetailResponse(CompanyResponse) adds `roadmap`; build the
     # base shape (with the picture links signed now), then attach the
     # assembled list.
-    base = await build_company_response(profile)
+    base = await build_company_response(profile, reader)
     return CompanyDetailResponse(**base.model_dump(), roadmap=roadmap)
 
 
@@ -262,6 +267,7 @@ async def create_company_endpoint(
     body: CreateCompanyRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Create a new company (user + profile).
 
@@ -270,7 +276,7 @@ async def create_company_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await create_company(body, staff, session)
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.post(
@@ -282,6 +288,7 @@ async def assign_company_endpoint(
     body: AssignCompanyRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Promote an EXISTING user to company (TASK-30 ruling 1 + 9).
 
@@ -300,7 +307,7 @@ async def assign_company_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await assign_company(body, staff, session)
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.patch(
@@ -312,6 +319,7 @@ async def update_company_endpoint(
     body: UpdateCompanyRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Update company profile.
 
@@ -322,7 +330,7 @@ async def update_company_endpoint(
         await require_financial_operations(staff, session)
 
     profile = await update_company(company_id, body, staff, session)
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.patch(
@@ -334,6 +342,7 @@ async def update_price_endpoint(
     body: UpdatePriceRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Change company share price.
 
@@ -343,7 +352,7 @@ async def update_price_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await update_price(company_id, body.price_per_unit_cents, staff, session)
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.patch(
@@ -355,6 +364,7 @@ async def update_supply_endpoint(
     body: UpdateSupplyRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> CompanyResponse:
     """Change company total_supply (dilution ruling, TASK-39 item 6).
 
@@ -369,7 +379,7 @@ async def update_supply_endpoint(
     await require_financial_operations(staff, session)
 
     profile = await update_supply(company_id, body.total_supply, staff, session)
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.get(
@@ -417,6 +427,7 @@ async def list_company_products_endpoint(
     per_page: int = Query(default=20, ge=1, le=100),
     staff: User = Depends(require_staff_permission("company_manage")),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> ProductListResponse:
     """List one project's products in EVERY status (active, hidden, archived).
 
@@ -434,7 +445,7 @@ async def list_company_products_endpoint(
         per_page=per_page,
     )
     return ProductListResponse(
-        items=[await build_product_response(p) for p in products],
+        items=[await build_product_response(p, reader) for p in products],
         total=total,
         page=page,
         per_page=per_page,
@@ -456,6 +467,7 @@ async def create_roadmap_item_endpoint(
     body: CreateRoadmapItemRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> RoadmapItemResponse:
     """Add a roadmap item (R1 §5). Per-kind validation handled by the
     request schema; service rejects cross-company linked products and
@@ -473,6 +485,7 @@ async def create_roadmap_item_endpoint(
         external_url=body.external_url,
         post_id=body.post_id,
         linked_product_id=body.linked_product_id,
+        translations=body.translations,
     )
     # Freshly-created items have no cover and no resolved post yet
     # (post snippet is resolved at detail-render time). Pass None for
@@ -482,6 +495,8 @@ async def create_roadmap_item_endpoint(
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -496,6 +511,7 @@ async def reorder_roadmap_endpoint(
     body: ReorderRoadmapRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> list[RoadmapItemResponse]:
     """Reorder roadmap items."""
     items = await reorder_roadmap(company_id, body.item_ids, staff, session)
@@ -509,6 +525,8 @@ async def reorder_roadmap_endpoint(
             None,
             session,
             cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+            language=reader,
+            editing=True,
         )
         for item in items
     ]
@@ -524,6 +542,7 @@ async def update_roadmap_item_endpoint(
     body: UpdateRoadmapItemRequest,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> RoadmapItemResponse:
     """Update a roadmap item (partial, R1 §5).
 
@@ -547,6 +566,7 @@ async def update_roadmap_item_endpoint(
         external_url=updates.get("external_url", ...),
         post_id=updates.get("post_id", ...),
         linked_product_id=updates.get("linked_product_id", ...),
+        translations=updates.get("translations", ...),
     )
     # Post snippet not embedded here (single-item response, frontend
     # refetches the detail view if needed for the new post link).
@@ -555,6 +575,8 @@ async def update_roadmap_item_endpoint(
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -611,6 +633,12 @@ async def set_roadmap_cover_endpoint(
     file: UploadFile = File(...),
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> RoadmapItemResponse:
     """Upload / replace the cover image for a roadmap item (R1 §5).
 
@@ -642,6 +670,7 @@ async def set_roadmap_cover_endpoint(
         file_size_bytes=file_size_bytes,
         content_type=content_type,
         file_extension=ext,
+        language=language,
     )
     # Post snippet not embedded -- the endpoint is per-item and does
     # not change the post link; frontend refetches detail when it
@@ -651,6 +680,8 @@ async def set_roadmap_cover_endpoint(
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -663,13 +694,18 @@ async def delete_roadmap_cover_endpoint(
     item_id: UUID,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> None:
     """Remove the cover image from a roadmap item.
 
     404 when no cover is set -- the operation is explicit so the UI
     knows it was a no-op instead of treating empty cover as success.
     """
-    await delete_roadmap_cover(company_id, item_id, staff, session)
+    await delete_roadmap_cover(company_id, item_id, staff, session, language=language)
 
 
 # ---------------------------------------------------------------------------
@@ -695,6 +731,12 @@ async def set_company_media_endpoint(
     file: UploadFile = File(...),
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> CompanyResponse:
     """Upload / replace a project's logo, dark logo or cover (H36)."""
     content_type, ext = validate_roadmap_cover_mime_by_filename(
@@ -709,8 +751,9 @@ async def set_company_media_endpoint(
         file_size_bytes=_resolve_upload_size(file),
         content_type=content_type,
         file_extension=ext,
+        language=language,
     )
-    return await build_company_response(profile)
+    return await build_company_response(profile, reader)
 
 
 @router.delete(
@@ -722,9 +765,16 @@ async def delete_company_media_endpoint(
     slot: CompanyMediaSlotPath,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> None:
     """Remove a project's logo, dark logo or cover. 404 when it has none."""
-    await delete_company_media(company_id, slot_from_path(slot), staff, session)
+    await delete_company_media(
+        company_id, slot_from_path(slot), staff, session, language=language
+    )
 
 
 @router.put(
@@ -738,6 +788,12 @@ async def set_product_cover_endpoint(
     file: UploadFile = File(...),
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> ProductResponse:
     """Upload / replace a product's cover (H36). 404 for another project's product."""
     content_type, ext = validate_roadmap_cover_mime_by_filename(
@@ -752,8 +808,9 @@ async def set_product_cover_endpoint(
         file_size_bytes=_resolve_upload_size(file),
         content_type=content_type,
         file_extension=ext,
+        language=language,
     )
-    return await build_product_response(product)
+    return await build_product_response(product, reader)
 
 
 @router.delete(
@@ -765,6 +822,13 @@ async def delete_product_cover_endpoint(
     product_id: UUID,
     staff: User = Depends(require_staff_permission("project_manage")),
     session: AsyncSession = Depends(get_db_session),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> None:
     """Remove a product's cover. 404 when it has none."""
-    await delete_product_cover(company_id, product_id, staff, session)
+    await delete_product_cover(
+        company_id, product_id, staff, session, language=language
+    )

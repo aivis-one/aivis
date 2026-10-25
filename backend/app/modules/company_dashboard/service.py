@@ -54,6 +54,7 @@ import structlog
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.companies.models import CompanyProfile
 from app.modules.company_dashboard.schemas import (
     CompanyAnalyticsResponse,
@@ -240,6 +241,7 @@ def _months_lookback_floor(now: datetime, months: int) -> datetime:
 async def get_company_analytics(
     company: CompanyProfile,
     session: AsyncSession,
+    language: str = BASE_LANGUAGE,
 ) -> CompanyAnalyticsResponse:
     """Build the sales analytics payload for the authenticated company."""
     now = datetime.now(UTC)
@@ -343,21 +345,26 @@ async def get_company_analytics(
         select(
             Product.id.label("product_id"),
             Product.name.label("product_name"),
+            Product.translations.label("product_translations"),
             revenue_aggregate.label("revenue"),
             options_aggregate.label("options_sold"),
         )
         .outerjoin(Purchase, Purchase.product_id == Product.id)
         .where(Product.company_id == company.id)
-        .group_by(Product.id, Product.name)
+        .group_by(Product.id, Product.name, Product.translations)
         # Secondary order by name keeps zero-revenue products in a
-        # stable, alphabetical order in the UI list.
+        # stable order in the UI list. By the ENGLISH name on purpose
+        # (H38): it is a tie-break for a stable order, not an alphabetical
+        # list, and the shown name is the reader's language.
         .order_by(revenue_aggregate.desc(), Product.name.asc())
     )
     by_product_rows = (await session.execute(by_product_stmt)).all()
     sales_by_product = [
         SalesByProductEntry(
             product_id=row.product_id,
-            product_name=row.product_name,
+            product_name=localized(
+                row.product_translations, language, "name", row.product_name
+            ),
             revenue_cents=int(row.revenue),
             options_sold=int(row.options_sold),
         )

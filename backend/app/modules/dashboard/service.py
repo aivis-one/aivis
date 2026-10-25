@@ -19,6 +19,7 @@ from uuid import UUID
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.companies.media import company_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.dashboard.schemas import (
@@ -34,6 +35,7 @@ from app.modules.purchases.models import Purchase
 async def get_dashboard_summary(
     user_id: UUID,
     session: AsyncSession,
+    language: str = BASE_LANGUAGE,
 ) -> DashboardSummaryResponse:
     """Build dashboard summary for the authenticated user.
 
@@ -52,6 +54,8 @@ async def get_dashboard_summary(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             func.coalesce(func.sum(Purchase.paid_cents), 0).label("invested_cents"),
@@ -67,6 +71,8 @@ async def get_dashboard_summary(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
         )
         .order_by(func.sum(Purchase.units).desc())
@@ -91,10 +97,14 @@ async def get_dashboard_summary(
             logo_storage_key=row.logo_storage_key,
             logo_dark_storage_key=row.logo_dark_storage_key,
             cover_storage_key=row.cover_storage_key,
+            media_variants=row.media_variants,
+            language=language,
         )
         companies.append(CompanySummaryResponse(
             company_id=row.company_id,
-            company_name=row.company_name,
+            company_name=localized(
+                row.translations, language, "name", row.company_name
+            ),
             logo_url=links["logo_url"],
             logo_dark_url=links["logo_dark_url"],
             total_units=units,

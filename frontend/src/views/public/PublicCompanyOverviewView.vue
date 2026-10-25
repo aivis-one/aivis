@@ -78,6 +78,7 @@ import { ApiResponseError } from '@/api/client'
 import { getCompany } from '@/api/companies'
 import { formatNumber } from '@/utils/format'
 import type { PublicCompanyDetailResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -165,6 +166,9 @@ async function loadCompany(id: string): Promise<void> {
     loading.value = false
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadCompany(companyId.value))
 
 onMounted(() => {
   void loadCompany(companyId.value)

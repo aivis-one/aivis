@@ -26,6 +26,7 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import { listMyProducts } from '@/api/products'
 import type { OwnProductResponse } from '@/api/products'
 import { formatPrice } from '@/utils/format'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const PER_PAGE = 100
 
@@ -82,6 +83,9 @@ async function loadAll(): Promise<void> {
     loading.value = false
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadAll())
 
 onMounted(() => {
   void loadAll()

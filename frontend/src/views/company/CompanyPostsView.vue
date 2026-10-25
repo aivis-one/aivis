@@ -48,12 +48,27 @@
 // MODERATION: none, by design -- see company_router.py's module
 // docstring ("not needed even as a task"). A post the project marks
 // is_published=true publishes the moment the request lands.
+//
+// LANGUAGES (H38 P-132): title and body are edited in every language of the
+// interface (LocalizedTextFields), English the base and required; the form
+// starts from the post's base and translations, not from the displayed
+// (reader's) texts. The preview shows the English base.
 // =============================================================================
 
 import { ref, computed, onMounted, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Eye, Pencil, Trash2, Newspaper, Plus, X, Check } from '@/components/ui/icons'
-import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CCheckbox } from '@/components/ui'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CCheckbox } from '@/components/ui'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  baseText,
+  emptyDraft,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
@@ -62,6 +77,7 @@ import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchOwnPosts, createOwnPost, updateOwnPost, deleteOwnPost } from '@/api/company-posts'
 import type { PostResponse, CreateCompanyPostRequest, UpdateCompanyPostRequest } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
@@ -145,6 +161,9 @@ function formatDateTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString()
 }
 
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => reload())
+
 onMounted(() => {
   void reload()
 })
@@ -158,8 +177,15 @@ const editingId = ref<string | null>(null)
 const editingOriginal = ref<PostResponse | null>(null)
 const saving = ref(false)
 
-const draftTitle = ref('')
-const draftBody = ref('')
+const TEXT_FIELDS = ['title', 'body'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'title', label: t('comp.posts.fieldTitle'), maxlength: 500 },
+  { key: 'body', label: t('comp.posts.fieldBody'), multiline: true, rows: 10, maxlength: 50000 },
+])
+// The English base, for the checks and the preview.
+const draftTitle = computed<string>(() => baseText(draftTexts.value, 'title'))
+const draftBody = computed<string>(() => baseText(draftTexts.value, 'body'))
 const draftCoverUrl = ref('')
 const draftTags = ref<string[]>([])
 
@@ -176,8 +202,7 @@ const tagDraft = ref('')
 const isEditing = computed<boolean>(() => editingId.value !== null)
 
 function resetDraft(): void {
-  draftTitle.value = ''
-  draftBody.value = ''
+  draftTexts.value = emptyDraft(TEXT_FIELDS)
   draftCoverUrl.value = ''
   draftTags.value = []
   draftIsPublished.value = false
@@ -194,8 +219,7 @@ function openCreate(): void {
 function openEdit(post: PostResponse): void {
   editingId.value = post.id
   editingOriginal.value = post
-  draftTitle.value = post.title
-  draftBody.value = post.body
+  draftTexts.value = makeDraft(TEXT_FIELDS, post.base, post.translations)
   draftCoverUrl.value = post.cover_url ?? ''
   draftTags.value = post.tags ? [...post.tags] : []
   draftIsPublished.value = post.is_published
@@ -259,6 +283,7 @@ function buildCreateBody(): CreateCompanyPostRequest {
   const body: CreateCompanyPostRequest = {
     title: trimmedTitle.value,
     body: trimmedBody.value,
+    translations: translationsFromDraft(draftTexts.value, TEXT_FIELDS, {}),
     is_published: draftIsPublished.value,
   }
   if (trimmedCoverUrl.value) body.cover_url = trimmedCoverUrl.value
@@ -275,11 +300,16 @@ function buildUpdateBody(): UpdateCompanyPostRequest {
   const body: UpdateCompanyPostRequest = {}
   if (!orig) return body
 
-  if (trimmedTitle.value !== orig.title) {
+  // Against the English base, not the displayed (reader's) texts.
+  if (trimmedTitle.value !== (orig.base?.title ?? '')) {
     body.title = trimmedTitle.value
   }
-  if (trimmedBody.value !== orig.body) {
+  if (trimmedBody.value !== (orig.base?.body ?? '')) {
     body.body = trimmedBody.value
+  }
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, orig.translations)
+  if (!sameTranslations(translations, orig.translations)) {
+    body.translations = translations
   }
 
   const origCoverUrl = orig.cover_url ?? ''
@@ -484,20 +514,7 @@ async function handleDelete(): Promise<void> {
     :title="isEditing ? t('comp.posts.editTitle') : t('comp.posts.createTitle')"
     @close="closeForm"
   >
-    <CInput
-      v-model="draftTitle"
-      :label="t('comp.posts.fieldTitle')"
-      :placeholder="t('comp.posts.fieldTitle')"
-      maxlength="500"
-    />
-
-    <CTextarea
-      v-model="draftBody"
-      :label="t('comp.posts.fieldBody')"
-      :placeholder="t('comp.posts.fieldBody')"
-      :rows="10"
-      maxlength="50000"
-    />
+    <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
 
     <CInput
       v-model="draftCoverUrl"

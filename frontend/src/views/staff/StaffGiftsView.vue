@@ -37,6 +37,7 @@ import { tOrRaw } from '@/utils/i18n'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { PurchaseResponse } from '@/api/generated'
 import type { PublicProductResponse, UserListItem } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
@@ -163,6 +164,9 @@ function statusVariant(status: string) {
   if (status === 'cancelled') return 'neutral'
   return 'neutral'
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadProducts())
 
 onMounted(loadProducts)
 </script>

@@ -130,23 +130,33 @@
 #   roadmap/<item-key>.png       roadmap covers
 #   documents/<lang>/<category>/<file>.pdf    attachments
 #
-# (media/<lang>/ and roadmap/<lang>/ are allowed in the folder and not read
-# yet: projects have no languages.) Paths in the profile are relative to
-# that folder and may not leave it.
+#   media/<lang>/, roadmap/<lang>/   language variants of those pictures
 #
-# Texts a screen shows (company and product name and description, roadmap
-# title and description) are written as {"en": ..., "ru": ...}; the seed
-# takes "en". Every refusal that a profile can earn -- a missing "en", a
-# missing file, a file type the services would refuse, a picture over its
-# size limit, a metadata block its schema rejects -- happens in
+# Paths in the profile are relative to that folder and may not leave it.
+#
+# LANGUAGES (H38 P-132). Texts a screen shows (company and product name and
+# description, roadmap title and description) are written as
+# {"en": ..., "ru": ...}: "en" goes to the column -- the base and the
+# fallback -- and every other language to the row's `translations`.
+# A picture's variant for a language is the file of the same name in the
+# `<lang>/` subfolder of the picture's folder: media/ru/logo.png is the
+# Russian logo when the profile's logo is media/logo.png. English is the
+# common file itself, so media/en/ is refused; so is a subfolder that is
+# not a two-letter code and a file there that is a variant of no picture
+# the profile names.
+#
+# Every refusal that a profile can earn -- a missing "en", a bad language
+# code, a missing file, a file type the services would refuse, a picture
+# over its size limit, a metadata block its schema rejects -- happens in
 # validate_profile(), BEFORE the first write, so a refused run leaves no
 # row and no object behind.
 #
 # Each piece is idempotent on its own natural key: a picture on the key
-# column being set, an attachment on (category, title, language) among the
+# column being set (a variant on its language's key in media_variants), an attachment on (category, title, language) among the
 # undeleted ones (the match reconcile_attachments.py uses), a roadmap item
 # on its English title, an installment on its name. A changed file in the
-# folder is NOT re-uploaded over an existing one; --reset is how a project
+# folder is NOT re-uploaded over an existing one, and the translations of
+# a row that already exists are not rewritten; --reset is how a project
 # is laid down afresh.
 #
 # -----------------------------------------------------------------------------
@@ -226,6 +236,11 @@ from app.core.config import settings  # noqa: E402
 from app.core.database import dispose_engine, get_session_factory  # noqa: E402
 from app.core.email_vars import site_host  # noqa: E402
 from app.core.exceptions import BadRequestError  # noqa: E402
+from app.core.i18n import (  # noqa: E402
+    BASE_LANGUAGE,
+    is_language_code,
+    normalize_translations,
+)
 from app.core.storage import (  # noqa: E402
     StorageError,
     delete_object,
@@ -253,6 +268,7 @@ from app.modules.companies.constants import (  # noqa: E402
 from app.modules.companies.media import (  # noqa: E402
     COMPANY_MEDIA_COLUMN,
     company_media_max_bytes,
+    stored_key,
 )
 from app.modules.companies.models import (  # noqa: E402
     CompanyAttachment,
@@ -487,6 +503,36 @@ def _optional_text(spec: dict[str, Any], field: str, where: str) -> str | None:
     return _text(spec[field], f"{where}.{field}")
 
 
+def _translations(
+    spec: dict[str, Any], fields: tuple[str, ...], table: str, where: str
+) -> dict[str, dict[str, str]]:
+    """The non-English texts of `fields`, as the row's `translations` (H38).
+
+    Raises:
+        SeedRefusedError: a language key that is not a two-letter code, or
+            a text normalize_translations refuses (not a string, too long).
+    """
+    raw: dict[str, dict[str, Any]] = {}
+    for field in fields:
+        value = spec.get(field)
+        if value is None:
+            continue
+        _text(value, f"{where}.{field}")
+        for language, text in value.items():
+            if language == BASE_LANGUAGE:
+                continue
+            if not is_language_code(language):
+                raise SeedRefusedError(
+                    f"{where}.{field}: language {language!r} is not a "
+                    f"two-letter lowercase code"
+                )
+            raw.setdefault(language, {})[field] = text
+    try:
+        return normalize_translations(table, raw)
+    except ValueError as exc:
+        raise SeedRefusedError(f"{where}: {exc}") from exc
+
+
 def _project_file(company_key: str, relative: Any, where: str) -> Path:
     """The file a project entry names, inside the project's folder.
 
@@ -521,6 +567,85 @@ def _check_picture(path: Path, max_bytes: int, where: str) -> None:
         )
 
 
+# The project folders whose <lang>/ subfolders hold picture variants.
+_VARIANT_FOLDERS = ("media", "roadmap")
+
+
+def _picture_limits(spec: dict[str, Any]) -> dict[str, int]:
+    """Every picture the profile names, as a path relative to the project
+    folder, with the size limit its service applies."""
+    root = (PROJECTS_DIR / spec["key"]).resolve()
+    named: list[tuple[Any, int]] = [
+        (spec.get(slot.value), company_media_max_bytes(slot))
+        for slot in CompanyMediaSlot
+    ]
+    named += [(p.get("cover"), ROADMAP_COVER_MAX_BYTES) for p in spec.get("products", [])]
+    named += [(i.get("cover"), ROADMAP_COVER_MAX_BYTES) for i in spec.get("roadmap", [])]
+    limits: dict[str, int] = {}
+    for relative, max_bytes in named:
+        if not isinstance(relative, str) or not relative:
+            continue
+        common = (root / relative).resolve().relative_to(root).as_posix()
+        limits[common] = min(max_bytes, limits.get(common, max_bytes))
+    return limits
+
+
+def _picture_variants(spec: dict[str, Any], where: str) -> dict[str, dict[str, Path]]:
+    """The language variants in the project folder: picture -> {lang: file}.
+
+    A variant of `media/logo.png` is `media/<lang>/logo.png`. The picture
+    paths themselves are checked by _check_company before this runs.
+
+    Raises:
+        SeedRefusedError: `en/` (English is the common file), a subfolder
+            that is not a two-letter code, anything in it that is not a
+            file, or a file that is a variant of no picture the profile
+            names.
+    """
+    root = (PROJECTS_DIR / spec["key"]).resolve()
+    pictures = _picture_limits(spec)
+    variants: dict[str, dict[str, Path]] = {}
+    for folder in _VARIANT_FOLDERS:
+        base = root / folder
+        if not base.is_dir():
+            continue
+        for sub in sorted(base.iterdir()):
+            if not sub.is_dir():
+                continue
+            language = sub.name
+            if language == BASE_LANGUAGE:
+                raise SeedRefusedError(
+                    f"{where}: {folder}/{language}/ -- English is the common "
+                    f"file in {folder}/ itself, not a variant"
+                )
+            if not is_language_code(language):
+                raise SeedRefusedError(
+                    f"{where}: {folder}/{language}/ is not a two-letter "
+                    f"lowercase language code"
+                )
+            for path in sorted(sub.iterdir()):
+                common = f"{folder}/{path.name}"
+                if not path.is_file():
+                    raise SeedRefusedError(
+                        f"{where}: {folder}/{language}/{path.name} is not a file"
+                    )
+                if common not in pictures:
+                    raise SeedRefusedError(
+                        f"{where}: {folder}/{language}/{path.name} would be a "
+                        f"variant of {common}, which is no picture of this "
+                        f"profile"
+                    )
+                variants.setdefault(common, {})[language] = path
+    return variants
+
+
+def _variants_of(spec: dict[str, Any], relative: str) -> dict[str, Path]:
+    """The language variants of one picture the profile names."""
+    root = (PROJECTS_DIR / spec["key"]).resolve()
+    common = (root / relative).resolve().relative_to(root).as_posix()
+    return _picture_variants(spec, spec["key"]).get(common, {})
+
+
 def _check_address(spec: dict[str, Any], where: str) -> str:
     """The seeded address of one account, as the services would validate it."""
     local = spec.get("email_local")
@@ -549,6 +674,9 @@ def _check_company(spec: dict[str, Any], where: str) -> None:
             password=_random_password(),
             name=name,
             description=description,
+            translations=_translations(
+                spec, ("name", "description"), "company_profiles", where
+            ),
             price_per_unit_cents=spec.get("price_per_unit_cents"),
             distribution_config=spec.get("distribution_config"),
             total_supply=spec.get("total_supply"),
@@ -588,6 +716,9 @@ def _check_company(spec: dict[str, Any], where: str) -> None:
                 company_id=uuid4(),
                 name=_text(product.get("name"), f"{pwhere}.name"),
                 description=_optional_text(product, "description", pwhere),
+                translations=_translations(
+                    product, ("name", "description"), "products", pwhere
+                ),
                 package_size=product.get("package_size"),
                 purchase_config=product.get("purchase_config"),
             )
@@ -667,6 +798,12 @@ def _check_company(spec: dict[str, Any], where: str) -> None:
             path = _project_file(key, item["cover"], f"{rwhere}.cover")
             _check_picture(path, ROADMAP_COVER_MAX_BYTES, f"{rwhere}.cover")
 
+    # The language variants, after every picture they vary is checked.
+    limits = _picture_limits(spec)
+    for common, by_language in _picture_variants(spec, where).items():
+        for language, path in by_language.items():
+            _check_picture(path, limits[common], f"{where}: {common} ({language})")
+
 
 def _roadmap_request(item: dict[str, Any], where: str) -> CreateRoadmapItemRequest:
     """The create body of one roadmap entry, as the staff endpoint gets it."""
@@ -679,6 +816,9 @@ def _roadmap_request(item: dict[str, Any], where: str) -> CreateRoadmapItemReque
                 "kind": item.get("kind", "milestone"),
                 "title": _text(item.get("title"), f"{where}.title"),
                 "description": _optional_text(item, "description", where),
+                "translations": _translations(
+                    item, ("title", "description"), "company_roadmap_items", where
+                ),
                 "target_date": item.get("target_date"),
                 "valid_until": item.get("valid_until"),
                 "status": status,
@@ -1054,6 +1194,9 @@ async def ensure_company(
             password=_random_password(),
             name=_text(spec["name"], "name"),
             description=_optional_text(spec, "description", "company"),
+            translations=_translations(
+                spec, ("name", "description"), "company_profiles", "company"
+            ),
             price_per_unit_cents=spec["price_per_unit_cents"],
             distribution_config=spec["distribution_config"],
             total_supply=spec["total_supply"],
@@ -1132,15 +1275,18 @@ async def ensure_pool(
 async def ensure_product(
     session: AsyncSession,
     company: CompanyProfile,
-    company_key: str,
+    company_spec: dict[str, Any],
     spec: dict[str, Any],
     admin: User,
+    stats: dict[str, int] | None = None,
 ) -> Product:
     """Create one product with its installments and cover, or finish it.
 
     Found again by its English name inside the company. Installments are
     found by name among the undeleted ones; the cover is uploaded only
-    while the product has none (H37).
+    while the product has none (H37), each language variant of it only
+    while that language has none (H38, counted in
+    stats["picture_variants"]).
     """
     name = _text(spec["name"], "product.name")
     stmt = select(Product).where(
@@ -1157,6 +1303,9 @@ async def ensure_product(
             session,
             description=_optional_text(spec, "description", "product"),
             purchase_config=spec.get("purchase_config"),
+            translations=_translations(
+                spec, ("name", "description"), "products", "product"
+            ),
         )
 
     for installment in spec.get("installments", []):
@@ -1174,20 +1323,28 @@ async def ensure_product(
                 session,
             )
 
-    if spec.get("cover") is not None and product.cover_storage_key is None:
-        path = _project_file(company_key, spec["cover"], "product.cover")
-        content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
-        data = path.read_bytes()
-        await set_product_cover(
-            session,
-            company.id,
-            product.id,
-            admin,
-            file_data=io.BytesIO(data),
-            file_size_bytes=len(data),
-            content_type=content_type,
-            file_extension=ext,
-        )
+    if spec.get("cover") is not None:
+        path = _project_file(company_spec["key"], spec["cover"], "product.cover")
+        files: list[tuple[str | None, Path]] = [(None, path)]
+        files += sorted(_variants_of(company_spec, spec["cover"]).items())
+        for language, file in files:
+            if stored_key(product, "cover_storage_key", "cover", language):
+                continue
+            content_type, ext = validate_roadmap_cover_mime_by_filename(file.name)
+            data = file.read_bytes()
+            await set_product_cover(
+                session,
+                company.id,
+                product.id,
+                admin,
+                file_data=io.BytesIO(data),
+                file_size_bytes=len(data),
+                content_type=content_type,
+                file_extension=ext,
+                language=language,
+            )
+            if language is not None and stats is not None:
+                stats["picture_variants"] += 1
 
     # Same reason as the company: create_product writes HIDDEN, and
     # execute_purchase refuses anything that is not ACTIVE.
@@ -1208,28 +1365,40 @@ async def ensure_company_media(
     company: CompanyProfile,
     spec: dict[str, Any],
     admin: User,
+    stats: dict[str, int] | None = None,
 ) -> int:
     """Upload the logo, dark logo and cover the profile names, each only
-    while its slot is empty. Returns how many were uploaded."""
+    while its slot is empty, then their language variants, each only
+    while that language's variant is empty (H38). Returns how many common
+    pictures were uploaded; the variants go to stats["picture_variants"]."""
     uploaded = 0
     for slot in CompanyMediaSlot:
         relative = spec.get(slot.value)
-        if relative is None or getattr(company, COMPANY_MEDIA_COLUMN[slot]):
+        if relative is None:
             continue
         path = _project_file(spec["key"], relative, slot.value)
-        content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
-        data = path.read_bytes()
-        await set_company_media(
-            session,
-            company.id,
-            admin,
-            slot=slot,
-            file_data=io.BytesIO(data),
-            file_size_bytes=len(data),
-            content_type=content_type,
-            file_extension=ext,
-        )
-        uploaded += 1
+        files: list[tuple[str | None, Path]] = [(None, path)]
+        files += sorted(_variants_of(spec, relative).items())
+        for language, file in files:
+            if stored_key(company, COMPANY_MEDIA_COLUMN[slot], slot.value, language):
+                continue
+            content_type, ext = validate_roadmap_cover_mime_by_filename(file.name)
+            data = file.read_bytes()
+            await set_company_media(
+                session,
+                company.id,
+                admin,
+                slot=slot,
+                file_data=io.BytesIO(data),
+                file_size_bytes=len(data),
+                content_type=content_type,
+                file_extension=ext,
+                language=language,
+            )
+            if language is None:
+                uploaded += 1
+            elif stats is not None:
+                stats["picture_variants"] += 1
     return uploaded
 
 
@@ -1278,8 +1447,10 @@ async def ensure_roadmap(
     company: CompanyProfile,
     spec: dict[str, Any],
     admin: User,
+    stats: dict[str, int] | None = None,
 ) -> int:
-    """Create the roadmap items the profile names, then their covers.
+    """Create the roadmap items the profile names, then their covers (and
+    the covers' language variants, H38, in stats["picture_variants"]).
 
     An item is found again by its English title among the company's
     undeleted items -- the roadmap has no column for the profile's key.
@@ -1316,13 +1487,20 @@ async def ensure_roadmap(
                 valid_until=body.valid_until,
                 status=body.status,
                 external_url=body.external_url,
+                translations=body.translations,
             )
             created += 1
 
-        if item.get("cover") is not None and roadmap_item.cover_storage_key is None:
-            path = _project_file(spec["key"], item["cover"], "roadmap.cover")
-            content_type, ext = validate_roadmap_cover_mime_by_filename(path.name)
-            data = path.read_bytes()
+        if item.get("cover") is None:
+            continue
+        path = _project_file(spec["key"], item["cover"], "roadmap.cover")
+        files: list[tuple[str | None, Path]] = [(None, path)]
+        files += sorted(_variants_of(spec, item["cover"]).items())
+        for language, file in files:
+            if stored_key(roadmap_item, "cover_storage_key", "cover", language):
+                continue
+            content_type, ext = validate_roadmap_cover_mime_by_filename(file.name)
+            data = file.read_bytes()
             await set_roadmap_cover(
                 session,
                 company.id,
@@ -1332,7 +1510,10 @@ async def ensure_roadmap(
                 file_size_bytes=len(data),
                 content_type=content_type,
                 file_extension=ext,
+                language=language,
             )
+            if language is not None and stats is not None:
+                stats["picture_variants"] += 1
     return created
 
 
@@ -1667,6 +1848,7 @@ async def seed_profile(
         "companies": 0,
         "products": 0,
         "pictures": 0,
+        "picture_variants": 0,
         "attachments": 0,
         "roadmap_items": 0,
         "agents": 0,
@@ -1708,25 +1890,32 @@ async def seed_profile(
         for product_spec in company_spec.get("products", []):
             products.append(
                 await ensure_product(
-                    session, company, company_spec["key"], product_spec, admin
+                    session,
+                    company,
+                    company_spec,
+                    product_spec,
+                    admin,
+                    stats=stats,
                 )
             )
         await session.refresh(company)
         stats["pictures"] += await ensure_company_media(
-            session, company, company_spec, admin
+            session, company, company_spec, admin, stats=stats
         )
         stats["attachments"] += await ensure_attachments(
             session, company, company_spec, admin
         )
         stats["roadmap_items"] += await ensure_roadmap(
-            session, company, company_spec, admin
+            session, company, company_spec, admin, stats=stats
         )
         stats["companies"] += 1
         info(f"project {company_spec['key']}: {company.name}")
     stats["products"] = len(products)
     info(
         f"projects: {stats['companies']}, products: {stats['products']}, "
-        f"pictures: {stats['pictures']}, attachments: {stats['attachments']}, "
+        f"pictures: {stats['pictures']}, "
+        f"picture variants: {stats['picture_variants']}, "
+        f"attachments: {stats['attachments']}, "
         f"roadmap items: {stats['roadmap_items']} (new this run)"
     )
 

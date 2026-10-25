@@ -84,6 +84,7 @@ from app.core.comms import comms_configured
 from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import AivisError, BadRequestError, NotFoundError
+from app.core.i18n import localized
 from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
 from app.modules.companies.service import (
@@ -457,10 +458,15 @@ async def render_agreement_html(
         # `investor_email` directly. NULL credentials would Jinja-print
         # as "None" inside autoescape; force an empty string instead.
         "investor_email": data.investor_email or "",
-        "company_name": data.company.name,
+        # H38: the names in the TEMPLATE's language, else English. The
+        # agreement is frozen as rendered, so a later translation never
+        # rewrites a signed document.
+        "company_name": localized(
+            data.company.translations, language, "name", data.company.name
+        ),
         # R2 §4.4 lists `company_legal_name` as a placeholder. CompanyProfile
-        # has no dedicated legal-name column; we render the same `name`
-        # value into both placeholders.
+        # has no dedicated legal-name column; it renders the English `name`
+        # in every language -- a legal name is not translated (H38).
         "company_legal_name": data.company.name,
         # The logo's bytes inline (H36): a presigned link would expire,
         # and an agreement is frozen for good. Fetched only when the
@@ -470,7 +476,9 @@ async def render_agreement_html(
             if template_references(env, html_body, "company_logo_url")
             else None
         ),
-        "product_name": data.product.name,
+        "product_name": localized(
+            data.product.translations, language, "name", data.product.name
+        ),
         "units": data.purchase.units,
         # Bootstrap templates take raw cents (they format inline in the
         # locale-specific HTML). The pre-formatted *_display strings are

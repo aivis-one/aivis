@@ -63,6 +63,7 @@ import { formatNumber, formatPrice } from '@/utils/format'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 // Backend currency field is not emitted yet (TD-F03). Keep the
 // escape hatch here so the page is correct once it lands.
@@ -167,6 +168,9 @@ function openInstallmentPlan(planId: string): void {
     '[ProductDetailView] to installment plan',
   )
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadProduct())
 
 onMounted(loadProduct)
 </script>

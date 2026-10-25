@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.models import CompanyProfile
 from app.modules.companies.media import build_product_response
@@ -39,6 +40,7 @@ async def list_my_products(
     per_page: int = Query(20, ge=1, le=100),
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> ProductListResponse:
     """List the authenticated company's own products, including hidden
     and archived ones."""
@@ -50,7 +52,7 @@ async def list_my_products(
         per_page=per_page,
     )
     return ProductListResponse(
-        items=[await build_product_response(p) for p in products],
+        items=[await build_product_response(p, reader) for p in products],
         total=total,
         page=page,
         per_page=per_page,

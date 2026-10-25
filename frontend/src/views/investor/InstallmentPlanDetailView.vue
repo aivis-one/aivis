@@ -54,6 +54,7 @@ import { isAgentShell } from '@/router/helpers'
 import { formatDate, formatDateTime, formatNumber, formatPrice } from '@/utils/format'
 import { tOrRaw } from '@/utils/i18n'
 import type { InstallmentPlanDetailResponse, InstallmentTrancheResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -139,6 +140,9 @@ async function load(): Promise<void> {
     loading.value = false
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
 
 onMounted(load)
 </script>

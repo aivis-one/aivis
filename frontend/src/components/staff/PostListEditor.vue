@@ -24,21 +24,18 @@
 //   { type:'company', id } -> the list is fetched with owner_type=
 //                company & owner_id=id; the modal hides the picker and
 //                always submits that owner.
+//
+// LANGUAGES (H38 P-132): title and body are edited in every language of the
+// interface (LocalizedTextFields), English the base and required. The form
+// starts from the post's base and translations -- the displayed title and
+// body are in the reader's language -- and a save sends the whole
+// translations map back (the server replaces it).
 // =============================================================================
 
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, X, Pencil, Trash2 } from '@/components/ui/icons'
-import {
-  CBadge,
-  CButton,
-  CEmptyState,
-  CModal,
-  CInput,
-  CTextarea,
-  CCheckbox,
-  CSelect,
-} from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CModal, CInput, CCheckbox, CSelect } from '@/components/ui'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
 import { useUrlPage } from '@/components/ui/useUrlPage'
@@ -50,6 +47,11 @@ import {
   deleteStaffPost,
 } from '@/api/staff-posts'
 import type { PostResponse, CreatePostRequest, UpdatePostRequest } from '@/api/types'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import { baseText, emptyDraft, makeDraft, translationsFromDraft } from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const props = defineProps<{
   /** When set, scope the list + new posts to this company and hide the owner picker. */
@@ -83,13 +85,28 @@ const deleting = ref(false)
 const form = reactive({
   owner_type: 'platform' as 'platform' | 'company',
   owner_id: '',
-  title: '',
-  body: '',
   cover_url: '',
   tags: [] as string[],
   is_banner: false,
   is_published: false,
 })
+
+// Title and body in every language (H38); English is the base. The stored
+// translations of the post being edited ride along so the save keeps any
+// language this screen does not offer.
+const TEXT_FIELDS = ['title', 'body'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const storedTranslations = ref<unknown>({})
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'title', label: t('staff.platform.post.fieldTitle'), maxlength: 500 },
+  {
+    key: 'body',
+    label: t('staff.platform.post.fieldBody'),
+    multiline: true,
+    rows: 6,
+    maxlength: 50000,
+  },
+])
 
 // Tag chip-add: the in-progress tag text before Enter / comma commits it.
 const tagDraft = ref('')
@@ -140,8 +157,8 @@ async function loadPosts(): Promise<void> {
 function resetForm(): void {
   form.owner_type = props.fixedOwner ? 'company' : 'platform'
   form.owner_id = props.fixedOwner ? props.fixedOwner.id : ''
-  form.title = ''
-  form.body = ''
+  draftTexts.value = emptyDraft(TEXT_FIELDS)
+  storedTranslations.value = {}
   form.cover_url = ''
   form.tags = []
   form.is_banner = false
@@ -167,8 +184,8 @@ function openEdit(post: PostResponse): void {
   editId.value = post.id
   form.owner_type = post.owner_type === 'company' ? 'company' : 'platform'
   form.owner_id = post.owner_id ?? ''
-  form.title = post.title
-  form.body = post.body
+  draftTexts.value = makeDraft(TEXT_FIELDS, post.base, post.translations)
+  storedTranslations.value = post.translations ?? {}
   form.cover_url = post.cover_url ?? ''
   form.tags = post.tags ? [...post.tags] : []
   form.is_banner = post.is_banner
@@ -210,7 +227,8 @@ function removeTag(tag: string): void {
 // -- Save (create or update) --
 
 const canSubmit = computed<boolean>(() => {
-  if (!form.title.trim() || !form.body.trim()) return false
+  if (!baseText(draftTexts.value, 'title').trim()) return false
+  if (!baseText(draftTexts.value, 'body').trim()) return false
   // company owner requires an owner_id (UUID). When fixedOwner is set
   // the id is injected and the field is hidden, so this only bites the
   // StaffNewsView manual-company path.
@@ -233,8 +251,9 @@ async function handleSave(): Promise<void> {
       const payload: CreatePostRequest = {
         owner_type: form.owner_type,
         owner_id: form.owner_type === 'company' ? form.owner_id.trim() : null,
-        title: form.title.trim(),
-        body: form.body.trim(),
+        title: baseText(draftTexts.value, 'title').trim(),
+        body: baseText(draftTexts.value, 'body').trim(),
+        translations: translationsFromDraft(draftTexts.value, TEXT_FIELDS, {}),
         cover_url: form.cover_url.trim() || null,
         tags: form.tags.length ? form.tags : null,
         is_banner: form.is_banner,
@@ -247,8 +266,13 @@ async function handleSave(): Promise<void> {
       // backend schema (UpdatePostRequest omits them), so we only send
       // the editable fields.
       const payload: UpdatePostRequest = {
-        title: form.title.trim(),
-        body: form.body.trim(),
+        title: baseText(draftTexts.value, 'title').trim(),
+        body: baseText(draftTexts.value, 'body').trim(),
+        translations: translationsFromDraft(
+          draftTexts.value,
+          TEXT_FIELDS,
+          storedTranslations.value,
+        ),
         cover_url: form.cover_url.trim() || null,
         tags: form.tags.length ? form.tags : null,
         is_banner: form.is_banner,
@@ -310,6 +334,9 @@ function formatDate(iso: string): string {
 }
 
 watch(page, () => loadPosts())
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadPosts())
+
 onMounted(loadPosts)
 </script>
 
@@ -412,17 +439,7 @@ onMounted(loadPosts)
         />
       </template>
 
-      <CInput
-        v-model="form.title"
-        :label="t('staff.platform.post.fieldTitle')"
-        :placeholder="t('staff.platform.post.fieldTitle')"
-      />
-      <CTextarea
-        v-model="form.body"
-        :label="t('staff.platform.post.fieldBody')"
-        :placeholder="t('staff.platform.post.fieldBody')"
-        :rows="6"
-      />
+      <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
       <CInput
         v-model="form.cover_url"
         :label="t('staff.platform.post.fieldCover')"

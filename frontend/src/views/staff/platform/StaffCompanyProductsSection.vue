@@ -19,6 +19,12 @@
 // PATCH /api/v1/staff/products/{id}/status     (project_manage)
 // PUT|DELETE /api/v1/staff/companies/{id}/products/{productId}/cover (project_manage)
 //
+// LANGUAGES (H38 P-132). Name and description are edited in every language of
+// the interface (LocalizedTextFields), English required; the cover per version
+// (MediaLanguageSelect): the common file or one language's variant. The edit
+// form starts from the product's base and translations, never from the
+// displayed texts, which are in the reader's language.
+//
 // THE COVER IS A FILE (H36 P-131). It is uploaded and removed at once from the
 // edit form, not by its Save, and only for a product that exists: on create
 // there is no product to attach it to yet, so the form says so.
@@ -28,7 +34,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Package } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CModal } from '@/components/ui'
 import CActionMenu from '@/components/ui/CActionMenu.vue'
 import type { ActionMenuItem } from '@/components/ui/CActionMenu.vue'
 import CAlert from '@/components/ui/CAlert.vue'
@@ -46,11 +52,26 @@ import {
 import type { StaffProductStatus, StaffUpdateProductRequest } from '@/api/staff-products'
 import { MEDIA_LIMITS, deleteStaffProductCover, uploadStaffProductCover } from '@/api/media'
 import MediaImageField from '@/components/shared/MediaImageField.vue'
+import MediaLanguageSelect from '@/components/shared/MediaLanguageSelect.vue'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  BASE_LANGUAGE,
+  baseText,
+  emptyDraft,
+  imageIn,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+  variantLanguage,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { ProductResponse } from '@/api/generated'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -173,11 +194,20 @@ const showForm = ref(false)
 const editing = ref<ProductResponse | null>(null)
 const saving = ref(false)
 
-const draftName = ref('')
-const draftDescription = ref('')
+const TEXT_FIELDS = ['name', 'description'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'name', label: t('staff.platform.products.fieldName'), maxlength: 500 },
+  {
+    key: 'description',
+    label: t('staff.platform.products.fieldDescription'),
+    multiline: true,
+    maxlength: 5000,
+  },
+])
 const draftPackageSize = ref('')
 
-const trimmedName = computed(() => draftName.value.trim())
+const trimmedName = computed(() => baseText(draftTexts.value, 'name').trim())
 
 // A whole number of parts, at least one; fixed after creation.
 const packageSize = computed<number | null>(() => {
@@ -195,8 +225,7 @@ const canSubmit = computed<boolean>(() => {
 function openCreate(): void {
   if (!canCreate.value) return
   editing.value = null
-  draftName.value = ''
-  draftDescription.value = ''
+  draftTexts.value = emptyDraft(TEXT_FIELDS)
   draftPackageSize.value = ''
   showForm.value = true
 }
@@ -204,9 +233,9 @@ function openCreate(): void {
 function openEdit(product: ProductResponse): void {
   if (!canEdit.value) return
   editing.value = product
-  draftName.value = product.name
-  draftDescription.value = product.description ?? ''
-  coverUrl.value = product.cover_url
+  draftTexts.value = makeDraft(TEXT_FIELDS, product.base, product.translations)
+  coverLanguage.value = BASE_LANGUAGE
+  coverVariants.value = product.image_variants
   showForm.value = true
 }
 
@@ -218,17 +247,25 @@ async function handleSave(): Promise<void> {
     if (current) {
       // Only what changed travels (an omitted field is kept, null clears).
       const body: StaffUpdateProductRequest = {}
-      if (trimmedName.value !== current.name) body.name = trimmedName.value
-      const description = draftDescription.value.trim()
-      if (description !== (current.description ?? '')) body.description = description || null
+      // Compared with the English base, not the displayed (reader's) texts.
+      if (trimmedName.value !== current.base.name) body.name = trimmedName.value
+      const description = baseText(draftTexts.value, 'description').trim()
+      if (description !== (current.base.description ?? '')) body.description = description || null
+      const translations = translationsFromDraft(
+        draftTexts.value,
+        TEXT_FIELDS,
+        current.translations,
+      )
+      if (!sameTranslations(translations, current.translations)) body.translations = translations
       if (Object.keys(body).length > 0) await updateStaffProduct(current.id, body)
       showToast(t('staff.platform.products.updated'), 'success')
     } else if (packageSize.value !== null) {
-      const description = draftDescription.value.trim()
+      const description = baseText(draftTexts.value, 'description').trim()
       await createStaffProduct({
         company_id: companyId.value,
         name: trimmedName.value,
         description: description || null,
+        translations: translationsFromDraft(draftTexts.value, TEXT_FIELDS, {}),
         package_size: packageSize.value,
       })
       showToast(t('staff.platform.products.created'), 'success')
@@ -244,9 +281,14 @@ async function handleSave(): Promise<void> {
 
 // -- The cover (H36): a file, immediate, edit only --------------------------------
 
-// The link of the cover of the product being edited; follows the uploads and
-// removals so the form shows the truth without waiting for the list.
-const coverUrl = ref<string | null>(null)
+// The covers of the product being edited, per language ("en" = the common
+// file); follow the uploads and removals so the form shows the truth without
+// waiting for the list. coverLanguage picks the version edited.
+const coverVariants = ref<unknown>(null)
+const coverLanguage = ref<string>(BASE_LANGUAGE)
+const coverUrl = computed<string | null>(() =>
+  imageIn(coverVariants.value, coverLanguage.value, 'cover_url'),
+)
 const coverBusy = ref(false)
 
 async function onCoverSelect(file: File): Promise<void> {
@@ -254,8 +296,13 @@ async function onCoverSelect(file: File): Promise<void> {
   if (!canEdit.value || !current || coverBusy.value) return
   coverBusy.value = true
   try {
-    const updated = await uploadStaffProductCover(companyId.value, current.id, file)
-    coverUrl.value = updated.cover_url
+    const updated = await uploadStaffProductCover(
+      companyId.value,
+      current.id,
+      file,
+      variantLanguage(coverLanguage.value),
+    )
+    coverVariants.value = updated.image_variants
     showToast(t('common.media.uploaded'), 'success')
     await load()
   } catch (err) {
@@ -270,14 +317,14 @@ async function onCoverRemove(): Promise<void> {
   if (!canEdit.value || !current || coverBusy.value) return
   coverBusy.value = true
   try {
-    await deleteStaffProductCover(companyId.value, current.id)
-    coverUrl.value = null
+    await deleteStaffProductCover(companyId.value, current.id, variantLanguage(coverLanguage.value))
+    dropCover()
     showToast(t('common.media.removed'), 'success')
     await load()
   } catch (err) {
     // 404: the cover was already gone.
     if (err instanceof ApiResponseError && err.status === 404) {
-      coverUrl.value = null
+      dropCover()
       await load()
     } else {
       showToast(serverReason(err), 'error')
@@ -287,7 +334,17 @@ async function onCoverRemove(): Promise<void> {
   }
 }
 
+// The removed version leaves the form at once; the list reload brings the rest.
+function dropCover(): void {
+  const variants = { ...((coverVariants.value ?? {}) as Record<string, unknown>) }
+  delete variants[coverLanguage.value]
+  coverVariants.value = variants
+}
+
 watch(companyId, () => void load())
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
+
 onMounted(load)
 </script>
 
@@ -396,12 +453,8 @@ onMounted(load)
       "
       @close="showForm = false"
     >
-      <CInput v-model="draftName" :label="t('staff.platform.products.fieldName')" maxlength="500" />
-      <CTextarea
-        v-model="draftDescription"
-        :label="t('staff.platform.products.fieldDescription')"
-        maxlength="5000"
-      />
+      <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
+      <MediaLanguageSelect v-if="editing" v-model="coverLanguage" />
       <MediaImageField
         v-if="editing"
         :label="t('staff.platform.products.fieldCover')"

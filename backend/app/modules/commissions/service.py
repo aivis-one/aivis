@@ -25,6 +25,7 @@ from sqlalchemy import func, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.commissions.constants import PeriodType, current_month_start
 from app.modules.commissions.models import LeaderboardSnapshot, VolumePayout
 from app.modules.commissions.schemas import (
@@ -137,6 +138,7 @@ async def get_my_commissions(
     session: AsyncSession,
     limit: int = 50,
     offset: int = 0,
+    language: str = BASE_LANGUAGE,
 ) -> CommissionListResponse:
     """Get agent's commission and volume bonus history.
 
@@ -239,7 +241,9 @@ async def get_my_commissions(
                 if row is not None:
                     _purchase, product, investor = row
                     investor_name = _extract_name(investor)
-                    product_name = product.name
+                    product_name = localized(
+                        product.translations, language, "name", product.name
+                    )
                     investor_short_id = short_id(investor.id)
                     purchase_short_id = short_id(purchase_id)
             except ValueError:

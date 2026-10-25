@@ -26,6 +26,7 @@ import { listPosts } from '@/api/posts'
 import { listPublicEvents, listUpcomingEvents } from '@/api/events'
 import { formatDate } from '@/utils/format'
 import type { EventResponse, PostResponse } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 
@@ -116,6 +117,9 @@ function rowRoute(row: FeedRow) {
     ? { name: 'investor-post', params: { id: row.id } }
     : { name: 'investor-event', params: { id: row.id } }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
 
 onMounted(load)
 </script>

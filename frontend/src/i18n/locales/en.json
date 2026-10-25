@@ -75,6 +75,14 @@
       "removed": "Picture removed",
       "removeTitle": "Remove the picture: {name}?",
       "removeBody": "The file will be deleted. You can upload a new one at any time."
+    },
+    "projectLanguages": {
+      "base": "{language} -- the main text, shown when there is no translation",
+      "optional": "{language} -- translation, optional",
+      "hint": "A blank translation is no translation: readers of that language see the English text.",
+      "pictureLanguage": "Version of the pictures",
+      "commonPicture": "Common ({language}) -- shown to everyone without a version of their own",
+      "variantPicture": "{language} -- shown instead of the common one"
     }
   },
   "error": {

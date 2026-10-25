@@ -70,12 +70,13 @@
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.body_limit import upload_body_limit
 from app.core.config import settings
 from app.core.database import get_db_reader, get_db_session
+from app.core.i18n import reader_language
 from app.core.exceptions import BadRequestError
 from app.modules.companies.constants import ROADMAP_COVER_MAX_BYTES
 from app.modules.companies.dependencies import get_current_company_profile
@@ -131,6 +132,7 @@ def _resolve_upload_size(file: UploadFile) -> int:
 async def list_own_roadmap_endpoint(
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> list[RoadmapItemResponse]:
     """List the caller's own non-deleted roadmap items, in display order.
 
@@ -146,6 +148,8 @@ async def list_own_roadmap_endpoint(
             posts_map.get(item.post_id),
             session,
             cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+            language=reader,
+            editing=True,
         )
         for item in roadmap_items
     ]
@@ -160,6 +164,7 @@ async def create_own_roadmap_item_endpoint(
     body: CreateRoadmapItemRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> RoadmapItemResponse:
     """Add a roadmap item to the caller's own company.
 
@@ -179,12 +184,15 @@ async def create_own_roadmap_item_endpoint(
         external_url=body.external_url,
         post_id=body.post_id,
         linked_product_id=body.linked_product_id,
+        translations=body.translations,
     )
     return await build_roadmap_item_response(
         item,
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -199,6 +207,7 @@ async def reorder_own_roadmap_endpoint(
     body: ReorderRoadmapRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> list[RoadmapItemResponse]:
     """Reorder the caller's own roadmap items."""
     items = await reorder_own_roadmap(company.id, body.item_ids, company.user_id, session)
@@ -208,6 +217,8 @@ async def reorder_own_roadmap_endpoint(
             None,
             session,
             cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+            language=reader,
+            editing=True,
         )
         for item in items
     ]
@@ -222,6 +233,7 @@ async def update_own_roadmap_item_endpoint(
     body: UpdateRoadmapItemRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> RoadmapItemResponse:
     """Partial update of an own roadmap item.
 
@@ -245,12 +257,15 @@ async def update_own_roadmap_item_endpoint(
         external_url=updates.get("external_url", ...),
         post_id=updates.get("post_id", ...),
         linked_product_id=updates.get("linked_product_id", ...),
+        translations=updates.get("translations", ...),
     )
     return await build_roadmap_item_response(
         item,
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -277,6 +292,12 @@ async def set_own_roadmap_cover_endpoint(
     file: UploadFile = File(...),
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> RoadmapItemResponse:
     """Upload / replace the cover image of an own roadmap item.
 
@@ -302,12 +323,15 @@ async def set_own_roadmap_cover_endpoint(
         file_size_bytes=file_size_bytes,
         content_type=content_type,
         file_extension=ext,
+        language=language,
     )
     return await build_roadmap_item_response(
         item,
         None,
         session,
         cover_ttl_seconds=settings.storage_presigned_ttl_auth,
+        language=reader,
+        editing=True,
     )
 
 
@@ -319,6 +343,13 @@ async def delete_own_roadmap_cover_endpoint(
     item_id: UUID,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    language: str | None = Query(
+        default=None,
+        pattern=r"^[a-z]{2}$",
+        description="A language's variant of the picture (H38); none is the common file.",
+    ),
 ) -> None:
     """Remove the cover image from an own roadmap item. 404 if no cover."""
-    await delete_own_roadmap_cover(company.id, item_id, company.user_id, session)
+    await delete_own_roadmap_cover(
+        company.id, item_id, company.user_id, session, language=language
+    )

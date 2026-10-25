@@ -50,6 +50,7 @@ import { ApiResponseError } from '@/api/client'
 import { fetchStaffCompanies, assignCompany, createCompany } from '@/api/staff-companies'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import type { CompanyResponse, UserListItem } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -153,6 +154,9 @@ watch(search, () => {
     }
   }, 300)
 })
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadCompanies())
 
 onMounted(loadCompanies)
 

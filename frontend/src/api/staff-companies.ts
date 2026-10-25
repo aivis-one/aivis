@@ -52,6 +52,8 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
+  languageQuery,
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import { sendAttachmentMultipart } from '@/api/company-attachments'
@@ -584,8 +586,11 @@ export async function uploadRoadmapCover(
   companyId: string,
   itemId: string,
   file: File,
+  language?: string | null,
 ): Promise<RoadmapItemResponse> {
-  const url = `${API_BASE_URL}/api/v1/staff/companies/${companyId}` + `/roadmap/${itemId}/cover`
+  const url =
+    `${API_BASE_URL}/api/v1/staff/companies/${companyId}` +
+    `/roadmap/${itemId}/cover${languageQuery(language)}`
 
   const form = new FormData()
   // Field name MUST be `file` to bind the backend UploadFile param.
@@ -593,7 +598,7 @@ export async function uploadRoadmapCover(
 
   // NB: no Content-Type header -- the browser sets multipart/form-data
   // with the boundary. Only the auth header is added by hand.
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
@@ -664,6 +669,12 @@ export async function uploadRoadmapCover(
  * benign already-removed case if it wants. Nulls cover_storage_key;
  * the section reloads the detail to drop the thumbnail.
  */
-export function deleteRoadmapCover(companyId: string, itemId: string): Promise<void> {
-  return api.delete(`/api/v1/staff/companies/${companyId}/roadmap/${itemId}/cover`)
+export function deleteRoadmapCover(
+  companyId: string,
+  itemId: string,
+  language?: string | null,
+): Promise<void> {
+  return api.delete(
+    `/api/v1/staff/companies/${companyId}/roadmap/${itemId}/cover${languageQuery(language)}`,
+  )
 }

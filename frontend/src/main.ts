@@ -4,7 +4,8 @@ import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import { setOnKycRequired } from '@/api/client'
 import { router } from '@/router'
-import { i18n, setupI18n } from '@/i18n'
+import { i18n, onLocaleChange, setupI18n } from '@/i18n'
+import { reloadProjectStores } from '@/stores/localeReload'
 import { installUpdateCheck } from '@/pwa/updateCheck'
 import { kycActionForRoute, showKycPrompt } from '@/composables/useKycPrompt'
 
@@ -30,6 +31,10 @@ async function bootstrap(): Promise<void> {
   app.use(createPinia())
   app.use(router)
   app.use(i18n)
+
+  // H38: project data comes in the reader's language; a locale switch
+  // re-reads what the stores already hold (stores/localeReload.ts).
+  onLocaleChange(() => reloadProjectStores())
 
   // H10, turned over in H21 P-111: the KYC gate answers 402 only on the
   // money routes -- buying, an installment plan, a withdrawal, the agent

@@ -30,6 +30,8 @@ export interface StaffCreateProductRequest {
   company_id: string
   name: string
   description?: string | null
+  /** Non-English texts (H38): {"ru": {"name": ..., "description": ...}}. */
+  translations?: Record<string, Record<string, string>>
   package_size: number
 }
 
@@ -37,6 +39,8 @@ export interface StaffCreateProductRequest {
 export interface StaffUpdateProductRequest {
   name?: string
   description?: string | null
+  /** Replaces the stored translations whole (H38); omitted = kept. */
+  translations?: Record<string, Record<string, string>>
 }
 
 /** The statuses of a product. */

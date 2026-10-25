@@ -92,6 +92,7 @@ import {
   ApiResponseError,
   ApiTimeoutError,
   getAuthToken,
+  languageHeaders,
 } from '@/api/client'
 
 const TIMEOUT_MS = 15_000
@@ -120,6 +121,7 @@ async function _fetchHtmlBlob(path: string): Promise<Blob> {
 
   const headers: Record<string, string> = {
     Accept: 'text/html',
+    ...languageHeaders(),
   }
 
   const token = getAuthToken()

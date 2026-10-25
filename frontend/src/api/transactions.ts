@@ -53,6 +53,7 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type { TransactionListResponse, TransactionResponse } from '@/api/types'
@@ -166,7 +167,7 @@ export async function downloadTransactionsExport(
   })
   const url = `${API_BASE_URL}/api/v1/transactions/export${qs}`
 
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) {
     headers['Authorization'] = `Bearer ${token}`

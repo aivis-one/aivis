@@ -35,6 +35,7 @@ import { useStaffPermissions } from '@/composables/useStaffPermissions'
 import { fetchStaffCompany } from '@/api/staff-companies'
 import type { CompanyDetailResponse } from '@/api/types'
 import { STAFF_COMPANY_KEY } from './staffCompanyContext'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -178,6 +179,9 @@ watch(companyId, () => {
   companyLoading.value = true
   void loadCompany()
 })
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => loadCompany())
 
 onMounted(loadCompany)
 </script>

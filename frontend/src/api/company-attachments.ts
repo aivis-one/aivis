@@ -56,6 +56,7 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
 } from '@/api/client'
 import { buildQueryString } from '@/utils/querystring'
 import type {
@@ -169,7 +170,7 @@ export async function sendAttachmentMultipart<T = AttachmentResponse>(
   method: 'POST' | 'PATCH',
   form: FormData,
 ): Promise<T> {
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) {
     headers['Authorization'] = `Bearer ${token}`

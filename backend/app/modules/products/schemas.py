@@ -91,7 +91,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.i18n import TranslationsIn, translations_checker
 
 from app.modules.products.constants import (
     LAST_TRANCHE_PERCENT_MAX,
@@ -108,6 +110,13 @@ class CreateProductRequest(BaseModel):
     """Create a new product for a company."""
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("products")
+    )
 
     company_id: UUID
     name: str = Field(min_length=1, max_length=500)
@@ -127,6 +136,13 @@ class UpdateProductRequest(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("products")
+    )
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
@@ -234,8 +250,18 @@ class InstallmentPreviewResponse(BaseModel):
     summary: InstallmentPreviewSummary
 
 
+class ProductBaseTexts(BaseModel):
+    """The English base texts of a product (H38)."""
+
+    name: str
+    description: str | None
+
+
 class ProductResponse(BaseModel):
-    """Product info for staff view."""
+    """Product info for staff view.
+
+    name / description are in the reader's language (H38).
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -255,6 +281,16 @@ class ProductResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime | None
+
+    # -- For the editing screens only (H38) --------------------------------
+    # The displayed fields above are in the reader's language. An editing
+    # screen also needs the English base and every stored translation --
+    # the latter exactly as stored (no "en"), so the screen can send it
+    # back unchanged -- and the per-language picture variants as links.
+    base: ProductBaseTexts
+    translations: dict[str, dict[str, str]]
+    # {"en": {"cover_url": <common>}, "ru": {"cover_url": <variant>}}
+    image_variants: dict[str, dict[str, str | None]]
 
 
 class ProductListResponse(BaseModel):

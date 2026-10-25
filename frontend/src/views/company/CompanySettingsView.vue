@@ -12,6 +12,10 @@
 //      The pictures in that form (logo, dark logo, cover) are files (H36),
 //      uploaded and removed at once through PUT|DELETE /companies/me/media/
 //      {slot}, not by the form's Save; the answer replaces the cached profile.
+//      LANGUAGES (H38): the description is edited in every language of the
+//      interface (English the base), the pictures per version -- the common
+//      file or one language's variant. The project's name is not edited here
+//      (staff edits it), so its translations travel back untouched.
 //   4. Parts -- the price of a part and the parts for sale, READ ONLY. The price
 //      of a part is the fair value of the project divided by 1,000,000,000,
 //      one for every project; it changes only by a revaluation of the project,
@@ -62,7 +66,6 @@ import {
   CLoader,
   CModal,
   CSelect,
-  CTextarea,
 } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import TwoFactorSection from '@/components/shared/TwoFactorSection.vue'
@@ -80,6 +83,20 @@ import { getMyCompany, updateOwnCompany } from '@/api/companies'
 import { MEDIA_LIMITS, deleteOwnCompanyMedia, uploadOwnCompanyMedia } from '@/api/media'
 import type { CompanyMediaSlot } from '@/api/media'
 import MediaImageField from '@/components/shared/MediaImageField.vue'
+import MediaLanguageSelect from '@/components/shared/MediaLanguageSelect.vue'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  BASE_LANGUAGE,
+  baseText,
+  emptyDraft,
+  imageIn,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+  variantLanguage,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import { useThemedLogo } from '@/composables/useThemedLogo'
 import { updateMe } from '@/api/users'
 import { setLocale } from '@/i18n'
@@ -203,14 +220,26 @@ async function handleWithdraw(): Promise<void> {
 const showEditProfile = ref(false)
 const savingProfile = ref(false)
 
-const draftDescription = ref('')
+// The description in every language (H38); only this text is edited here.
+const TEXT_FIELDS = ['description'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  {
+    key: 'description',
+    label: t('comp.settings.profile.description'),
+    multiline: true,
+    rows: 5,
+    maxlength: 5000,
+  },
+])
 const draftPromoVideoUrl = ref('')
 const draftPresentationUrl = ref('')
 
 function openEditProfile(): void {
   const p = profile.value
   if (!p) return
-  draftDescription.value = p.description ?? ''
+  draftTexts.value = makeDraft(TEXT_FIELDS, p.base, p.translations)
+  mediaLanguage.value = BASE_LANGUAGE
   draftPromoVideoUrl.value = p.promo_video_url ?? ''
   draftPresentationUrl.value = p.presentation_url ?? ''
   showEditProfile.value = true
@@ -220,7 +249,7 @@ function closeEditProfile(): void {
   showEditProfile.value = false
 }
 
-const trimmedDescription = computed<string>(() => draftDescription.value.trim())
+const trimmedDescription = computed<string>(() => baseText(draftTexts.value, 'description').trim())
 const trimmedPromoVideoUrl = computed<string>(() => draftPromoVideoUrl.value.trim())
 const trimmedPresentationUrl = computed<string>(() => draftPresentationUrl.value.trim())
 
@@ -249,10 +278,13 @@ function buildProfileUpdateBody(): UpdateOwnCompanyRequest {
   const p = profile.value
   if (!p) return body
 
-  const origDescription = p.description ?? ''
+  // Against the English base, not the displayed (reader's) description.
+  const origDescription = p.base.description ?? ''
   if (trimmedDescription.value !== origDescription) {
     body.description = trimmedDescription.value ? trimmedDescription.value : null
   }
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, p.translations)
+  if (!sameTranslations(translations, p.translations)) body.translations = translations
 
   const origPromoVideoUrl = p.promo_video_url ?? ''
   if (trimmedPromoVideoUrl.value !== origPromoVideoUrl) {
@@ -304,12 +336,20 @@ interface MediaSlotView {
   url: string | null
 }
 
+// The version of the pictures edited: the common file or a variant (H38).
+const mediaLanguage = ref<string>(BASE_LANGUAGE)
+
 const mediaSlots = computed<MediaSlotView[]>(() => {
-  const p = profile.value
+  const v = profile.value?.image_variants
+  const lang = mediaLanguage.value
   return [
-    { slot: 'logo', label: t('comp.settings.media.logo'), url: p?.logo_url ?? null },
-    { slot: 'logo-dark', label: t('comp.settings.media.logoDark'), url: p?.logo_dark_url ?? null },
-    { slot: 'cover', label: t('comp.settings.media.cover'), url: p?.cover_url ?? null },
+    { slot: 'logo', label: t('comp.settings.media.logo'), url: imageIn(v, lang, 'logo_url') },
+    {
+      slot: 'logo-dark',
+      label: t('comp.settings.media.logoDark'),
+      url: imageIn(v, lang, 'logo_dark_url'),
+    },
+    { slot: 'cover', label: t('comp.settings.media.cover'), url: imageIn(v, lang, 'cover_url') },
   ]
 })
 
@@ -319,7 +359,9 @@ async function onMediaSelect(slot: CompanyMediaSlot, file: File): Promise<void> 
   if (mediaBusy.value) return
   mediaBusy.value = slot
   try {
-    profileStore.applyProfile(await uploadOwnCompanyMedia(slot, file))
+    profileStore.applyProfile(
+      await uploadOwnCompanyMedia(slot, file, variantLanguage(mediaLanguage.value)),
+    )
     showToast(t('common.media.uploaded'), 'success')
   } catch (err) {
     const message = err instanceof ApiResponseError && err.detail ? err.detail : t('common.error')
@@ -334,7 +376,7 @@ async function onMediaRemove(slot: CompanyMediaSlot): Promise<void> {
   mediaBusy.value = slot
   try {
     try {
-      await deleteOwnCompanyMedia(slot)
+      await deleteOwnCompanyMedia(slot, variantLanguage(mediaLanguage.value))
       showToast(t('common.media.removed'), 'success')
     } catch (err) {
       // 404: the picture was already gone -- the fetch below shows the truth.
@@ -774,13 +816,9 @@ onMounted(() => {
       :title="t('comp.settings.profile.editTitle')"
       @close="closeEditProfile"
     >
-      <CTextarea
-        v-model="draftDescription"
-        :label="t('comp.settings.profile.description')"
-        :rows="5"
-        maxlength="5000"
-      />
+      <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
 
+      <MediaLanguageSelect v-model="mediaLanguage" />
       <MediaImageField
         v-for="m in mediaSlots"
         :key="m.slot"

@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import get_current_user_write, get_optional_user
 from app.modules.posts.constants import OwnerType
 from app.modules.posts.schemas import (
@@ -67,6 +68,7 @@ async def list_posts_endpoint(
     tag: str | None = Query(default=None),
     user: User | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PostListResponse:
     """List published posts with optional filters.
 
@@ -86,6 +88,7 @@ async def list_posts_endpoint(
         owner_type=owner_type.value if owner_type is not None else None,
         company_id=company_id,
         tag=tag,
+        language=reader,
     )
     return PostListResponse(
         items=items,
@@ -103,9 +106,12 @@ async def get_post_endpoint(
     post_id: UUID,
     user: User | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PostResponse:
-    """Get a single published post by ID."""
-    return await get_post(session, post_id, user_id=user.id if user else None)
+    """Get a single published post by ID, in the reader's language."""
+    return await get_post(
+        session, post_id, user_id=user.id if user else None, language=reader
+    )
 
 
 @posts_router.post(

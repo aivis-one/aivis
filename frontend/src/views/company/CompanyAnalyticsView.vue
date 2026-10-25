@@ -97,6 +97,7 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import { getCompanyAnalytics } from '@/api/company'
 import { formatNumber, formatPrice } from '@/utils/format'
 import type { CompanyAnalyticsResponse, SalesByMonthEntry, SalesByProductEntry } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 
@@ -134,6 +135,9 @@ async function refresh(): Promise<void> {
     if (epoch === fetchEpoch) loading.value = false
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => refresh())
 
 onMounted(() => {
   void refresh()

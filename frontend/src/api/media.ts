@@ -9,7 +9,10 @@
 //   PUT|DELETE /api/v1/companies/me/media/{slot}                          (the project itself)
 //   PUT|DELETE /api/v1/staff/companies/{id}/products/{productId}/cover    (project_manage)
 //
-// slot is `logo`, `logo-dark` or `cover`. A PUT answers with the updated
+// slot is `logo`, `logo-dark` or `cover`. Every call takes an optional
+// `language` (H38): that language's variant of the picture, shown to a
+// reader of that language instead of the common file; without it, the
+// common file. A PUT answers with the updated
 // project (CompanyResponse) or product (ProductResponse), its links signed
 // afresh; a DELETE answers 204, or 404 when there was nothing to remove.
 //
@@ -32,6 +35,8 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
+  languageQuery,
 } from '@/api/client'
 import type { CompanyResponse, ProductResponse } from '@/api/generated'
 
@@ -73,7 +78,7 @@ async function putImage<T>(path: string, file: File): Promise<T> {
   const form = new FormData()
   form.append('file', file)
 
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -132,26 +137,38 @@ export function uploadStaffCompanyMedia(
   companyId: string,
   slot: CompanyMediaSlot,
   file: File,
+  language?: string | null,
 ): Promise<CompanyResponse> {
-  return putImage(`/api/v1/staff/companies/${companyId}/media/${slot}`, file)
+  return putImage(
+    `/api/v1/staff/companies/${companyId}/media/${slot}${languageQuery(language)}`,
+    file,
+  )
 }
 
 /** Staff: remove a project's picture. 404 when there is none. */
-export function deleteStaffCompanyMedia(companyId: string, slot: CompanyMediaSlot): Promise<void> {
-  return api.delete(`/api/v1/staff/companies/${companyId}/media/${slot}`)
+export function deleteStaffCompanyMedia(
+  companyId: string,
+  slot: CompanyMediaSlot,
+  language?: string | null,
+): Promise<void> {
+  return api.delete(`/api/v1/staff/companies/${companyId}/media/${slot}${languageQuery(language)}`)
 }
 
 /** The project itself: upload or replace one of its pictures. */
 export function uploadOwnCompanyMedia(
   slot: CompanyMediaSlot,
   file: File,
+  language?: string | null,
 ): Promise<CompanyResponse> {
-  return putImage(`/api/v1/companies/me/media/${slot}`, file)
+  return putImage(`/api/v1/companies/me/media/${slot}${languageQuery(language)}`, file)
 }
 
 /** The project itself: remove one of its pictures. 404 when there is none. */
-export function deleteOwnCompanyMedia(slot: CompanyMediaSlot): Promise<void> {
-  return api.delete(`/api/v1/companies/me/media/${slot}`)
+export function deleteOwnCompanyMedia(
+  slot: CompanyMediaSlot,
+  language?: string | null,
+): Promise<void> {
+  return api.delete(`/api/v1/companies/me/media/${slot}${languageQuery(language)}`)
 }
 
 /** Staff: upload or replace a product's cover. */
@@ -159,11 +176,21 @@ export function uploadStaffProductCover(
   companyId: string,
   productId: string,
   file: File,
+  language?: string | null,
 ): Promise<ProductResponse> {
-  return putImage(`/api/v1/staff/companies/${companyId}/products/${productId}/cover`, file)
+  return putImage(
+    `/api/v1/staff/companies/${companyId}/products/${productId}/cover${languageQuery(language)}`,
+    file,
+  )
 }
 
 /** Staff: remove a product's cover. 404 when there is none. */
-export function deleteStaffProductCover(companyId: string, productId: string): Promise<void> {
-  return api.delete(`/api/v1/staff/companies/${companyId}/products/${productId}/cover`)
+export function deleteStaffProductCover(
+  companyId: string,
+  productId: string,
+  language?: string | null,
+): Promise<void> {
+  return api.delete(
+    `/api/v1/staff/companies/${companyId}/products/${productId}/cover${languageQuery(language)}`,
+  )
 }

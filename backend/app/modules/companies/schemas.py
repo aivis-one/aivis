@@ -112,7 +112,9 @@ from pydantic import (
     model_validator,
 )
 
+from app.core.i18n import TranslationsIn, translations_checker
 from app.modules.companies.constants import (
+
     ATTACHMENT_CATEGORY_REGEX,
     DocumentTemplateKind,
     RoadmapItemKind,
@@ -128,6 +130,13 @@ class CreateCompanyRequest(BaseModel):
     """Create a new company with user and profile."""
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_profiles")
+    )
 
     # User credentials for the company account.
     email: EmailStr = Field(min_length=3, max_length=255)
@@ -167,6 +176,13 @@ class AssignCompanyRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_profiles")
+    )
+
     # Existing user to promote. Their password never passes through
     # this endpoint or through admin hands.
     user_id: UUID
@@ -197,6 +213,13 @@ class UpdateCompanyRequest(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_profiles")
+    )
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
@@ -262,6 +285,13 @@ class UpdateOwnCompanyRequest(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_profiles")
+    )
 
     name: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=5000)
@@ -336,6 +366,13 @@ class CreateRoadmapItemRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_roadmap_items")
+    )
+
     # Default keeps existing Staff UI calls that don't send kind working;
     # migration 0033 made the column NOT NULL with the same default.
     kind: RoadmapItemKind = Field(default=RoadmapItemKind.MILESTONE)
@@ -400,6 +437,13 @@ class UpdateRoadmapItemRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Other languages of this row's texts (H38): {"ru": {...}}. Not sent ->
+    # kept; sent -> replaces the stored map whole; {} clears it.
+    translations: TranslationsIn | None = None
+    _check_translations = field_validator("translations")(
+        translations_checker("company_roadmap_items")
+    )
+
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     target_date: date | None = None
@@ -428,6 +472,13 @@ class ReorderRoadmapRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Responses
 # ---------------------------------------------------------------------------
+
+
+class RoadmapBaseTexts(BaseModel):
+    """The English base texts of a roadmap item (H38)."""
+
+    title: str
+    description: str | None
 
 
 class PostSnippetResponse(BaseModel):
@@ -478,6 +529,13 @@ class RoadmapItemResponse(BaseModel):
     # Inline Post snippet, populated by the service layer when post_id
     # is set and the post is still present and published.
     post: PostSnippetResponse | None = None
+
+    # For the staff and company editing screens only (H38); None on the
+    # storefront. title / description above are in the reader's language.
+    base: RoadmapBaseTexts | None = None
+    translations: dict[str, dict[str, str]] | None = None
+    # {"en": {"cover_url": <common>}, "ru": {"cover_url": <variant>}}
+    image_variants: dict[str, dict[str, str | None]] | None = None
     created_at: datetime
     updated_at: datetime | None
 
@@ -508,8 +566,19 @@ class PriceHistoryListResponse(BaseModel):
     per_page: int
 
 
+class CompanyBaseTexts(BaseModel):
+    """The English base texts of a company (H38)."""
+
+    name: str
+    description: str | None
+
+
 class CompanyResponse(BaseModel):
-    """Company info for staff (includes distribution_config)."""
+    """Company info for staff and for the company itself (both edit it).
+
+    name / description are in the reader's language (Accept-Language),
+    English when there is no translation (H38).
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -533,6 +602,17 @@ class CompanyResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime | None
+
+    # -- For the editing screens only (H38) --------------------------------
+    # The displayed fields above are in the reader's language. An editing
+    # screen also needs the English base and every stored translation --
+    # the latter exactly as stored (no "en"), so the screen can send it
+    # back unchanged -- and the per-language picture variants as links.
+    base: CompanyBaseTexts
+    translations: dict[str, dict[str, str]]
+    # {"en": <the common files>, "ru": {"logo_url": ..., "logo_dark_url": ...,
+    # "cover_url": ...}} -- "en" is the common file, the others variants.
+    image_variants: dict[str, dict[str, str | None]]
 
 
 class CompanyDetailResponse(CompanyResponse):

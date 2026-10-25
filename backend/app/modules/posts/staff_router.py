@@ -35,6 +35,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.posts.constants import OwnerType
 from app.modules.posts.schemas import (
@@ -48,6 +49,7 @@ from app.modules.posts.schemas import (
     UpdatePostRequest,
 )
 from app.modules.posts.service import (
+    build_post_response,
     create_event,
     create_post,
     delete_event,
@@ -90,6 +92,7 @@ async def staff_list_posts_endpoint(
     per_page: int = Query(default=20, ge=1, le=100),
     staff: User = Depends(require_staff_permission("content_manage")),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PostListResponse:
     """List all posts (drafts included) with optional filters.
 
@@ -118,7 +121,7 @@ async def staff_list_posts_endpoint(
         per_page=per_page,
     )
     return PostListResponse(
-        items=[PostResponse.model_validate(p) for p in rows],
+        items=[build_post_response(p, reader, editing=True) for p in rows],
         total=total,
         page=page,
         per_page=per_page,
@@ -134,10 +137,11 @@ async def staff_create_post(
     body: CreatePostRequest,
     staff: User = Depends(require_staff_permission("content_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> PostResponse:
     """Create a platform or company post."""
     post = await create_post(session, staff.id, body)
-    return PostResponse.model_validate(post)
+    return build_post_response(post, reader, editing=True)
 
 
 @staff_posts_router.patch(
@@ -149,10 +153,11 @@ async def staff_update_post(
     body: UpdatePostRequest,
     staff: User = Depends(require_staff_permission("content_manage")),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> PostResponse:
     """Partial update of a post."""
     post = await update_post(session, post_id, body, staff.id)
-    return PostResponse.model_validate(post)
+    return build_post_response(post, reader, editing=True)
 
 
 @staff_posts_router.delete(

@@ -42,6 +42,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.core.i18n import BASE_LANGUAGE, localized
 from app.modules.companies.media import company_media_urls
 from app.modules.companies.models import CompanyProfile
 from app.modules.portfolio.schemas import (
@@ -123,6 +124,7 @@ def _gift_units_expr() -> object:
 async def get_portfolio(
     user_id: UUID,
     session: AsyncSession,
+    language: str = BASE_LANGUAGE,
 ) -> PortfolioResponse:
     """Get full portfolio: positions grouped by company.
 
@@ -136,6 +138,8 @@ async def get_portfolio(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
@@ -154,6 +158,8 @@ async def get_portfolio(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
         )
         .order_by(
@@ -178,10 +184,14 @@ async def get_portfolio(
             logo_storage_key=row.logo_storage_key,
             logo_dark_storage_key=row.logo_dark_storage_key,
             cover_storage_key=row.cover_storage_key,
+            media_variants=row.media_variants,
+            language=language,
         )
         positions.append(CompanyPositionResponse(
             company_id=row.company_id,
-            company_name=row.company_name,
+            company_name=localized(
+                row.translations, language, "name", row.company_name
+            ),
             logo_url=links["logo_url"],
             logo_dark_url=links["logo_dark_url"],
             total_units=total_units,
@@ -204,6 +214,7 @@ async def get_company_position(
     *,
     page: int = 1,
     per_page: int = 20,
+    language: str = BASE_LANGUAGE,
 ) -> CompanyPositionDetailResponse:
     """Get position detail for a single company with paginated purchases.
 
@@ -217,6 +228,8 @@ async def get_company_position(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents.label("current_price"),
             func.coalesce(func.sum(Purchase.units), 0).label("total_units"),
             _sale_units_expr().label("sale_units"),
@@ -234,6 +247,8 @@ async def get_company_position(
             CompanyProfile.logo_storage_key,
             CompanyProfile.logo_dark_storage_key,
             CompanyProfile.cover_storage_key,
+            CompanyProfile.media_variants,
+            CompanyProfile.translations,
             CompanyProfile.price_per_unit_cents,
         )
     )
@@ -284,10 +299,14 @@ async def get_company_position(
         logo_storage_key=agg_row.logo_storage_key,
         logo_dark_storage_key=agg_row.logo_dark_storage_key,
         cover_storage_key=agg_row.cover_storage_key,
+        media_variants=agg_row.media_variants,
+        language=language,
     )
     return CompanyPositionDetailResponse(
         company_id=company_id,
-        company_name=agg_row.company_name,
+        company_name=localized(
+            agg_row.translations, language, "name", agg_row.company_name
+        ),
         logo_url=links["logo_url"],
         logo_dark_url=links["logo_dark_url"],
         total_units=total_units,

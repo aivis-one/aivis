@@ -36,6 +36,7 @@ import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
 import type { StaffPurchaseItem } from '@/api/generated'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
@@ -168,6 +169,9 @@ async function handleCancel(row: StaffPurchaseItem): Promise<void> {
     cancellingId.value = null
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
 
 onMounted(() => {
   void load()

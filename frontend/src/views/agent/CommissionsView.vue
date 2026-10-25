@@ -49,6 +49,7 @@ import type { CommissionEntry } from '@/api/types'
 import { useAgentStore } from '@/stores/agent'
 import { tOrRaw } from '@/utils/i18n'
 import { formatDate, formatPrice } from '@/utils/format'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t, locale } = useI18n()
 const agentStore = useAgentStore()
@@ -152,6 +153,9 @@ function loadMore(): void {
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => agentStore.fetchCommissionsFirstPage())
 
 onMounted(() => {
   void agentStore.fetchCommissionsFirstPage()

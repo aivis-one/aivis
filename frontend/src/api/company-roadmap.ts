@@ -39,6 +39,8 @@ import {
   api,
   getAuthToken,
   parseRetryAfterHeader,
+  languageHeaders,
+  languageQuery,
 } from '@/api/client'
 import type {
   CreateRoadmapItemRequest,
@@ -139,13 +141,14 @@ const COVER_UPLOAD_TIMEOUT_MS = 30_000
 export async function uploadOwnRoadmapCover(
   itemId: string,
   file: File,
+  language?: string | null,
 ): Promise<RoadmapItemResponse> {
-  const url = `${API_BASE_URL}/api/v1/company/roadmap/${itemId}/cover`
+  const url = `${API_BASE_URL}/api/v1/company/roadmap/${itemId}/cover${languageQuery(language)}`
 
   const form = new FormData()
   form.append('file', file)
 
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...languageHeaders() }
   const token = getAuthToken()
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
@@ -209,6 +212,6 @@ export async function uploadOwnRoadmapCover(
  * "nothing to remove" the caller can treat as a benign already-removed
  * case.
  */
-export function deleteOwnRoadmapCover(itemId: string): Promise<void> {
-  return api.delete(`/api/v1/company/roadmap/${itemId}/cover`)
+export function deleteOwnRoadmapCover(itemId: string, language?: string | null): Promise<void> {
+  return api.delete(`/api/v1/company/roadmap/${itemId}/cover${languageQuery(language)}`)
 }

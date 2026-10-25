@@ -66,6 +66,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.i18n import reader_language
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.models import CompanyProfile
 from app.modules.posts.constants import OwnerType
@@ -76,6 +77,7 @@ from app.modules.posts.schemas import (
     UpdateCompanyPostRequest,
 )
 from app.modules.posts.service import (
+    build_post_response,
     create_company_post,
     delete_company_post,
     staff_list_posts,
@@ -98,6 +100,7 @@ async def list_own_posts_endpoint(
     per_page: int = Query(default=20, ge=1, le=100),
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> PostListResponse:
     """List the caller's own company posts, drafts included.
 
@@ -117,7 +120,7 @@ async def list_own_posts_endpoint(
         per_page=per_page,
     )
     return PostListResponse(
-        items=[PostResponse.model_validate(p) for p in rows],
+        items=[build_post_response(p, reader, editing=True) for p in rows],
         total=total,
         page=page,
         per_page=per_page,
@@ -133,6 +136,7 @@ async def create_own_post_endpoint(
     body: CreateCompanyPostRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> PostResponse:
     """Create a post about the caller's own company.
 
@@ -140,7 +144,7 @@ async def create_own_post_endpoint(
     moderation/approval step (see module docstring).
     """
     post = await create_company_post(session, company.id, company.user_id, body)
-    return PostResponse.model_validate(post)
+    return build_post_response(post, reader, editing=True)
 
 
 @router.patch(
@@ -152,6 +156,7 @@ async def update_own_post_endpoint(
     body: UpdateCompanyPostRequest,
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_session),
+    reader: str = Depends(reader_language),
 ) -> PostResponse:
     """Partial update of the caller's own post.
 
@@ -161,7 +166,7 @@ async def update_own_post_endpoint(
     post = await update_company_post(
         session, company.id, post_id, company.user_id, body
     )
-    return PostResponse.model_validate(post)
+    return build_post_response(post, reader, editing=True)
 
 
 @router.delete(

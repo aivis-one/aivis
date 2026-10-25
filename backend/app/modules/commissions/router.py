@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.core.exceptions import ForbiddenError
 from app.modules.auth.dependencies import get_current_user
 from app.modules.commissions.schemas import (
@@ -64,10 +65,13 @@ async def my_commissions(
     offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> CommissionListResponse:
     """Get my commission and volume bonus history. Agent only."""
     _require_agent(user)
-    return await get_my_commissions(user.id, session, limit=limit, offset=offset)
+    return await get_my_commissions(
+        user.id, session, limit=limit, offset=offset, language=reader
+    )
 
 
 @router.get(

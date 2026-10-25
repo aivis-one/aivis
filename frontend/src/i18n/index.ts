@@ -24,6 +24,15 @@
 //   stores/auth.ts         -> setLocale(user.language)
 //                             on restoreSession / login / register /
 //                             telegram login. No-op if already active.
+//
+// PROJECT DATA FOLLOWS THE LOCALE (H38 P-132).
+//   The backend answers project data -- names, descriptions, roadmap,
+//   news, picture variants -- in the Accept-Language the API client sends,
+//   which is the current locale. Data already on screen was fetched in the
+//   old one, so a switch notifies the onLocaleChange() subscribers AFTER
+//   the new locale is active: main.ts subscribes the data stores
+//   (stores/localeReload.ts), and a view holding its own fetch subscribes
+//   through composables/useReloadOnLocale for as long as it is mounted.
 // =============================================================================
 
 import { createI18n } from 'vue-i18n'
@@ -114,6 +123,31 @@ export async function setupI18n(): Promise<void> {
  * error and leaves the UI on the previous locale. Never throws --
  * callers are fire-and-forget.
  */
+// The subscribers of a locale switch (see PROJECT DATA FOLLOWS THE LOCALE).
+const localeListeners = new Set<(locale: string) => void>()
+
+/**
+ * Call `listener` after every switch of the active locale, with the new
+ * one. Returns the unsubscribe. A listener that throws does not stop the
+ * others.
+ */
+export function onLocaleChange(listener: (locale: string) => void): () => void {
+  localeListeners.add(listener)
+  return () => {
+    localeListeners.delete(listener)
+  }
+}
+
+function notifyLocaleChange(locale: string): void {
+  for (const listener of [...localeListeners]) {
+    try {
+      listener(locale)
+    } catch (err) {
+      console.error('[i18n] locale change listener failed:', err)
+    }
+  }
+}
+
 export async function setLocale(locale: string | null | undefined): Promise<void> {
   if (!locale || !isSupportedLocale(locale)) return
 
@@ -135,4 +169,5 @@ export async function setLocale(locale: string | null | undefined): Promise<void
 
   i18n.global.locale.value = locale
   applyDir(locale)
+  notifyLocaleChange(locale)
 }

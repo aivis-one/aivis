@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader
+from app.core.i18n import reader_language
 from app.modules.companies.dependencies import get_current_company_profile
 from app.modules.companies.models import CompanyProfile
 from app.modules.company_dashboard.schemas import (
@@ -65,6 +66,7 @@ async def get_company_dashboard_endpoint(
 async def get_company_analytics_endpoint(
     company: CompanyProfile = Depends(get_current_company_profile),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> CompanyAnalyticsResponse:
     """Sales analytics for the authenticated company.
 
@@ -73,4 +75,4 @@ async def get_company_analytics_endpoint(
     sales_by_product (ALL products of the company including archived
     and zero-sales, sorted by revenue DESC).
     """
-    return await get_company_analytics(company, session)
+    return await get_company_analytics(company, session, reader)

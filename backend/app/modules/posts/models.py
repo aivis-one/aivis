@@ -27,7 +27,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -60,6 +60,15 @@ class Post(JSONBMixin, UUIDMixin, TimestampMixin, Base):
     body: Mapped[str] = mapped_column(
         String(50000),
         nullable=False,
+    )
+
+    # Translations of the texts above (H38 P-132): {"ru": {"title": ...}}.
+    # English stays in the columns; app/core/i18n.py validates and reads.
+    translations: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
     )
 
     cover_url: Mapped[str | None] = mapped_column(

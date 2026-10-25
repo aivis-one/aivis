@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_reader, get_db_session
+from app.core.i18n import reader_language
 from app.modules.auth.dependencies import require_staff_permission
 from app.modules.purchases.constants import PurchaseStatus
 from app.modules.purchases.gift_service import cancel_gift, grant_gift
@@ -68,6 +69,7 @@ async def list_purchases_endpoint(
     per_page: int = Query(default=20, ge=1, le=100),
     staff: User = Depends(require_staff_permission("financial_operations")),
     session: AsyncSession = Depends(get_db_reader),
+    reader: str = Depends(reader_language),
 ) -> StaffPurchaseListResponse:
     """List purchases, newest first (read-only, no ledger or status change).
 
@@ -82,6 +84,7 @@ async def list_purchases_endpoint(
         buyer_id=buyer_id,
         page=page,
         per_page=per_page,
+        language=reader,
     )
     return StaffPurchaseListResponse(
         items=items, total=total, page=page, per_page=per_page

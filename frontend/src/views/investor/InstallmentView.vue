@@ -88,6 +88,7 @@ import {
 } from '@/utils/installmentPlans'
 import type { InstallmentResponse, PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 // Backend currency field is not emitted on Public*/BalanceResponse
 // yet (TD-F03 scope includes both). Same escape hatch as the other
@@ -388,6 +389,9 @@ useScreenHeader({
           params: { id: productId.value },
         },
 })
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => load())
 
 onMounted(load)
 </script>

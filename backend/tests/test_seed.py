@@ -700,6 +700,12 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     profile could never seed (company_pct 1.0 refused by create_company,
     and ensure_pool tripped on get_active_pool raising), and nothing
     noticed for two months because nothing ran it.
+
+    H38 changed two of its numbers, by design: the shipped project now
+    carries media/ru/cover.png, so the run uploads one language variant
+    and the project's prefix holds eight objects, not seven; and the
+    Russian texts of the profile, which H37 dropped, are now in the rows'
+    translations. Asserted here as exact values, not loosened.
     """
     tag = uuid.uuid4().hex[:8]
     monkeypatch.setattr(
@@ -716,15 +722,21 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     assert stats["pictures"] == 3
     assert stats["attachments"] == 1
     assert stats["roadmap_items"] == 2
+    assert stats["picture_variants"] == 1
 
     (company,) = await _company_of(db_session, profile["marker"])
     prefix = f"companies/{company.id}/"
     assert company.logo_storage_key and company.logo_dark_storage_key
     assert company.cover_storage_key
     objects = await _objects(prefix)
-    # logo, dark logo, cover, product cover, the deck, two roadmap covers
-    assert len(objects) == 7
+    # logo, dark logo, cover, its Russian variant, product cover, the
+    # deck, two roadmap covers
+    assert len(objects) == 8
     assert {company.logo_storage_key, company.cover_storage_key} <= objects
+    ru_cover = company.media_variants["ru"]["cover"]
+    assert ru_cover == f"{prefix}media/ru/cover.png" and ru_cover in objects
+    assert company.name == "Demo Project"
+    assert company.translations["ru"]["name"] == "Демо-проект"
 
     from app.modules.companies.models import CompanyAttachment, CompanyRoadmapItem
     from app.modules.products.models import Product, ProductInstallment
@@ -733,6 +745,10 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
         await db_session.execute(select(Product).where(Product.company_id == company.id))
     ).scalars().all()
     assert sorted(p.name for p in products) == ["Growth package", "Starter package"]
+    assert sorted(p.translations["ru"]["name"] for p in products) == [
+        "Пакет роста",
+        "Стартовый пакет",
+    ]
     assert all(p.status == "active" for p in products)
     installments = (
         await db_session.execute(
@@ -752,7 +768,9 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     # REPEAT: the second run writes nothing.
     again = await seed.seed_profile(db_session, profile)
     await db_session.commit()
-    for key in ("pictures", "attachments", "roadmap_items", "purchases"):
+    for key in (
+        "pictures", "picture_variants", "attachments", "roadmap_items", "purchases"
+    ):
         assert again[key] == 0, key
     assert await _objects(prefix) == objects
     count = (
@@ -772,7 +790,7 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     assert counts["attachments"] == 1 and counts["roadmap_items"] == 2
     assert counts["users"] == 6
     purged = await seed.purge_seeded_objects(ids)
-    assert purged == {"objects": 7, "failed": 0}
+    assert purged == {"objects": 8, "failed": 0}
     assert await _objects(prefix) == set()
     assert await _seeded_users(db_session, profile["marker"]) == []
 

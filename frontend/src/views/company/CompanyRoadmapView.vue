@@ -35,12 +35,31 @@
 // enforced by the SAME backend schema (CreateRoadmapItemRequest /
 // UpdateRoadmapItemRequest, companies/schemas.py) reused as-is for this
 // surface.
+//
+// LANGUAGES (H38 P-132): title and description are edited in every language
+// of the interface (English the base, required), the cover per version --
+// the common file or one language's variant (MediaLanguageSelect). The form
+// starts from the item's base and translations, not the displayed texts.
 // =============================================================================
 
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronUp, ChevronDown, Pencil, Trash2, Map as MapIcon } from '@/components/ui/icons'
-import { CButton, CBadge, CEmptyState, CModal, CInput, CTextarea, CSelect } from '@/components/ui'
+import { CButton, CBadge, CEmptyState, CModal, CInput, CSelect } from '@/components/ui'
+import MediaLanguageSelect from '@/components/shared/MediaLanguageSelect.vue'
+import LocalizedTextFields from '@/components/shared/LocalizedTextFields.vue'
+import type { LocalizedField } from '@/components/shared/LocalizedTextFields.vue'
+import {
+  BASE_LANGUAGE,
+  baseText,
+  emptyDraft,
+  imageIn,
+  makeDraft,
+  sameTranslations,
+  translationsFromDraft,
+  variantLanguage,
+} from '@/utils/projectTexts'
+import type { TextDraft } from '@/utils/projectTexts'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import CFileField from '@/components/ui/CFileField.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
@@ -61,6 +80,7 @@ import type {
   CreateRoadmapItemRequest,
   UpdateRoadmapItemRequest,
 } from '@/api/types'
+import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -97,6 +117,9 @@ async function reload(): Promise<void> {
     loading.value = false
   }
 }
+
+// H38: project data is in the reader's language -- re-read it on a switch.
+useReloadOnLocale(() => reload())
 
 onMounted(() => {
   void reload()
@@ -177,8 +200,18 @@ const editingId = ref<string | null>(null)
 const saving = ref(false)
 
 const draftKind = ref<RoadmapItemKind>('milestone')
-const draftTitle = ref('')
-const draftDescription = ref('')
+const TEXT_FIELDS = ['title', 'description'] as const
+const draftTexts = ref<TextDraft>(emptyDraft(TEXT_FIELDS))
+const textFields = computed<LocalizedField[]>(() => [
+  { key: 'title', label: t('comp.roadmap.fieldTitle'), maxlength: 500 },
+  {
+    key: 'description',
+    label: t('comp.roadmap.fieldDescription'),
+    multiline: true,
+    rows: 4,
+    maxlength: 5000,
+  },
+])
 const draftTargetDate = ref('')
 const draftValidUntil = ref('')
 const draftStatus = ref<string>('planned')
@@ -203,8 +236,7 @@ const statusLocked = computed<boolean>(
 
 function resetDraft(kind: RoadmapItemKind): void {
   draftKind.value = kind
-  draftTitle.value = ''
-  draftDescription.value = ''
+  draftTexts.value = emptyDraft(TEXT_FIELDS)
   draftTargetDate.value = ''
   draftValidUntil.value = ''
   draftStatus.value = 'planned'
@@ -220,7 +252,7 @@ function selectKind(kind: RoadmapItemKind): void {
 function openCreate(): void {
   editingId.value = null
   editingOriginal.value = null
-  coverPreviewUrl.value = ''
+  coverVariants.value = null
   resetDraft('milestone')
   showForm.value = true
 }
@@ -228,10 +260,10 @@ function openCreate(): void {
 function openEdit(item: RoadmapItemResponse): void {
   editingId.value = item.id
   editingOriginal.value = item
-  coverPreviewUrl.value = item.cover_url ?? ''
+  coverVariants.value = item.image_variants
+  coverLanguage.value = BASE_LANGUAGE
   draftKind.value = item.kind as RoadmapItemKind
-  draftTitle.value = item.title
-  draftDescription.value = item.description ?? ''
+  draftTexts.value = makeDraft(TEXT_FIELDS, item.base, item.translations)
   draftTargetDate.value = item.target_date ?? ''
   draftValidUntil.value = item.valid_until ?? ''
   draftStatus.value = item.status || 'planned'
@@ -243,7 +275,7 @@ function closeForm(): void {
   showForm.value = false
 }
 
-const trimmedTitle = computed<string>(() => draftTitle.value.trim())
+const trimmedTitle = computed<string>(() => baseText(draftTexts.value, 'title').trim())
 const trimmedExternalUrl = computed<string>(() => draftExternalUrl.value.trim())
 
 const externalUrlValid = computed<boolean>(() => {
@@ -272,8 +304,10 @@ function buildCreateBody(): CreateRoadmapItemRequest {
     kind: draftKind.value,
     title: trimmedTitle.value,
   }
-  const desc = draftDescription.value.trim()
+  const desc = baseText(draftTexts.value, 'description').trim()
   if (desc) body.description = desc
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, {})
+  if (Object.keys(translations).length > 0) body.translations = translations
   if (trimmedExternalUrl.value) body.external_url = trimmedExternalUrl.value
 
   if (draftKind.value === 'milestone') {
@@ -293,14 +327,20 @@ function buildUpdateBody(): UpdateRoadmapItemRequest {
   const body: UpdateRoadmapItemRequest = {}
   if (!orig) return body
 
-  if (trimmedTitle.value !== orig.title) {
+  // Against the English base, not the displayed (reader's) texts.
+  if (trimmedTitle.value !== (orig.base?.title ?? '')) {
     body.title = trimmedTitle.value
   }
 
-  const desc = draftDescription.value.trim()
-  const origDesc = orig.description ?? ''
+  const desc = baseText(draftTexts.value, 'description').trim()
+  const origDesc = orig.base?.description ?? ''
   if (desc !== origDesc) {
     body.description = desc ? desc : null
+  }
+
+  const translations = translationsFromDraft(draftTexts.value, TEXT_FIELDS, orig.translations)
+  if (!sameTranslations(translations, orig.translations)) {
+    body.translations = translations
   }
 
   const url = trimmedExternalUrl.value
@@ -431,7 +471,20 @@ async function handleDelete(): Promise<void> {
 const COVER_MIME_WHITELIST = ['image/png', 'image/jpeg', 'image/webp'] as const
 const COVER_MAX_BYTES = 10 * 1024 * 1024 // 10 MiB, mirrors backend cap
 
-const coverPreviewUrl = ref('')
+// The covers of the item being edited per language ("en" = the common file,
+// H38) and the version edited.
+const coverVariants = ref<unknown>(null)
+const coverLanguage = ref<string>(BASE_LANGUAGE)
+const coverPreviewUrl = computed<string>(
+  () => imageIn(coverVariants.value, coverLanguage.value, 'cover_url') ?? '',
+)
+
+function dropCoverVariant(): void {
+  const variants = { ...((coverVariants.value ?? {}) as Record<string, unknown>) }
+  delete variants[coverLanguage.value]
+  coverVariants.value = variants
+}
+
 const coverUploading = ref(false)
 const coverRemoving = ref(false)
 const coverRemoveTarget = ref<string | null>(null)
@@ -450,8 +503,12 @@ async function onCoverSelected(file: File): Promise<void> {
 
   coverUploading.value = true
   try {
-    const updated = await uploadOwnRoadmapCover(editingId.value, file)
-    coverPreviewUrl.value = updated.cover_url ?? ''
+    const updated = await uploadOwnRoadmapCover(
+      editingId.value,
+      file,
+      variantLanguage(coverLanguage.value),
+    )
+    coverVariants.value = updated.image_variants
     showToast(t('comp.roadmap.cover.uploaded'), 'success')
     await reload()
   } catch (e) {
@@ -474,14 +531,14 @@ async function handleCoverRemove(): Promise<void> {
   if (!coverRemoveTarget.value) return
   coverRemoving.value = true
   try {
-    await deleteOwnRoadmapCover(coverRemoveTarget.value)
-    coverPreviewUrl.value = ''
+    await deleteOwnRoadmapCover(coverRemoveTarget.value, variantLanguage(coverLanguage.value))
+    dropCoverVariant()
     coverRemoveTarget.value = null
     showToast(t('comp.roadmap.cover.removed'), 'success')
     await reload()
   } catch (e) {
     if (e instanceof ApiResponseError && e.status === 404) {
-      coverPreviewUrl.value = ''
+      dropCoverVariant()
       coverRemoveTarget.value = null
       await reload()
     } else {
@@ -630,13 +687,7 @@ async function handleCoverRemove(): Promise<void> {
       </label>
     </fieldset>
 
-    <CInput
-      v-model="draftTitle"
-      :label="t('comp.roadmap.fieldTitle')"
-      :placeholder="t('comp.roadmap.fieldTitle')"
-    />
-
-    <CTextarea v-model="draftDescription" :label="t('comp.roadmap.fieldDescription')" :rows="4" />
+    <LocalizedTextFields v-model="draftTexts" :fields="textFields" />
 
     <p v-if="draftKind === 'event'" class="ds-field__hint">
       {{ t('comp.roadmap.eventDatesHint') }}
@@ -688,7 +739,8 @@ async function handleCoverRemove(): Promise<void> {
       :error="!externalUrlValid ? t('comp.roadmap.externalUrlError') : ''"
     />
 
-    <!-- The cover image (K30), added to a saved item -->
+    <!-- The cover image (K30), added to a saved item; per version (H38) -->
+    <MediaLanguageSelect v-if="isEditing" v-model="coverLanguage" />
     <CFileField
       v-if="isEditing"
       :label="t('comp.roadmap.cover.label')"
