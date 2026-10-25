@@ -45,7 +45,7 @@ Read `reference/conventions.md`, `reference/refusals.md` and `reference/build-sc
 ## The rules in short
 
 - No literal hex, rgb or pixel size in a component: bind a token.
-- One icon set, drawn on a 24 by 24 grid with a 1.5 stroke, round caps and joins, in `currentColor`.
+- One icon set, drawn on a 24 by 24 grid with a 1.5 stroke, round caps and joins, in `currentColor`; the stroke is 1.5 screen pixels at every icon size.
 - Three families for Latin, Cyrillic and Greek text, one for Arabic; no other face.
 - Logical properties for every layout rule.
 - Day and night come from the same token names.

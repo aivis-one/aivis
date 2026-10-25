@@ -70,7 +70,7 @@
 | `--focus-ring` | the focus outline colour: azure-500 by day, azure-300 by night; never the accent; the outline is `--focus-width` solid with `--focus-offset` offset |
 | `--toggle-track` | switch track (the same in both themes) |
 | `--toggle-knob` | switch knob |
-| `--paper` | a ground that stays white in both themes: the QR pad and the frame of a sandboxed document, which paints no ground and expects white; text on it is never a theme text colour |
+| `--paper` | a ground that stays white in both themes: the QR pad, whose code is drawn in a forced light palette; text on it is never a theme text colour. The frame of a sandboxed document no longer takes it: that frame follows the theme (`--bg-surface`, K36) |
 | `--scrim` | the veil behind a sheet or a modal: `--neutral-950` at 50 percent, the same in both themes |
 | `--scrim-strong` | the veil under text laid on a photo: `--neutral-950` at 70 percent, the same in both themes; the existing scrim does not reach 4.5:1 over a bright photo (3.74 for white text over a white photo, `contrast.json`), this one gives 7.63 over a white photo, 13.81 over a mid-grey one and 20.17 over a black one |
 | `--text-on-scrim` | text laid on a photo under a veil: `#FFFFFF` in both themes, because a photo does not change with the theme (`--text-inverse` and `--on-primary` turn dark at night); stands under `--scrim-strong` and never under `--scrim` alone |
@@ -115,7 +115,7 @@ In the night theme every text colour is 4.81 or better on every ground (the lowe
 | Radius | `--radius-xs`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `--radius-pill`, `--radius-control`, `--radius-card`, `--radius-modal` |
 | Motion | `--dur-instant`, `--dur-fast`, `--dur-base`, `--dur-slow`, `--dur-slower`, `--ease-standard`, `--ease-entrance`, `--ease-exit`, `--ease-spring`, `--motion-micro`, `--motion-quick`, `--motion-moderate`, `--motion-deliberate`, `--motion-ambient` |
 | Layers | `--z-content` 1, `--z-sticky` 10, `--z-header` 20, `--z-tooltip` 30, `--z-menu` 40, `--z-dialog` 60, `--z-banner` 80, `--z-toast` 100: the one stacking order of the system and of every cabinet screen; a `z-index` in a component is one of these, never a bare number |
-| Widths and breakpoints | `--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`, `--maxw`, `--maxw-wide`, `--maxw-prose`, `--maxw-form`, `--maxw-form-wide`, `--header-height` |
+| Widths and breakpoints | `--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`, `--maxw`, `--maxw-wide`, `--maxw-prose`, `--maxw-form`, `--maxw-form-wide`, `--maxw-doc`, `--header-height` |
 | Sizes, touch and icons | `--touch-min`, `--touch-comfortable`, `--tap-min`, `--control-height-sm`, `--control-height-md`, `--control-height-lg`, `--size-2xs`, `--size-xs`, `--size-sm`, `--size-md`, `--size-lg`, `--size-xl`, `--size-2xl`, `--size-3xl`, `--size-4xl`, `--tile-min`, `--tile-max`, `--center-sm`, `--center-md`, `--center-lg`, `--icon-size-sm`, `--icon-size-md`, `--icon-size-lg`, `--icon-size-xl` |
 | Decoration | `--deco-ink`, `--deco-opacity`, `--deco-line-width`, `--deco-mark-line-width`, `--deco-divider-width`, `--tick-length`, `--tick-thickness`, `--tick-cut`, `--tick-azure-start`, `--tick-azure-end`, `--tick-emerald-start`, `--tick-emerald-end`, `--tick-amber-start`, `--tick-amber-end` |
 
@@ -123,7 +123,7 @@ An icon drawn at 20 or 40 pixels takes `--size-2xs` or `--size-xl`; the named ic
 
 ## Widths
 
-The four widths are 480, 640, 880 and 1120 pixels (`--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`). A custom property cannot be read inside a media condition, so a query writes the number: `@media (min-width: 640px)`. `--maxw` (1080) and `--maxw-wide` (1240) are content measures inside a page, `--maxw-prose` caps running text, `--maxw-form` and `--maxw-form-wide` cap a form column.
+The four widths are 480, 640, 880 and 1120 pixels (`--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`). A custom property cannot be read inside a media condition, so a query writes the number: `@media (min-width: 640px)`. `--maxw` (1080) and `--maxw-wide` (1240) are content measures inside a page, `--maxw-prose` caps running text, `--maxw-form` and `--maxw-form-wide` cap a form column, `--maxw-doc` (800, about the width of a printed page) caps the wide placement of the document viewer (K36).
 
 ## Direction
 

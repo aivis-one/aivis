@@ -74,11 +74,17 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 .ds-reorder__item.sim-hover { border-color: var(--border-default); }
 .frame-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
 .narrow { max-inline-size: var(--center-lg); }
+.ic16 { inline-size: var(--icon-size-sm); block-size: var(--icon-size-sm); }
+.ic20 { inline-size: var(--size-2xs); block-size: var(--size-2xs); }
+.ic24 { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
+.ic32 { inline-size: var(--icon-size-lg); block-size: var(--icon-size-lg); }
+.ic48 { inline-size: var(--icon-size-xl); block-size: var(--icon-size-xl); }
+.iconsizes { align-items: center; color: var(--text-primary); }
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a></div></div></div>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a><a href="#r13">Web: wide windows, rail, rows, icons</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -308,6 +314,95 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 <figure class="phone-wrap"><iframe class="phone" title="Document row with a button on a phone" data-src="components-6.html?fragment=r12a" height="520"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
+<section class="blk" id="r13"><div class="wrap"><h2>For the web: wide windows, a fixed dialog body, the folding rail, the bare row lead and one line weight</h2>
+<p class="lead">The Document viewer (K36) and the Dialog (K52) in the wide placement, a Dialog whose body keeps one height from step to step, the labelled rail (K25) with its wordmark and its collapse control, the Row list (K23) with the icon alone as its lead, and the icon set at every size in one line weight. The two buttons in the last block open the wide windows over the page; under 640 they are the bottom sheet.</p>
+
+<h3>One line weight (the icon set at 16, 20, 24, 32 and 48)</h3>
+<div class="padded desk"><div class="frame-row iconsizes"><svg class="ds-icon ic16" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg><svg class="ds-icon ic20" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg><svg class="ds-icon ic24" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg><svg class="ds-icon ic32" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg><svg class="ds-icon ic48" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg><svg class="ds-icon ic16" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><svg class="ds-icon ic20" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><svg class="ds-icon ic24" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><svg class="ds-icon ic32" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><svg class="ds-icon ic48" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><svg class="ds-icon ic16" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><svg class="ds-icon ic20" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><svg class="ds-icon ic24" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><svg class="ds-icon ic32" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg><svg class="ds-icon ic48" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg></div><p class="note">The stroke is 1.5 pixels at every size (the sprite's shapes carry <code>vector-effect: non-scaling-stroke</code>), the weight of the panel's 24 pixel icons.</p></div>
+
+<h3>Row list (K23): the icon alone as the lead, the tones, the document row (K44)</h3>
+<div class="cols"><div class="stack" data-frag="r13a"><div class="padded desk"><ul class="ds-rows">
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-shield"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#r13"><span class="ds-row__title">Verification</span></a><span class="ds-row__meta">Needed to buy</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#r13"><span class="ds-row__title">Documents</span></a><span class="ds-row__meta">Read, sign and download</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg></span><span class="ds-row__body"><a class="ds-row__link" href="#r13"><span class="ds-row__title">Support</span></a><span class="ds-row__meta">Write to us</span></span><span class="ds-row__trail"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="success"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-down-left"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Deposit</span><span class="ds-row__meta">12 Oct 2026</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="warning"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Check the card</span><span class="ds-row__meta">Expires soon</span></span></li>
+  <li class="ds-row"><span class="ds-row__lead" data-tone="danger"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-out"/></svg></span><span class="ds-row__body"><span class="ds-row__title">Sign out of all devices</span><span class="ds-row__meta">Ends every session</span></span></li>
+  <li class="ds-row ds-docrow"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Privacy policy</span><span class="ds-row__meta">PDF, 212 KB</span></button></span><span class="ds-row__trail"><span class="ds-docrow__state" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-download"/></svg></span></span></li>
+  <li class="ds-row ds-docrow" data-state="downloaded"><span class="ds-row__lead"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg></span><span class="ds-row__body"><button type="button" class="ds-row__link"><span class="ds-row__title">Cabinet terms</span><span class="ds-row__meta">PDF, 180 KB</span></button></span><span class="ds-row__trail"><span class="ds-docrow__state" aria-hidden="true"><svg class="ds-icon" viewBox="0 0 24 24"><use href="#i-check"/></svg></span></span></li>
+</ul></div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Rows with a bare lead on a phone" data-src="components-6.html?fragment=r13a" height="720"></iframe><figcaption>480 phone frame</figcaption></figure></div>
+
+<h3>Dialog (K52): the wide placement and a fixed body, three steps of different length</h3>
+<p class="note">The three panels are the same dialog at three steps; the body keeps one height, so the dialog does not change size from step to step.</p>
+<div class="cols-s">
+<div class="ds-dialog ds-dialog--inline" data-variant="wide" data-body="fixed"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="fx-t1" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="fx-t1">Your cabinet</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body"><p class="ds-dialog__text">Welcome to your cabinet. Here you see the projects you hold parts of, what each earned, and what is waiting for you. The money on your account is split into what you can spend and what is held for a purchase in progress. Documents you have signed are always one tap away, and every figure on a screen says which account it belongs to. You can come back to this tour from the settings at any time.</p></div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Skip</button><button type="button" class="ds-button">Next</button></div>
+</div></div>
+<div class="ds-dialog ds-dialog--inline" data-variant="wide" data-body="fixed"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="fx-t2" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="fx-t2">Buy parts</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body"><p class="ds-dialog__text">Choose a project, choose how many parts, confirm. The agreement for each purchase is shown before you pay.</p></div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Back</button><button type="button" class="ds-button">Next</button></div>
+</div></div>
+<div class="ds-dialog ds-dialog--inline" data-variant="wide" data-body="fixed"><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="fx-t3" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="fx-t3">Payouts</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body"><p class="ds-dialog__text">When a project pays out, the amount arrives on your account and appears in your history with the date and the project.</p></div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary">Back</button><button type="button" class="ds-button">Done</button></div>
+</div></div>
+</div>
+
+<h3>App shell (K25): the labelled rail with the wordmark, open and folded</h3>
+<div class="cols"><div class="stack"><div class="padded"><h3>Open</h3><div class="specimen"><div class="ds-shell ds-shell--framed" data-tier="wide">
+  <header class="ds-header"><h1 class="ds-header__title">Portfolio</h1><div class="ds-header__actions"><button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg></button></div></header>
+  <main class="ds-shell__main"><p class="ds-shell__lead">The rail folds to icons and unfolds; the page keeps the state, the system only draws it.</p></main>
+  <nav class="ds-nav" aria-label="Main open">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../brand/aivis-mark.svg" alt=""><svg class="ds-nav__wordmark" viewBox="237 453 120 25" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="257.17" y="461.49" width="2.86" height="14.96"/><circle cx="258.6" cy="457.31" r="1.85"/><rect x="280.22" y="461.49" width="2.86" height="14.96"/><circle cx="281.66" cy="457.31" r="1.85"/><path d="M253.6,467.69c0-9.06-10.51-7.22-13.09-4.37l1.12,2.07c2.91-2.1,9-3.08,8.71,2.04h-5.4c-2.56,0-5.09,2.19-5.01,4.91.15,5.03,7.84,6.23,10.67,2.55v1.56h2.99c.06-4.34,0-4.99,0-8.76ZM245.47,474.49c-3.39-.31-3.3-4.54,0-4.54h4.98c0,3.22-2.03,4.8-4.98,4.54Z"/><path d="M355.46,468.39c0-8.27-10.61-9.92-13.64-3.31-4.17,9.09,6.28,15.68,12.72,9.19l-1.48-1.85c-2.8,3.22-8.91,2.06-9.3-2.47h11.71v-1.56ZM343.75,467.73c.63-5.5,8.68-5.63,9.17,0h-9.17Z"/><path d="M313.98,461.27c-10.02.8-9.49,16.24,1.65,15.44,10.08-.73,9.29-16.3-1.65-15.44ZM315.1,474.37c-7.08.34-7.34-10.02-1.13-10.76,7.48-.89,8.07,10.43,1.13,10.76Z"/><path d="M327.76,463.31v-1.82h-2.6v14.96h2.66c0-3.02-.06-4.9-.06-7.57,0-5.56,7.81-6.41,7.81-2.1v9.67h2.73v-9.95c0-5.41-7.31-6.94-10.54-3.19Z"/><path d="M290.6,465.59c-.08-3.07,5.96-2.15,7.54-.98l.72-2.08c-3.11-2.08-10.44-2.42-10.98,2.68-.61,5.76,7.93,4.07,8.86,6.59.31.83,0,1.59-.72,2.07-2.01,1.35-5.75.11-7.63-1.06l-.91,2.19c3.99,2.99,13.25,3.29,12.03-3.64-.75-4.28-8.84-2.79-8.92-5.78Z"/><polygon points="270.16 473.06 265.09 461.49 262.16 461.49 268.58 476.46 271.7 476.46 277.9 461.49 274.99 461.49 270.16 473.06"/><circle cx="303.76" cy="474.87" r="1.85"/></g></svg></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+      <li><a class="ds-navitem" href="/news"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><span class="ds-navitem__label">News and events</span></a></li>
+      <li><a class="ds-navitem" href="/support"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg><span class="ds-navitem__label">Support</span></a></li>
+    </ul>
+    <div class="ds-nav__foot"><button type="button" class="ds-button ds-button--ghost ds-button--icon ds-nav__collapse" data-nav-toggle aria-expanded="true" aria-label="Collapse the menu" data-label-collapse="Collapse the menu" data-label-expand="Expand the menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></button></div>
+  </nav>
+</div></div></div></div><div class="stack"><div class="padded"><h3>Folded (data-nav="collapsed")</h3><div class="specimen"><div class="ds-shell ds-shell--framed" data-tier="wide" data-nav="collapsed">
+  <header class="ds-header"><h1 class="ds-header__title">Portfolio</h1><div class="ds-header__actions"><button class="ds-button ds-button--ghost ds-button--icon" type="button" aria-label="Notifications"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-bell"/></svg></button></div></header>
+  <main class="ds-shell__main"><p class="ds-shell__lead">The rail folds to icons and unfolds; the page keeps the state, the system only draws it.</p></main>
+  <nav class="ds-nav" aria-label="Main folded">
+    <ul class="ds-nav__list">
+      <li class="ds-nav__brand"><a class="ds-nav__logo" href="/" aria-label="AIVIS, home"><img class="ds-nav__mark" src="../brand/aivis-mark.svg" alt=""><svg class="ds-nav__wordmark" viewBox="237 453 120 25" aria-hidden="true" focusable="false"><g fill="currentColor"><rect x="257.17" y="461.49" width="2.86" height="14.96"/><circle cx="258.6" cy="457.31" r="1.85"/><rect x="280.22" y="461.49" width="2.86" height="14.96"/><circle cx="281.66" cy="457.31" r="1.85"/><path d="M253.6,467.69c0-9.06-10.51-7.22-13.09-4.37l1.12,2.07c2.91-2.1,9-3.08,8.71,2.04h-5.4c-2.56,0-5.09,2.19-5.01,4.91.15,5.03,7.84,6.23,10.67,2.55v1.56h2.99c.06-4.34,0-4.99,0-8.76ZM245.47,474.49c-3.39-.31-3.3-4.54,0-4.54h4.98c0,3.22-2.03,4.8-4.98,4.54Z"/><path d="M355.46,468.39c0-8.27-10.61-9.92-13.64-3.31-4.17,9.09,6.28,15.68,12.72,9.19l-1.48-1.85c-2.8,3.22-8.91,2.06-9.3-2.47h11.71v-1.56ZM343.75,467.73c.63-5.5,8.68-5.63,9.17,0h-9.17Z"/><path d="M313.98,461.27c-10.02.8-9.49,16.24,1.65,15.44,10.08-.73,9.29-16.3-1.65-15.44ZM315.1,474.37c-7.08.34-7.34-10.02-1.13-10.76,7.48-.89,8.07,10.43,1.13,10.76Z"/><path d="M327.76,463.31v-1.82h-2.6v14.96h2.66c0-3.02-.06-4.9-.06-7.57,0-5.56,7.81-6.41,7.81-2.1v9.67h2.73v-9.95c0-5.41-7.31-6.94-10.54-3.19Z"/><path d="M290.6,465.59c-.08-3.07,5.96-2.15,7.54-.98l.72-2.08c-3.11-2.08-10.44-2.42-10.98,2.68-.61,5.76,7.93,4.07,8.86,6.59.31.83,0,1.59-.72,2.07-2.01,1.35-5.75.11-7.63-1.06l-.91,2.19c3.99,2.99,13.25,3.29,12.03-3.64-.75-4.28-8.84-2.79-8.92-5.78Z"/><polygon points="270.16 473.06 265.09 461.49 262.16 461.49 268.58 476.46 271.7 476.46 277.9 461.49 274.99 461.49 270.16 473.06"/><circle cx="303.76" cy="474.87" r="1.85"/></g></svg></a></li>
+      <li><a class="ds-navitem" href="/home"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-home"/></svg><span class="ds-navitem__label">Home</span></a></li>
+      <li><a class="ds-navitem" href="/portfolio" aria-current="page"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg><span class="ds-navitem__label">Portfolio</span></a></li>
+      <li><a class="ds-navitem" href="/news"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-file-text"/></svg><span class="ds-navitem__label">News and events</span></a></li>
+      <li><a class="ds-navitem" href="/support"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-message-circle"/></svg><span class="ds-navitem__label">Support</span></a></li>
+    </ul>
+    <div class="ds-nav__foot"><button type="button" class="ds-button ds-button--ghost ds-button--icon ds-nav__collapse" data-nav-toggle aria-expanded="false" aria-label="Expand the menu" data-label-collapse="Collapse the menu" data-label-expand="Expand the menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></button></div>
+  </nav>
+</div></div></div></div></div>
+
+<h3>Document viewer (K36): the wide placement, a frame that follows the theme</h3>
+<p class="note">The frame stands on the body's ground; the document inside paints none and takes the text and link colours the page gives it (here read from the tokens, so the day and night buttons change the document too).</p>
+<div class="ds-docviewer ds-docviewer--inline" data-variant="wide"><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="dvw-t" tabindex="-1">
+  <div class="ds-docviewer__head"><h2 class="ds-docviewer__title" id="dvw-t">Purchase agreement</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="dvw-t"><iframe class="ds-docviewer__frame" sandbox="" title="Purchase agreement" data-doc></iframe></div>
+  <div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary">Close</button><a class="ds-button ds-button--primary" href="#r13"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-download"/></svg>Save a copy</a></div>
+</div></div>
+
+<h3>The two wide windows over the page</h3>
+<div class="frame-row"><button type="button" class="ds-button ds-button--secondary" data-size="sm" data-docviewer-open="dv-w">Open the wide document viewer</button><button type="button" class="ds-button ds-button--secondary" data-size="sm" data-dialog-open="dlg-w">Open the wide dialog with steps</button></div>
+<div class="ds-docviewer" id="dv-w" data-variant="wide" hidden><div class="ds-docviewer__dialog" role="dialog" aria-modal="true" aria-labelledby="dv-w-t" tabindex="-1">
+  <div class="ds-docviewer__head"><h2 class="ds-docviewer__title" id="dv-w-t">Cabinet terms</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" aria-label="Close" data-docviewer-close><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-docviewer__body" tabindex="0" role="region" aria-labelledby="dv-w-t"><h1>Sample terms</h1><p>This is sample text. The real document is the legal text the cabinet shows.</p><h2>1. Sample clause</h2><p>Sample clause text, long enough to wrap on a narrow window and to show the reading width of a page.</p></div>
+  <div class="ds-docviewer__actions"><button type="button" class="ds-button ds-button--secondary" data-docviewer-close>Close</button></div>
+</div></div>
+<div class="ds-dialog" id="dlg-w" data-variant="wide" data-body="fixed" hidden><div class="ds-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="dlg-w-t" tabindex="-1">
+  <div class="ds-dialog__head"><h2 class="ds-dialog__title" id="dlg-w-t">How the cabinet works</h2><button type="button" class="ds-button ds-button--ghost ds-button--icon" data-size="sm" data-dialog-close aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <div class="ds-dialog__body"><p class="ds-dialog__text" data-step-text></p></div>
+  <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary" data-step-back>Back</button><button type="button" class="ds-button" data-step-next>Next</button></div>
+</div></div>
+</div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>
 <script>
 (function () {
@@ -347,6 +442,30 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
     var d = e.target.closest('[data-dir-set]'); if (d) { state.dir = d.getAttribute('data-dir-set'); apply(); }
   });
   frames().forEach(function (f) { f.addEventListener('load', apply); });
+})();
+</script>
+<script>
+(function () {
+  var STEPS = ["Welcome to your cabinet. Here you see the projects you hold parts of, what each earned, and what is waiting for you. The money on your account is split into what you can spend and what is held for a purchase in progress. Documents you have signed are always one tap away, and every figure on a screen says which account it belongs to. You can come back to this tour from the settings at any time.", "Choose a project, choose how many parts, confirm. The agreement for each purchase is shown before you pay.", "When a project pays out, the amount arrives on your account and appears in your history with the date and the project."];
+  /* the wide dialog with steps: one body height, whatever the step */
+  var dlg = document.getElementById('dlg-w');
+  if (dlg) {
+    var text = dlg.querySelector('[data-step-text]'), back = dlg.querySelector('[data-step-back]'), next = dlg.querySelector('[data-step-next]'), at = 0;
+    function show() { text.textContent = STEPS[at]; back.disabled = at === 0; next.textContent = at === STEPS.length - 1 ? 'Done' : 'Next'; }
+    next.addEventListener('click', function () { if (at === STEPS.length - 1) { dlg.hidden = true; at = 0; show(); } else { at += 1; show(); } });
+    back.addEventListener('click', function () { if (at > 0) { at -= 1; show(); } });
+    show();
+  }
+  /* the sandboxed document gets its text and link colours from the page's tokens, for the theme in force */
+  function paintDocs() {
+    var cs = getComputedStyle(document.documentElement);
+    var css = 'html,body{margin:0;padding:0;background:transparent;color:' + cs.getPropertyValue('--text-primary') + ';font-family:' + cs.getPropertyValue('--font-body') + ';font-size:' + cs.getPropertyValue('--fs-sm') + '}a{color:' + cs.getPropertyValue('--primary') + '}';
+    document.querySelectorAll('iframe[data-doc]').forEach(function (f) {
+      f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>' + css + '</style></head><body><h1>Sample agreement</h1><p>This is sample text. A document in a sandboxed frame paints no ground of its own; it takes the text and link colours the page gives it, <a href="#">like this link</a>.</p><h2>1. Sample clause</h2><p>Sample clause text.</p></body></html>';
+    });
+  }
+  paintDocs();
+  document.addEventListener('click', function (e) { if (e.target.closest('[data-theme-set]')) setTimeout(paintDocs, 0); });
 })();
 </script>
 <script src="../components/components.js"></script>

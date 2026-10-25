@@ -862,11 +862,11 @@
     "linked from a button (button.ds-row__link: the same look, start alignment, whole width and stretched hit area as the anchor form)"
    ],
    "slots": [
-    "lead (an icon box, or a thumbnail: .ds-thumb)",
+    "lead (the icon alone, --icon-size-md, no box and no tint; or a thumbnail: .ds-thumb; the date leaf keeps its box)",
     "body (title, meta)",
     "trail (value, badge, chevron, or controls: a button, a link, a menu)"
    ],
-   "tone": "data-tone=\"success|warning|danger|accent|neutral\" on .ds-row__lead (and on .ds-lead, the same box outside a row); the primary tint without it",
+   "tone": "data-tone=\"success|warning|danger|accent|neutral\" on .ds-row__lead (the colour of the bare icon; --icon-secondary without it) and on .ds-lead, the tinted box outside a row",
    "narrow": "a row too narrow for the text and the trail drops the trail under the text, to the end edge (the body keeps --center-sm as its measure)",
    "thumbnail": ".ds-thumb: a square image in the lead slot (--size-xl; data-size=\"lg\" is --size-4xl), object-fit cover, a fallback that holds an icon",
    "figure_tone": "data-tone=\"success|danger\" on .ds-row__value (a credit or a debit, a profit or a loss) and on .ds-row__title (a danger title); the same attribute on a K49 dd and on a K07 .ds-card__delta",
@@ -884,6 +884,7 @@
    "button form: the same states as the anchor form"
   ],
   "tokens": [
+   "--accent",
    "--accent-subtle",
    "--accent-subtle-text",
    "--bg-subtle",
@@ -905,6 +906,7 @@
    "--fs-sm",
    "--fs-xs",
    "--icon-secondary",
+   "--icon-size-md",
    "--lh-snug",
    "--lh-tight",
    "--primary-subtle",
@@ -922,6 +924,7 @@
    "--text-primary",
    "--text-secondary",
    "--text-tertiary",
+   "--warning",
    "--warning-subtle",
    "--warning-subtle-text",
    "--z-content"
@@ -1007,7 +1010,8 @@
     "banner (.ds-shell__banner, above the header, the look of the warning Alert, kept at the top)",
     "leading slot (.ds-header__lead, the back control)",
     "figure (.ds-header__figure, a balance or a commission as a button)",
-    "menu mark (.ds-nav__brand, from 880 with the rails, never on the tab bar)",
+    "menu mark (.ds-nav__brand, from 880 with the rails, never on the tab bar; the wordmark .ds-nav__wordmark stands beside the mark in the labelled rail only)",
+    "collapse control (.ds-nav__foot > button.ds-nav__collapse[data-nav-toggle], the last child of nav.ds-nav, in the labelled rail only; data-nav=\"collapsed\" on .ds-shell draws the labelled rail as the icon rail)",
     "measure (the main region is --maxw wide and centred; data-measure=\"wide\": --maxw-wide)",
     "lead line (.ds-shell__lead)",
     "toolbar (.ds-shell__toolbar: filters at the start, one primary action at the end)",
@@ -1823,7 +1827,7 @@
   "markup": "markup/document-viewer.html",
   "class_root": ".ds-docviewer, .ds-docviewer__dialog, .ds-docviewer__body, .ds-docviewer__actions",
   "variants": {
-   "placement": "data-variant=\"sheet\" (a bottom sheet, the cabinet AgreementSheet) or \"modal\" (centred, the cabinet LegalDocModal)",
+   "placement": "data-variant=\"sheet\" (a bottom sheet, the cabinet AgreementSheet), \"modal\" (centred, the cabinet LegalDocModal) or \"wide\" (the web: from 640 a centred window --maxw-doc wide and 90dvh high, under 640 the bottom sheet)",
    "inline": "--inline draws the dialog in the flow of a page",
    "content": "in-page HTML, or a sandboxed iframe (ds-docviewer__frame)",
    "events": [
@@ -1832,7 +1836,7 @@
    ]
   },
   "sizes": [
-   "sheet up to --maxw-prose; modal up to --maxw-form-wide; at most 90dvh high"
+   "sheet up to --maxw-prose; modal up to --maxw-form-wide; wide up to --maxw-doc from 640; at most 90dvh high"
   ],
   "states": [
    "closed (hidden)",
@@ -1859,9 +1863,9 @@
    "--fs-sm",
    "--lh-normal",
    "--lh-snug",
+   "--maxw-doc",
    "--maxw-form-wide",
    "--maxw-prose",
-   "--paper",
    "--radius-lg",
    "--radius-modal",
    "--radius-sm",
@@ -1881,8 +1885,8 @@
   ],
   "accessibility": "A dialog: role=\"dialog\" with aria-modal=\"true\" and aria-labelledby naming its heading, tabindex=\"-1\" so the focus can enter it. The focus moves to the dialog on open, Tab and Shift+Tab stay inside it, Escape, the close button and a click on the veil close it, and the focus returns to the button that opened it (components.js). The body is a scrollable region with tabindex=\"0\" and a name so the keyboard can scroll it. A download is a real link (a with the app href and download). An iframe keeps sandbox=\"\" and a title. Loading sets aria-busy and a status text; an error is an Alert with role=\"alert\". At the 480 width the actions take the full width and the sheet starts from the safe-area inset. The page behind is not made inert and its scroll is not locked by this component. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard.",
   "purpose": "Read a document (a purchase agreement, an ownership certificate, a legal text of the sign-up) and take a copy of it.",
-  "usage": "Use the sheet for a document opened from a row of a position and the modal for the legal texts of the sign-up, as the cabinet does. The component carries no price and no payment term; the text is the app document. The veil behind the dialog is the token --scrim; in-page text follows the theme; the frame of a sandboxed document is --paper, white in both themes.",
-  "notes": "The sheet: a 60 percent high framed document on a white canvas, Close and Save in a row, the loading and error states, on a page-ground sheet with a deep shadow and a 520 wide cap; the modal: a framed scrolling body with prose styles. The veil is --scrim, --neutral-950 at 50 percent in both themes. The document paints no ground, so the frame is --paper, white in both themes. An Email button is the screen's, not part of the component."
+  "usage": "Use the sheet for a document opened from a row of a position and the modal for the legal texts of the sign-up, as the cabinet does. The component carries no price and no payment term; the text is the app document. The veil behind the dialog is the token --scrim; in-page text follows the theme; the frame of a sandboxed document follows it too (--bg-surface with --text-primary), and the app adds the text and link colours to the document it shows.",
+  "notes": "The sheet: a 60 percent high framed document on the theme's document ground, Close and Save in a row, the loading and error states, on a page-ground sheet with a deep shadow and a 520 wide cap; the modal: a framed scrolling body with prose styles. The veil is --scrim, --neutral-950 at 50 percent in both themes. The document paints no ground, so the frame is --bg-surface, light by day and dark by night (decided by the owner, 2026-10-24). An Email button is the screen's, not part of the component."
  },
  {
   "id": "K44",
@@ -1934,7 +1938,7 @@
   "accessibility": "A Row list row whose title and meta sit inside ONE real link (a with href and download), so the link name carries the file type and size in text (\"Signed agreement PDF, 218 KB, English\"). The trailing icon is decorative. The state is also said in words in a status element (role=\"status\") filled from data-msg-downloading, data-msg-downloaded and data-msg-failed on the row. An unavailable row has no link and says in text that the file is not there yet (aria-disabled=\"true\"). Focus is the Row list outline around the row. Focus is a --focus-width solid outline in --focus-ring at --focus-offset. Motion is under the reduced-motion guard. A row whose file the app fetches by its own handler holds a button in place of the link, with the same title and meta inside it, so its name carries the file type and size (\"Signed agreement PDF, 218 KB, English\"); it has no href and no download, so it is never offered as a link to open in a new tab or to copy. The app sets data-state=\"downloading\" and aria-busy=\"true\" on the row when the click starts, ignores a second activation while the state is downloading, then sets data-state=\"downloaded\" or removes the state, and says the state in words in .ds-docrow__status (role=\"status\"). components.js reacts to the same click and emits ds-docrow-download with a null href.",
   "purpose": "Download a file listed in a screen: attachments of a company, documents of a staff or an investor, the signed agreement of a booking.",
   "usage": "Use it for any file a screen lists. The file type and size come from the file, formatted in the page language. A file that is not uploaded yet is the unavailable row, never a dead link. In the cabinet the href is the file's route and the app handles the click (an API call for a short-lived presigned link, then a navigation: frontend/src/api/attachments.ts), then calls AivisDS.docrow.done or .fail; nothing calls done for a plain download link, so the app does. A file the browser cannot open from an address (it needs the session, or the address is short-lived) is the button form; a file that has an address of its own is the link.",
-  "notes": "An icon box, a title, the description, the file name and size, a download icon; the download is a real link, not a button; on the Row list (K23)."
+  "notes": "The icon alone (the Row list's bare lead), a title, the description, the file name and size, a download icon; the download is a real link, not a button; on the Row list (K23)."
  },
  {
   "id": "KN1",
@@ -2466,8 +2470,10 @@
   "variants": {
    "placement": [
     "sheet (default: from the bottom, a cap of --maxw-prose)",
-    "modal (data-variant=\"modal\": centred, a cap of --maxw-form-wide)"
+    "modal (data-variant=\"modal\": centred, a cap of --maxw-form-wide)",
+    "wide (data-variant=\"wide\": from 640 centred at --maxw-prose, under 640 the bottom sheet; the placement of the web)"
    ],
+   "body_height": "data-body=\"fixed\" on .ds-dialog: the body keeps one height (--center-lg) at every step of a dialog that changes its content; longer content scrolls in it",
    "role": [
     "dialog (edit, details)",
     "alertdialog (a confirm)"
@@ -2493,6 +2499,7 @@
    "--bg-subtle",
    "--bg-surface",
    "--border-subtle",
+   "--center-lg",
    "--focus-offset",
    "--focus-ring",
    "--focus-width",

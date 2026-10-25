@@ -643,3 +643,24 @@
     src.textContent = ''; src.appendChild(built);
   });
 })();
+
+/* ---------- K25 App shell: the collapse control of the labelled rail ----------
+   A click on [data-nav-toggle] folds the rail to icons only and back: it sets data-nav="collapsed" on the closest .ds-shell (removes it to unfold),
+   keeps aria-expanded on the button and switches its accessible name between data-label-collapse and data-label-expand (the page fills both from its
+   translation table). It saves nothing: the event ds-nav-toggle (detail.collapsed) is for the app, which keeps the state where it keeps its settings and
+   sets data-nav on load. */
+(function () {
+  'use strict';
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-nav-toggle]');
+    if (!btn) return;
+    var shell = btn.closest('.ds-shell');
+    if (!shell) return;
+    var collapsed = shell.getAttribute('data-nav') !== 'collapsed';
+    if (collapsed) shell.setAttribute('data-nav', 'collapsed'); else shell.removeAttribute('data-nav');
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    var label = collapsed ? btn.getAttribute('data-label-expand') : btn.getAttribute('data-label-collapse');
+    if (label) btn.setAttribute('aria-label', label);
+    btn.dispatchEvent(new CustomEvent('ds-nav-toggle', { bubbles: true, detail: { collapsed: collapsed } }));
+  });
+})();

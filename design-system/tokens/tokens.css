@@ -229,6 +229,7 @@
   --maxw-prose: 680px;
   --maxw-form: 360px;
   --maxw-form-wide: 400px;
+  --maxw-doc: 800px;
   --header-height: 64px;
   /* ---- Layers ---- */
   --z-content: 1;

@@ -16,4 +16,5 @@
 9. Colour: only `currentColor`; no hard-coded colour, no opacity, no gradient.
 10. Naming: symbol id `i-<name>`, name in kebab-case as counted by compare/count.py (lowercase Lucide names, aliases normalised).
 11. Direction: left/right pairs are exact mirrors (arrow-left and arrow-right); the pointing tip sits at 4.5 or 19.5.
-12. Size: the rocket, the spark and the qr are used from 24 px up; the qr is three finder squares and dots that fill in at 16 px.
+12. Line weight at every size (decided by the owner, 2026-10-25): a stroke is drawn in screen pixels, 1.5 at 16, 20, 24, 32 and 48 alike, so a small icon is not thinner and a large one not heavier than the side panel's. `components.css` sets `vector-effect: non-scaling-stroke` on the sprite's shapes; an icon drawn outside the sprite takes the same property.
+13. Size: the rocket, the spark and the qr are used from 24 px up; the qr is three finder squares and dots that fill in at 16 px.

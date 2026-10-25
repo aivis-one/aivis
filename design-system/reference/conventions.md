@@ -23,7 +23,7 @@ Every line below is a decision of the owner with its date, a measurement, or a v
 | faces | Commissioner 700 and 800, Inter 400, 600 and 700, JetBrains Mono 400 and 700, each in latin, latin-ext, cyrillic, cyrillic-ext and greek; Noto Sans Arabic; no other face | decided by the owner, 2026-10-16, 2026-10-17 |
 | type roles | display Commissioner 800; h1 to h4 Commissioner 700; text Inter 400; the smallest step Inter 600 | `../tokens/type-recipe.json` |
 | widths | 480, 640, 880 and 1120 pixels, `--bp-sm`, `--bp-md`, `--bp-lg`, `--bp-xl`; a media query writes the number because a custom property cannot be read in a media condition | decided by the owner, 2026-10-16; `../tokens/tokens.md` |
-| content measures | `--maxw` 1080, `--maxw-wide` 1240, `--maxw-prose` 680, `--maxw-form` 360, `--maxw-form-wide` 400 | `../tokens/tokens.md` |
+| content measures | `--maxw` 1080, `--maxw-wide` 1240, `--maxw-prose` 680, `--maxw-form` 360, `--maxw-form-wide` 400, `--maxw-doc` 800 | `../tokens/tokens.md` |
 | accent and warning | `#B1581B` by day (amber-600) | decided by the owner, 2026-10-16 |
 | accent hover | amber-700 `#9A4410` by day | decided by the owner, 2026-10-17 |
 | quiet text | `--text-tertiary` `#6B7785`; by day it stands on white surfaces only; on the day page ground and the day card ground `--text-secondary` stands instead; by night tertiary text stands on every night ground (4.81 or better on every ground) | decided by the owner, 2026-10-16, 2026-10-17; measured (`../tokens/contrast.json`) |
@@ -32,7 +32,7 @@ Every line below is a decision of the owner with its date, a measurement, or a v
 | input border | `--border-input`: `#7F97AE` by day, `#506579` by night; inputs only; card borders stay as they are (`--border-subtle`, as in `../elements/README.md`) | decided by the owner, 2026-10-17; measured (`../tokens/contrast.json`) |
 | input border width | `--border-input-width`, 1 px | decided by the owner, 2026-10-17 |
 | focus ring | `--focus-ring`: azure-500 `#217AB6` by day, azure-300 `#37A6E6` by night; never the accent; the focus indicator is a `--focus-width` (2 px) solid outline in `--focus-ring` with a `--focus-offset` (2 px) offset, and no `--shadow-focus` halo | decided by the owner, 2026-10-17; measured (`../tokens/contrast.json`) |
-| icons | one set, 97 icons, drawn on a 24 by 24 grid, stroke 1.5, round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | decided by the owner, 2026-10-16, 2026-10-18 |
+| icons | one set, 97 icons, drawn on a 24 by 24 grid, stroke 1.5 screen pixels at every icon size (non-scaling), round caps and joins, nothing filled, `currentColor`; symbol id `i-<name>`; a key of `../components/icons/icons.json` only | decided by the owner, 2026-10-16, 2026-10-18, 2026-10-25 |
 | rocket, spark and qr | used from 24 pixels up | decided by the owner, 2026-10-17, 2026-10-18 |
 | the hexagon | the hexagon is the logo and the decorative elements; it is never a rule for the icons | decided by the owner, 2026-10-16 |
 | brand marks | the colour logo is unchanged; the mark drawn in lines has no inner facet lines | decided by the owner, 2026-10-17 |

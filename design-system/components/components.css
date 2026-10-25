@@ -28,6 +28,10 @@
   color: inherit;
 }
 .ds-icon--md { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
+/* One line weight at every size (decided by the owner, 2026-10-25): the sprite draws every stroke at 1.5 on its 24 grid, and a stroke that scales with the
+   symbol is 1 pixel at 16 and 3 at 48. A stroke drawn in screen pixels is 1.5 at every size, the weight the side panel's 24 pixel icons have. The rule
+   names the sprite's own shapes, so it holds for every key and every icon size (--icon-size-*, --size-*) of every page that carries the sprite. */
+symbol :is(path, circle, rect, line, polyline, polygon, ellipse) { vector-effect: non-scaling-stroke; }
 .ds-sr-only {
   position: absolute;
   inline-size: thin;
@@ -1317,8 +1321,8 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-row:has(.ds-row__link):active { border-color: var(--border-input-hover); }
 .ds-row__link { color: inherit; text-decoration: none; }
 .ds-row__link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.ds-row__lead,
-.ds-lead {
+.ds-lead,
+.ds-row__lead.ds-dateleaf {
   display: grid;
   place-items: center;
   flex: none;
@@ -1328,6 +1332,17 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   background: var(--primary-subtle);
   color: var(--primary-subtle-text);
 }
+/* The lead of a row is its icon alone, drawn as the side panel draws its icons: --icon-size-md, no box, no tint (decided by the owner, 2026-10-25).
+   The date leaf keeps its box, a number and a month need a ground; the tone of the icon is its colour. */
+.ds-row__lead:not(.ds-dateleaf, .ds-lead) {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--icon-size-md);
+  block-size: var(--icon-size-md);
+  color: var(--icon-secondary);
+}
+.ds-row__lead:not(.ds-dateleaf, .ds-lead) > .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
 .ds-row__body { flex: 1; min-inline-size: 0; display: grid; gap: calc(var(--space-1) / 2); }
 .ds-row__title { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-snug); overflow-wrap: anywhere; }
 .ds-row__meta { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-tertiary); }
@@ -1622,6 +1637,90 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   .ds-shell:not([data-tier]) .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
 }
 
+/* The wordmark beside the mark, in the labelled rail only (the wide tier); the same lettering and height as the auth shell's (.ds-auth__wordmark), inline so it takes the text colour */
+.ds-nav__wordmark { display: none; block-size: calc(var(--size-sm) / 2); inline-size: auto; flex: none; margin-inline-start: var(--space-2); color: var(--text-primary); }
+.ds-shell[data-tier="wide"] .ds-nav__wordmark { display: block; }
+@media (min-width: 1120px) {
+  .ds-shell:not([data-tier]) .ds-nav__wordmark { display: block; }
+}
+
+/* The collapse control at the bottom of the labelled rail: a ghost icon toggle (K01) that folds the rail to icons only and back. It stands in .ds-nav__foot,
+   the last child of nav.ds-nav, kept at the bottom edge of the window while the page scrolls. The tab bar and the icon rail have nothing to fold and do not show it.
+   The state is data-nav="collapsed" on .ds-shell (set by components.js; the app keeps it where it keeps its settings). */
+.ds-nav__foot { display: none; }
+.ds-nav__collapse .ds-icon:last-child { display: none; }
+.ds-nav__collapse .ds-icon:dir(rtl) { scale: -1 1; }
+.ds-shell[data-tier="wide"] .ds-nav { display: flex; flex-direction: column; }
+.ds-shell[data-tier="wide"] .ds-nav__foot {
+  position: sticky;
+  inset-block-end: var(--space-3);
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: auto;
+  padding-block: var(--space-3);
+}
+@media (min-width: 1120px) {
+  .ds-shell:not([data-tier]) .ds-nav { display: flex; flex-direction: column; }
+  .ds-shell:not([data-tier]) .ds-nav__foot {
+    position: sticky;
+    inset-block-end: var(--space-3);
+    display: flex;
+    justify-content: flex-end;
+    margin-block-start: auto;
+    padding-block: var(--space-3);
+  }
+}
+
+/* Collapsed: the labelled rail drawn as the icon rail (72 wide, the label as the accessible name only, the mark alone, no wordmark) */
+.ds-shell[data-tier="wide"][data-nav="collapsed"] { grid-template-columns: var(--_rail) minmax(0, 1fr); }
+.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-navitem {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-navitem__label {
+  position: absolute;
+  inline-size: thin;
+  block-size: thin;
+  margin: calc(var(--border-input-width) * -1);
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__logo { justify-content: center; padding-inline: 0; }
+.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__wordmark { display: none; }
+.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__foot { justify-content: center; }
+.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-icon:first-child { display: none; }
+.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-icon:last-child { display: block; }
+@media (min-width: 1120px) {
+  .ds-shell:not([data-tier])[data-nav="collapsed"] { grid-template-columns: var(--_rail) minmax(0, 1fr); }
+  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-navitem {
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-1);
+    padding-inline: var(--space-1);
+    font-size: var(--fs-xs);
+    text-align: center;
+  }
+  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-navitem__label {
+    position: absolute;
+    inline-size: thin;
+    block-size: thin;
+    margin: calc(var(--border-input-width) * -1);
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__logo { justify-content: center; padding-inline: 0; }
+  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__wordmark { display: none; }
+  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__foot { justify-content: center; }
+}
+
 /* the screen's own parts in main: the lead line under the title, the toolbar, the action strip */
 .ds-shell__lead { margin: 0; max-inline-size: var(--maxw-prose); font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-secondary); }
 .ds-shell__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-inline-size: 0; }
@@ -1717,11 +1816,17 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-block-start: var(--space-2); }
 
 /* ===== K23 Row list, additions: the tone of a lead icon (the same box stands outside a row as .ds-lead) ===== */
-:is(.ds-row__lead, .ds-lead)[data-tone="success"] { background: var(--success-subtle); color: var(--success-subtle-text); }
-:is(.ds-row__lead, .ds-lead)[data-tone="warning"] { background: var(--warning-subtle); color: var(--warning-subtle-text); }
-:is(.ds-row__lead, .ds-lead)[data-tone="danger"] { background: var(--danger-subtle); color: var(--danger-subtle-text); }
-:is(.ds-row__lead, .ds-lead)[data-tone="accent"] { background: var(--accent-subtle); color: var(--accent-subtle-text); }
-:is(.ds-row__lead, .ds-lead)[data-tone="neutral"] { background: var(--bg-subtle); color: var(--text-secondary); }
+:is(.ds-row__lead.ds-dateleaf, .ds-lead)[data-tone="success"] { background: var(--success-subtle); color: var(--success-subtle-text); }
+:is(.ds-row__lead.ds-dateleaf, .ds-lead)[data-tone="warning"] { background: var(--warning-subtle); color: var(--warning-subtle-text); }
+:is(.ds-row__lead.ds-dateleaf, .ds-lead)[data-tone="danger"] { background: var(--danger-subtle); color: var(--danger-subtle-text); }
+:is(.ds-row__lead.ds-dateleaf, .ds-lead)[data-tone="accent"] { background: var(--accent-subtle); color: var(--accent-subtle-text); }
+:is(.ds-row__lead.ds-dateleaf, .ds-lead)[data-tone="neutral"] { background: var(--bg-subtle); color: var(--text-secondary); }
+/* the tone of a row's bare icon is its colour (each stands on the surface at 4.5 or better in both themes, contrast.json) */
+.ds-row__lead:not(.ds-dateleaf, .ds-lead)[data-tone="success"] { color: var(--success); }
+.ds-row__lead:not(.ds-dateleaf, .ds-lead)[data-tone="warning"] { color: var(--warning); }
+.ds-row__lead:not(.ds-dateleaf, .ds-lead)[data-tone="danger"] { color: var(--danger); }
+.ds-row__lead:not(.ds-dateleaf, .ds-lead)[data-tone="accent"] { color: var(--accent); }
+.ds-row__lead:not(.ds-dateleaf, .ds-lead)[data-tone="neutral"] { color: var(--icon-secondary); }
 
 /* ===== K49 Key-value list (a dl: the term at the start, the value at the end) ===== */
 .ds-kv { display: grid; margin: 0; min-inline-size: 0; }
@@ -2378,13 +2483,21 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-docviewer__body :is(ul, ol) { margin: 0 0 var(--space-3); padding-inline-start: var(--space-4-lg); }
 .ds-docviewer__body li { margin-block-end: var(--space-1); }
 .ds-docviewer__body table { display: block; max-inline-size: 100%; overflow-x: auto; }
-.ds-docviewer__frame { display: block; inline-size: 100%; block-size: 100%; min-block-size: var(--center-lg); border: 0; background: var(--paper); } /* a sandboxed document paints no ground and expects white */
+.ds-docviewer__frame { display: block; inline-size: 100%; block-size: 100%; min-block-size: var(--center-lg); border: 0; background: var(--bg-surface); color: var(--text-primary); } /* a sandboxed document paints no ground: the frame's ground is the body's, light by day and dark by night, and the app gives the document the same text colour */
 .ds-docviewer__status { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); text-align: center; }
 .ds-docviewer__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 /* a specimen drawn in the flow of a page (not fixed): the dialog alone, on the page */
 .ds-docviewer--inline { position: static; z-index: auto; display: block; padding: 0; background: transparent; }
 .ds-docviewer--inline .ds-docviewer__dialog { max-block-size: none; border-radius: var(--radius-lg); padding-block-end: var(--space-5); box-shadow: var(--shadow-2); }
 .ds-docviewer--inline .ds-docviewer__body { max-block-size: var(--center-lg); }
+/* The wide placement (data-variant="wide"): from the 640 width (--bp-md) the viewer is a centred window the width of a printed page (--maxw-doc) and
+   most of the screen high; under 640 it is the bottom sheet, as on a phone. The web uses this one; the sheet and the modal stay for the phone. */
+@media (min-width: 640px) {
+  .ds-docviewer[data-variant="wide"] { align-items: center; padding: var(--space-5); }
+  .ds-docviewer[data-variant="wide"] .ds-docviewer__dialog { max-inline-size: var(--maxw-doc); block-size: 90dvh; border-radius: var(--radius-modal); padding-block-end: var(--space-5); }
+  .ds-docviewer--inline[data-variant="wide"] .ds-docviewer__dialog { block-size: auto; }
+  .ds-docviewer[data-variant="wide"] .ds-docviewer__body { min-block-size: var(--center-lg); }
+}
 
 /* ===== K44 Document row with download (a Row list row whose link is the file) ===== */
 .ds-docrow .ds-row__link { display: grid; gap: calc(var(--space-1) / 2); }
@@ -2394,7 +2507,7 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-docrow[data-state="downloading"] .ds-docrow__state { color: var(--primary); }
 .ds-docrow[data-state="downloading"] .ds-docrow__state .ds-icon { animation: ds-docrow-pulse var(--dur-slower) var(--ease-standard) infinite alternate; }
 .ds-docrow[data-state="downloaded"] .ds-docrow__state { color: var(--success); }
-.ds-docrow[data-state="downloaded"] .ds-row__lead { background: var(--success-subtle); color: var(--success-subtle-text); }
+.ds-docrow[data-state="downloaded"] .ds-row__lead { color: var(--success); }
 .ds-docrow[data-state="unavailable"] { background: var(--bg-subtle); border-style: dashed; opacity: 1; cursor: default; }
 .ds-docrow[data-state="unavailable"] .ds-row__meta { color: var(--text-secondary); }
 @keyframes ds-docrow-pulse { from { opacity: 1; } to { opacity: 0.45; } }
@@ -2518,6 +2631,14 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 /* a specimen drawn in the flow of a page (not fixed): the panel alone, on the page */
 .ds-dialog--inline { position: static; z-index: auto; display: block; padding: 0; background: transparent; }
 .ds-dialog--inline .ds-dialog__panel { max-block-size: none; border-radius: var(--radius-lg); padding-block-end: var(--space-5); box-shadow: var(--shadow-2); }
+/* The wide placement (data-variant="wide"): from the 640 width (--bp-md) a centred window at the reading width (--maxw-prose); under 640 the bottom sheet.
+   The fixed body (data-body="fixed" on .ds-dialog): the body keeps one height (--center-lg), so a dialog of steps does not jump from one step to the next;
+   a longer step scrolls inside it, and a screen too short for it shrinks the body, never the panel past its 90dvh. */
+@media (min-width: 640px) {
+  .ds-dialog[data-variant="wide"] { align-items: center; padding: var(--space-5); }
+  .ds-dialog[data-variant="wide"] .ds-dialog__panel { border-radius: var(--radius-modal); padding-block-end: var(--space-5); }
+}
+.ds-dialog[data-body="fixed"] .ds-dialog__body { box-sizing: border-box; flex: 0 1 var(--center-lg); }
 
 /* ===== K53 Copyable value (a value that wraps anywhere, with a copy button and a polite status) ===== */
 .ds-copy { display: grid; gap: var(--space-1); min-inline-size: 0; }
