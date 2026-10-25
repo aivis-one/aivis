@@ -107,6 +107,7 @@ describe('AppNav', () => {
     await logout.trigger('click')
     await flushPromises()
     expect(spy).toHaveBeenCalledTimes(1)
+    expect(w.vm.$router.currentRoute.value.path).toBe('/login')
   })
 
   it('has the wordmark beside the mark', async () => {

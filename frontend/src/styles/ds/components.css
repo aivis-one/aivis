@@ -1631,6 +1631,7 @@ button.ds-navitem:active { background: var(--primary-subtle); }
 @media (min-width: 880px) {
   .ds-shell:not([data-tier]) .ds-nav__brand { display: flex; align-items: center; min-block-size: var(--_header-h); }
 }
+.ds-shell:has(> .ds-shell__banner) .ds-nav__brand { min-block-size: max(var(--header-height), calc(var(--control-height-md) + var(--space-4) + var(--border-input-width))); }
 @media (min-width: 1120px) {
   .ds-shell:not([data-tier]) .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
 }
