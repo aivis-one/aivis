@@ -1,0 +1,35 @@
+<!-- AIVIS Purchase block (K55): the stack under a project's cover, inside a Card body. div.ds-purchase is a vertical stack; it holds, in this order as needed:
+     the step line (K32), the card title, the portfolio switch (Segmented control K31), .ds-purchase__head (the portfolio's name .ds-purchase__title and its bonus as a Badge K08, success),
+     the payment switch (Segmented control K31), .ds-purchase__parts (the count of parts; the bonus parts in span.ds-purchase__bonus, the success colour, the sign written in the text),
+     quiet lines (.ds-note: the price of a part, the money of an instalment and "no bonus", the parts by month), and the refusal (Alert K09 warning) with its Button or the Button "Buy".
+     The bonus is shown only for a payment at once; an instalment shows no bonus and says so in words. The strings are the translation tables'; these are examples. -->
+<article class="ds-card"><div class="ds-card__body ds-purchase">
+  <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 1 of 3"><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol><p class="ds-dots__text">Step 1 of 3 · Terms</p></div>
+  <h2 class="ds-card__title">Buy parts of SANKORD</h2>
+  <fieldset class="ds-segmented"><legend class="ds-sr-only">Portfolio</legend>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="amount" value="200">200 $</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="amount" value="1000" checked>1,000 $ · +5%</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="amount" value="5000">5,000 $ · +10%</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="amount" value="25000">25,000 $ · +20%</label>
+  </fieldset>
+  <div class="ds-purchase__head"><p class="ds-purchase__title">Portfolio 1,000 USD</p><span class="ds-badge ds-badge--success">+5 % bonus</span></div>
+  <fieldset class="ds-segmented"><legend class="ds-sr-only">Payment</legend>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="pay" value="0" checked>At once</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="pay" value="6">6 months</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="pay" value="12">12 months</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="pay" value="24">24 months</label>
+  </fieldset>
+  <p class="ds-purchase__parts">250,000 parts <span class="ds-purchase__bonus">+ 12,500 bonus</span></p>
+  <p class="ds-note">0.004 $ per part · paid at once 1,000 $</p>
+  <a class="ds-button ds-button--primary" href="#confirm">Buy</a>
+</div></article>
+
+<!-- On instalment: no bonus; the money of the instalment and the parts by month are quiet lines. -->
+<div class="ds-purchase">
+  <p class="ds-purchase__parts">250,000 parts over 6 months</p>
+  <p class="ds-note">5 × 166 $ and the last 170 $ · no bonus</p>
+  <p class="ds-note">Each month 10 % of the parts, with the last payment 50 %</p>
+</div>
+
+<!-- The done screen: the congratulation is a success Alert (K09) under the step line. -->
+<div class="ds-alert ds-alert--success" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">Congratulations — you are now a co-owner of SANKORD.</p><p class="ds-alert__text">A visionary for visionaries.</p></div></div>

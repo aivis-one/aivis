@@ -2879,3 +2879,26 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
 
 /* ===== K26 Action menu, addition: the icon-only trigger draws its icon at the medium icon size (the three dots of the more icon are too light at the small one) ===== */
 .ds-menu__button.ds-button--icon .ds-icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
+
+/* ===== K07 Card, addition: the call to action (the card's one link is a Button in the content's foot; the card is read as one piece, the hit area is stretched over it as the title link's is) ===== */
+.ds-card__content:has(> .ds-card__action) { flex: 1; }
+.ds-card__action { display: flex; margin-block-start: auto; }
+.ds-card__action > .ds-button.ds-card__link { color: var(--_fg); }
+
+/* ===== Text parts, addition: a clamped text (two lines, or three with data-lines="3"; the rest is cut at the line end) ===== */
+.ds-clamp { --_lines: 2; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--_lines); overflow: hidden; }
+.ds-clamp[data-lines="3"] { --_lines: 3; }
+
+/* ===== K32 Stepper, addition: the step line (the dots and the position in words, side by side) ===== */
+.ds-stepline { display: flex; align-items: center; gap: var(--space-3); }
+.ds-stepline > .ds-dots { justify-content: flex-start; }
+.ds-stepline > .ds-dots__text { margin: 0; }
+
+/* ===== K55 Purchase block (the stack under a project's cover: the portfolio's name with its bonus, the parts, the quiet terms lines; the switches, the alert and the Button are their own components) ===== */
+.ds-purchase { display: grid; gap: var(--space-3); min-inline-size: 0; }
+.ds-purchase__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ds-purchase__title,
+.ds-purchase__parts { margin: 0; font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-purchase__bonus { color: var(--success); }
+.ds-purchase .ds-segmented { display: flex; }
+.ds-purchase .ds-segmented__option { flex: 1 1 0; min-inline-size: 0; padding-inline: var(--space-2); white-space: normal; text-align: center; }

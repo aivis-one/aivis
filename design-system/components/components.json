@@ -252,7 +252,7 @@
   "name": "Card",
   "status": "built",
   "markup": "markup/card.html",
-  "class_root": ".ds-card, .ds-card--brand, .ds-card--media, .ds-card__media, .ds-card__price",
+  "class_root": ".ds-card, .ds-card--brand, .ds-card--media, .ds-card__media, .ds-card__price, .ds-card__action",
   "variants": {
    "shared": [
     "outlined (default)",
@@ -264,7 +264,8 @@
    "media": "ds-card--media: a cover (.ds-card__media, an img or the fallback with an icon), a chip on the photo (.ds-card__tag) and .ds-card__content",
    "figure_tone": "data-tone=\"success|danger\" on .ds-card__delta (a profit or a loss in the head of a card); not on the brand card",
    "link": "the title's link is an anchor (a card that goes to a screen) or a button (button.ds-card__link, a card that opens something in place); drawn the same",
-   "price": "the price line: .ds-card__price holds .ds-card__price-figure (mono, tabular, --primary) and .ds-card__price-unit; .ds-card__price-ref is the quiet reference line under it"
+   "price": "the price line: .ds-card__price holds .ds-card__price-figure (mono, tabular, --primary) and .ds-card__price-unit; .ds-card__price-ref is the quiet reference line under it",
+   "action": "the call to action: div.ds-card__action in the content holds the card's one link as a Button (a.ds-button.ds-button--block.ds-card__link); the action sits at the foot of the content, the hit area stretches over the card; text cut at the line end is .ds-clamp"
   },
   "sizes": [
    "sm",
@@ -1763,12 +1764,13 @@
   "name": "Stepper and schedule list",
   "status": "built",
   "markup": "markup/stepper.html",
-  "class_root": ".ds-stepper, .ds-step, .ds-schedule, .ds-schedule__item, .ds-dots",
+  "class_root": ".ds-stepper, .ds-step, .ds-schedule, .ds-schedule__item, .ds-dots, .ds-stepline",
   "variants": {
    "orientation": "vertical (default); data-orientation=\"horizontal\" in a row from 640 up, stacked below",
    "step state": "data-state done, current, upcoming, problem",
    "schedule row": "default, aria-current=\"step\" (the current item), data-status=\"problem\" (a tinted item that needs attention)",
-   "dots": "ds-dots: n dots, the current one wider (aria-current=\"step\"), with the position said in words"
+   "dots": "ds-dots: n dots, the current one wider (aria-current=\"step\"), with the position said in words",
+   "step line": "div.ds-stepline: the dots and the position in words side by side"
   },
   "sizes": [
    "marker --size-xl; schedule stats in columns of at least --center-sm"
@@ -2646,6 +2648,39 @@
   "accessibility": "An ordered list with an aria-label. The marker is decorative; the state is said by the Badge or the title, not by the marker alone. An opening entry is native details and summary (Enter and Space toggle it) with a chevron that turns. Dates are time elements. Focus is a --focus-width solid outline in --focus-ring at --focus-offset, outside the part. Motion is under the reduced-motion guard. A title that is a button holds the entry's name as its text; Enter and Space come from the platform; it stands in a card head that is a div, never in the summary of an opening entry (a summary is itself the control); the hover colour --primary is 8.48 on the surface by day and 6.72 by night; at the 480 width it is at least --touch-min high.",
   "purpose": "Dated milestones of a project, in order.",
   "usage": "Use it where the dates matter and an entry has a body; progress through a flow is the Stepper (K32). An entry that opens a post or a window takes the title as a button; an entry that has a body to read is the opening card.",
+  "notes": ""
+ },
+ {
+  "id": "K55",
+  "name": "Purchase block",
+  "status": "built",
+  "markup": "markup/purchase.html",
+  "class_root": ".ds-purchase, .ds-purchase__head, .ds-purchase__title, .ds-purchase__parts, .ds-purchase__bonus",
+  "variants": {
+   "stack": "div.ds-purchase: a vertical stack inside a Card body; it holds the step line (K32), the Segmented controls (K31), the Badge (K08), the quiet lines, the Alert (K09) and the Button (K01)",
+   "head": "div.ds-purchase__head: the portfolio's name (.ds-purchase__title) and its bonus as a success Badge, side by side, wrapping",
+   "parts": "p.ds-purchase__parts: the count of parts; the bonus parts in span.ds-purchase__bonus (the success colour, the sign written in the text)",
+   "terms": "quiet lines are .ds-note: the price of a part, the money of an instalment with \"no bonus\", the parts by month"
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "paid at once (with the bonus)",
+   "on instalment (no bonus)",
+   "refused (an Alert with its Button)"
+  ],
+  "tokens": [
+   "--fs-h4",
+   "--lh-snug",
+   "--space-2",
+   "--space-3",
+   "--success",
+   "--text-primary"
+  ],
+  "accessibility": "The bonus is said in words and with a sign (\"+ 12,500 bonus\", \"+5 % bonus\"), never by colour alone; --success stands on the card ground in both themes (4.5 or better). The switches are fieldsets with a legend (K31); a refusal is an Alert with role=\"alert\" and its Button. Wrapping text breaks anywhere rather than overflow (overflow-wrap).",
+  "purpose": "The block under a project's cover where a buyer picks a portfolio and a payment, sees the parts and the terms, and goes on to buy.",
+  "usage": "Use it for the buying path's steps inside a Card body; the congratulation of the last step is a success Alert (K09). Do not draw the switches, the badge or the buttons again: they are their own components.",
   "notes": ""
  }
 ]

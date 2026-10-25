@@ -27,3 +27,6 @@
 
 <!-- K32 addition: step dots. ol.ds-dots of li.ds-dots__dot; the current one carries aria-current="step" and is wider (shape, not only colour). Say the position in words as well: the list has an aria-label ("Step 2 of 4") and a visible p.ds-dots__text may repeat it. -->
 <ol class="ds-dots" aria-label="Step 2 of 4"><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol>
+
+<!-- K32 addition: the step line. div.ds-stepline holds the dots and the position in words side by side (the dots start at the line's start; the text has no margin of its own). -->
+<div class="ds-stepline"><ol class="ds-dots" aria-label="Step 1 of 3"><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol><p class="ds-dots__text">Step 1 of 3 · Terms</p></div>

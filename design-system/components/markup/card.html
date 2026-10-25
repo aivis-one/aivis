@@ -51,3 +51,14 @@
     <p class="ds-card__price-ref">Minimum 4 units, about 5,000.00 in all</p>
   </div>
 </article>
+
+<!-- K07 addition (buying path): the call to action. The card's one link is a Button in the content's foot: div.ds-card__action holding a.ds-button.ds-card__link (the hit area stretches over the card, the focus outline goes round it); no other link in the card.
+     The card stays ds-card--media ds-card--interactive; the action sits at the foot, so cards of a grid keep their buttons level. A text cut at the line end is .ds-clamp (text parts). -->
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img src="cover.jpg" alt=""></div>
+  <div class="ds-card__content">
+    <div class="ds-card__head"><h3 class="ds-card__title">SANKORD</h3><span class="ds-badge ds-badge--success">Active</span></div>
+    <p class="ds-card__body ds-clamp">The project's description, cut at the second line.</p>
+    <div class="ds-card__action"><a class="ds-button ds-button--primary ds-button--block ds-card__link" href="#project">View the project</a></div>
+  </div>
+</article>

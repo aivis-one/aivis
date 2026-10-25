@@ -83,8 +83,8 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a><a href="#r13">Web: wide windows, rail, rows, icons</a></div></div></div>
+<header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, and the buying path (Card call to action, step line, Purchase block), in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a><a href="#r13">Web: wide windows, rail, rows, icons</a><a href="#r14">Buying path</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -402,6 +402,92 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
   <div class="ds-dialog__body"><p class="ds-dialog__text" data-step-text></p></div>
   <div class="ds-dialog__actions"><button type="button" class="ds-button ds-button--secondary" data-step-back>Back</button><button type="button" class="ds-button" data-step-next>Next</button></div>
 </div></div>
+</div></section>
+<section class="blk" id="r14"><div class="wrap"><h2>The buying path: Card (K07) call to action, Stepper (K32) step line, Purchase block (K55), Text parts clamp</h2>
+<p class="lead">The storefront card whose one link is a Button ("View the project"), the step line, the purchase block under a project's cover (the portfolio and payment switches are Segmented controls K31, the bonus is a Badge K08 and a figure in the success colour, the terms are quiet lines), the refusal with its Button, the confirmation with its schedule, and the done screen whose congratulation is a success Alert (K09).</p>
+<div class="cols"><div class="stack" data-frag="r14a"><div class="padded desk"><h3>Card: the call to action, and a clamped text</h3>
+<div class="photo-row">
+<article class="ds-card ds-card--media ds-card--interactive">
+  <div class="ds-card__media"><img data-photo="grey" alt=""></div>
+  <div class="ds-card__content">
+    <div class="ds-card__head"><h3 class="ds-card__title">SANKORD</h3><span class="ds-badge ds-badge--success">Active</span></div>
+    <p class="ds-card__body ds-clamp">A project description of any length is cut at the second line, so the cards of a grid keep one height whatever the text; the full text is on the project page, which this card opens.</p>
+    <div class="ds-card__action"><a class="ds-button ds-button--primary ds-button--block ds-card__link" href="#project">View the project</a></div>
+  </div>
+</article>
+<article class="ds-card ds-card--media ds-card--interactive sim-hover sim-focus">
+  <div class="ds-card__media ds-card__media--fallback"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-package"/></svg></div>
+  <div class="ds-card__content">
+    <div class="ds-card__head"><h3 class="ds-card__title">No cover yet</h3><span class="ds-badge ds-badge--success">Active</span></div>
+    <p class="ds-card__body ds-clamp" data-lines="3">Three lines: data-lines="3" cuts the text at the third line. Hover and focus are drawn on this card; the button stays the one link and the outline goes round the card.</p>
+    <div class="ds-card__action"><a class="ds-button ds-button--primary ds-button--block ds-card__link" href="#project">View the project</a></div>
+  </div>
+</article>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Card: the call to action on a phone" data-src="components-6.html?fragment=r14a" height="1000"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r14b"><div class="padded desk"><h3>Step line and the purchase block (paid at once, and on instalment)</h3>
+<article class="ds-card"><div class="ds-card__body ds-purchase">
+  <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 1 of 3"><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol><p class="ds-dots__text">Step 1 of 3 · Terms</p></div>
+  <h2 class="ds-card__title">Buy parts of SANKORD</h2>
+  <fieldset class="ds-segmented"><legend class="ds-sr-only">Portfolio</legend>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-amount" value="200">200 $</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-amount" value="1000" checked>1,000 $ · +5%</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-amount" value="5000">5,000 $ · +10%</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-amount" value="25000">25,000 $ · +20%</label>
+  </fieldset>
+  <div class="ds-purchase__head"><p class="ds-purchase__title">Portfolio 1,000 USD</p><span class="ds-badge ds-badge--success">+5 % bonus</span></div>
+  <fieldset class="ds-segmented"><legend class="ds-sr-only">Payment</legend>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-pay" value="0" checked>At once</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-pay" value="6">6 months</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-pay" value="12">12 months</label>
+    <label class="ds-segmented__option"><input class="ds-segmented__input" type="radio" name="p-pay" value="24">24 months</label>
+  </fieldset>
+  <p class="ds-purchase__parts">250,000 parts <span class="ds-purchase__bonus">+ 12,500 bonus</span></p>
+  <p class="ds-note">0.004 $ per part · paid at once 1,000 $</p>
+  <a class="ds-button ds-button--primary" href="#confirm">Buy</a>
+</div></article>
+<article class="ds-card"><div class="ds-card__body ds-purchase">
+  <h2 class="ds-card__title">On instalment</h2>
+  <div class="ds-purchase__head"><p class="ds-purchase__title">Portfolio 1,000 USD</p></div>
+  <p class="ds-purchase__parts">250,000 parts over 6 months</p>
+  <p class="ds-note">5 × 166 $ and the last 170 $ · no bonus</p>
+  <p class="ds-note">Each month 10 % of the parts, with the last payment 50 %</p>
+</div></article>
+<div class="ds-purchase">
+  <div class="ds-alert ds-alert--warning" role="alert"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-alert-triangle"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">Identity check first</p><p class="ds-alert__text">Purchases open after it.</p></div></div>
+  <a class="ds-button ds-button--primary" href="#kyc">Pass the identity check</a>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Step line and the purchase block on a phone" data-src="components-6.html?fragment=r14b" height="1400"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r14c"><div class="padded desk"><h3>Confirmation (step 2) and done (step 3)</h3>
+<article class="ds-card"><div class="ds-card__body ds-purchase">
+  <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 2 of 3"><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li></ol><p class="ds-dots__text">Step 2 of 3 · Confirmation</p></div>
+  <div class="ds-purchase__head"><p class="ds-purchase__title">SANKORD · Portfolio 1,000 USD</p></div>
+  <p class="ds-purchase__parts">250,000 parts over 6 months</p>
+  <p class="ds-note">5 × 166 $ and the last 170 $ · no bonus</p>
+  <ul class="ds-rows">
+    <li class="ds-row"><span class="ds-row__body"><span class="ds-row__title">Month 1</span><span class="ds-row__meta">10 % of the parts</span></span><span class="ds-row__trail"><span class="ds-row__value">166 $</span></span></li>
+    <li class="ds-row"><span class="ds-row__body"><span class="ds-row__title">Month 6</span><span class="ds-row__meta">50 % of the parts</span></span><span class="ds-row__trail"><span class="ds-row__value">170 $</span></span></li>
+  </ul>
+  <label class="ds-checkbox"><input class="ds-checkbox__input" type="checkbox"><span class="ds-checkbox__box"></span><span class="ds-checkbox__text">I accept the buyer's agreement</span></label>
+  <a class="ds-button ds-button--primary" href="#done">Pay 166 $</a>
+  <a class="ds-button ds-button--secondary" href="#terms">Back to the terms</a>
+</div></article>
+<article class="ds-card"><div class="ds-card__body ds-purchase">
+  <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 3 of 3"><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li></ol><p class="ds-dots__text">Step 3 of 3 · Done</p></div>
+  <div class="ds-alert ds-alert--success" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">Congratulations — you are now a co-owner of SANKORD.</p><p class="ds-alert__text">A visionary for visionaries.</p></div></div>
+  <div class="ds-purchase__head"><p class="ds-purchase__title">SANKORD · Portfolio 1,000 USD</p><span class="ds-badge ds-badge--success">+5 % bonus</span></div>
+  <p class="ds-purchase__parts">250,000 parts <span class="ds-purchase__bonus">+ 12,500 bonus</span></p>
+  <p class="ds-note">0.004 $ per part · paid at once 1,000 $</p>
+  <a class="ds-button ds-button--primary" href="#portfolio">To my portfolio</a>
+  <a class="ds-button ds-button--secondary" href="#storefront">To the storefront</a>
+</div></article>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Confirmation and done on a phone" data-src="components-6.html?fragment=r14c" height="1500"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>
 <script>
