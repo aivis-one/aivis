@@ -164,6 +164,22 @@ export const router = createRouter({
       component: () => import('@/views/auth/PasswordResetConfirmView.vue'),
       meta: { public: true },
     },
+    // The Telegram Mini App entry: a person whose Telegram id no account holds
+    // yet, and a returning person with two-factor on. Public, because no session
+    // exists yet; globalGuard holds the person here while the sign-in is
+    // unfinished and leads a visit without the store's token to /login.
+    {
+      path: '/telegram/entry',
+      name: 'telegram-entry',
+      component: () => import('@/views/auth/TelegramEntryView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/telegram/second-code',
+      name: 'telegram-second-code',
+      component: () => import('@/views/auth/TelegramSecondCodeView.vue'),
+      meta: { public: true },
+    },
     {
       path: '/loading',
       name: 'loading',

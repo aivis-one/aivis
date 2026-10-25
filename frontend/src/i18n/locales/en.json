@@ -213,6 +213,33 @@
       "requestNewLink": "Request a new link",
       "signInBtn": "Sign in"
     },
+    "telegramEntry": {
+      "consentTitle": "Welcome to AIVIS.ONE",
+      "consentSubtitle": "To register, please confirm the two documents below.",
+      "consentTermsPrefix": "I consent to register under the",
+      "consentPrivacyPrefix": "I consent to the processing of my data under the",
+      "termsName": "Cabinet Terms",
+      "termsTitle": "Cabinet Terms",
+      "privacyName": "Privacy Policy",
+      "privacyTitle": "Privacy Policy",
+      "continueBtn": "Continue",
+      "emailTitle": "Your email",
+      "emailSubtitle": "We will send a 6-digit code to this address.",
+      "sendCodeBtn": "Send code",
+      "codeSubtitle": "We sent a 6-digit code, valid for {minutes} minutes, to",
+      "codeInvalid": "The code is incorrect. Check it and try again.",
+      "codeExpired": "The code has expired. Request a new one below.",
+      "locked": "Too many wrong codes for this email. Try again later.",
+      "emailsPerDay": "Too many codes requested today. Try again tomorrow.",
+      "conflict": "This account is already linked to another Telegram account. Contact support.",
+      "accountInactive": "This account is deactivated. Contact support.",
+      "secondCodeLabel": "Authenticator code",
+      "secondCodeHint": "Two-factor authentication is on for this account. Enter the code from your authenticator app, or a backup code.",
+      "secondCodeInvalid": "The authenticator code is incorrect.",
+      "secondCodeEnded": "The code was not accepted. Close the app and open it again from Telegram.",
+      "expiredTitle": "Open the app again",
+      "expired": "The time to sign in has run out. Close the app and open it again from Telegram."
+    },
     "error": {
       "invalidCredentials": "Incorrect email or password",
       "emailTaken": "This email is already registered",
@@ -220,8 +247,7 @@
       "fillAllFields": "Please fill in all fields",
       "networkError": "Connection error. Check your internet",
       "timeout": "Server did not respond. Try again",
-      "rateLimited": "Too many attempts. Please try again later",
-      "telegramMfaRequired": "Two-factor authentication is required. Please open AIVIS.ONE in a browser to finish signing in."
+      "rateLimited": "Too many attempts. Please try again later"
     },
     "logout": "Sign out"
   },

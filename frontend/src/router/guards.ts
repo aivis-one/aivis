@@ -157,6 +157,40 @@ export function agentCounterpart(name: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// The Telegram entry
+// ---------------------------------------------------------------------------
+
+/** The Mini App entry screen: consent, e-mail, code. */
+export const TELEGRAM_ENTRY_ROUTE = 'telegram-entry'
+
+/** The Mini App second-code screen of a returning two-factor person. */
+export const TELEGRAM_SECOND_CODE_ROUTE = 'telegram-second-code'
+
+/**
+ * Where a person who is not signed in goes while the Telegram sign-in is
+ * unfinished. The store holds the link token (a Telegram id nobody holds yet)
+ * or the pending two-factor token; with neither, the two screens have nothing
+ * to work from and lead to /login. Returns null when no redirect applies.
+ */
+export function telegramEntryRedirect(
+  to: RouteLocationNormalized,
+  authStore: ReturnType<typeof useAuthStore>,
+): RouteLocationRaw | null {
+  const wanted = authStore.telegramMfaToken
+    ? TELEGRAM_SECOND_CODE_ROUTE
+    : authStore.telegramLinkToken
+      ? TELEGRAM_ENTRY_ROUTE
+      : null
+  const isEntryScreen = to.name === TELEGRAM_ENTRY_ROUTE || to.name === TELEGRAM_SECOND_CODE_ROUTE
+  if (isEntryScreen) {
+    // A screen without its token (a reload, a stale address) leads to /login.
+    if (!wanted) return { name: 'login' }
+    return to.name === wanted ? null : { name: wanted }
+  }
+  return wanted ? { name: wanted } : null
+}
+
+// ---------------------------------------------------------------------------
 // Global beforeEach guard
 // ---------------------------------------------------------------------------
 
@@ -181,15 +215,35 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
 
   // --- Public routes ---
   if (to.meta.public) {
-    // Redirect authenticated users away from login/register.
-    if (authStore.isAuthenticated && (to.name === 'login' || to.name === 'register')) {
+    // Redirect authenticated users away from login/register and the Telegram entry.
+    if (
+      authStore.isAuthenticated &&
+      (to.name === 'login' ||
+        to.name === 'register' ||
+        to.name === TELEGRAM_ENTRY_ROUTE ||
+        to.name === TELEGRAM_SECOND_CODE_ROUTE)
+    ) {
       return getRoleDashboard(authStore.role)
+    }
+    // An unfinished Telegram sign-in holds the person on its own screen.
+    // The storefront and the password reset stay open to the same person.
+    if (
+      !authStore.isAuthenticated &&
+      (to.name === 'login' ||
+        to.name === 'register' ||
+        to.name === TELEGRAM_ENTRY_ROUTE ||
+        to.name === TELEGRAM_SECOND_CODE_ROUTE)
+    ) {
+      const entry = telegramEntryRedirect(to, authStore)
+      if (entry) return entry
     }
     return
   }
 
   // --- Auth check ---
   if (!authStore.isAuthenticated) {
+    const entry = telegramEntryRedirect(to, authStore)
+    if (entry) return entry
     // Preserve the requested URL as `?next=` so LoginView can replace()
     // back to it after a successful sign-in. Skip the root edge case
     // (`/` -> /login?next=/ is a pointless round-trip; root.beforeEnter

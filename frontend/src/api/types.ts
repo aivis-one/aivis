@@ -29,6 +29,12 @@ export type { EmailLoginRequest } from './generated'
 
 export type { TelegramAuthRequest } from './generated'
 
+export type {
+  TelegramLinkEmailRequest,
+  TelegramLinkEmailResponse,
+  TelegramLinkConfirmRequest,
+} from './generated'
+
 export type { AuthResponse } from './generated'
 
 export type { VerifyEmailRequest } from './generated'

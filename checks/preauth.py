@@ -52,6 +52,8 @@ REGISTER = {
     "login": "a centred auth card at --maxw-form (360px). A wider login form is a worse login form.",
     "register": "a centred auth card at --maxw-form (360px), same shape as login.",
     "verify": "a centred auth card at --maxw-form (360px); the per-digit code inputs are a fixed row.",
+    "telegram-entry": "a centred auth card at --maxw-form (360px), one stacked column across the consent, e-mail and code steps.",
+    "telegram-second-code": "a centred auth card at --maxw-form (360px) with one code field, same shape as the login second-code step.",
     "onboarding-role": "centred role cards at --maxw-form-wide (400px).",
     "onboarding-profile": "a centred auth card at --maxw-form (360px).",
     "kyc-verification": "a centred auth card at --maxw-form (360px), one stacked column in every state. "

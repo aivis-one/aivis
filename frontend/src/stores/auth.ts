@@ -75,6 +75,7 @@ import {
   type AuthResponse,
   type KycStatus,
   type LoginResponse,
+  type TelegramLinkEmailResponse,
   type UserResponse,
   type UserRole,
 } from '@/api/types'
@@ -94,6 +95,14 @@ import { resetAllDataStores } from '@/stores/sessionReset'
  * before calling completeMfaLogin() with the returned `mfaToken`.
  */
 export type LoginResult = { mfaRequired: false } | { mfaRequired: true; mfaToken: string }
+
+/**
+ * Result of loginViaTelegram: a LoginResult, or `linkRequired` when no account
+ * holds this Telegram id yet. In that case no session exists; the store keeps
+ * the link token (memory only) and the entry screen finishes the sign-in with
+ * sendTelegramLinkEmail / confirmTelegramLink.
+ */
+export type TelegramLoginResult = LoginResult | { mfaRequired: false; linkRequired: true }
 
 const TOKEN_KEY = 'aivis_token'
 
@@ -117,6 +126,14 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserResponse | null>(null)
   const token = ref<string | null>(null)
   const loading = ref(false)
+
+  // Telegram entry state. Both tokens are short-lived and live in memory only:
+  // never written to a storage, gone with the tab.
+  //   telegramLinkToken -- from POST /auth/telegram when the Telegram id is new.
+  //   telegramMfaToken  -- from POST /auth/telegram when the account has
+  //                        two-factor on; completes with completeMfaLogin.
+  const telegramLinkToken = ref<string | null>(null)
+  const telegramMfaToken = ref<string | null>(null)
 
   // ---------------------------------------------------------------------------
   // Computed
@@ -238,6 +255,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await verifyTwoFactorLogin({ mfa_token: mfaToken, code })
       _setSession(response)
+      telegramMfaToken.value = null
       sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
       loading.value = false
@@ -285,15 +303,18 @@ export const useAuthStore = defineStore('auth', () => {
    * A Telegram-linked account can independently have email+password+2FA
    * configured -- upsert_telegram_user (backend) never touches
    * credentials.totp, so gating only the email/password path would
-   * leave a real bypass. Same mfaRequired branch as loginViaEmail;
-   * see useAuth.ts for how the composable that drives Telegram
-   * auto-login handles that branch (there is no in-Mini-App code-entry
-   * UI yet -- see that module's note for the tradeoff).
+   * leave a real bypass. Same mfaRequired branch as loginViaEmail; the
+   * token is kept in `telegramMfaToken` for the Mini App's second-code
+   * screen (views/auth/TelegramSecondCodeView.vue).
+   *
+   * The endpoint creates no account. A Telegram id nobody holds gets
+   * `link_required` and a link token: the result is `linkRequired` and the
+   * entry screen (views/auth/TelegramEntryView.vue) takes over.
    */
   async function loginViaTelegram(
     initData: string,
     referralCode?: string | null,
-  ): Promise<LoginResult> {
+  ): Promise<TelegramLoginResult> {
     loading.value = true
     try {
       const response = await api.post<LoginResponse>(
@@ -301,19 +322,85 @@ export const useAuthStore = defineStore('auth', () => {
         // `|| null` -- same rationale as registerViaEmail above.
         { init_data: initData, referral_code: referralCode || null },
       )
+      if (response.link_required) {
+        telegramLinkToken.value = response.link_token ?? null
+        telegramMfaToken.value = null
+        return { mfaRequired: false, linkRequired: true }
+      }
       if (response.mfa_required) {
+        telegramMfaToken.value = response.mfa_token as string
+        telegramLinkToken.value = null
         return { mfaRequired: true, mfaToken: response.mfa_token as string }
       }
       _setSession(response as AuthResponse)
-      // Same cleanup as the email register path -- the Telegram login
-      // endpoint also creates a User on first call (when there is no
-      // matching telegram credential), so the referral attribution
-      // applies and must be one-shot.
+      telegramLinkToken.value = null
+      telegramMfaToken.value = null
+      // Same cleanup as the email register path: the referral code is one-shot.
       sessionStorage.removeItem(REFERRAL_KEY)
       return { mfaRequired: false }
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * Telegram entry, e-mail step: ask the server to send a code to `email`.
+   * Called only after the person ticked both documents (consent_given). The
+   * server answers the same way for every address, so a resolved promise says
+   * nothing about the address. Throws ApiResponseError, e.g. `link_token_invalid`
+   * (the link expired) or 429 `telegram_link_locked` / `telegram_link_emails_per_day`.
+   */
+  async function sendTelegramLinkEmail(
+    email: string,
+    referralCode?: string | null,
+  ): Promise<TelegramLinkEmailResponse> {
+    if (!telegramLinkToken.value) {
+      throw new Error('No Telegram link token')
+    }
+    loading.value = true
+    try {
+      return await api.post<TelegramLinkEmailResponse>('/api/v1/auth/telegram/link/email', {
+        link_token: telegramLinkToken.value,
+        email,
+        consent_given: true,
+        // `|| null` -- same rationale as registerViaEmail above.
+        referral_code: referralCode || null,
+      })
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Telegram entry, code step: prove the mailbox with the 6-digit code (and the
+   * second code when the account has two-factor on) and link the Telegram id.
+   * On success the session is set exactly as a normal login sets it. Throws
+   * ApiResponseError: `second_code_required` asks for the authenticator code
+   * (call again with it), `invalid_code`, `code_expired`, `link_token_invalid`.
+   */
+  async function confirmTelegramLink(code: string, secondCode?: string | null): Promise<void> {
+    if (!telegramLinkToken.value) {
+      throw new Error('No Telegram link token')
+    }
+    loading.value = true
+    try {
+      const response = await api.post<AuthResponse>('/api/v1/auth/telegram/link/confirm', {
+        link_token: telegramLinkToken.value,
+        code,
+        second_code: secondCode || null,
+      })
+      _setSession(response)
+      telegramLinkToken.value = null
+      sessionStorage.removeItem(REFERRAL_KEY)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Forget the Telegram entry's tokens (an expired link, a consumed second-code token). */
+  function clearTelegramEntry(): void {
+    telegramLinkToken.value = null
+    telegramMfaToken.value = null
   }
 
   // ---------------------------------------------------------------------------
@@ -388,6 +475,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     loading,
+    telegramLinkToken,
+    telegramMfaToken,
     isAuthenticated,
     role,
     kycStatus,
@@ -395,6 +484,9 @@ export const useAuthStore = defineStore('auth', () => {
     completeMfaLogin,
     registerViaEmail,
     loginViaTelegram,
+    sendTelegramLinkEmail,
+    confirmTelegramLink,
+    clearTelegramEntry,
     restoreSession,
     fetchMe,
     logout,
