@@ -263,7 +263,7 @@ async function submitMfaCode(): Promise<void> {
         {{ t('auth.login.title') }}
       </h1>
       <p class="ds-auth__subtitle">
-        {{ t('auth.login.subtitle') }}
+        {{ t('auth.login.tagline') }}<br />{{ t('auth.login.subtitle') }}
       </p>
 
       <div class="ds-auth__form">

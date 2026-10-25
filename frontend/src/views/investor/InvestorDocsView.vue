@@ -103,6 +103,11 @@ const PER_PURCHASE_TYPES: ReadonlySet<string> = new Set([
   'pre_purchase_disclosure',
 ])
 
+// The documents bound into the buyer agreement by its own clause (the Index rules):
+// read and downloaded here, never signed here -- the buyer agreement's acceptance
+// is their acceptance, and a second one must not stand beside it.
+const PART_OF_AGREEMENT_TYPES: ReadonlySet<string> = new Set(['index_rules'])
+
 // Strict token for both doc.type and doc.language. Backend currently
 // emits plain identifiers (privacy_policy, terms_of_service, en, ru,
 // etc.); anything outside this shape indicates a seed misconfig and
@@ -195,10 +200,14 @@ function isPerPurchase(doc: DocumentResponse): boolean {
   return PER_PURCHASE_TYPES.has(doc.type)
 }
 
+function isPartOfAgreement(doc: DocumentResponse): boolean {
+  return PART_OF_AGREEMENT_TYPES.has(doc.type)
+}
+
 // A standing document is signed here while it is unsigned. A staff member signs only
 // what the platform requires of them (the list the backend gives them).
 function needsSigning(doc: DocumentResponse): boolean {
-  if (doc.is_signed || isPerPurchase(doc)) return false
+  if (doc.is_signed || isPerPurchase(doc) || isPartOfAgreement(doc)) return false
   return authStore.role === 'staff' ? requiredIds.value.has(doc.id) : true
 }
 
@@ -341,6 +350,7 @@ function statusVariant(doc: DocumentResponse): 'success' | 'warning' | 'neutral'
 function statusLabel(doc: DocumentResponse): string {
   if (doc.is_signed) return t('inv.docs.status.signed')
   if (isPerPurchase(doc)) return t('inv.docs.status.perPurchase')
+  if (isPartOfAgreement(doc)) return t('inv.docs.status.partOfAgreement')
   return needsSigning(doc) ? t('inv.docs.status.pending') : t('inv.docs.status.read')
 }
 
@@ -350,6 +360,7 @@ function metaLabel(doc: DocumentResponse): string {
   // signed, to sign, accepted at each purchase, or to read.
   if (doc.is_signed) return t('inv.docs.meta.signed')
   if (isPerPurchase(doc)) return t('inv.docs.meta.perPurchase')
+  if (isPartOfAgreement(doc)) return t('inv.docs.meta.partOfAgreement')
   return needsSigning(doc) ? t('inv.docs.meta.pending') : t('inv.docs.meta.read')
 }
 </script>
@@ -473,6 +484,11 @@ function metaLabel(doc: DocumentResponse): string {
               v-if="isPerPurchase(viewingDoc)"
               variant="neutral"
               :text="t('inv.docs.modal.perPurchase')"
+            />
+            <CBadge
+              v-if="isPartOfAgreement(viewingDoc)"
+              variant="neutral"
+              :text="t('inv.docs.modal.partOfAgreement')"
             />
             <CButton
               v-if="needsSigning(viewingDoc)"

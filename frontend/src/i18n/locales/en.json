@@ -84,7 +84,8 @@
     "back": "Back",
     "login": {
       "title": "Sign In",
-      "subtitle": "Sign in to AIVIS.ONE to manage your SANKORD licences and purchases",
+      "tagline": "AIVIS.ONE — a visionary for visionaries.",
+      "subtitle": "Sign in to your cabinet.",
       "email": "Email",
       "password": "Password",
       "passPlaceholder": "Enter password",
@@ -1671,12 +1672,14 @@
         "signed": "Signed",
         "pending": "Pending",
         "perPurchase": "At each purchase",
+        "partOfAgreement": "In the buyer agreement",
         "read": "To read"
       },
       "meta": {
         "signed": "Already signed",
         "pending": "Action required",
         "perPurchase": "Accepted at each purchase",
+        "partOfAgreement": "Accepted as part of the buyer agreement",
         "read": "To read and download"
       },
       "modal": {
@@ -1686,6 +1689,7 @@
         "sign": "I agree",
         "signing": "Signing...",
         "perPurchase": "Accepted at each purchase",
+        "partOfAgreement": "Accepted as part of the buyer agreement",
         "signSuccess": "Document signed",
         "signError": "Could not sign the document",
         "close": "Close",

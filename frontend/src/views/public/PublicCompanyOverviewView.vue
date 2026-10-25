@@ -11,8 +11,8 @@
 //
 //   1. NO header of its own. The frame carries the only header for the
 //      public flow; the view hands it the company's name (useScreenHeader).
-//      The storefront has no back control: the browser's back covers the
-//      list -> overview step.
+//      Its way back leads to the list of companies, the page's one parent
+//      (the same header back control as every inner screen).
 //
 //   2. NO sticky CTA / `.co__cta`. Purchase action lives on
 //      PublicProductDetailView (iter 2.6 Batch 6), not here. The
@@ -25,8 +25,8 @@
 //      needed.
 //   4. Documents section is wired via <PublicAttachmentsSection>
 //      (Batch 4) -- self-hiding contract, no v-if needed.
-//   5. NO back button. Browser back covers the list <-> overview
-//      navigation; a deep-linked visitor simply closes the tab.
+//   5. The back control returns to the list of companies, one step back
+//      when there is a page to return to, else straight to the list.
 //
 // LAYOUT ORDER (R1 §1.6.1).
 //   Hero -> Stats -> Roadmap -> Products -> Documents.
@@ -101,7 +101,10 @@ const coverSrc = computed<string | null>(() => {
 })
 
 // The frame's header carries the company's name as the title. Called in setup.
-useScreenHeader({ title: () => data.value?.name })
+useScreenHeader({
+  title: () => data.value?.name,
+  back: () => (window.history.state?.back ? true : { name: 'public-companies' }),
+})
 
 // ---------------------------------------------------------------------------
 // Stats display
