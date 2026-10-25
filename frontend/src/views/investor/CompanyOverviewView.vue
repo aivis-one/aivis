@@ -116,9 +116,9 @@ const stats = computed(() => data.value?.stats)
 // The project's valuation: the pool's lots at the lot's price (the price of a part
 // times all the parts), in whole cents.
 const valuationDisplay = computed<string>(() =>
-  stats.value && data.value
+  data.value
     ? formatUsd(
-        valuationCents(stats.value.pool_total_options, data.value.price_per_unit_cents),
+        valuationCents(data.value.total_supply, data.value.price_per_unit_cents),
         locale.value,
       )
     : '—',

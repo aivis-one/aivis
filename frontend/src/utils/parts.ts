@@ -59,7 +59,13 @@ export function formatPartPrice(
   sharesPerOption: number,
   locale: string,
 ): string {
-  const perPart = sharesPerOption > 0 ? lotPriceCents / sharesPerOption / 100 : 0
+  // Thousandths of a dollar, half-up in whole numbers (cents x 10 over the parts), so the
+  // screen rounds exactly as the documents do: 7 cents over 20 parts is 0.0035 -> 0.004.
+  const mills =
+    sharesPerOption > 0
+      ? Math.floor((lotPriceCents * 20 + sharesPerOption) / (2 * sharesPerOption))
+      : 0
+  const perPart = mills / 1000
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'USD',

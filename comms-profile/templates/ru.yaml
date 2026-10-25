@@ -85,7 +85,7 @@ ownership.certificate:
 
       Ваше свидетельство о владении в компании {company} готово.
 
-      Долей во владении: {total_units}
+      Частей во владении: {total_units}
       Текущая стоимость: {current_value} $
       На дату: {as_of}
 

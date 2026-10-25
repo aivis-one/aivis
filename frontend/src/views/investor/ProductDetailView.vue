@@ -60,7 +60,7 @@ import { isAgentShell } from '@/router/helpers'
 import { useAuthStore } from '@/stores/auth'
 import { showKycPrompt } from '@/composables/useKycPrompt'
 import { formatNumber, formatPrice } from '@/utils/format'
-import { formatPartPrice } from '@/utils/parts'
+import { formatPartPrice, formatPartsCount } from '@/utils/parts'
 import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
@@ -286,7 +286,15 @@ onMounted(loadProduct)
             <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
               <CBadge
                 variant="success"
-                :text="t('inv.product.installmentsBonus', { n: getPlanBonus(plan) })"
+                :text="
+                  t('inv.product.installmentsBonus', {
+                    n: formatPartsCount(
+                      getPlanBonus(plan),
+                      partsPerLot(product.company_id),
+                      locale,
+                    ),
+                  })
+                "
               />
             </span>
           </li>

@@ -1207,7 +1207,7 @@
       "description": "About",
       "installments": "Installment plans",
       "installmentsEmpty": "No installment plans available for this product",
-      "installmentsBonus": "+{n} bonus units",
+      "installmentsBonus": "+{n} bonus parts",
       "buy": "Buy now",
       "soldOut": "Sold out",
       "packsAvailability": "Portfolios availability"
@@ -1300,7 +1300,7 @@
         "errorTitle": "Could not load this plan",
         "notFoundTitle": "Plan not found",
         "notFoundDesc": "This plan does not exist or is not yours.",
-        "defaultedBanner": "This plan defaulted after a missed payment. Units from tranches already paid are kept; the remaining tranches were cancelled.",
+        "defaultedBanner": "This plan defaulted after a missed payment. Parts from tranches already paid are kept; the remaining tranches were cancelled.",
         "summary": {
           "totalPrice": "Total price",
           "totalUnits": "Total parts",
@@ -1513,7 +1513,7 @@
         "deposit:confirmed": "Deposit confirmed",
         "deposit:reversed": "Deposit reversed",
         "purchase:completed": "Purchase",
-        "purchase:gift": "Bonus units",
+        "purchase:gift": "Bonus parts",
         "purchase:reversed": "Purchase reversed",
         "installment:tranche_paid": "Installment tranche paid",
         "installment:completed": "Installment plan completed",

@@ -61,7 +61,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAuthWall } from '@/composables/useAuthWall'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { formatNumber, formatPrice } from '@/utils/format'
-import { formatPartPrice } from '@/utils/parts'
+import { formatPartPrice, formatPartsCount } from '@/utils/parts'
 import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
@@ -345,7 +345,15 @@ function onBuyClick(): void {
             <span v-if="getPlanBonus(plan) > 0" class="ds-row__trail">
               <CBadge
                 variant="success"
-                :text="t('inv.product.installmentsBonus', { n: getPlanBonus(plan) })"
+                :text="
+                  t('inv.product.installmentsBonus', {
+                    n: formatPartsCount(
+                      getPlanBonus(plan),
+                      partsPerLot(product.company_id),
+                      locale,
+                    ),
+                  })
+                "
               />
             </span>
           </li>

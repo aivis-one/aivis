@@ -89,7 +89,7 @@ ownership.certificate:
 
       Your ownership certificate for {company} is ready.
 
-      Units owned: {total_units}
+      Parts owned: {total_units}
       Current value: ${current_value}
       As of: {as_of}
 
