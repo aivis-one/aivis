@@ -89,6 +89,7 @@ export interface AgentApplicationResponse {
 
 /** Assign an EXISTING user to become a company (TASK-30 ruling 1 + 9). Mirrors CreateCompanyRequest minus the account-creation fields (email/password -- the admin never sees or sets the target's password, per ruling 1) plus `user_id` identifying the existing user to promote. Every commercial-terms field stays REQUIRED (revised ruling 9: the admin assigns WITH full commercial terms -- price, supply, distribution config -- there is no deferred-price state for this endpoint). What IS deferred is the OptionPool: this schema has no pool fields at all -- pool issuance stays a separate, later, explicit action via POST /staff/pools, exactly as it already is for create_company (see Sprint 4.3 module note in service.py). */
 export interface AssignCompanyRequest {
+  translations?: Record<string, unknown> | null
   user_id: string
   name: string
   description?: string | null
@@ -287,6 +288,12 @@ export interface CompanyAuditFeedResponse {
   per_page: number
 }
 
+/** The English base texts of a company (H38). */
+export interface CompanyBaseTexts {
+  name: string
+  description: string | null
+}
+
 /** Aggregated dashboard for the authenticated company. Fields: passive_balance: company's earnings ledger split by status. total_revenue_cents: SUM(Purchase.paid_cents) for active purchases of this company. Gift purchases naturally contribute 0 here. total_options_sold: SUM(Purchase.units WHERE legal_basis='sale') for active purchases. Gifts are excluded so the number reflects commercial activity, not pool consumption (pool consumption lives in pool.consumed below). products_count: COUNT(Product) for non-archived products. pool: active OptionPool snapshot, or None if the company hasn't had a pool created yet (newly created company before staff runs POST /staff/companies/{id}/pool). recent_transactions: last 20 Transaction rows for the company's user_id, newest first. */
 export interface CompanyDashboardResponse {
   passive_balance: BalanceResponse
@@ -315,6 +322,9 @@ export interface CompanyDetailResponse {
   status: string
   created_at: string
   updated_at: string | null
+  base: CompanyBaseTexts
+  translations: Record<string, unknown>
+  image_variants: Record<string, unknown>
   roadmap?: RoadmapItemResponse[]
 }
 
@@ -361,7 +371,7 @@ export interface CompanyPositionResponse {
   purchases_count: number
 }
 
-/** Company info for staff (includes distribution_config). */
+/** Company info for staff and for the company itself (both edit it). name / description are in the reader's language (Accept-Language), English when there is no translation (H38). */
 export interface CompanyResponse {
   id: string
   user_id: string
@@ -379,6 +389,9 @@ export interface CompanyResponse {
   status: string
   created_at: string
   updated_at: string | null
+  base: CompanyBaseTexts
+  translations: Record<string, unknown>
+  image_variants: Record<string, unknown>
 }
 
 /** One row of the CALLER'S OWN company write history. DELIBERATELY NARROWER than CompanyAuditEntryResponse (the staff schema above) -- built via from_entry(), never via model_validate()/from_attributes, so there is no way for a future edit to accidentally widen this by re-enabling attribute-based validation against AuditLog: - NO actor_id / performed_by / on_behalf_of. A company may learn THAT staff changed something (actor_type="staff") but never WHICH staff member -- those three fields are internal user ids, exactly the identity leak CompanyAuditEntryResponse's own docstring documents as the reason they exist for STAFF's benefit specifically. - NO raw `data`. changed_fields (below) is the sole derived view of it -- see _derive_changed_fields() for why no value from `data` can ever reach the wire through this schema. actor_type: the coarse "user" | "staff" | "system" string already on AuditLog -- not identity, just which side of the platform wrote the row. changed_fields: field NAMES only (never values) -- see _derive_changed_fields(). */
@@ -432,6 +445,7 @@ export interface ConsistencyResponse {
 
 /** Company creates a post about itself (TASK-30). owner_type is always "company" and owner_id is always the caller's own company_id -- both are forced server-side in company_router.py, never taken from the client, so a project can never create a post for a different owner_id. is_banner is not exposed here: a site-wide homepage banner placement is a staff editorial decision (see PostListEditor.vue's staff.platform.post.bannerBadge), not something a project should be able to grant itself -- every company-authored post is created with is_banner=False. */
 export interface CreateCompanyPostRequest {
+  translations?: Record<string, unknown> | null
   title: string
   body: string
   cover_url?: string | null
@@ -441,6 +455,7 @@ export interface CreateCompanyPostRequest {
 
 /** Create a new company with user and profile. */
 export interface CreateCompanyRequest {
+  translations?: Record<string, unknown> | null
   email: string
   password: string
   name: string
@@ -490,6 +505,7 @@ export interface CreatePoolRequest {
 
 /** Staff creates a post. */
 export interface CreatePostRequest {
+  translations?: Record<string, unknown> | null
   owner_type: 'platform' | 'company'
   owner_id?: string | null
   title: string
@@ -502,6 +518,7 @@ export interface CreatePostRequest {
 
 /** Create a new product for a company. */
 export interface CreateProductRequest {
+  translations?: Record<string, unknown> | null
   company_id: string
   name: string
   description?: string | null
@@ -516,6 +533,7 @@ export interface CreatePurchaseRequest {
 
 /** Add a roadmap item to a company (R1 §5). `kind` defaults to MILESTONE for backward compatibility with the pre-2.4 surface. Per-kind validation is enforced by the model_validator below: milestone -- valid_until forbidden. target_date optional. status defaults to 'planned' (service layer). event -- target_date REQUIRED, valid_until REQUIRED, valid_until > target_date. announcement -- target_date / valid_until / status all forbidden. `cover_storage_key` is intentionally NOT in this body. The cover is set via the dedicated multipart endpoint PUT /staff/companies/{id}/roadmap/{item_id}/cover. Service-level checks (not visible here): - linked_product_id must belong to the same company. - post_id must reference an existing Post. */
 export interface CreateRoadmapItemRequest {
+  translations?: Record<string, unknown> | null
   kind?: RoadmapItemKind
   title: string
   description?: string | null
@@ -934,6 +952,12 @@ export interface PortfolioResponse {
   positions: CompanyPositionResponse[]
 }
 
+/** The English base texts of a post (H38). */
+export interface PostBaseTexts {
+  title: string
+  body: string
+}
+
 /** Paginated post list. */
 export interface PostListResponse {
   items: PostResponse[]
@@ -942,7 +966,7 @@ export interface PostListResponse {
   per_page: number
 }
 
-/** Single post with dismiss status. */
+/** Single post with dismiss status. title / body are in the reader's language (H38). */
 export interface PostResponse {
   id: string
   owner_type: string
@@ -958,6 +982,8 @@ export interface PostResponse {
   created_at: string
   updated_at?: string | null
   is_dismissed?: boolean
+  base?: PostBaseTexts | null
+  translations?: Record<string, unknown> | null
 }
 
 /** Embedded Post preview inside a roadmap item (R1 §5). Built by the companies service layer from a Post row -- never via `from_attributes` because `excerpt` is derived (first 200 chars of body, plain text). Kept here in companies/schemas (rather than posts/schemas) because the consumer is the roadmap response and importing across modules is allowed in one direction only by the existing project convention. */
@@ -997,6 +1023,12 @@ export interface PriceHistoryResponse {
   changed_by: string
 }
 
+/** The English base texts of a product (H38). */
+export interface ProductBaseTexts {
+  name: string
+  description: string | null
+}
+
 /** Paginated list of products (staff). */
 export interface ProductListResponse {
   items: ProductResponse[]
@@ -1005,7 +1037,7 @@ export interface ProductListResponse {
   per_page: number
 }
 
-/** Product info for staff view. */
+/** Product info for staff view. name / description are in the reader's language (H38). */
 export interface ProductResponse {
   id: string
   company_id: string
@@ -1019,6 +1051,9 @@ export interface ProductResponse {
   status: string
   created_at: string
   updated_at: string | null
+  base: ProductBaseTexts
+  translations: Record<string, unknown>
+  image_variants: Record<string, unknown>
 }
 
 /** Public company detail with stats and roadmap items. iter 2.4 R1 §1.6.2: `stats` is REQUIRED -- the storefront detail surface always shows pool / growth numbers, populated by the router from get_public_company_stats. Roadmap items carry the R1 §5 extension (kind, cover_url, post snippet, ...). */
@@ -1235,6 +1270,12 @@ export interface ReversePaymentRequest {
   reason?: string | null
 }
 
+/** The English base texts of a roadmap item (H38). */
+export interface RoadmapBaseTexts {
+  title: string
+  description: string | null
+}
+
 /** Single roadmap item (R1 §5 extension). `cover_url` is a presigned URL generated by the service layer from `cover_storage_key` (None when no cover uploaded). `post` is populated when the row has a `post_id` -- the companies service does a LEFT JOIN on posts in get_company_detail so this avoids N+1. */
 export interface RoadmapItemResponse {
   id: string
@@ -1250,6 +1291,9 @@ export interface RoadmapItemResponse {
   linked_product_id?: string | null
   cover_url?: string | null
   post?: PostSnippetResponse | null
+  base?: RoadmapBaseTexts | null
+  translations?: Record<string, unknown> | null
+  image_variants?: Record<string, unknown> | null
   created_at: string
   updated_at: string | null
 }
@@ -1533,6 +1577,7 @@ export interface UnreadCountOut {
 
 /** Company partial update (PATCH) of its own post (TASK-30). Same field set as CreateCompanyPostRequest minus title/body being optional -- no owner_type/owner_id/is_banner. Ownership (the post must belong to the caller's own company_id) is enforced in service.update_company_post, not by this schema. */
 export interface UpdateCompanyPostRequest {
+  translations?: Record<string, unknown> | null
   title?: string | null
   body?: string | null
   cover_url?: string | null
@@ -1542,6 +1587,7 @@ export interface UpdateCompanyPostRequest {
 
 /** Partial update of company profile. Only provided fields are updated. distribution_config triggers financial_operations permission check in router. Sprint 4.3: total_supply and shares_per_option are NOT in this schema. Pool size changes happen via PATCH /staff/companies/{id}/pool, and a shares_per_option change is a split (future scope). */
 export interface UpdateCompanyRequest {
+  translations?: Record<string, unknown> | null
   name?: string | null
   description?: string | null
   promo_video_url?: string | null
@@ -1570,6 +1616,7 @@ export interface UpdateInstallmentRequest {
 
 /** Partial self-update of the caller's OWN company profile. Backs PATCH /api/v1/companies/me. Originally TASK-30 ruling 10: "the project describes; the admin owns and prices" -- this schema carried ONLY presentation fields, with name / price_per_unit_cents / total_supply / shares_per_option / distribution_config structurally absent. TASK-39 item 6 SUPERSEDES that ruling IN PART (explicit owner decision, 2026-08, recorded in the TASK-39 home docs): name, price_per_unit_cents, total_supply and shares_per_option are now ALSO on this schema, because every company on the platform today is the owner's own project rather than a third party. This is a TIME-BOXED exception, not a repeal of ruling 10 -- it holds only while that remains true, and admin-side price/volume validation must land before the first non-owner company is onboarded (see TASK-39 item 6, owner ruling 2026-08-29). distribution_config and the OptionPool are DELIBERATELY STILL ABSENT from this model -- those stay admin-only, unaffected by this supersession, and remain structurally unrepresentable here (not merely ignored if present, same as before): a request body carrying either 422s at the schema boundary (extra="forbid") before any service code runs. A price_per_unit_cents change is NOT a plain field write at the service layer: update_own_company() routes it through the exact same cascade_price() machinery as the staff price endpoint (product price propagation + installment-template soft-delete + price history + audit) -- see service.py's `_apply_price_change` helper, shared with update_price(). total_supply / shares_per_option are plain field writes ONLY BECAUSE THE SERVICE REFUSES THEM WHILE AN ACTIVE POOL EXISTS: OptionPool.equity_percent is a stored column derived from total_supply and recomputed nowhere but pool create/update, so writing total_supply under a live pool would force an undecided dilution question rather than merely leave a number stale. That is the same reason the Sprint 4.3 note above keeps these two fields out of the STAFF schema -- the supersession widened WHO may edit the commercial terms, it did not decide dilution. See service.py::update_own_company's volume guard. Validation bounds here match the staff-side create/update schemas for the same fields (CreateCompanyRequest / UpdatePriceRequest): name is min_length=1/max_length=500, price_per_unit_cents and total_supply and shares_per_option are all gt=0. `status` is unaffected by this supersession and stays present but heavily restricted at the service layer (update_own_company): the only legal transition through this endpoint is ACTIVE -> HIDDEN (ruling 12 -- the project may withdraw itself; only a staff admin may publish HIDDEN -> ACTIVE or set ARCHIVED). The type here stays `str | None` (matching UpdateCompanyRequest's own `status: str | None` -- no enum-level validation) because the real gate is the one-directional business rule, not the set of legal CompanyStatus values. */
 export interface UpdateOwnCompanyRequest {
+  translations?: Record<string, unknown> | null
   name?: string | null
   description?: string | null
   promo_video_url?: string | null
@@ -1606,6 +1653,7 @@ export interface UpdatePoolRequest {
 
 /** Staff partial update of a post (PATCH). */
 export interface UpdatePostRequest {
+  translations?: Record<string, unknown> | null
   title?: string | null
   body?: string | null
   cover_url?: string | null
@@ -1621,6 +1669,7 @@ export interface UpdatePriceRequest {
 
 /** Partial update of product. purchase_config triggers financial_operations permission check in router. Sprint 4.3: package_size, company_id and pool_id are immutable. Not in update schema. */
 export interface UpdateProductRequest {
+  translations?: Record<string, unknown> | null
   name?: string | null
   description?: string | null
   purchase_config?: Record<string, unknown> | null
@@ -1633,6 +1682,7 @@ export interface UpdateProductStatusRequest {
 
 /** Partial update of a roadmap item (R1 §5). `kind` is intentionally OMITTED -- it is immutable after create. To change kind, Staff soft-deletes the item and creates a new one. Per-kind invariants from CreateRoadmapItemRequest are NOT re-checked here (we don't know the current kind without a DB read at validation time). The service layer re-applies the relevant rules using the persisted kind before committing. `cover_storage_key` is not in the body for the same reason as the create schema -- a dedicated multipart endpoint manages it. */
 export interface UpdateRoadmapItemRequest {
+  translations?: Record<string, unknown> | null
   title?: string | null
   description?: string | null
   target_date?: string | null
