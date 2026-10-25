@@ -1061,26 +1061,20 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-navitem__label { min-inline-size: 0; overflow-wrap: anywhere; }
 .ds-navitem:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .ds-navitem:active { background: var(--primary-subtle); }
-.ds-navitem[aria-current="page"] { color: var(--primary); }
-.ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-navitem[aria-current="page"] { background: var(--primary-subtle); }
-.ds-navitem[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  inset-block-end: var(--space-1);
-  inset-inline: 0;
-  margin-inline: auto;
-  inline-size: var(--space-1);
-  block-size: var(--space-1);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-}
+.ds-navitem[aria-current="page"] { color: var(--primary); background: var(--primary-subtle); }
+/* a navitem may be a button (the foot of the rail): the link look without the button's own border and ground */
+button.ds-navitem { border: 0; background: transparent; font: inherit; font-size: var(--fs-xs); font-weight: 600; }
+button.ds-navitem:hover { background: var(--bg-subtle); }
+button.ds-navitem:active { background: var(--primary-subtle); }
 .ds-navitem[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; background: transparent; }
 
 /* nav: the rail and the labelled rail */
 .ds-shell[data-tier="rail"] .ds-nav,
 .ds-shell[data-tier="wide"] .ds-nav {
   position: static;
-  padding-block-end: var(--_pad);
+  display: flex;
+  flex-direction: column;
+  padding-block: 0 var(--_pad);
   padding-inline: var(--_pad);
   border-block-start: 0;
   border-inline-end: thin solid var(--border-subtle);
@@ -1088,15 +1082,17 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-shell[data-tier="rail"] .ds-nav__list,
 .ds-shell[data-tier="wide"] .ds-nav__list {
   position: sticky;
-  inset-block-start: var(--space-3);
+  inset-block-start: 0;
   flex-direction: column;
   gap: var(--space-1);
-  padding-block: var(--space-3);
+  padding-block: 0 var(--space-3);
 }
 .ds-shell[data-tier="rail"] .ds-navitem,
 .ds-shell[data-tier="wide"] .ds-navitem { min-block-size: var(--size-3xl); }
 .ds-shell[data-tier="rail"] .ds-navitem[aria-current="page"]::before,
 .ds-shell[data-tier="wide"] .ds-navitem[aria-current="page"]::before {
+  content: "";
+  position: absolute;
   inset-block: var(--space-2);
   inset-inline: auto;
   inset-inline-start: 0;
@@ -1134,23 +1130,26 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   }
   .ds-shell:not([data-tier]) .ds-shell__main { --_gutter: var(--space-gutter-web); }
   .ds-shell:not([data-tier]) .ds-header { padding-inline: var(--space-gutter-web); }
-  .ds-shell:not([data-tier]) .ds-navitem[aria-current="page"] { background: var(--primary-subtle); }
   .ds-shell:not([data-tier]) .ds-nav {
     position: static;
-    padding-block-end: var(--_pad);
+    display: flex;
+    flex-direction: column;
+    padding-block: 0 var(--_pad);
     padding-inline: var(--_pad);
     border-block-start: 0;
     border-inline-end: thin solid var(--border-subtle);
   }
   .ds-shell:not([data-tier]) .ds-nav__list {
     position: sticky;
-    inset-block-start: var(--space-3);
+    inset-block-start: 0;
     flex-direction: column;
     gap: var(--space-1);
-    padding-block: var(--space-3);
+    padding-block: 0 var(--space-3);
   }
   .ds-shell:not([data-tier]) .ds-navitem { min-block-size: var(--size-3xl); }
   .ds-shell:not([data-tier]) .ds-navitem[aria-current="page"]::before {
+    content: "";
+    position: absolute;
     inset-block: var(--space-2);
     inset-inline: auto;
     inset-inline-start: 0;
@@ -1582,7 +1581,7 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-shell__banner-text { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-shell__banner-action { flex: none; margin-inline-start: auto; }
 .ds-shell:has(> .ds-shell__banner) .ds-header { inset-block-start: var(--_banner-h); padding-block-start: var(--space-2); }
-.ds-shell:has(> .ds-shell__banner) .ds-nav__list { inset-block-start: calc(var(--_banner-h) + var(--space-3)); }
+.ds-shell:has(> .ds-shell__banner) .ds-nav__list { inset-block-start: var(--_banner-h); }
 
 /* the leading slot of the header: the back control of a screen below the top level */
 .ds-header__lead { display: flex; align-items: center; flex: none; }
@@ -1614,7 +1613,6 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-header__figure:hover .ds-header__figure-amount { color: var(--primary); }
 .ds-header__figure:active { background: var(--primary-subtle); border-color: var(--primary); }
 .ds-header__figure:focus-visible,
-.ds-nav__logo:focus-visible,
 .ds-header__logo:focus-visible,
 .ds-subnav__link:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
@@ -1623,15 +1621,15 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 
 /* the mark at the head of the menu: shown with the rails (880 and up), never on the tab bar */
 .ds-nav__brand { display: none; }
-.ds-nav__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--size-3xl); border-radius: var(--radius-control); }
+.ds-nav__logo { box-sizing: border-box; display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-block-size: var(--size-3xl); border-radius: var(--radius-control); }
 .ds-nav__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
 /* the same mark in the lead slot of the nav-less header (the public storefront, which has no menu): a link to the home page, the mark alone, at the size the menu's mark has */
 .ds-header__logo { box-sizing: border-box; display: flex; align-items: center; justify-content: center; min-block-size: var(--touch-min); min-inline-size: var(--touch-min); border-radius: var(--radius-control); }
 .ds-header__mark { display: block; inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
-.ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-nav__brand { display: block; }
+.ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-nav__brand { display: flex; align-items: center; min-block-size: var(--_header-h); }
 .ds-shell[data-tier="wide"] .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
 @media (min-width: 880px) {
-  .ds-shell:not([data-tier]) .ds-nav__brand { display: block; }
+  .ds-shell:not([data-tier]) .ds-nav__brand { display: flex; align-items: center; min-block-size: var(--_header-h); }
 }
 @media (min-width: 1120px) {
   .ds-shell:not([data-tier]) .ds-nav__logo { justify-content: flex-start; padding-inline: var(--space-3); }
@@ -1644,31 +1642,36 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   .ds-shell:not([data-tier]) .ds-nav__wordmark { display: block; }
 }
 
-/* The collapse control at the bottom of the labelled rail: a ghost icon toggle (K01) that folds the rail to icons only and back. It stands in .ds-nav__foot,
-   the last child of nav.ds-nav, kept at the bottom edge of the window while the page scrolls. The tab bar and the icon rail have nothing to fold and do not show it.
-   The state is data-nav="collapsed" on .ds-shell (set by components.js; the app keeps it where it keeps its settings). */
+/* The foot of the rail (the icon rail and the labelled rail; the tab bar has none): .ds-nav__foot, the last child of nav.ds-nav, kept at the bottom edge of the window
+   while the page scrolls, holds two items in the look of the menu's own (.ds-navitem as a button): the collapse control (labelled rail only; folds it to icons only and back)
+   and the log out item, always the last. The state is data-nav="collapsed" on .ds-shell (set by components.js; the app keeps it where it keeps its settings). */
 .ds-nav__foot { display: none; }
-.ds-nav__collapse .ds-icon:last-child { display: none; }
+.ds-nav__foot .ds-nav__collapse { display: none; }
+.ds-nav__collapse .ds-nav__icon--open { display: none; }
 .ds-nav__collapse .ds-icon:dir(rtl) { scale: -1 1; }
-.ds-shell[data-tier="wide"] .ds-nav { display: flex; flex-direction: column; }
-.ds-shell[data-tier="wide"] .ds-nav__foot {
+.ds-shell:is([data-tier="rail"], [data-tier="wide"]) .ds-nav__foot {
   position: sticky;
   inset-block-end: var(--space-3);
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: var(--space-1);
   margin-block-start: auto;
   padding-block: var(--space-3);
 }
-@media (min-width: 1120px) {
-  .ds-shell:not([data-tier]) .ds-nav { display: flex; flex-direction: column; }
+.ds-shell[data-tier="wide"] .ds-nav__foot .ds-nav__collapse { display: flex; }
+@media (min-width: 880px) {
   .ds-shell:not([data-tier]) .ds-nav__foot {
     position: sticky;
     inset-block-end: var(--space-3);
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
+    gap: var(--space-1);
     margin-block-start: auto;
     padding-block: var(--space-3);
   }
+}
+@media (min-width: 1120px) {
+  .ds-shell:not([data-tier]) .ds-nav__foot .ds-nav__collapse { display: flex; }
 }
 
 /* Collapsed: the labelled rail drawn as the icon rail (72 wide, the label as the accessible name only, the mark alone, no wordmark) */
@@ -1693,9 +1696,8 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 }
 .ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__logo { justify-content: center; padding-inline: 0; }
 .ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__wordmark { display: none; }
-.ds-shell[data-tier="wide"][data-nav="collapsed"] .ds-nav__foot { justify-content: center; }
-.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-icon:first-child { display: none; }
-.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-icon:last-child { display: block; }
+.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-nav__icon--close { display: none; }
+.ds-shell[data-nav="collapsed"] .ds-nav__collapse .ds-nav__icon--open { display: block; }
 @media (min-width: 1120px) {
   .ds-shell:not([data-tier])[data-nav="collapsed"] { grid-template-columns: var(--_rail) minmax(0, 1fr); }
   .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-navitem {
@@ -1718,7 +1720,6 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   }
   .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__logo { justify-content: center; padding-inline: 0; }
   .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__wordmark { display: none; }
-  .ds-shell:not([data-tier])[data-nav="collapsed"] .ds-nav__foot { justify-content: center; }
 }
 
 /* the screen's own parts in main: the lead line under the title, the toolbar, the action strip */
@@ -2624,6 +2625,7 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
 .ds-dialog[data-variant="modal"] .ds-dialog__panel { max-inline-size: var(--maxw-form-wide); border-radius: var(--radius-modal); padding-block-end: var(--space-5); }
 .ds-dialog__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .ds-dialog__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); letter-spacing: var(--tracking-tight); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-dialog__title:has(> .ds-icon) { display: flex; align-items: center; gap: var(--space-2); }
 .ds-dialog__body { display: grid; flex: 1; align-content: start; gap: var(--space-3); min-block-size: 0; overflow-y: auto; padding: calc(var(--focus-width) + var(--focus-offset)); margin: calc((var(--focus-width) + var(--focus-offset)) * -1); font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-primary); overflow-wrap: anywhere; }
 .ds-dialog__body > * { margin-block: 0; }
 .ds-dialog__text { color: var(--text-secondary); }

@@ -1,5 +1,5 @@
 {
- "count": 97,
+ "count": 99,
  "style": "P1",
  "sprite": "icons.svg",
  "viewBox": "0 0 24 24",
@@ -100,7 +100,9 @@
   "more",
   "share",
   "qr",
-  "list-checks"
+  "list-checks",
+  "panel-left-close",
+  "panel-left-open"
  ],
  "min_size_px": {
   "rocket": 24,

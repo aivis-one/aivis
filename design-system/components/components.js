@@ -646,8 +646,8 @@
 
 /* ---------- K25 App shell: the collapse control of the labelled rail ----------
    A click on [data-nav-toggle] folds the rail to icons only and back: it sets data-nav="collapsed" on the closest .ds-shell (removes it to unfold),
-   keeps aria-expanded on the button and switches its accessible name between data-label-collapse and data-label-expand (the page fills both from its
-   translation table). It saves nothing: the event ds-nav-toggle (detail.collapsed) is for the app, which keeps the state where it keeps its settings and
+   keeps aria-expanded on the button and switches its label (the .ds-navitem__label text, the accessible name; aria-label on a button that has no label text) between
+   data-label-collapse and data-label-expand (the page fills both from its translation table). It saves nothing: the event ds-nav-toggle (detail.collapsed) is for the app, which keeps the state where it keeps its settings and
    sets data-nav on load. */
 (function () {
   'use strict';
@@ -660,7 +660,9 @@
     if (collapsed) shell.setAttribute('data-nav', 'collapsed'); else shell.removeAttribute('data-nav');
     btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     var label = collapsed ? btn.getAttribute('data-label-expand') : btn.getAttribute('data-label-collapse');
-    if (label) btn.setAttribute('aria-label', label);
+    var text = btn.querySelector('.ds-navitem__label');
+    if (label && text) text.textContent = label;
+    else if (label) btn.setAttribute('aria-label', label);
     btn.dispatchEvent(new CustomEvent('ds-nav-toggle', { bubbles: true, detail: { collapsed: collapsed } }));
   });
 })();
