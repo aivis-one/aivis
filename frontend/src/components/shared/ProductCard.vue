@@ -18,7 +18,7 @@
 //   The pack is the unit of purchase, not the share -- B7 wants the
 //   storefront to anchor pricing on it. The card's price line (K07) shows
 //   `$N / pack` as the figure, and its reference line under it says
-//   `$X / unit` and how many packs are available.
+//   the price of a part and how many packs are available.
 //   `price_per_pack_cents` comes from the backend pre-computed
 //   (package_size * price_per_unit_cents) so the client doesn't multiply.
 //
@@ -27,10 +27,12 @@
 //   missing populate would be a server bug, not a soft default.
 // =============================================================================
 
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Building } from '@/components/ui/icons'
 import { formatNumber, formatPrice } from '@/utils/format'
+import { formatPartPrice } from '@/utils/parts'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import type { PublicProductResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
 
@@ -52,6 +54,23 @@ const { t, locale } = useI18n()
 // The cover is the product's own picture, else the company's logo for the theme;
 // either covers the media part of the card (K07).
 const coverSrc = useProductCover(() => props.product)
+
+
+// The price of one part: the lot's price over the project's parts per lot; a dash
+// while the project's parts per lot is not known (never the lot's price).
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+watch(
+  () => props.product.company_id,
+  (id) => {
+    if (id) void ensureParts([id])
+  },
+  { immediate: true },
+)
+const partPriceDisplay = computed<string>(() => {
+  const p = props.product
+  const perLot = p ? partsPerLot(p.company_id) : null
+  return p && perLot !== null ? formatPartPrice(p.price_per_unit_cents, perLot, locale.value) : '—'
+})
 
 // F4.4: backend now guarantees this field is populated; no `?? 0`.
 const available = computed(() => props.product.available_packages)
@@ -80,7 +99,7 @@ const available = computed(() => props.product.available_packages)
         <span class="ds-card__price-unit">/ {{ t('inv.pack') }}</span>
       </p>
       <p class="ds-card__price-ref">
-        {{ formatPrice(product.price_per_unit_cents, product.currency) }} / {{ t('inv.unit') }} ·
+        {{ t('buy.partPrice') }} {{ partPriceDisplay }} ·
         {{ formatNumber(available, locale) }} {{ t('inv.market.packsAvailable') }}
       </p>
     </div>

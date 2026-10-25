@@ -382,25 +382,30 @@ onMounted(load)
               </CButton>
             </template>
           </CAlert>
+
+          <!-- The disclosure, short, and the one tick of the buyer agreement -->
+          <PurchaseTerms v-model="accepted" />
+
+          <!-- Actions -->
+          <div class="ds-purchase__actions">
+            <CButton
+              variant="primary"
+              :disabled="!canConfirm"
+              :loading="submitting"
+              @click="confirm"
+            >
+              {{
+                soldOut
+                  ? t('inv.product.soldOut')
+                  : t('buy.payAmount', { amount: formatUsdCents(totalCents, locale) })
+              }}
+            </CButton>
+            <CButton variant="outline" :disabled="submitting" @click="cancel">
+              {{ t('buy.backToTerms') }}
+            </CButton>
+          </div>
         </div>
       </article>
-
-      <!-- The disclosure, short, and the one tick of the buyer agreement -->
-      <PurchaseTerms v-model="accepted" />
-
-      <!-- Actions -->
-      <div class="pv__actions">
-        <CButton variant="primary" :disabled="!canConfirm" :loading="submitting" @click="confirm">
-          {{
-            soldOut
-              ? t('inv.product.soldOut')
-              : t('buy.payAmount', { amount: formatUsdCents(totalCents, locale) })
-          }}
-        </CButton>
-        <CButton variant="outline" :disabled="submitting" @click="cancel">
-          {{ t('buy.backToTerms') }}
-        </CButton>
-      </div>
     </template>
   </div>
 </template>
@@ -410,12 +415,5 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-/* Actions */
-.pv__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
 }
 </style>

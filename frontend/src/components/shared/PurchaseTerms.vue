@@ -13,6 +13,9 @@
 //   2. ONE tick, "I accept the agreement", with the buyer agreement behind a
 //      link to its full text.
 //
+// It is the terms group of the Purchase block (K55): the parent draws it inside
+// the block, above the block's buttons.
+//
 // The tick is the parent's (v-model). The parent records the acceptance of the
 // buyer agreement (documents/by-type + sign) when the button is pressed, and
 // keeps the button shut while the tick is empty.
@@ -107,20 +110,18 @@ const openTitle = computed(() =>
 </script>
 
 <template>
-  <section class="ds-card ds-card--flat">
-    <div class="ds-card__head">
-      <h2 class="ds-card__title">
-        {{ t('inv.terms.title') }}
-      </h2>
-    </div>
+  <div class="ds-purchase__terms">
+    <p class="ds-purchase__title">
+      {{ t('inv.terms.title') }}
+    </p>
 
     <ul v-if="digest.length > 0" class="pt__list">
-      <li v-for="row in digest" :key="row.heading" class="ds-card__body">
+      <li v-for="row in digest" :key="row.heading" class="ds-note">
         <strong>{{ row.heading }}.</strong>
         {{ row.line }}
       </li>
     </ul>
-    <p v-else-if="digestFailed" class="ds-card__body">
+    <p v-else-if="digestFailed" class="ds-note">
       {{ t('inv.terms.digestFailed') }}
     </p>
 
@@ -154,7 +155,7 @@ const openTitle = computed(() =>
       :type="openDoc ?? 'pre_purchase_disclosure'"
       @close="openDoc = null"
     />
-  </section>
+  </div>
 </template>
 
 <style scoped>

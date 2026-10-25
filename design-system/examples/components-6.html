@@ -472,9 +472,15 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
     <li class="ds-row"><span class="ds-row__body"><span class="ds-row__title">Month 1</span><span class="ds-row__meta">10 % of the parts</span></span><span class="ds-row__trail"><span class="ds-row__value">166 $</span></span></li>
     <li class="ds-row"><span class="ds-row__body"><span class="ds-row__title">Month 6</span><span class="ds-row__meta">50 % of the parts</span></span><span class="ds-row__trail"><span class="ds-row__value">170 $</span></span></li>
   </ul>
-  <label class="ds-checkbox"><input class="ds-checkbox__input" type="checkbox"><span class="ds-checkbox__box"></span><span class="ds-checkbox__text">I accept the buyer's agreement</span></label>
-  <a class="ds-button ds-button--primary" href="#done">Pay 166 $</a>
-  <a class="ds-button ds-button--secondary" href="#terms">Back to the terms</a>
+  <div class="ds-purchase__terms">
+    <p class="ds-note"><strong>Risks.</strong> Income depends on the project's profit and is not guaranteed.</p>
+    <a class="ds-button ds-button--ghost" data-size="sm" href="#terms">Read in full</a>
+    <label class="ds-checkbox"><input class="ds-checkbox__input" type="checkbox"><span class="ds-checkbox__box"></span><span class="ds-checkbox__text">I accept the buyer's agreement</span></label>
+  </div>
+  <div class="ds-purchase__actions">
+    <a class="ds-button ds-button--primary" href="#done">Pay 166 $</a>
+    <a class="ds-button ds-button--secondary" href="#terms">Back to the terms</a>
+  </div>
 </div></article>
 <article class="ds-card"><div class="ds-card__body ds-purchase">
   <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 3 of 3"><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot" aria-current="step"></li></ol><p class="ds-dots__text">Step 3 of 3 · Done</p></div>

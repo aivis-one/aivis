@@ -61,6 +61,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useAuthWall } from '@/composables/useAuthWall'
 import { usePublicErrorToast } from '@/composables/usePublicErrorToast'
 import { formatNumber, formatPrice } from '@/utils/format'
+import { formatPartPrice } from '@/utils/parts'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
@@ -81,6 +83,22 @@ const { requireAuth } = useAuthWall()
 const { notifyRateLimit } = usePublicErrorToast()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
+
+// The price of one part: the lot's price over the project's parts per lot; a dash
+// while the project's parts per lot is not known (never the lot's price).
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+watch(
+  () => product.value?.company_id,
+  (id) => {
+    if (id) void ensureParts([id])
+  },
+  { immediate: true },
+)
+const partPriceDisplay = computed<string>(() => {
+  const p = product.value
+  const perLot = p ? partsPerLot(p.company_id) : null
+  return p && perLot !== null ? formatPartPrice(p.price_per_unit_cents, perLot, locale.value) : '—'
+})
 const loading = ref<boolean>(true)
 const errored = ref<boolean>(false)
 const notFound = ref<boolean>(false)
@@ -285,7 +303,7 @@ function onBuyClick(): void {
         <CStatCard
           :label="t('inv.product.pricePerPack')"
           :value="formatPrice(product.price_per_pack_cents, product.currency)"
-          :sub="`${formatPrice(product.price_per_unit_cents, product.currency)} / ${t('inv.unit')}`"
+          :sub="`${t('buy.partPrice')}: ${partPriceDisplay}`"
         />
         <CStatCard
           :label="t('inv.product.packsAvailability')"

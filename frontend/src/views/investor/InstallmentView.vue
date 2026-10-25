@@ -559,21 +559,26 @@ onMounted(load)
                 </CButton>
               </template>
             </CAlert>
+
+            <!-- The disclosure, short, and the one tick of the buyer agreement -->
+            <PurchaseTerms v-model="accepted" />
+
+            <!-- Actions -->
+            <div class="ds-purchase__actions">
+              <CButton
+                variant="primary"
+                :disabled="!canConfirm"
+                :loading="submitting"
+                @click="confirm"
+              >
+                {{ t('buy.payAmount', { amount: formatUsdCents(firstTrancheCents, locale) }) }}
+              </CButton>
+              <CButton variant="outline" :disabled="submitting" @click="cancel">
+                {{ t('buy.backToTerms') }}
+              </CButton>
+            </div>
           </div>
         </article>
-
-        <!-- The disclosure, short, and the one tick of the buyer agreement -->
-        <PurchaseTerms v-model="accepted" />
-
-        <!-- Actions -->
-        <div class="iv__actions">
-          <CButton variant="primary" :disabled="!canConfirm" :loading="submitting" @click="confirm">
-            {{ t('buy.payAmount', { amount: formatUsdCents(firstTrancheCents, locale) }) }}
-          </CButton>
-          <CButton variant="outline" :disabled="submitting" @click="cancel">
-            {{ t('buy.backToTerms') }}
-          </CButton>
-        </div>
       </template>
     </template>
   </div>

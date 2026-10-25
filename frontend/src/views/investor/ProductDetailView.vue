@@ -39,7 +39,7 @@
 // F4.4 B7 UX:
 //   First stat now anchors on the pack: heading "Price per pack",
 //   value = formatPrice(price_per_pack_cents). The small caption under
-//   the value carries the per-unit reference price ("$X / unit") so
+//   the value carries the per-unit reference price (the price of a part) so
 //   the user can still see the underlying share price without making
 //   it the headline. The second stat (Packs availability) is unchanged.
 //
@@ -48,7 +48,7 @@
 //   missing populate would be a server bug, not a soft default.
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Building, ShoppingCart } from '@/components/ui/icons'
@@ -60,6 +60,8 @@ import { isAgentShell } from '@/router/helpers'
 import { useAuthStore } from '@/stores/auth'
 import { showKycPrompt } from '@/composables/useKycPrompt'
 import { formatNumber, formatPrice } from '@/utils/format'
+import { formatPartPrice } from '@/utils/parts'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 import { getPlanBonus } from '@/utils/installmentPlans'
 import type { PublicProductDetailResponse } from '@/api/types'
 import { useProductCover } from '@/composables/useThemedLogo'
@@ -77,6 +79,22 @@ const { t, locale } = useI18n()
 const authStore = useAuthStore()
 
 const product = ref<ProductWithOptionalCurrency | null>(null)
+
+// The price of one part: the lot's price over the project's parts per lot; a dash
+// while the project's parts per lot is not known (never the lot's price).
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+watch(
+  () => product.value?.company_id,
+  (id) => {
+    if (id) void ensureParts([id])
+  },
+  { immediate: true },
+)
+const partPriceDisplay = computed<string>(() => {
+  const p = product.value
+  const perLot = p ? partsPerLot(p.company_id) : null
+  return p && perLot !== null ? formatPartPrice(p.price_per_unit_cents, perLot, locale.value) : '—'
+})
 const loading = ref(true)
 const errored = ref(false)
 
@@ -216,7 +234,7 @@ onMounted(loadProduct)
         <CStatCard
           :label="t('inv.product.pricePerPack')"
           :value="formatPrice(product.price_per_pack_cents, product.currency)"
-          :sub="`${formatPrice(product.price_per_unit_cents, product.currency)} / ${t('inv.unit')}`"
+          :sub="`${t('buy.partPrice')}: ${partPriceDisplay}`"
         />
         <CStatCard
           :label="t('inv.product.packsAvailability')"

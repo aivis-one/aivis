@@ -23,6 +23,15 @@ export function partsOf(lots: number, sharesPerOption: number): number {
   return lots * sharesPerOption
 }
 
+/**
+ * The valuation of a project in cents: every lot of the project (the pool) at the
+ * lot's price, which is the price of a part times all the parts. Whole cents, no
+ * rounding.
+ */
+export function valuationCents(poolLots: number, lotPriceCents: number): number {
+  return poolLots * lotPriceCents
+}
+
 /** USD for a figure in cents: whole dollars without cents, else with two decimals. */
 export function formatUsd(cents: number, locale: string): string {
   const whole = cents % 100 === 0

@@ -1,7 +1,7 @@
 <!-- AIVIS Purchase block (K55): the stack under a project's cover, inside a Card body. div.ds-purchase is a vertical stack; it holds, in this order as needed:
      the step line (K32), the card title, the portfolio switch (Segmented control K31), .ds-purchase__head (the portfolio's name .ds-purchase__title and its bonus as a Badge K08, success),
      the payment switch (Segmented control K31), .ds-purchase__parts (the count of parts; the bonus parts in span.ds-purchase__bonus, the success colour, the sign written in the text),
-     quiet lines (.ds-note: the price of a part, the money of an instalment and "no bonus", the parts by month), and the refusal (Alert K09 warning) with its Button or the Button "Buy".
+     quiet lines (.ds-note: the price of a part, the money of an instalment and "no bonus", the parts by month), and the refusal (Alert K09 warning) with its Button or the Button "Buy". On the confirmation step the terms and the Buttons stay inside the block: .ds-purchase__terms (the short lines as .ds-note, the link to the full text as a ghost Button, the Checkbox K45) and .ds-purchase__actions (the primary Button "Pay", the secondary Button "Back").
      The bonus is shown only for a payment at once; an instalment shows no bonus and says so in words. The strings are the translation tables'; these are examples. -->
 <article class="ds-card"><div class="ds-card__body ds-purchase">
   <div class="ds-stepline"><ol class="ds-dots" aria-label="Step 1 of 3"><li class="ds-dots__dot" aria-current="step"></li><li class="ds-dots__dot"></li><li class="ds-dots__dot"></li></ol><p class="ds-dots__text">Step 1 of 3 · Terms</p></div>
@@ -33,3 +33,17 @@
 
 <!-- The done screen: the congratulation is a success Alert (K09) under the step line. -->
 <div class="ds-alert ds-alert--success" role="status"><span class="ds-alert__icon" aria-hidden="true"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-check"/></svg></span><div class="ds-alert__content"><p class="ds-alert__title">Congratulations — you are now a co-owner of SANKORD.</p><p class="ds-alert__text">A visionary for visionaries.</p></div></div>
+
+<!-- The confirmation (step 2): the terms and the Buttons inside the block; Pay is shut until the Checkbox is ticked. -->
+<div class="ds-purchase">
+  <p class="ds-purchase__parts">250,000 parts</p>
+  <div class="ds-purchase__terms">
+    <p class="ds-note"><strong>Risks.</strong> Income depends on the project's profit and is not guaranteed.</p>
+    <a class="ds-button ds-button--ghost" data-size="sm" href="#terms">Read in full</a>
+    <label class="ds-checkbox"><input class="ds-checkbox__input" type="checkbox"><span class="ds-checkbox__box"></span><span class="ds-checkbox__text">I accept the buyer's agreement</span></label>
+  </div>
+  <div class="ds-purchase__actions">
+    <a class="ds-button ds-button--primary" href="#done">Pay 1,000 $</a>
+    <a class="ds-button ds-button--secondary" href="#terms">Back to the terms</a>
+  </div>
+</div>

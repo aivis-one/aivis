@@ -57,7 +57,7 @@ import { getCompany } from '@/api/companies'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { isAgentShell } from '@/router/helpers'
 import { formatNumber } from '@/utils/format'
-import { formatPartPrice } from '@/utils/parts'
+import { formatPartPrice, formatUsd, valuationCents } from '@/utils/parts'
 import type { PublicCompanyDetailResponse } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
@@ -112,6 +112,17 @@ useScreenHeader({
 // locale-aware number formatter and append '%' as a unit suffix.
 
 const stats = computed(() => data.value?.stats)
+
+// The project's valuation: the pool's lots at the lot's price (the price of a part
+// times all the parts), in whole cents.
+const valuationDisplay = computed<string>(() =>
+  stats.value && data.value
+    ? formatUsd(
+        valuationCents(stats.value.pool_total_options, data.value.price_per_unit_cents),
+        locale.value,
+      )
+    : '—',
+)
 
 // The pool counts lots; the buyer is shown parts (lots times the parts in a lot).
 const poolTotalDisplay = computed<string>(() =>
@@ -281,6 +292,7 @@ function onRoadmapPostClick(postId: string): void {
 
       <!-- Stats (K46) -->
       <section class="ds-stats">
+        <CStatCard :value="valuationDisplay" :label="t('buy.projectValuation')" />
         <CStatCard
           :value="formatPartPrice(data.price_per_unit_cents, data.shares_per_option, locale)"
           :label="t('buy.partPrice')"

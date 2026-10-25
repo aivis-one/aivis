@@ -19,10 +19,18 @@ import {
   formatUsdCents,
   instalmentLines,
   partsOf,
+  valuationCents,
 } from '@/utils/parts'
 import { parsePlanConfig } from '@/utils/installmentPlans'
 
 describe('parts and their price', () => {
+  it('values a project as its lots at the lot price, exact in cents', () => {
+    expect(valuationCents(4_000_000, 100)).toBe(400_000_000)
+    expect(formatUsd(valuationCents(4_000_000, 100), 'en')).toBe('$4,000,000')
+    // 40,000,000 lots of 25 parts at 10 cents a lot: 1,000,000,000 parts at 0.004 USD
+    expect(valuationCents(40_000_000, 10)).toBe(400_000_000)
+  })
+
   it('counts parts as lots times the parts in a lot', () => {
     expect(partsOf(10_000, 25)).toBe(250_000)
     expect(partsOf(4_000_000, 25)).toBe(100_000_000)

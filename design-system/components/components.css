@@ -2894,11 +2894,14 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
 .ds-stepline > .ds-dots { justify-content: flex-start; }
 .ds-stepline > .ds-dots__text { margin: 0; }
 
-/* ===== K55 Purchase block (the stack under a project's cover: the portfolio's name with its bonus, the parts, the quiet terms lines; the switches, the alert and the Button are their own components) ===== */
+/* ===== K55 Purchase block (the stack under a project's cover: the portfolio's name with its bonus, the parts, the quiet terms lines, the group of terms and the group of buttons of the confirmation; the switches, the alert, the Checkbox and the Button are their own components) ===== */
 .ds-purchase { display: grid; gap: var(--space-3); min-inline-size: 0; }
 .ds-purchase__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .ds-purchase__title,
 .ds-purchase__parts { margin: 0; font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); color: var(--text-primary); overflow-wrap: anywhere; }
 .ds-purchase__bonus { color: var(--success); }
+/* the terms of the confirmation and the buttons that close the step stay inside the block: the group of terms (the short lines, the link to the full text, the Checkbox) and the group of Buttons */
+.ds-purchase__terms,
+.ds-purchase__actions { display: grid; gap: var(--space-2); min-inline-size: 0; }
 .ds-purchase .ds-segmented { display: flex; }
 .ds-purchase .ds-segmented__option { flex: 1 1 0; min-inline-size: 0; padding-inline: var(--space-2); white-space: normal; text-align: center; }

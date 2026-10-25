@@ -2655,12 +2655,13 @@
   "name": "Purchase block",
   "status": "built",
   "markup": "markup/purchase.html",
-  "class_root": ".ds-purchase, .ds-purchase__head, .ds-purchase__title, .ds-purchase__parts, .ds-purchase__bonus",
+  "class_root": ".ds-purchase, .ds-purchase__head, .ds-purchase__title, .ds-purchase__parts, .ds-purchase__bonus, .ds-purchase__terms, .ds-purchase__actions",
   "variants": {
    "stack": "div.ds-purchase: a vertical stack inside a Card body; it holds the step line (K32), the Segmented controls (K31), the Badge (K08), the quiet lines, the Alert (K09) and the Button (K01)",
    "head": "div.ds-purchase__head: the portfolio's name (.ds-purchase__title) and its bonus as a success Badge, side by side, wrapping",
    "parts": "p.ds-purchase__parts: the count of parts; the bonus parts in span.ds-purchase__bonus (the success colour, the sign written in the text)",
-   "terms": "quiet lines are .ds-note: the price of a part, the money of an instalment with \"no bonus\", the parts by month"
+   "terms": "quiet lines are .ds-note: the price of a part, the money of an instalment with \"no bonus\", the parts by month",
+   "confirmation": "div.ds-purchase__terms (the short terms lines as .ds-note, the link to the full text as a ghost Button, the Checkbox K45) and div.ds-purchase__actions (the primary Button \"Pay\" and the secondary Button \"Back\"), both inside the block on the confirmation step"
   },
   "sizes": [
    "one size"
@@ -2668,7 +2669,8 @@
   "states": [
    "paid at once (with the bonus)",
    "on instalment (no bonus)",
-   "refused (an Alert with its Button)"
+   "refused (an Alert with its Button)",
+   "confirmation (terms ticked or not, Pay shut until it is ticked)"
   ],
   "tokens": [
    "--fs-h4",
