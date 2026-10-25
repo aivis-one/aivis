@@ -67,10 +67,14 @@ _STAFF_BASE = "/api/v1/staff/support/threads"
 
 # The manual transitions comms permits, copied from status.py so a
 # divergence shows up here rather than in production.
+# comms 3.11's manual status matrix (its INTEGRATION.md section 14): the
+# return to `open` exists from both other states. This product never asks
+# for it (SetStatusIn refuses `open` before comms is called), so the fake
+# answers it only to stay a faithful copy of the service it stands for.
 _ALLOWED: dict[str, set[str]] = {
     "open": {"resolved", "closed"},
-    "resolved": {"closed"},
-    "closed": set(),
+    "resolved": {"open", "closed"},
+    "closed": {"open"},
 }
 
 
@@ -776,8 +780,9 @@ async def test_closing_moves_the_thread_and_repeating_it_is_a_no_op(
 async def test_a_backward_transition_is_refused_by_the_matrix(
     client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
 ) -> None:
-    """closed -> resolved does not exist. Nor does any manual reopen: a
-    thread comes back only when the client writes into it."""
+    """closed -> resolved does not exist in comms' matrix: 422. (comms
+    3.11 has a manual return from closed to `open`; this product does not
+    offer it yet -- see the test below.)"""
     user, token = await create_staff_user(client, db_session)
     thread_id = await _a_request(
         client, db_session, comms, assignee=user.id, status="closed"
@@ -796,9 +801,10 @@ async def test_a_backward_transition_is_refused_by_the_matrix(
 async def test_reopening_is_not_even_offered(
     client: AsyncClient, db_session: AsyncSession, comms: _FakeComms
 ) -> None:
-    """Refused by our own schema, before comms is asked: an endpoint that
-    accepted `open` would be advertising a transition that never
-    succeeds."""
+    """Refused by our own schema, before comms is asked. comms 3.11 would
+    take it (a manual return to `open`), so the refusal is this product's:
+    staff reopening a request is the ticket work of H40, and until then a
+    thread comes back when the client writes into it."""
     user, token = await create_staff_user(client, db_session)
     thread_id = await _a_request(
         client, db_session, comms, assignee=user.id, status="closed"

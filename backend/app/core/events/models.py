@@ -208,3 +208,28 @@ class OutboxEvent(Base):
             f"<OutboxEvent id={self.id} type={self.event_type} "
             f"{state} attempts={self.attempts}>"
         )
+
+
+class CommsFeedCursor(Base):
+    """Where a reader of comms' changes feed stopped (H39 P-129).
+
+    comms deploy/INTEGRATION.md section 9: the cursor is kept with the
+    product's own state and stored only AFTER the page it ends was acted
+    on -- never before. One row per consumer, written only by the one
+    active listener (core/comms_listener.py holds an advisory lock for
+    that). NULL cursor: start from the beginning of what comms keeps --
+    the first run, and the restart after 410 cursor_expired.
+    """
+
+    __tablename__ = "comms_feed_cursors"
+
+    consumer: Mapped[str] = mapped_column(String(64), primary_key=True)
+    cursor: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CommsFeedCursor consumer={self.consumer}>"

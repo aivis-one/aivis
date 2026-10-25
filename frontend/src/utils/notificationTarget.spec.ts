@@ -8,6 +8,16 @@ import { notificationTarget } from './notificationTarget'
 const base = { kycStatus: 'not_started', shell: 'investor' as string | undefined }
 
 describe('notificationTarget', () => {
+  it('a support reply that could not be translated leads to the conversation (H39)', () => {
+    const type = 'support.translation_unavailable'
+    expect(notificationTarget({ ...base, type })).toEqual({ name: 'investor-support' })
+    expect(notificationTarget({ ...base, shell: 'company', type })).toEqual({
+      name: 'company-support',
+    })
+    // The pair: another support.* type is not swept along by the prefix.
+    expect(notificationTarget({ ...base, type: 'support.translate_for_user' })).toBeNull()
+  })
+
   it('a confirmed deposit leads back to verification while the account is not verified', () => {
     expect(notificationTarget({ ...base, type: 'deposit.confirmed' })).toBe('/verification')
   })

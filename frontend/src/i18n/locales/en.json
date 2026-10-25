@@ -468,7 +468,23 @@
         "operator": "Staff"
       },
       "threadId": "Thread {id}",
-      "poolNoUnread": "Unclaimed requests show no unread count -- nobody is following them yet."
+      "poolNoUnread": "Unclaimed requests show no unread count -- nobody is following them yet.",
+      "translation": {
+        "translatedFrom": "Translated from {lang}",
+        "clientReads": "The client reads it in {lang}",
+        "translating": "Translating…",
+        "translatingForClient": "Translating for the client…",
+        "failed": "The translation failed",
+        "failedForClient": "The translation for the client failed: the client sees that the reply is unavailable",
+        "declined": "This message cannot be translated",
+        "declinedForClient": "This reply cannot be translated: the client sees that it is unavailable. Send it again in other words.",
+        "showOriginal": "Show original",
+        "hideOriginal": "Show translation",
+        "showClientVersion": "Show what the client reads",
+        "hideClientVersion": "Show my text",
+        "retry": "Retry translation",
+        "retryError": "Couldn't ask for the translation again, try again"
+      }
     },
     "notifications": {
       "title": "Notifications"
@@ -1960,7 +1976,9 @@
       "sender": {
         "me": "You",
         "operator": "Support"
-      }
+      },
+      "translating": "Translating the reply…",
+      "translationUnavailable": "The reply could not be translated into your language. Support will see this and can reply again."
     },
     "notifications": {
       "title": "Notifications",

@@ -93,6 +93,16 @@
 //   A comment pointing both ways is the agreed guard against drift:
 //   if you change the bubble markup or the composer's error/disabled
 //   states here, check StaffSupportView's copy too.
+//
+// TRANSLATION (H39 P-129). A support reply reaches the person in their
+// own language, and the feed the backend sends is already decided for
+// them (render_for_client): a message has its text -- their own, or the
+// reply in their language -- or NO text and a state, `translating` or
+// `unavailable`. A null body is shown as that state and never filled from
+// anywhere: the backend withholds the original of a reply in a language
+// the person does not read, on purpose. While anything is translating the
+// feed re-reads itself every three seconds, for up to two minutes
+// (useTranslationPoll); the refresh action stays for after that.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -105,8 +115,9 @@ import { getShell } from '@/router/helpers'
 import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
 import { useAuthStore } from '@/stores/auth'
+import { useTranslationPoll } from '@/composables/useTranslationPoll'
 import type { SupportActionError } from '@/stores/support'
-import type { SupportMessageResponse } from '@/api/support'
+import type { SupportClientMessage } from '@/api/support'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -134,9 +145,26 @@ const showInvite = computed<boolean>(
 
 // Store hands back comms' own order ("newest first"); this screen
 // reads "oldest first". A fresh copy every time -- see stake C.
-const chronologicalMessages = computed<SupportMessageResponse[]>(() =>
+const chronologicalMessages = computed<SupportClientMessage[]>(() =>
   [...support.messages].reverse(),
 )
+
+// A message with no text says why: a translation on its way, or none to
+// come. Anything but `translating` reads as unavailable -- the backend's
+// own rule for a state it does not know (fail-closed).
+function pendingText(message: SupportClientMessage): string {
+  return message.translation === 'translating'
+    ? t('inv.support.translating')
+    : t('inv.support.translationUnavailable')
+}
+
+const { restart: restartTranslationPoll } = useTranslationPoll({
+  translating: () => support.messages.some((m) => m.translation === 'translating'),
+  refresh: async () => {
+    const id = knownThreadId.value
+    if (id !== null) await support.fetchMessages(id, { silent: true })
+  },
+})
 
 // Whichever of the two compound-action errors is live right now.
 // Mutually exclusive in practice: threadError is only ever set while
@@ -146,11 +174,11 @@ const composerError = computed<SupportActionError | null>(
   () => support.threadError ?? support.sendError,
 )
 
-function sentAt(message: SupportMessageResponse): string | null {
+function sentAt(message: SupportClientMessage): string | null {
   return message.created_at ? formatDateTime(message.created_at, locale.value) : null
 }
 
-function isMine(message: SupportMessageResponse): boolean {
+function isMine(message: SupportClientMessage): boolean {
   return myUserId.value !== null && message.sender === myUserId.value
 }
 
@@ -207,6 +235,7 @@ async function handleSend(): Promise<void> {
 
   composerText.value = ''
   await loadFeed()
+  restartTranslationPoll()
 }
 
 function retryInit(): void {
@@ -312,8 +341,11 @@ onMounted(() => {
         >
           <span v-if="isMine(message)" class="ds-sr-only">{{ t('inv.support.sender.me') }}</span>
           <span v-else class="ds-message__author">{{ t('inv.support.sender.operator') }}</span>
-          <p class="ds-message__bubble">
+          <p v-if="message.body !== null" class="ds-message__bubble">
             {{ message.body }}
+          </p>
+          <p v-else class="ds-message__bubble isup__pending" :data-state="message.translation">
+            {{ pendingText(message) }}
           </p>
           <time
             v-if="sentAt(message)"
@@ -367,6 +399,12 @@ onMounted(() => {
 /* The screen gives the thread its height (K51). */
 .isup__thread {
   block-size: calc(var(--center-lg) + var(--center-md));
+}
+
+/* A reply with no text yet, or none to come (H39): the state in place of it. */
+.isup__pending {
+  font-style: italic;
+  color: var(--text-secondary);
 }
 
 /* A state (loading, error, nothing yet) stands where the feed will be. */

@@ -77,9 +77,21 @@
 //   carried `unread` to begin with, so the absence continues exactly
 //   as it was: absent means "not applicable", never a lied-about
 //   zero.
+//
+// TRANSLATION (H39 P-129). Staff read and write the support language; the
+// feed comes already decided (backend translation.staff_feed). A client's
+// message shows its translation, with "Show original" to see what the
+// client wrote; a reply to a client of another language shows the
+// operator's own text, with what the client reads one tap away. Under
+// every message stands its translation state -- translating, failed,
+// cannot be translated -- and "Retry translation" only where the feed
+// says `retryable`: after the transport failed, never after the model
+// declined (a variant is final in comms; the way on is a new message).
+// While anything is translating the conversation re-reads itself every
+// three seconds, for up to two minutes (useTranslationPoll).
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AlertTriangle, RefreshCw } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CLoader } from '@/components/ui'
@@ -89,8 +101,9 @@ import { useScreenHeader } from '@/components/layout/screenHeader'
 import { formatDateTime } from '@/utils/format'
 import { useSupportStore } from '@/stores/support'
 import { useAuthStore } from '@/stores/auth'
+import { useTranslationPoll } from '@/composables/useTranslationPoll'
 import type { SupportActionError } from '@/stores/support'
-import type { SupportMessageResponse, SupportOperatorThreadRow } from '@/api/support'
+import type { SupportOperatorThreadRow, SupportStaffMessage } from '@/api/support'
 
 const { t, locale } = useI18n()
 const support = useSupportStore()
@@ -166,14 +179,15 @@ const isForeign = computed<boolean>(
 
 function openThread(threadId: string): void {
   openThreadId.value = threadId
-  void support.fetchStaffMessages(threadId)
+  for (const key of Object.keys(flipped)) delete flipped[key]
+  void support.fetchStaffMessages(threadId).then(() => restartTranslationPoll())
 }
 
 function closeThread(): void {
   openThreadId.value = null
 }
 
-function sentAt(message: SupportMessageResponse): string | null {
+function sentAt(message: SupportStaffMessage): string | null {
   return message.created_at ? formatDateTime(message.created_at, locale.value) : null
 }
 
@@ -186,9 +200,107 @@ function retryFeed(): void {
 // Store hands back comms' own order ("newest first"); read "oldest
 // first" here -- same rule as Ф-2, re-applied rather than shared
 // (stake B).
-const chronologicalMessages = computed<SupportMessageResponse[]>(() =>
+const chronologicalMessages = computed<SupportStaffMessage[]>(() =>
   [...support.staffMessages].reverse(),
 )
+
+// -- Translation (H39) ------------------------------------------------------
+
+// The states in which a translation is still on its way. `not_requested`
+// is among them: the backend has just queued it (the catch-up), and the
+// request reaches comms a moment later.
+const IN_FLIGHT = new Set(['preparing', 'not_requested'])
+
+// Per message: true = the other text is on screen (the original of a
+// client's message, or what the client reads of a reply). Cleared when
+// another conversation is opened.
+const flipped = reactive<Record<string, boolean>>({})
+
+function fromClient(message: SupportStaffMessage): boolean {
+  return selectedThread.value !== null && message.sender === selectedThread.value.client
+}
+
+// The text the toggle swaps in, or null when there is nothing to swap:
+// a client's message whose translation is ready and differs from what the
+// client wrote; a reply whose translation for the client is ready.
+function otherText(message: SupportStaffMessage): string | null {
+  const tr = message.translation
+  if (tr === null || tr.state !== 'ready') return null
+  if (fromClient(message)) {
+    return message.original !== null && message.original !== message.body
+      ? message.original
+      : null
+  }
+  return tr.variant_body ?? null
+}
+
+function shownText(message: SupportStaffMessage): string {
+  const other = otherText(message)
+  if (other !== null && flipped[message.id]) return other
+  return message.body ?? message.original ?? ''
+}
+
+function toggleLabel(message: SupportStaffMessage): string {
+  const on = flipped[message.id] === true
+  if (fromClient(message)) {
+    return on ? t('staff.support.translation.hideOriginal') : t('staff.support.translation.showOriginal')
+  }
+  return on
+    ? t('staff.support.translation.hideClientVersion')
+    : t('staff.support.translation.showClientVersion')
+}
+
+function toggle(message: SupportStaffMessage): void {
+  flipped[message.id] = !flipped[message.id]
+}
+
+// The line under a message, or null when there is nothing to say (no
+// translation needed). A state the backend may add later reads as
+// "cannot be translated" -- never as success.
+function translationNote(message: SupportStaffMessage): string | null {
+  const tr = message.translation
+  if (tr === null || tr.state === 'not_needed') return null
+  const client = fromClient(message)
+  if (tr.state === 'ready') {
+    if (client) {
+      return tr.source_locale
+        ? t('staff.support.translation.translatedFrom', { lang: tr.source_locale.toUpperCase() })
+        : null
+    }
+    return t('staff.support.translation.clientReads', { lang: tr.locale.toUpperCase() })
+  }
+  if (IN_FLIGHT.has(tr.state)) {
+    return client
+      ? t('staff.support.translation.translating')
+      : t('staff.support.translation.translatingForClient')
+  }
+  if (tr.retryable) {
+    return client
+      ? t('staff.support.translation.failed')
+      : t('staff.support.translation.failedForClient')
+  }
+  return client
+    ? t('staff.support.translation.declined')
+    : t('staff.support.translation.declinedForClient')
+}
+
+function handleRetryTranslation(message: SupportStaffMessage): void {
+  const id = openThreadId.value
+  if (id === null) return
+  void support.retryTranslation(id, message.id).then(() => restartTranslationPoll())
+}
+
+const { restart: restartTranslationPoll } = useTranslationPoll({
+  translating: () =>
+    openThreadId.value !== null &&
+    support.staffMessages.some(
+      (m) => m.translation !== null && IN_FLIGHT.has(m.translation.state),
+    ),
+  refresh: async () => {
+    const id = openThreadId.value
+    if (id !== null) await support.fetchStaffMessages(id, { silent: true })
+  },
+})
 
 // -- Who is asking (T-75) -----------------------------------------------
 //
@@ -216,7 +328,7 @@ function clientNameIsIdentifier(row: SupportOperatorThreadRow): boolean {
 
 // STAKE C: side by comparison with the thread's fixed client id, never
 // by identity -- see header.
-function isRight(message: SupportMessageResponse): boolean {
+function isRight(message: SupportStaffMessage): boolean {
   return selectedThread.value !== null && message.sender !== selectedThread.value.client
 }
 
@@ -241,7 +353,7 @@ async function handleSend(): Promise<void> {
   if (support.replyErrors[id]) return
 
   composerText.value = ''
-  void support.fetchStaffMessages(id)
+  void support.fetchStaffMessages(id).then(() => restartTranslationPoll())
 }
 
 // -- Status -----------------------------------------------------------
@@ -493,7 +605,39 @@ onMounted(() => {
                 }}
               </span>
               <p class="ds-message__bubble">
-                {{ message.body }}
+                {{ shownText(message) }}
+              </p>
+              <p v-if="translationNote(message)" class="ssup__tr-note">
+                {{ translationNote(message) }}
+              </p>
+              <span
+                v-if="otherText(message) !== null || message.translation?.retryable"
+                class="ssup__tr-actions"
+              >
+                <CButton
+                  v-if="otherText(message) !== null"
+                  variant="link"
+                  size="sm"
+                  inline
+                  @click="toggle(message)"
+                >
+                  {{ toggleLabel(message) }}
+                </CButton>
+                <CButton
+                  v-if="message.translation?.retryable"
+                  variant="outline"
+                  size="sm"
+                  inline
+                  :loading="support.retryingTranslation[message.id]"
+                  :disabled="support.retryingTranslation[message.id]"
+                  @click="handleRetryTranslation(message)"
+                >
+                  {{ t('staff.support.translation.retry') }}
+                </CButton>
+              </span>
+              <p v-if="support.retryTranslationErrors[message.id]" class="ds-field__error">
+                <AlertTriangle size="sm" />
+                <span>{{ t('staff.support.translation.retryError') }}</span>
               </p>
               <time
                 v-if="sentAt(message)"
@@ -591,6 +735,19 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-2);
+}
+
+/* The translation state under a message, and its two actions (H39). */
+.ssup__tr-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.ssup__tr-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 

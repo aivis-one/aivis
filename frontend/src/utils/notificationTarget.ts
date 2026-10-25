@@ -25,6 +25,14 @@ export interface NotificationTargetInput {
   shell: string | undefined
 }
 
+// A notice about the support conversation: comms' own message pings
+// (msg.*) and the product's "a reply could not be translated"
+// (support.translation_unavailable, H39) -- both lead to the conversation,
+// where the reply is and where it can be answered.
+function isSupportNotice(type: string): boolean {
+  return type.startsWith('msg.') || type === 'support.translation_unavailable'
+}
+
 function paramId(params: Record<string, unknown> | undefined): string | null {
   const id = params?.id
   return typeof id === 'string' && id.length > 0 ? id : null
@@ -46,7 +54,7 @@ function companyTarget(
   if (type.startsWith('company.roadmap_')) return { name: 'company-roadmap' }
   if (type.startsWith('company.attachment')) return { name: 'company-attachments' }
   if (type.startsWith('company.')) return { name: 'company-audit' }
-  if (type.startsWith('msg.')) return { name: 'company-support' }
+  if (isSupportNotice(type)) return { name: 'company-support' }
   return null
 }
 
@@ -81,7 +89,7 @@ export function notificationTarget(input: NotificationTargetInput): RouteLocatio
   if (type.startsWith('installment.')) return { name: 'investor-installment-plans' }
 
   if (type.startsWith('agent_application.')) return { name: 'investor-settings' }
-  if (type.startsWith('msg.')) return { name: 'investor-support' }
+  if (isSupportNotice(type)) return { name: 'investor-support' }
 
   return null
 }

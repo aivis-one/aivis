@@ -125,6 +125,8 @@ _GOOD_REQUIRED = {
     "comms_redis_url": "redis://:pw@comms-redis:6379/0",
     "comms_api_url": "http://comms-app:8000",
     "comms_service_token": "comms-token",
+    # H39 P-129: the support language has no default outside development.
+    "support_language": "ru",
 }
 
 _NO_OPTIONAL_STACKS = {

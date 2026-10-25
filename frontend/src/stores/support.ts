@@ -68,13 +68,16 @@ import {
   markSupportThreadRead,
   openSupportThread,
   replyToStaffSupportThread,
+  retryStaffSupportTranslation,
   sendSupportMessage,
   setStaffSupportThreadStatus,
 } from '@/api/support'
 import { ApiResponseError } from '@/api/client'
 import type {
+  SupportClientMessage,
   SupportMessageResponse,
   SupportOperatorThreadRow,
+  SupportStaffMessage,
   SupportThreadListItem,
   SupportThreadResponse,
 } from '@/api/support'
@@ -121,7 +124,7 @@ export const useSupportStore = defineStore('support', () => {
   const threadsLoading = ref<boolean>(false)
   const threadsError = ref<SupportActionError | null>(null)
 
-  const messages = ref<SupportMessageResponse[]>([])
+  const messages = ref<SupportClientMessage[]>([])
   const messagesNextCursor = ref<string | null>(null)
   const messagesLoading = ref<boolean>(false)
   const messagesError = ref<SupportActionError | null>(null)
@@ -192,21 +195,30 @@ export const useSupportStore = defineStore('support', () => {
 
   /**
    * First page (or a fresh reload) of the caller's own thread feed.
+   *
+   * `silent` (H39): the re-read while a translation is on its way
+   * (useTranslationPoll). It neither shows the loader nor touches
+   * `messagesError` -- the person is reading the feed, and a missed
+   * re-read is simply the next tick's work, not an error screen over a
+   * conversation that is still there.
    */
-  async function fetchMessages(threadId: string): Promise<void> {
+  async function fetchMessages(threadId: string, opts?: { silent?: boolean }): Promise<void> {
+    const silent = opts?.silent === true
     const epoch = ++threadEpoch
-    messagesLoading.value = true
-    messagesError.value = null
+    if (!silent) {
+      messagesLoading.value = true
+      messagesError.value = null
+    }
     try {
       const resp = await getSupportThreadMessages(threadId)
       if (epoch !== threadEpoch) return
       messages.value = resp.items
       messagesNextCursor.value = resp.next_cursor
     } catch (err) {
-      if (epoch !== threadEpoch) return
+      if (epoch !== threadEpoch || silent) return
       messagesError.value = toActionError(err)
     } finally {
-      if (epoch === threadEpoch) {
+      if (epoch === threadEpoch && !silent) {
         messagesLoading.value = false
       }
     }
@@ -292,7 +304,7 @@ export const useSupportStore = defineStore('support', () => {
   // a staff member has their own support thread as a person too -- and
   // sharing the array would let one screen overwrite the other's
   // contents behind its back.
-  const staffMessages = ref<SupportMessageResponse[]>([])
+  const staffMessages = ref<SupportStaffMessage[]>([])
   const staffMessagesNextCursor = ref<string | null>(null)
   const staffMessagesLoading = ref<boolean>(false)
   const staffMessagesError = ref<SupportActionError | null>(null)
@@ -313,23 +325,54 @@ export const useSupportStore = defineStore('support', () => {
    * is stored so a caller can see there is more, and paging it is left
    * to whoever builds the screen -- machinery with no consumer would be
    * a guess about a UI nobody has drawn yet.
+   *
+   * `silent`: as on the user side (fetchMessages) -- the re-read while a
+   * translation is on its way, with no loader and no error screen.
    */
-  async function fetchStaffMessages(threadId: string): Promise<void> {
+  async function fetchStaffMessages(threadId: string, opts?: { silent?: boolean }): Promise<void> {
+    const silent = opts?.silent === true
     const epoch = ++staffFeedEpoch
-    staffMessagesLoading.value = true
-    staffMessagesError.value = null
+    if (!silent) {
+      staffMessagesLoading.value = true
+      staffMessagesError.value = null
+    }
     try {
       const resp = await getStaffSupportThreadMessages(threadId)
       if (epoch !== staffFeedEpoch) return
       staffMessages.value = resp.items
       staffMessagesNextCursor.value = resp.next_cursor
     } catch (err) {
-      if (epoch !== staffFeedEpoch) return
+      if (epoch !== staffFeedEpoch || silent) return
       staffMessagesError.value = toActionError(err)
     } finally {
-      if (epoch === staffFeedEpoch) {
+      if (epoch === staffFeedEpoch && !silent) {
         staffMessagesLoading.value = false
       }
+    }
+  }
+
+  // Per MESSAGE, for the same reason the thread actions are per thread:
+  // a feed holds many messages, and one retry in flight must not light up
+  // every other message's button.
+  const retryingTranslation = reactive<Record<string, boolean>>({})
+  const retryTranslationErrors = reactive<Record<string, SupportActionError | null>>({})
+
+  /**
+   * Ask again for a message whose translation failed (H39). Offered only
+   * on a message the feed marks `retryable`; on success the feed is
+   * re-read silently, so the message shows "translating" again.
+   */
+  async function retryTranslation(threadId: string, messageId: string): Promise<void> {
+    if (retryingTranslation[messageId]) return
+    retryingTranslation[messageId] = true
+    retryTranslationErrors[messageId] = null
+    try {
+      await retryStaffSupportTranslation(threadId, messageId)
+      await fetchStaffMessages(threadId, { silent: true })
+    } catch (err) {
+      retryTranslationErrors[messageId] = toActionError(err)
+    } finally {
+      retryingTranslation[messageId] = false
     }
   }
 
@@ -405,7 +448,8 @@ export const useSupportStore = defineStore('support', () => {
 
   /**
    * Resolve or close a thread. `open` is not offered as a target --
-   * see SetStatusIn on the backend; there is no manual reopen.
+   * see SetStatusIn on the backend: comms has a manual reopen, and
+   * offering it is the ticket work of H40.
    */
   async function setThreadStatus(threadId: string, status: SetStatusIn['status']): Promise<void> {
     if (changingStatus[threadId]) return
@@ -480,6 +524,8 @@ export const useSupportStore = defineStore('support', () => {
     for (const key of Object.keys(replyErrors)) delete replyErrors[key]
     for (const key of Object.keys(changingStatus)) delete changingStatus[key]
     for (const key of Object.keys(statusErrors)) delete statusErrors[key]
+    for (const key of Object.keys(retryingTranslation)) delete retryingTranslation[key]
+    for (const key of Object.keys(retryTranslationErrors)) delete retryTranslationErrors[key]
   }
 
   return {
@@ -528,6 +574,11 @@ export const useSupportStore = defineStore('support', () => {
     staffMessagesLoading,
     staffMessagesError,
     fetchStaffMessages,
+
+    // operator translation retry, per message (H39)
+    retryingTranslation,
+    retryTranslationErrors,
+    retryTranslation,
 
     // operator per-thread actions
     claiming,

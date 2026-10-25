@@ -10,16 +10,19 @@
 //
 // RESPONSE TYPES HAVE NO GENERATED COUNTERPART, ON PURPOSE.
 // Every handler here returns `dict[str, Any]`: the backend is a PROXY
-// that forwards comms' own payload as-is, so there is nothing for
-// OpenAPI to describe. The shapes below are read from two places, not
-// guessed:
+// that forwards comms' own payload -- as-is, or with every message of a
+// feed rendered for its reader (H39, backend modules/support/
+// translation.py) -- so there is nothing for OpenAPI to describe. The
+// shapes below are read from three places, not guessed:
 //   - backend/app/modules/support/service.py -- which keys survive
 //     the proxy (e.g. `created` is stripped from the open-thread
 //     response; list_support_threads assembles its own {threads: []}
 //     shape from the local pointer table, not from comms directly);
 //   - comms/app/api/messaging.py `_thread_out` / `_message_out` --
 //     the actual serializers a comms response is built from, for the
-//     calls service.py forwards untouched.
+//     calls service.py forwards untouched;
+//   - backend/app/modules/support/translation.py render_for_client /
+//     staff_feed -- the two feeds, which are rendered, not forwarded.
 // If comms' serializer changes shape, these types drift silently --
 // there is no schema to catch it, same as every other comms call this
 // product makes.
@@ -67,6 +70,7 @@ export interface SupportThreadResponse {
   created_at: string | null
 }
 
+/** One message as comms stores it: the answer to a send or a reply. */
 export interface SupportMessageResponse {
   id: string
   thread_id: string
@@ -75,13 +79,91 @@ export interface SupportMessageResponse {
   created_at: string | null
 }
 
+/**
+ * One message of the person's own feed (H39, render_for_client).
+ *
+ * `body` is what the person may read: their own text, a staff reply in
+ * their language, or NULL -- and then `translation` says why: a
+ * translation is on its way, or there will be none. A reply in a language
+ * the person does not read never arrives here (fail-closed on the
+ * backend), so a null body is never to be filled from anywhere else.
+ */
+export type SupportClientTranslation = 'translating' | 'unavailable'
+
+export interface SupportClientMessage {
+  id: string
+  thread_id?: string
+  sender: string
+  body: string | null
+  created_at: string | null
+  translation: SupportClientTranslation | null
+}
+
 // Every support list has comms' one listing shape (comms
 // deploy/INTEGRATION.md section 5): `items` and `next_cursor`. The
 // caller's own thread list is local and never has a second page, but it
 // answers in the same shape so no reader has two to know.
-export interface SupportMessageListResponse {
-  items: SupportMessageResponse[]
+export interface SupportClientMessageListResponse {
+  items: SupportClientMessage[]
   next_cursor: string | null
+}
+
+/**
+ * comms' variant state of a message in one language (its INTEGRATION.md
+ * section 12), as the staff feed reports it. A string the backend may
+ * extend: an unknown one is read as "no translation, not retryable".
+ */
+export type SupportVariantState =
+  | 'ready'
+  | 'impossible'
+  | 'not_needed'
+  | 'preparing'
+  | 'not_requested'
+
+/**
+ * The translation block of a staff feed item (H39, staff_feed).
+ *
+ * On a person's message: the translation into the support language --
+ * the item's `body` IS it when `state` is ready. On a staff reply to a
+ * person of another language: what the person will read, in
+ * `variant_body` once ready. `retryable` -- the job ended without an
+ * answer, and asking again is offered.
+ */
+export interface SupportStaffTranslation {
+  locale: string
+  state: SupportVariantState | string
+  source_locale: string | null
+  retryable: boolean
+  variant_body?: string | null
+}
+
+/**
+ * One message of the staff feed: comms' message, `body` in the support
+ * language when a translation is ready, `original` the author's own text
+ * (staff only), and the translation block -- null on a staff reply to a
+ * person who reads the support language.
+ */
+export interface SupportStaffMessage {
+  id: string
+  thread_id: string
+  sender: string
+  body: string | null
+  created_at: string | null
+  original: string | null
+  translation: SupportStaffTranslation | null
+}
+
+export interface SupportStaffMessageListResponse {
+  items: SupportStaffMessage[]
+  next_cursor: string | null
+}
+
+/** The answer to a staff retry of a translation. */
+export interface SupportTranslationRetryResponse {
+  message_id: string
+  locale: string
+  attempt: number
+  state: 'preparing'
 }
 
 export interface SupportUnreadResponse {
@@ -204,7 +286,8 @@ export function sendSupportMessage(
 
 /**
  * GET /api/v1/support/threads/{id}/messages -- that thread's feed,
- * newest first, keyset-paginated.
+ * newest first, keyset-paginated, every message rendered for the caller
+ * (SupportClientMessage).
  *
  * 404 if `thread_id` is not this caller's (including a real thread
  * belonging to somebody else -- existence never leaks).
@@ -212,12 +295,14 @@ export function sendSupportMessage(
 export function getSupportThreadMessages(
   threadId: string,
   params?: ListMessagesParams,
-): Promise<SupportMessageListResponse> {
+): Promise<SupportClientMessageListResponse> {
   const qs = buildQueryString({
     limit: params?.limit,
     cursor: params?.cursor,
   })
-  return api.get<SupportMessageListResponse>(`/api/v1/support/threads/${threadId}/messages${qs}`)
+  return api.get<SupportClientMessageListResponse>(
+    `/api/v1/support/threads/${threadId}/messages${qs}`,
+  )
 }
 
 /**
@@ -267,12 +352,11 @@ export function claimStaffSupportThread(threadId: string): Promise<SupportThread
  * GET /api/v1/staff/support/threads/{id}/messages -- read one known
  * request, newest first, keyset-paginated.
  *
- * SAME RESPONSE TYPE AS THE USER FEED, and that is a fact rather than
- * a convenience: both routes forward comms' `GET /threads/{id}/messages`
- * untouched (service.py get_support_messages and
- * get_operator_thread_messages), and comms builds that body from a
- * single serializer. Two types here would assert that one serializer
- * produces two shapes.
+ * NOT THE USER FEED'S TYPE since H39: both feeds are rendered for their
+ * reader (translation.py) -- the person's carries no original of a
+ * reply, the operator's carries the original and the translation state
+ * of every message -- so one serializer upstream now gives two shapes
+ * here.
  *
  * 404 if the id names no support thread this product created. NOT
  * restricted to threads this operator claimed -- the queue shows the
@@ -282,12 +366,12 @@ export function claimStaffSupportThread(threadId: string): Promise<SupportThread
 export function getStaffSupportThreadMessages(
   threadId: string,
   params?: ListMessagesParams,
-): Promise<SupportMessageListResponse> {
+): Promise<SupportStaffMessageListResponse> {
   const qs = buildQueryString({
     limit: params?.limit,
     cursor: params?.cursor,
   })
-  return api.get<SupportMessageListResponse>(
+  return api.get<SupportStaffMessageListResponse>(
     `/api/v1/staff/support/threads/${threadId}/messages${qs}`,
   )
 }
@@ -316,9 +400,9 @@ export function replyToStaffSupportThread(
 /**
  * POST /api/v1/staff/support/threads/{id}/status -- resolve or close.
  *
- * `open` is not a valid target (see SetStatusIn on the backend): a
- * closed thread revives only when the CLIENT writes into it, never
- * through this route.
+ * `open` is not a valid target (see SetStatusIn on the backend): comms
+ * has a manual return to `open`, and offering it is the ticket work of
+ * H40. Until then a closed thread revives when the CLIENT writes into it.
  */
 export function setStaffSupportThreadStatus(
   threadId: string,
@@ -328,5 +412,23 @@ export function setStaffSupportThreadStatus(
   return api.post<SupportThreadResponse>(
     `/api/v1/staff/support/threads/${threadId}/status`,
     payload,
+  )
+}
+
+/**
+ * POST /api/v1/staff/support/threads/{id}/messages/{mid}/translation/retry
+ * -- ask again for a message whose translation failed (H39). Offered only
+ * where the feed says `retryable`; 409 when there is nothing to retry
+ * (in progress, done, or declined -- final), 404 when the message is out
+ * of the thread's reach.
+ */
+export function retryStaffSupportTranslation(
+  threadId: string,
+  messageId: string,
+): Promise<SupportTranslationRetryResponse> {
+  const body: EmptyBodyIn = {}
+  return api.post<SupportTranslationRetryResponse>(
+    `/api/v1/staff/support/threads/${threadId}/messages/${messageId}/translation/retry`,
+    body,
   )
 }

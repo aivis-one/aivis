@@ -2,9 +2,11 @@
 # AIVIS.ONE Backend -- Support: request bodies (T-65)
 # =============================================================================
 #
-# Only REQUEST shapes live here. Responses are comms' own payloads,
-# forwarded as they are: re-declaring them would be a second copy of a
-# contract this product does not own, guaranteed to drift from it.
+# Only REQUEST shapes live here. Responses are comms' own payloads --
+# forwarded as they are, or with every message rendered for its reader in
+# the two feeds (translation.py, H39): re-declaring them would be a second
+# copy of a contract this product does not own, guaranteed to drift from
+# it.
 #
 # EVERY MODEL FORBIDS EXTRA FIELDS, and that is the point rather than
 # tidiness. comms trusts whatever actor a caller sends it -- client,
@@ -74,12 +76,11 @@ class SendMessageIn(BaseModel):
 class SetStatusIn(BaseModel):
     """An operator moving a conversation along (T-66).
 
-    `open` IS NOT AN OPTION, and its absence is the point. comms allows
-    no manual reopen whatsoever -- `closed` has an empty set of allowed
-    manual transitions, and a thread comes back to life only when the
-    CLIENT writes into it. Offering `open` here would be a field that
-    always yields a 422 from comms: an endpoint documenting a state
-    change that cannot be made.
+    `open` IS NOT AN OPTION. comms 3.11 does allow a manual return to
+    `open` (from `resolved` and from `closed`), so its absence here is
+    this product's choice, not comms' limit: staff reopening a request is
+    part of the ticket statuses H40 decides. Until then a thread comes
+    back to life when the CLIENT writes into it.
     """
 
     model_config = ConfigDict(extra="forbid")

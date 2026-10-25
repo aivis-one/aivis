@@ -4,7 +4,8 @@
 #
 # A PROXY, not a store. The conversation lives in comms; this module
 # stamps who the caller is, checks that the thread they name is theirs,
-# and forwards. The only thing kept locally is the pointer row (models.py).
+# and forwards. What is kept locally is the pointer row and, since H39,
+# the translation queue -- no text in either (models.py, translation.py).
 #
 # THE SHAPE OF A SUPPORT CONVERSATION, AND WHY THIS ONE
 # -----------------------------------------------------
@@ -30,9 +31,9 @@
 #
 # WHAT HAPPENS WHEN A THREAD IS CLOSED
 # ------------------------------------
-# Staff can close a thread (their side is a later delivery; comms already
-# has the verb). Two consequences follow, and they are the accepted price
-# of the section form:
+# Staff can close a thread (staff_router.py, set_support_thread_status).
+# Two consequences follow, and they are the accepted price of the section
+# form:
 #
 #   1. comms flags EVERY closing section thread as notifiable and its
 #      close pass sends msg.thread_closed to the client. The flag keys on
@@ -43,18 +44,23 @@
 #      silenced answers while letting the closing notice through would be
 #      a defect rather than a preference.
 #
-#   2. A CLOSED THREAD IS NOT AN ENDING. comms has no manual reopen at
-#      all -- closed has an empty set of allowed manual transitions -- but
-#      a message from the CLIENT reopens it automatically and clears any
-#      pending close notice. So a user writing into a thread staff closed
-#      simply continues the conversation: send_support_message needs no
-#      special case, and there is deliberately no "reopen" endpoint here,
-#      because writing IS the reopen.
+#   2. A CLOSED THREAD IS NOT AN ENDING. A message from the CLIENT
+#      reopens it automatically and clears any pending close notice, so a
+#      user writing into a thread staff closed simply continues the
+#      conversation: send_support_message needs no special case. comms
+#      (3.11) also has a MANUAL return to `open`; this product does not
+#      offer it yet -- staff reopening a request belongs to the ticket
+#      work of H40, where the statuses are decided (see
+#      set_support_thread_status).
 #
 # THE OPERATOR SIDE IS NO LONGER A PLAIN PASSTHROUGH (T-75)
 # ---------------------------------------------------------
-# Everything above says "a proxy, not a store", and for the user side
-# that is still exactly true. The OPERATOR queue is not: its rows leave
+# Everything above says "a proxy, not a store". Two reshapings are ours,
+# both stated where a reader of a response would otherwise not learn it:
+# the message feeds of BOTH sides carry translations since H39
+# (translation.py -- the person reads the version in their language, staff
+# read the version in the support language and the original), and the
+# OPERATOR queue below. Its rows leave
 # here carrying `client_profile`, a key comms never sent and could not
 # send. Stated here rather than left to be discovered, because the next
 # reader looking at that field in a response has no other way to learn
@@ -105,9 +111,11 @@ from app.core.comms import (
     comms_configured,
     comms_request,
 )
+from app.core.config import settings
 from app.core.exceptions import ConflictError, NotFoundError
+from app.modules.support import translation
 from app.modules.support.dependencies import SupportOperator
-from app.modules.support.models import SupportThread
+from app.modules.support.models import TO_SUPPORT, TO_USER, SupportThread
 from app.modules.users.models import User
 
 logger = structlog.get_logger()
@@ -180,6 +188,22 @@ def _uuid_from_payload(payload: Any, key: str, what: str) -> UUID:
     except (TypeError, ValueError):
         logger.error("comms_payload_malformed", what=what, key=key)
         raise CommsUnavailableError() from None
+
+
+def _read_page(payload: Any) -> tuple[list[Any], str | None]:
+    """A comms message page -> (items, next_cursor), or refuse.
+
+    The feeds are RESHAPED now (H39: every item is rendered by
+    translation.py), so the page is read rather than forwarded, and a page
+    of another shape is a malformed answer -- the same clean refusal as
+    _uuid_from_payload, never a feed that silently says "no messages".
+    """
+    items = payload.get("items") if isinstance(payload, dict) else None
+    cursor = payload.get("next_cursor") if isinstance(payload, dict) else None
+    if not isinstance(items, list) or not (cursor is None or isinstance(cursor, str)):
+        logger.error("comms_payload_malformed", what="messages", key="items")
+        raise CommsUnavailableError()
+    return items, cursor
 
 
 # ---------------------------------------------------------------------------
@@ -444,15 +468,40 @@ async def get_support_messages(
     limit: int,
     cursor: str | None,
 ) -> dict[str, Any]:
-    """One of the caller's own threads, newest messages first."""
-    await _require_own_thread(session, user=user, thread_id=thread_id)
+    """One of the caller's own threads, newest messages first, as the
+    caller reads it (H39 P-129).
+
+    Read in the caller's language when that is not the support language
+    (translation.reply_language): every staff reply then comes as its
+    translation, or as a state with no text -- never as the original
+    (translation.render_for_client, fail-closed). A staff reply with no
+    translation asked for in that language is queued now (the catch-up),
+    which is why this read needs the write session.
+
+    The answer is comms' page shape -- `items` and `next_cursor` -- with
+    every item rendered; nothing else of comms' page goes out.
+    """
+    pointer = await _require_own_thread(session, user=user, thread_id=thread_id)
+    user_locale = translation.reply_language(user)
 
     params: dict[str, Any] = {"limit": limit}
     if cursor is not None:
         params["cursor"] = cursor
-    return await comms_request(
+    if user_locale is not None:
+        params["locale"] = user_locale
+    payload = await comms_request(
         "GET", f"{_THREADS_PATH}/{thread_id}/messages", params=params
     )
+    messages, next_cursor = _read_page(payload)
+    return {
+        "items": await translation.client_feed(
+            session,
+            pointer=pointer,
+            user_locale=user_locale,
+            messages=messages,
+        ),
+        "next_cursor": next_cursor,
+    }
 
 
 async def send_support_message(
@@ -471,17 +520,35 @@ async def send_support_message(
 
     A CLOSED THREAD NEEDS NO SPECIAL CASE: comms reopens it on a client
     message and clears any pending close notice.
+
+    H39 P-129: the message goes into the thread at once, as written, and
+    its translation into the support language is queued in the caller's
+    transaction -- ALWAYS, whatever the person's interface language (the
+    model answers "none needed" when it already is). comms is called
+    outside that transaction: when comms took the message and the
+    transaction then fails, the staff feed's catch-up queues the
+    translation on its next read. A retry under the same Idempotency-Key
+    is the same message, and the queue takes it once.
     """
     pointer = await _pointer_for_user(session, user.id)
     if pointer is None:
         raise NotFoundError("Open a support request before sending a message")
 
-    return await comms_request(
+    message = await comms_request(
         "POST",
         f"{_THREADS_PATH}/{pointer.comms_thread_id}/messages",
         json={"sender": str(user.id), "body": body},
         idempotency_key=_message_idempotency_key(user.id, idempotency_key),
     )
+    await translation.enqueue_for_sent(
+        session,
+        pointer=pointer,
+        message=message,
+        direction=TO_SUPPORT,
+        locale=settings.support_language,
+        text=body,
+    )
+    return message
 
 
 async def mark_support_thread_read(
@@ -734,14 +801,59 @@ async def get_operator_thread_messages(
     claim, reply, status -- and no way to read the conversation being
     replied to. Writing into a thread you cannot read is not a feature
     with a missing screen; it is half a verb.
-    """
-    await _require_known_thread(session, thread_id)
 
-    params: dict[str, Any] = {"limit": limit}
-    if cursor is not None:
-        params["cursor"] = cursor
-    return await comms_request(
-        "GET", f"{_THREADS_PATH}/{thread_id}/messages", params=params
+    H39 P-129: read in the support language -- and the SAME page again in
+    the person's language when it differs: only that read says what became
+    of a staff reply for the person (translation.staff_feed, which also
+    queues what nobody asked for yet -- hence the write session). The feed
+    pages exactly alike with any locale.
+    """
+    pointer = await _require_known_thread(session, thread_id)
+    client = await session.get(User, pointer.user_id)
+    user_locale = (
+        translation.reply_language(client) if client is not None else None
+    )
+
+    async def _page(locale: str) -> tuple[list[Any], str | None]:
+        params: dict[str, Any] = {"limit": limit, "locale": locale}
+        if cursor is not None:
+            params["cursor"] = cursor
+        return _read_page(
+            await comms_request(
+                "GET", f"{_THREADS_PATH}/{thread_id}/messages", params=params
+            )
+        )
+
+    messages, next_cursor = await _page(settings.support_language)
+    user_items: list[Any] = []
+    if user_locale is not None:
+        user_items, _ = await _page(user_locale)
+    return {
+        "items": await translation.staff_feed(
+            session,
+            pointer=pointer,
+            messages=messages,
+            user_locale=user_locale,
+            user_items=user_items,
+        ),
+        "next_cursor": next_cursor,
+    }
+
+
+async def retry_support_translation(
+    session: AsyncSession, *, thread_id: UUID, message_id: UUID
+) -> dict[str, Any]:
+    """Ask again for a message whose translation's job failed (H39).
+
+    Any operator: nothing is posted as anyone, so claiming is not the
+    question -- the boundary is the same as reading (_require_known_thread).
+    409 when there is nothing to retry (in progress, translated, declined
+    -- final in comms -- or a reply that needs no translation); 404 when
+    the message is not in this thread's reach (translation.find_message).
+    """
+    pointer = await _require_known_thread(session, thread_id)
+    return await translation.retry(
+        session, pointer=pointer, message_id=message_id,
     )
 
 
@@ -811,11 +923,18 @@ async def reply_to_support_thread(
 
     A closed thread does NOT reopen on this message: comms revives a
     thread only for a message from the CLIENT.
+
+    H39 P-129: the reply goes into the thread at once, as written. When the
+    person reads another language than support's, its translation into
+    theirs is queued in this transaction -- it becomes the message's
+    variant (translation.py); nothing is queued for a person who reads the
+    support language. comms is called outside the transaction, and the
+    feeds' catch-up covers a translation lost with a failed commit.
     """
-    await _require_known_thread(session, thread_id)
+    pointer = await _require_known_thread(session, thread_id)
 
     try:
-        return await comms_request(
+        message = await comms_request(
             "POST",
             f"{_THREADS_PATH}/{thread_id}/messages",
             json={"sender": str(operator.id), "body": body},
@@ -832,6 +951,19 @@ async def reply_to_support_thread(
             ) from exc
         raise
 
+    client = await session.get(User, pointer.user_id)
+    target = translation.reply_language(client) if client is not None else None
+    if target is not None:
+        await translation.enqueue_for_sent(
+            session,
+            pointer=pointer,
+            message=message,
+            direction=TO_USER,
+            locale=target,
+            text=body,
+        )
+    return message
+
 
 async def set_support_thread_status(
     session: AsyncSession,
@@ -843,12 +975,17 @@ async def set_support_thread_status(
     """Move a conversation along the status matrix.
 
     THE TRANSITION IS COMMS' TO VALIDATE, and the request is a target
-    state rather than a written field: set_status walks the D5 matrix --
-    open -> resolved, open -> closed, resolved -> closed, and X -> X as a
-    successful no-op. Everything else is refused with a 422, including
-    every backward move: a MANUAL reopen does not exist at all. Only a
-    message from the client reopens a thread, which is why our schema
-    does not offer `open` as a target -- see schemas.SetStatusIn.
+    state rather than a written field. comms 3.11's matrix (its
+    INTEGRATION.md section 14): from `open` to `resolved` or `closed`;
+    from `resolved` to `open` or `closed`; from `closed` to `open` only
+    (`resolved` is a 422); X -> X a successful no-op. A message from the
+    client still returns a thread to `open` by itself.
+
+    `open` IS NOT OFFERED HERE, and no longer because comms lacks it: the
+    manual return to `open` is the ticket work of H40, where the statuses
+    of a request are decided. Until then our schema refuses it -- see
+    schemas.SetStatusIn -- and a closed thread comes back when the client
+    writes into it.
 
     Reaching `closed` on a section thread also arms comms' close notice
     to the client (msg.thread_closed). That is the price of the pooled

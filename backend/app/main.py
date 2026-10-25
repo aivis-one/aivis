@@ -138,6 +138,8 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from app.core.background import publish_background_tasks
 from app.core.body_limit import RequestBodyLimitMiddleware
+from app.core.comms_listener import configured as comms_listener_configured
+from app.core.comms_listener import run_listener as run_comms_listener
 from app.core.config import APP_VERSION, settings
 from app.core.database import dispose_engine, get_engine
 from app.core.events.relay import run_relay
@@ -414,6 +416,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             redis_url_configured=bool(settings.comms_redis_url),
         )
 
+    # Start the comms push listener (H39 P-129): reads the outcome of the
+    # llm jobs support translation queues (core/comms_listener.py). Gated
+    # like the relay -- on both halves of comms it needs, the API and the
+    # redis -- and for the same reason: a box without comms has nothing to
+    # listen to, which is a configuration, not an error. Every worker
+    # starts it; one advisory lock lets exactly one of them listen.
+    listener_task: asyncio.Task[None] | None = None
+    if comms_listener_configured():
+        listener_task = asyncio.create_task(
+            run_comms_listener(),
+            name="comms_push_listener",
+        )
+    else:
+        logger.info(
+            "comms_listener_disabled",
+            api_url_configured=bool(settings.comms_api_url),
+            redis_url_configured=bool(settings.comms_redis_url),
+        )
+
     # Start background daemons.
     confirmation_task = asyncio.create_task(
         _payment_confirmation_worker(),
@@ -448,6 +469,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         relay_task.cancel()
         with suppress(asyncio.CancelledError):
             await relay_task
+    if listener_task is not None:
+        listener_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await listener_task
 
     # Stop background daemons.
     confirmation_task.cancel()

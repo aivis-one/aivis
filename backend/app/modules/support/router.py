@@ -127,8 +127,8 @@ async def send_message(
         max_length=SUPPORT_CLIENT_KEY_MAX_LEN,
         pattern=SUPPORT_CLIENT_KEY_PATTERN,
     ),
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_reader),
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
 ) -> Any:
     """Send one message into the caller's own conversation.
 
@@ -137,9 +137,10 @@ async def send_message(
     the client's). A retry with the same key answers with the same
     message and notifies nobody again.
 
-    404 if the caller has never opened it. A reader session on purpose:
-    this route writes nothing locally -- the message lives in comms --
-    and a write session would open a transaction with nothing in it.
+    404 if the caller has never opened it. A WRITE session since H39: the
+    message lives in comms, and its translation is queued here -- a row of
+    the translation queue and its outbox event (translation.py), committed
+    with this request (get_current_user_write, TD-029).
     """
     _reject_actor_override(request)
     return await send_support_message(
@@ -153,14 +154,19 @@ async def get_thread_messages(
     thread_id: UUID,
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_reader),
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
 ) -> Any:
     """One of the caller's own threads, newest messages first.
 
     404 if `thread_id` is not this caller's -- including when it names a
     perfectly real thread belonging to somebody else. Existence never
     leaks.
+
+    H39: every staff reply comes in the caller's language or as a state
+    without text (translation.render_for_client). A write session: a
+    reply nobody asked a translation for yet is queued by this read (the
+    catch-up, translation.client_feed).
     """
     _reject_actor_override(request)
     return await get_support_messages(

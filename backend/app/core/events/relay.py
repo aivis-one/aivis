@@ -16,10 +16,13 @@
 # so this relay may publish into a stream that has never had a reader --
 # nothing is lost, the first consumer to start reads from the beginning.
 #
-# NOTHING EMITS YET. No product code calls emit_event in this tree; the
-# first emitter is a later delivery. After this one the pipe exists and
-# turns, and on a box whose .env carries COMMS_REDIS_URL it starts
-# turning at the next restart.
+# THE EMITTERS ARE PRODUCT CODE -- every caller of emit_event in app/,
+# deliberately not listed here, where a list would go stale with the next
+# one. On a box whose .env carries COMMS_REDIS_URL the pipe turns from the
+# first start.
+#
+# ONE PAYLOAD IS NOT KEPT AFTER PUBLICATION: an llm job's letter (H39
+# P-129) -- see _redact_llm_letter.
 #
 # ERROR MODEL -- the substance of this file:
 #
@@ -76,6 +79,7 @@ from app.core.events.models import (
     REDACTED_PAYLOAD,
     OutboxEvent,
 )
+from app.core.events.service import EVENT_NOTIFICATION_REQUEST
 
 logger = structlog.get_logger()
 
@@ -152,6 +156,44 @@ _REDACTION_BATCH_SIZE = 1000
 # one for hours. None = "never run in this process", so the first pass
 # happens at startup.
 _last_redaction_at: float | None = None
+
+
+# H39 P-129: what an llm letter (core/llm.py) is replaced with the moment
+# its row is published. See _redact_llm_letter.
+LLM_LETTER_REDACTED: dict[str, Any] = {"redacted": True}
+
+
+def _redact_llm_letter(event: OutboxEvent) -> None:
+    """Drop the llm letter of a row that has just been published.
+
+    WHY NOT THE RETENTION PASS. An llm job's letter (core/llm.py) carries
+    what a person wrote to support, word for word. The retention pass
+    below keeps a shipped payload for PAYLOAD_RETENTION_DAYS, which is
+    right for an ordinary notification -- its copy is what a human reads
+    when a delivery is questioned -- and wrong for this one: a week of a
+    support conversation in a table nobody reads for it. So the letter
+    goes in the same transaction that marks the row published, and the
+    rest of the payload (the key, the type, "v") stays for the retention
+    pass like any other row's.
+
+    THE PRICE, stated once: a published llm job cannot be replayed from
+    this table. Nothing replays one -- asking a model again is a new job
+    under a new key (modules/support/translation.py: the automatic re-ask
+    and the staff retry both enqueue a new attempt), and comms answers a
+    resend of the same key from its own record, never from ours.
+
+    Only a published row: an unpublished one -- a dead-lettered one
+    included -- keeps its payload, by the rule _redact_batch states.
+    """
+    payload = event.payload
+    if (
+        event.event_type == EVENT_NOTIFICATION_REQUEST
+        and isinstance(payload, dict)
+        and "llm" in payload
+    ):
+        # A new dict, not an in-place edit: JSONB change tracking sees an
+        # assignment, never a mutation of the object it holds.
+        event.payload = {**payload, "llm": LLM_LETTER_REDACTED}
 
 
 def build_envelope(event: OutboxEvent) -> dict[str, str]:
@@ -254,12 +296,13 @@ async def _publish_batch(
                 # │     _redact_batch, which states that trade in full
                 # │     rather than repeating this marker).
                 # │ (2) STATUS: acknowledged by design.
-                # │ (3) REFERENCE: none, and nothing to file yet. No
-                # │     product code calls emit_event in this tree, so
-                # │     the only rows that can die here are rows a test
-                # │     wrote. An operator console with no operator is
-                # │     code that rots untested; it ships with the first
-                # │     emitter, not before it.
+                # │ (3) REFERENCE: none filed. When this marker was
+                # │     written no product code called emit_event; it
+                # │     does now (every caller of emit_event in app/),
+                # │     so the second half of trigger (4) has fired and
+                # │     the port below has not been asked for. Recorded
+                # │     as a finding of H39 rather than acted on: an
+                # │     operator console is its own delivery.
                 # │ (4) UNCONSERVATION TRIGGER: the first
                 # │     outbox_event_dead_lettered line in the log of a
                 # │     real box, OR the first product caller of
@@ -320,6 +363,7 @@ async def _publish_batch(
             )
             continue
         event.published_at = datetime.now(UTC)
+        _redact_llm_letter(event)
         published += 1
 
     return (published, failed)

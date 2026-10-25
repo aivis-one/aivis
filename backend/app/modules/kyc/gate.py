@@ -180,6 +180,10 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/support/threads"),
         ("POST", "/api/v1/support/threads/messages"),
         ("POST", "/api/v1/support/threads/{thread_id}/read"),
+        # Reading the conversation WRITES since H39: a reply nobody asked a
+        # translation for yet is queued by the read (support/translation.py,
+        # the catch-up). It moves no money; open like the rest of support.
+        ("GET", "/api/v1/support/threads/{thread_id}/messages"),
     }
 )
 

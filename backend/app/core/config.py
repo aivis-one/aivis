@@ -54,6 +54,16 @@ _DEV_DATABASE_URL = "postgresql+asyncpg://aivis:aivis@localhost:5432/aivis"
 _DEV_SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
 _DEV_STORAGE_ENDPOINT = "http://localhost:9000"
 _DEV_STORAGE_CREDENTIAL = "minioadmin"
+_DEV_SUPPORT_LANGUAGE = "en"
+
+# -- The languages support can work in (H39 P-129) --
+#
+# The interface languages: support staff read the cabinet in one of them,
+# and SUPPORT_LANGUAGE names the one they read and write. The frontend's
+# own list is frontend/src/i18n/locales.config.ts SUPPORTED_LOCALES; a
+# language added there is added here in the same change, or a box set to
+# it refuses to start.
+SUPPORT_LANGUAGES = ("en", "ru")
 
 
 def _is_loopback_url(value: str) -> bool:
@@ -394,6 +404,17 @@ class Settings(BaseSettings):
     # user waits when comms is unreachable.
     comms_http_timeout_seconds: float = 5.0
 
+    # -- Support language (H39 P-129) --
+    # The ONE language support staff read and write. A person's message is
+    # always translated into it; a staff reply is translated into the
+    # person's language when that differs (modules/support/translation.py).
+    # One of SUPPORT_LANGUAGES, compared lower-cased. Development falls
+    # back to _DEV_SUPPORT_LANGUAGE; any other box refuses to start
+    # without it -- the installer asks for it (scripts/install_aivis.sh),
+    # and a guessed default would put every operator of a box in a
+    # language nobody chose for them.
+    support_language: str = ""
+
     # -- Payments service (H7) --
     #
     # The product is a client of the crypto payments service: it creates
@@ -467,6 +488,28 @@ class Settings(BaseSettings):
                 f"Valid: {', '.join(sorted(_VALID_LOG_LEVELS))}"
             )
         self.log_level = self.log_level.upper()
+
+        # -- SUPPORT_LANGUAGE (H39 P-129) --
+        # A value outside SUPPORT_LANGUAGES refuses the start on EVERY box,
+        # a development one included: a dev box on "de" would translate
+        # every support message into a language no operator screen has.
+        # An EMPTY value is the development fallback there and a
+        # production requirement elsewhere (judged with the rest below).
+        # Outside development the refusal joins the others (one refusal
+        # names every problem, below); in development it is the only one.
+        support_language = self.support_language.strip().lower()
+        if not support_language and is_dev:
+            support_language = _DEV_SUPPORT_LANGUAGE
+        support_language_problem: str | None = None
+        if support_language and support_language not in SUPPORT_LANGUAGES:
+            support_language_problem = (
+                f"SUPPORT_LANGUAGE={self.support_language!r} is not one of "
+                f"{', '.join(SUPPORT_LANGUAGES)} -- the language support "
+                "staff read and write must be an interface language"
+            )
+            if is_dev:
+                raise ValueError(support_language_problem)
+        self.support_language = support_language
 
         # -- Production requirements (P-108, P-116) --
         #
@@ -575,6 +618,11 @@ class Settings(BaseSettings):
             judge("COMMS_REDIS_URL", self.comms_redis_url, required=True, url=True)
             judge("COMMS_API_URL", self.comms_api_url, required=True, url=True)
             judge("COMMS_SERVICE_TOKEN", self.comms_service_token, required=True)
+            # H39 P-129: no default outside development (see the field).
+            if support_language_problem is not None:
+                problems.append(support_language_problem)
+            else:
+                judge("SUPPORT_LANGUAGE", self.support_language, required=True)
 
             # Optional: empty means "this box has no such stack". A
             # value that IS set must still be a value.

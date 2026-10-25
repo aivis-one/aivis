@@ -9,6 +9,8 @@
 #   GET  /api/v1/staff/support/threads/{id}/messages -- read it.
 #   POST /api/v1/staff/support/threads/{id}/messages -- reply.
 #   POST /api/v1/staff/support/threads/{id}/status  -- resolve or close.
+#   POST /api/v1/staff/support/threads/{id}/messages/{mid}/translation/retry
+#     -- ask again for a message whose translation failed (H39).
 #
 # THE STAKE HERE IS HIGHER THAN ON THE USER SIDE. A wrong actor there
 # would open one person's conversation to one other person; a wrong
@@ -37,7 +39,7 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_reader
+from app.core.database import get_db_reader, get_db_session
 from app.modules.support.dependencies import (
     SupportOperator,
     get_support_operator,
@@ -55,6 +57,7 @@ from app.modules.support.service import (
     get_operator_thread_messages,
     list_operator_threads,
     reply_to_support_thread,
+    retry_support_translation,
     set_support_thread_status,
 )
 
@@ -116,9 +119,14 @@ async def get_thread_messages(
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = Query(default=None),
     operator: SupportOperator = Depends(get_support_operator),
-    session: AsyncSession = Depends(get_db_reader),
+    session: AsyncSession = Depends(get_db_session),
 ) -> Any:
     """Read one known request, newest messages first.
+
+    H39: in the support language -- a person's message as its translation
+    with the original beside it, a reply with what the person will read
+    (translation.staff_feed). A write session: a message nobody asked a
+    translation for yet is queued by this read (the catch-up).
 
     404 if the id names no support thread this product created --
     decided here, before comms is asked anything about it.
@@ -147,9 +155,12 @@ async def reply_to_thread(
         pattern=SUPPORT_CLIENT_KEY_PATTERN,
     ),
     operator: SupportOperator = Depends(get_support_operator),
-    session: AsyncSession = Depends(get_db_reader),
+    session: AsyncSession = Depends(get_db_session),
 ) -> Any:
     """Answer the person who opened this request.
+
+    A write session since H39: the reply's translation into the person's
+    language is queued with this request (translation.py).
 
     Idempotency-Key is required, as on the user side: the client's key
     for this one reply, reused on every retry of it.
@@ -179,9 +190,11 @@ async def set_thread_status(
 ) -> Any:
     """Resolve or close a request.
 
-    Only forward moves exist (see schemas.SetStatusIn): a closed thread
-    comes back only when the client writes into it. Closing also sends
-    the client comms' "your request was closed" notice.
+    `open` is not offered (see schemas.SetStatusIn): comms 3.11 has a
+    manual return to `open`, and offering it is the ticket work of H40.
+    Until then a closed thread comes back when the client writes into
+    it. Closing also sends the client comms' "your request was closed"
+    notice.
     """
     reject_actor_override(request)
     return await set_support_thread_status(
@@ -189,4 +202,27 @@ async def set_thread_status(
         operator=operator,
         thread_id=thread_id,
         status=body.status,
+    )
+
+
+@router.post("/threads/{thread_id}/messages/{message_id}/translation/retry")
+async def retry_translation(
+    request: Request,
+    thread_id: UUID,
+    message_id: UUID,
+    body: EmptyBodyIn | None = Body(default=None),
+    operator: SupportOperator = Depends(get_support_operator),
+    session: AsyncSession = Depends(get_db_session),
+) -> Any:
+    """Ask again for a message whose translation's job failed (H39).
+
+    Only after the TRANSPORT failed -- the job ended without an answer.
+    409 when the translation is in progress, done, declined (a variant is
+    final in comms) or not needed; 404 when the message is not found in
+    this thread. Any operator, claimed or not: nothing is posted as
+    anyone, the same boundary as reading the thread.
+    """
+    reject_actor_override(request)
+    return await retry_support_translation(
+        session, thread_id=thread_id, message_id=message_id,
     )

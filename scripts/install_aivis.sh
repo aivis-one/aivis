@@ -75,6 +75,11 @@ DEPLOY_USER="aivis"
 # (prompt_mailgun), by asking each region in turn.
 MAILGUN_US_BASE="https://api.mailgun.net"
 MAILGUN_EU_BASE="https://api.eu.mailgun.net"
+# The model gateway the comms llm channel calls (H39 P-129; comms
+# deploy/INTEGRATION.md section 11 -- an OpenAI-compatible base address,
+# `gateway: true`). Named once, here: the key check below and the key set
+# written into the comms env both read it.
+OPENROUTER_BASE="https://openrouter.ai/api/v1"
 APP_PORT="8000"
 FRONTEND_PORT="3000"
 
@@ -1027,11 +1032,163 @@ prompt_mailgun() {
     done
 }
 
+# -- Support language (H39 P-129) --------------------------------------------
+# The ONE language support staff read and write; every message a person
+# writes to support is translated into it, and every reply into the
+# person's own language. No default, on purpose: the backend refuses to
+# start without it (app/core/config.py, SUPPORT_LANGUAGE), and a guessed
+# language would put every operator of this box in one nobody chose. The
+# set is the interface languages -- config.py SUPPORT_LANGUAGES.
+#
+# Required. Sets SUPPORT_LANGUAGE_VAL.
+prompt_support_language() {
+    local answer
+
+    while true; do
+        read -rp "  Support language -- the one language support staff read and write (en/ru): " answer < /dev/tty
+        answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+        case "$answer" in
+            en|ru)
+                SUPPORT_LANGUAGE_VAL="$answer"
+                success "  Support language: $answer"
+                return 0
+                ;;
+            "")
+                warn "  Support language is required -- the backend refuses to start without it. Try again."
+                ;;
+            *)
+                warn "  Support language must be en or ru (got '$answer'). Try again."
+                ;;
+        esac
+    done
+}
+
+# -- The model key for support translation (H39 P-129) ----------------------
+# Support messages are translated by a model that comms calls (its llm
+# channel). comms reads the key from ITS env, /opt/comms/.env, as a named
+# key set: LLM_KEY_SETS with the set `llm.text`, which the product profile
+# names (comms-profile/types.yaml). comms REFUSES TO START with that
+# profile and no such set -- and with comms goes all mail, the login
+# codes included -- so an empty key is never an answer here.
+#
+# The key is NOT written into backend/.env: the backend never calls the
+# model, and a secret kept where nothing reads it is a second copy to
+# leak. It travels from this prompt to deliver_comms_llm in a shell
+# variable and nowhere else, and it is never printed: the prompt does not
+# echo it, and every message below names the model only.
+#
+# ALREADY SET IS KEPT. The comms env outlives a reinstall of the product
+# (remove_previous_stack leaves /opt/comms alone), and a key set that is
+# there is a key the owner already gave: it is not asked for again.
+LLM_KEY_SETS_VAL=""
+LLM_KEEP_EXISTING=0
+
+# The comms env path, derived from the registry exactly as setup_comms and
+# `aivis update` derive it: next to the comms checkout, outside it.
+comms_env_path() {
+    local r
+    for r in "${AIVIS_SERVICES[@]}"; do
+        if [ "$(svc_field "$r" 1)" = "comms" ]; then
+            echo "$(dirname "$(svc_field "$r" 3)")/.env"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# The HTTP code OpenRouter answers for this key on its key-info route
+# (000 when there was no answer). The key goes to curl on stdin (-K -),
+# never in argv, where every process listing on the box would show it.
+openrouter_key_probe() {
+    local key="$1"
+    printf 'header = "Authorization: Bearer %s"\n' "$key" | curl -s -o /dev/null \
+        -w '%{http_code}' --max-time 15 -K - "${OPENROUTER_BASE}/key" || true
+}
+
+# Required unless already set. Sets LLM_KEY_SETS_VAL, or LLM_KEEP_EXISTING=1.
+prompt_llm() {
+    local comms_env existing key code model models
+
+    comms_env=$(comms_env_path || true)
+    if [ -n "$comms_env" ] && [ -f "$comms_env" ]; then
+        existing=$(grep -E '^LLM_KEY_SETS=' "$comms_env" | tail -n 1 | cut -d= -f2- || true)
+        existing="${existing#\'}"
+        existing="${existing%\'}"
+        if [ -n "$existing" ]; then
+            LLM_KEEP_EXISTING=1
+            success "  Model key: already set in $comms_env (LLM_KEY_SETS) -- kept, not asked again"
+            return 0
+        fi
+    fi
+
+    while true; do
+        # -s: the key is not echoed.
+        read -rsp "  OpenRouter API key (not shown while typing): " key < /dev/tty
+        echo ""
+        if [ -z "$key" ]; then
+            warn "  The OpenRouter key is required -- comms does not start without it. Try again."
+            continue
+        fi
+        if ! [[ "$key" =~ ^[A-Za-z0-9_-]+$ ]]; then
+            warn "  The key may hold only letters, digits, _ and -. Try again."
+            continue
+        fi
+        log "  Verifying the key with OpenRouter..."
+        code=$(openrouter_key_probe "$key")
+        if [ "$code" = "200" ]; then
+            success "  OpenRouter accepted the key"
+            break
+        fi
+        if [ "$code" = "000" ]; then
+            warn "  OpenRouter is unreachable from this server. Try again."
+        else
+            warn "  OpenRouter refused the key (HTTP ${code}). Try again."
+        fi
+    done
+
+    log "  Fetching OpenRouter's model list..."
+    models=$(curl -s --max-time 30 "${OPENROUTER_BASE}/models" || true)
+    while true; do
+        read -rp "  Model for support translation (as OpenRouter names it, e.g. vendor/model): " model < /dev/tty
+        if [ -z "$model" ]; then
+            warn "  The model is required. Try again."
+            continue
+        fi
+        if ! [[ "$model" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._:-]+$ ]]; then
+            warn "  A model id is vendor/model: letters, digits and . _ : - only. Try again."
+            continue
+        fi
+        # comms refuses to start on a free route outside development
+        # (its INTEGRATION.md section 11, `key_set`).
+        if [[ "$model" == *:free ]]; then
+            warn "  '$model' is a free route; comms refuses those outside development. Try again."
+            continue
+        fi
+        if [ -z "$models" ]; then
+            warn "  OpenRouter's model list could not be read; '$model' is taken unchecked."
+        elif ! echo "$models" | grep -Fq "\"id\":\"${model}\"" \
+            && ! echo "$models" | grep -Fq "\"id\": \"${model}\""; then
+            warn "  OpenRouter has no model '$model'. Try again."
+            continue
+        fi
+        break
+    done
+
+    # The key set comms reads (INTEGRATION.md section 11): one set,
+    # `llm.text`, through the gateway. Every value in it is drawn from the
+    # whitelists above, so the JSON needs no escaping and holds no quote
+    # of the kind that wraps it in the env file.
+    LLM_KEY_SETS_VAL="{\"llm.text\": {\"endpoint\": \"${OPENROUTER_BASE}\", \"key\": \"${key}\", \"model\": \"${model}\", \"gateway\": true}}"
+    success "  Model for support translation: $model"
+}
+
 echo ""
 log "Enter secrets (all required):"
 echo ""
 prompt_telegram_bot
 prompt_mailgun
+prompt_llm
+prompt_support_language
 
 # Storage root key -- ENTER keeps the random values generated above by
 # gen_short_id / gen_password, and is the recommended answer. Typing a
@@ -1151,6 +1308,11 @@ MAILGUN_API_URL=${MAILGUN_API_URL_VAL}
 # looked correct.
 PAYMENTS_API_URL=
 PAYMENTS_SERVICE_TOKEN=
+
+# -- Support (H39 P-129) --
+# The one language support staff read and write; asked by the installer,
+# no default (app/core/config.py refuses to start without it).
+SUPPORT_LANGUAGE=${SUPPORT_LANGUAGE_VAL}
 
 # -- Installments --
 INSTALLMENT_DEFAULT_DAYS=7
@@ -1622,6 +1784,37 @@ deliver_comms_email() {
     success "Mailgun credentials delivered to comms (channel: live, region: $region)"
 }
 
+# The model key reaches comms from the ONE place it was entered: this
+# installer's prompt (prompt_llm). It is written as comms reads it --
+# LLM_KEY_SETS, one JSON object -- in SINGLE quotes: the comms CLI
+# `source`s its env file and compose reads it as an env_file, and both
+# take a single-quoted value literally. validate_deliverable is not used
+# for it: its whitelist exists for the shapes the other deliveries carry,
+# and a JSON object is not one of them. The pieces of this one were
+# whitelisted at the prompt instead, so the value holds no single quote,
+# no newline, and no character the sed of upsert_env_var would read.
+#
+# Kept as it is when it was already there (prompt_llm, LLM_KEEP_EXISTING).
+# The key is never printed.
+deliver_comms_llm() {
+    local comms_env="$1"
+
+    if [ "$LLM_KEEP_EXISTING" = "1" ]; then
+        success "LLM_KEY_SETS already in $comms_env -- kept"
+        return 0
+    fi
+    if [ -z "$LLM_KEY_SETS_VAL" ]; then
+        error "No model key to deliver -- prompt_llm did not run. comms would refuse to start on the product profile without LLM_KEY_SETS."
+    fi
+    case "$LLM_KEY_SETS_VAL" in
+        *"'"*|*$'\n'*|*"&"*|*"|"*)
+            error "Refusing to deliver LLM_KEY_SETS: the value carries a character the env file cannot hold."
+            ;;
+    esac
+    upsert_env_var "$comms_env" "LLM_KEY_SETS" "'${LLM_KEY_SETS_VAL}'"
+    success "Model key set llm.text delivered to comms (LLM_KEY_SETS)"
+}
+
 setup_comms() {
     log "Setting up the comms stack (orchestrated)..."
 
@@ -1692,6 +1885,9 @@ setup_comms() {
     deliver_comms_profile "$comms_env"
     deliver_comms_telegram "$comms_env" "$aivis_env"
     deliver_comms_email "$comms_env" "$aivis_env"
+    # H39: before pass 2 starts comms on the product profile, which names
+    # the key set -- without it comms does not start.
+    deliver_comms_llm "$comms_env"
 
     # -- 4. Pass 2: idempotent re-run -- executes the hand-over -----------
     log "comms-deploy install, pass 2 (COMMS_* hand-over into backend/.env)..."

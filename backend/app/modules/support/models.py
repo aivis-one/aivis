@@ -1,5 +1,6 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support: the local thread pointer (T-65)
+# AIVIS.ONE Backend -- Support: the local thread pointer (T-65) and the
+# translation queue (H39 P-129, at the end of this file)
 # =============================================================================
 #
 # WHY THIS TABLE EXISTS AT ALL, AND WHY IT IS NOT A CONVENIENCE.
@@ -40,10 +41,18 @@
 # stale silently. It is resolved per process instead (service.py).
 # =============================================================================
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import UUID as SA_UUID
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -78,4 +87,110 @@ class SupportThread(UUIDMixin, TimestampMixin, Base):
         return (
             f"<SupportThread id={self.id} user={self.user_id} "
             f"thread={self.comms_thread_id}>"
+        )
+
+
+# ---------------------------------------------------------------------------
+# The translation queue (H39 P-129)
+# ---------------------------------------------------------------------------
+#
+# One row per ATTEMPT to translate one support message into one language.
+# NO TEXT: neither the message nor the translation is kept here -- both
+# live in comms (the message in the thread, the translation as its
+# variant). The row holds only what the product alone can do: tie a job
+# key back to its message, remember that comms' variant request was
+# written (request_written_at -- the listener's sweep retries until comms
+# takes it), record the outcome, and remember that the person was told
+# once that a reply could not be translated (user_notified_at). The
+# mechanism and every decision are in modules/support/translation.py.
+#
+#   direction  to_support -- a person's message, into the support language;
+#              to_user -- a staff reply, into the person's language.
+#   outcome    NULL while the job is ours to wait for; then
+#              variant     -- the translation was written as a variant;
+#              not_needed  -- the model found it already in `locale`;
+#              declined    -- written declined: the language is closed for
+#                             this message for good (comms never replaces
+#                             a variant);
+#              failed      -- the job ended without an answer, or comms
+#                             refused it at intake: retryable by staff;
+#              retried     -- the answer could not be read, and the next
+#                             attempt was queued automatically.
+#
+# `support_thread_id` names the pointer row the message's thread belongs
+# to, not "the person's one conversation": nothing here assumes a person
+# has one thread, so the tickets of H40 take the same queue.
+
+TO_SUPPORT = "to_support"
+TO_USER = "to_user"
+DIRECTIONS = (TO_SUPPORT, TO_USER)
+
+OUTCOME_VARIANT = "variant"
+OUTCOME_NOT_NEEDED = "not_needed"
+OUTCOME_DECLINED = "declined"
+OUTCOME_FAILED = "failed"
+OUTCOME_RETRIED = "retried"
+OUTCOMES = (
+    OUTCOME_VARIANT,
+    OUTCOME_NOT_NEEDED,
+    OUTCOME_DECLINED,
+    OUTCOME_FAILED,
+    OUTCOME_RETRIED,
+)
+
+
+def _sql_in(values: tuple[str, ...]) -> str:
+    return ", ".join(f"'{value}'" for value in values)
+
+
+class SupportTranslationJob(UUIDMixin, TimestampMixin, Base):
+    """One attempt to translate one support message into one language."""
+
+    __tablename__ = "support_translation_jobs"
+
+    support_thread_id: Mapped[UUID] = mapped_column(
+        ForeignKey("support_threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    comms_message_id: Mapped[UUID] = mapped_column(
+        SA_UUID(as_uuid=True), nullable=False,
+    )
+    direction: Mapped[str] = mapped_column(String(16), nullable=False)
+    # The variant's language: comms section 12's opaque token, always a
+    # normalised primary subtag here (translation.normalize_language).
+    locale: Mapped[str] = mapped_column(String(8), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False)
+    job_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    request_written_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    user_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("job_key", name="uq_support_translation_jobs_key"),
+        UniqueConstraint(
+            "comms_message_id", "locale", "attempt",
+            name="uq_support_translation_jobs_attempt",
+        ),
+        CheckConstraint(
+            f"direction IN ({_sql_in(DIRECTIONS)})",
+            name="ck_support_translation_jobs_direction",
+        ),
+        CheckConstraint(
+            f"outcome IS NULL OR outcome IN ({_sql_in(OUTCOMES)})",
+            name="ck_support_translation_jobs_outcome",
+        ),
+        CheckConstraint(
+            "attempt >= 1", name="ck_support_translation_jobs_attempt",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<SupportTranslationJob key={self.job_key} "
+            f"outcome={self.outcome}>"
         )

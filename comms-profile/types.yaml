@@ -11,13 +11,15 @@
 # {version: 2, types: {type_key: {field: value}}}, and those two are the
 # only top-level keys. comms reads exactly one schema version and refuses
 # to start on any other, or on none. Types are a MAPPING, never a list --
-# a list could not carry per-type fields. This file uses four fields:
+# a list could not carry per-type fields. This file uses these fields:
 # `category` (the mute gate), `channels` (where the type is delivered;
 # absent = comms' default, in_app), `recipient_schedule` (`respect`,
-# the default when absent, or `bypass`; needs comms >= 3.3.0) and `lane`
+# the default when absent, or `bypass`; needs comms >= 3.3.0), `lane`
 # (`interactive`, `critical`, `normal` -- the default when absent -- or
-# `bulk`; needs comms >= 3.4.0). Any other value of either refuses comms
-# startup.
+# `bulk`; needs comms >= 3.4.0), and on the llm types of support
+# translation (H39, at the end of this file) `llm_sets`, `push_on` and
+# `expires_after`. Any value outside comms' own set refuses comms
+# startup; the record table is comms deploy/INTEGRATION.md section 3.
 # The type record is closed: an unknown key refuses comms startup; only `x-...` keys are tolerated.
 # Widths from comms app/core/constants.py: a type key is <= 50 chars
 # (MAX_TYPE_KEY_LEN), a category <= 50 chars (MAX_CATEGORY_LEN).
@@ -418,3 +420,77 @@ types:
 
   ownership.certificate:
     channels: [in_app, email]
+
+  # =============================================================================
+  # Support translation -- H39 P-129 (2026-10-25)
+  # =============================================================================
+  #
+  # Support staff read and write ONE language (SUPPORT_LANGUAGE in
+  # backend/.env); people write in theirs. A message is translated through
+  # comms' llm channel and the result written next to it as a comms
+  # VARIANT -- the original is never changed
+  # (backend/app/modules/support/translation.py; comms INTEGRATION.md
+  # sections 11-12: comms carries the letter to a model and keeps the
+  # answer, the backend reads it by key and writes the variant).
+  #
+  # ONE LLM TYPE PER DIRECTION, one mechanism: the direction is the type.
+  #   support.translate_for_support -- a person's message, into the
+  #     support language;
+  #   support.translate_for_user -- a staff reply, into the person's.
+  #
+  # `llm_sets: [llm.text]` names a key set of LLM_KEY_SETS in the COMMS
+  # .env (/opt/comms/.env). comms REFUSES TO START on a box where that set
+  # is not defined -- and with it goes all mail, the login codes included.
+  # So the key is on the box BEFORE this profile is rolled out:
+  # scripts/install_aivis.sh (deliver_comms_llm) writes it on an install,
+  # and an existing box gets it by hand before `aivis update`.
+  #
+  # `lane: critical`, NOT `interactive` (velo's choice for the same types):
+  # comms' rule is that an llm type belongs in a lane with no types for
+  # people in it, because a model call holds one of its lane's two places
+  # for up to two minutes. Here `interactive` carries the login code and
+  # the password reset above -- two translations in work would hold every
+  # login code behind them. No type of this file declares `critical`, so
+  # the translations have that lane to themselves.
+  #
+  # `push_on: outcome` -- the backend's listener (core/comms_listener.py)
+  # reads the job when it ends. `expires_after: 15m` -- the longest a
+  # reader waits before the translation is reported unavailable. No
+  # `category`, no `recipient_schedule`: an llm job has no person to gate,
+  # and comms refuses both on an llm type.
+
+  support.translate_for_support:
+    channels: [llm]
+    llm_sets: [llm.text]
+    lane: critical
+    push_on: outcome
+    expires_after: 15m
+
+  support.translate_for_user:
+    channels: [llm]
+    llm_sets: [llm.text]
+    lane: critical
+    push_on: outcome
+    expires_after: 15m
+
+  # support.translation_unavailable -- a staff reply could not be
+  # translated into the person's language (the job ended without an
+  # answer, or the model declined). Sent once per (message, language),
+  # with the backend's own text (ru or en); the inbox leads it to the
+  # support screen by its type.
+  #
+  # `support_messages`, the category the reply itself pings the person
+  # under (msg.participant_message above): a person who muted support
+  # replies is not told about a missing one either.
+  #
+  # IN-APP ONLY, NOT TELEGRAM (owner ruling, H39 gate). comms does not skip
+  # a telegram delivery to a person without a telegram_id -- it creates it
+  # and fails it as `no_address` (the job ends `partial_sent`), and every
+  # such failure is counted against the telegram channel in comms' health
+  # report. People who signed up by e-mail -- nearly everyone today -- have
+  # no telegram_id, so the channel's health would fill with refusals that
+  # say nothing about the bot. Telegram for people comes with the Telegram
+  # sign-in (P-133), together with its template sheets.
+
+  support.translation_unavailable:
+    category: support_messages

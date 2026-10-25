@@ -91,6 +91,12 @@ _CLASS_NOT_FOUND = "not_found"
 _CLASS_CONFLICT = "conflict"
 _CLASS_STALE_SNAPSHOT = "stale_snapshot"
 _CLASS_VALIDATION = "validation"
+# H39 P-129: 410 from the changes feed (comms INTEGRATION.md section 9) --
+# the kept cursor is older than comms' retention. Forwarded only where
+# the call site opted in (forward_cursor_expired): the one reader of the
+# feed, core/comms_listener.py, must tell it from an outage, because its
+# answer is a different one (re-read everything unfinished, start over).
+CLASS_CURSOR_EXPIRED = "cursor_expired"
 
 # The only classes that say something about THIS request rather than
 # about our own configuration. `unauthorized` and `forbidden` mean our
@@ -415,18 +421,22 @@ async def comms_request(
     json: dict[str, Any] | None = None,
     forward_403: bool = False,
     idempotency_key: str | None = None,
+    forward_cursor_expired: bool = False,
 ) -> Any:
-    """One request to comms on a path a PERSON is waiting on.
+    """One request to comms whose caller is owed the outcome.
 
     The opposite policy to upsert_recipient's, over the same door. A
     user who pressed "send" is owed the outcome, so nothing here is
     swallowed: every failure becomes a typed AivisError that main.py's
     handler renders as {"error", "message"} with a real status. What
     must NOT happen is an httpx exception escaping into the request --
-    that is a 500 and tells the user nothing.
+    that is a 500 and tells the user nothing. The background readers of
+    comms (core/comms_listener.py, modules/support/translation.py, H39)
+    take the same policy for the same reason: a failure is an answer
+    they act on (read again later), never one to swallow.
 
     There is no outbox fallback and cannot be one: the relay carries
-    the four envelope types in core/events/service.py, none of which is
+    the envelope types in core/events/service.py, none of which is
     "put this message in a thread", and comms has no consumer for such
     an event. Retrying later is also the wrong promise for a message a
     person is watching the screen for.
@@ -436,12 +446,19 @@ async def comms_request(
         path: comms API path starting with "/".
         params: optional query parameters.
         json: optional JSON body.
-        idempotency_key: the Idempotency-Key header, for the two calls
-            comms makes create something (a thread, a message). comms
+        idempotency_key: the Idempotency-Key header, for the calls comms
+            makes create something (a thread, a message, a variant and
+            its request). comms
             answers a repeat with the same key and the SAME request bytes
             with the same object and pings nobody again; the same key
             with other bytes is a `conflict`. So the caller must send a
             byte-identical body on every repeat of one intent.
+        forward_cursor_expired: treat a comms `cursor_expired` (410, the
+            changes feed only) as an answer about THIS request -- raised
+            as CommsRejectedError with that class -- instead of an
+            infrastructure fault. Default False: no other route answers
+            it, and the one reader of the feed has its own remedy for it
+            (core/comms_listener.py reconcile).
         forward_403: treat a comms `forbidden` (403) as a real answer
             about THIS request instead of an infrastructure fault. Default False,
             and it must stay the default: on every other path a 403 can
@@ -463,7 +480,8 @@ async def comms_request(
             body that is not JSON (502).
         CommsRejectedError: comms refused with a class that answers THIS
             request -- not_found / conflict / validation, plus forbidden
-            where the caller opted in -- forwarded with comms' status,
+            and cursor_expired where the caller opted in -- forwarded
+            with comms' status,
             the class on error_class.
     """
     result = await _call(
@@ -512,8 +530,10 @@ async def comms_request(
             logger.error("comms_auth_error", path=path, status=status)
             raise CommsUnavailableError()
 
-        forwardable = _FORWARDABLE_CLASSES | (
-            {_CLASS_FORBIDDEN} if forward_403 else set()
+        forwardable = (
+            _FORWARDABLE_CLASSES
+            | ({_CLASS_FORBIDDEN} if forward_403 else set())
+            | ({CLASS_CURSOR_EXPIRED} if forward_cursor_expired else set())
         )
         if error_class not in forwardable:
             logger.warning(
