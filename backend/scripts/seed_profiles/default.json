@@ -2,8 +2,8 @@
   "description": "Default demo stand -- test investors and a whole demo project",
   "marker": "default",
   "_notes": [
-    "WHAT THIS PROFILE IS FOR: after `aivis seed` the storefront shows a",
-    "project with its logo, cover, documents and roadmap from our storage,",
+    "WHAT THIS PROFILE IS FOR: after `aivis seed` the storefront shows the",
+    "demo project and SANKORD with their logos, covers and roadmaps from our storage,",
     "and five test investors can be entered through the admin's avatar",
     "mode, one of them already holding parts.",
     "",
@@ -633,7 +633,7 @@
         {
           "key": "s7-04",
           "title": {"en": "A secretary agent", "ru": "Агент-секретарь"},
-          "description": {"en": "A secretary agent answers letters and messages on your behalf within the limits you set; every reply is written down, and anything public waits for your yes.", "ru": "Агент-секретарь отвечает на письма и сообщения от вашего имени в пределах, которые задали вы; каждый ответ записан, а всё публичное ждёт вашего «да»."},
+          "description": {"en": "A secretary agent answers letters and messages on your behalf within the limits you set; every reply is written down, and anything public waits for your yes", "ru": "Агент-секретарь отвечает на письма и сообщения от вашего имени в пределах, которые задали вы; каждый ответ записан, а всё публичное ждёт вашего «да»"},
           "kind": "milestone",
           "status": "planned"
         },
