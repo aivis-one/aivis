@@ -29,12 +29,34 @@ export interface NotificationTargetInput {
   shell: string | undefined
 }
 
+// H41: "How did we do?" -- the person's resolved ticket asks for its
+// rating. It opens the conversation with that ticket's card scrolled into
+// view (?rate=<ticket id>, InvestorSupportView); without an id, the
+// conversation alone.
+const RATING_REQUEST = 'support.rating_requested'
+const OPEN_SUPPORT_RATING = 'open_support_rating'
+
 // A notice about the support conversation: comms' own message pings
 // (msg.*) and the product's "a reply could not be translated"
 // (support.translation_unavailable, H39) -- both lead to the conversation,
-// where the reply is and where it can be answered.
+// where the reply is and where it can be answered -- and the request to
+// rate a resolved ticket (H41), which leads to its card there.
 function isSupportNotice(type: string): boolean {
-  return type.startsWith('msg.') || type === 'support.translation_unavailable'
+  return (
+    type.startsWith('msg.') || type === 'support.translation_unavailable' || type === RATING_REQUEST
+  )
+}
+
+function supportTarget(
+  routeName: string,
+  type: string,
+  actionData: NotificationTargetInput['actionData'],
+): RouteLocationRaw {
+  if (type === RATING_REQUEST && actionData?.action === OPEN_SUPPORT_RATING) {
+    const id = paramId(actionData.params)
+    if (id) return { name: routeName, query: { rate: id } }
+  }
+  return { name: routeName }
 }
 
 function paramId(params: Record<string, unknown> | undefined): string | null {
@@ -58,7 +80,7 @@ function companyTarget(
   if (type.startsWith('company.roadmap_')) return { name: 'company-roadmap' }
   if (type.startsWith('company.attachment')) return { name: 'company-attachments' }
   if (type.startsWith('company.')) return { name: 'company-audit' }
-  if (isSupportNotice(type)) return { name: 'company-support' }
+  if (isSupportNotice(type)) return supportTarget('company-support', type, actionData)
   return null
 }
 
@@ -101,7 +123,9 @@ export function notificationTarget(input: NotificationTargetInput): RouteLocatio
   if (shell === 'staff') return staffTarget(type, actionData)
 
   // The integrator's shell: its own conversation with support.
-  if (shell === 'agent') return isSupportNotice(type) ? { name: 'agent-support' } : null
+  if (shell === 'agent') {
+    return isSupportNotice(type) ? supportTarget('agent-support', type, actionData) : null
+  }
 
   if (shell !== 'investor') return null
 
@@ -124,7 +148,7 @@ export function notificationTarget(input: NotificationTargetInput): RouteLocatio
   if (type.startsWith('installment.')) return { name: 'investor-installment-plans' }
 
   if (type.startsWith('agent_application.')) return { name: 'investor-settings' }
-  if (isSupportNotice(type)) return { name: 'investor-support' }
+  if (isSupportNotice(type)) return supportTarget('investor-support', type, actionData)
 
   return null
 }

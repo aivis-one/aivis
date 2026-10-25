@@ -1,6 +1,6 @@
 # =============================================================================
 # AIVIS.ONE Backend -- Support: tickets, the person's conversation, the
-# operator's work (T-65, T-66, H39, H40)
+# operator's work, the rating (T-65, T-66, H39, H40, H41)
 # =============================================================================
 #
 # WHAT SUPPORT IS, SINCE H40 (owner rulings, the H40 handoff, section 1):
@@ -31,6 +31,12 @@
 #   operator (the comms group support_operators); and a signal on every
 #   handover (assign: to the new taker; release: to everybody).
 #
+#   THE RATING (H41): resolving a ticket records who resolved it and, while
+#   it is unrated, asks its person at once (support.rating_requested); the
+#   person rates it once, for good -- 1..5 and a comment kept as written.
+#   The operator reads the rating in the row and the card, filters by it,
+#   and reads the statistics of a period (support_stats).
+#
 # WHY TWO KINDS OF THREAD ID CHECK. Both sides take comms thread ids from
 # the wire, and comms trusts whatever actor and thread we send it, so the
 # check is ours, against the pointer table, BEFORE comms is called: the
@@ -58,7 +64,7 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from sqlalchemy import case, func, select, update
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,13 +85,16 @@ from app.core.exceptions import (
 from app.modules.support import translation
 from app.modules.support.dependencies import SupportOperator
 from app.modules.support.models import (
+    CATEGORIES,
     STATUS_OPEN,
+    STATUS_RESOLVED,
     STATUS_SPAM,
     TO_SUPPORT,
     TO_USER,
     TOPIC_OTHER,
     TOPICS,
     SupportOperatorMute,
+    SupportSpamTombstone,
     SupportThread,
     SupportTicket,
 )
@@ -146,6 +155,9 @@ SUPPORT_OPERATORS_GROUP = "support_operators"
 # In-process cache ONLY (see module header). Reset on every restart; the
 # next call re-resolves it.
 _support_section_id: UUID | None = None
+
+# The rating filter's word for "nobody rated it" (list_tickets, H41).
+RATING_NONE = "none"
 
 # A person with more support threads than this is the trigger of the glued
 # feed's KNOWN CEILING (client_support_messages).
@@ -806,7 +818,14 @@ async def _ticket_rows(
     thread. `rows` are (SupportTicket, SupportThread) pairs; one query per
     kind of fact, whatever their number."""
     people = {p.user_id for _, p in rows} | {
-        t.claimed_by_user_id for t, _ in rows if t.claimed_by_user_id is not None
+        uid
+        for t, _ in rows
+        for uid in (
+            t.claimed_by_user_id,
+            t.resolved_by_user_id,
+            t.rated_resolver_user_id,
+        )
+        if uid is not None
     }
     users: dict[UUID, User] = {}
     if people:
@@ -847,9 +866,34 @@ async def _ticket_rows(
             "history_thread_id": (
                 str(history[pointer.user_id]) if pointer.user_id in history else None
             ),
+            # H41: the operator who last resolved it, and the person's
+            # rating with whom it rated.
+            "resolved_by": _person_or_none(users, ticket.resolved_by_user_id),
+            "rating": _rating_out(ticket, users),
         }
         for ticket, pointer in rows
     ]
+
+
+def _person_or_none(users: dict[UUID, User], user_id: UUID | None) -> dict | None:
+    return _person(users.get(user_id)) if user_id is not None else None
+
+
+def _rating_out(ticket: SupportTicket, users: dict[UUID, User]) -> dict | None:
+    """The person's rating as an operator reads it: the stars, the comment
+    AS WRITTEN (never translated, owner ruling), `comment_locale` -- the
+    person's INTERFACE language when they rated, which a screen shows as
+    the likely language of the text (nothing detects it) -- when, and the
+    operator it is about."""
+    if ticket.rating is None:
+        return None
+    return {
+        "stars": ticket.rating,
+        "comment": ticket.rating_comment,
+        "comment_locale": ticket.rating_locale,
+        "rated_at": ticket.rated_at.isoformat() if ticket.rated_at else None,
+        "rated_resolver": _person_or_none(users, ticket.rated_resolver_user_id),
+    }
 
 
 def _encode_list_cursor(created_at: datetime, thread_row_id: UUID) -> str:
@@ -883,10 +927,13 @@ async def list_tickets(
     created_to: datetime | None,
     limit: int,
     cursor: str | None,
+    ratings: set[str] | None = None,
 ) -> dict[str, Any]:
     """Tickets, newest appeal first (H40 item 3) -- from our own table.
 
-    `categories` is "any of these"; none -- every category. Without
+    `categories` is "any of these"; none -- every category. `ratings`
+    likewise (H41): stars "1".."5", and RATING_NONE for a ticket nobody
+    rated; none -- any rating or none. Without
     `status` the list is every ticket but SPAM (spam leaves the common
     list); `status=spam` is the spam tab. `created_from` is inclusive,
     `created_to` exclusive -- the operator's day, its edges in the
@@ -911,6 +958,12 @@ async def list_tickets(
         stmt = stmt.where(SupportTicket.status != STATUS_SPAM)
     if categories:
         stmt = stmt.where(SupportTicket.category.in_(sorted(categories)))
+    if ratings:
+        stars = sorted(int(r) for r in ratings if r != RATING_NONE)
+        any_of = [SupportTicket.rating.in_(stars)] if stars else []
+        if RATING_NONE in ratings:
+            any_of.append(SupportTicket.rating.is_(None))
+        stmt = stmt.where(or_(*any_of))
     if created_from is not None:
         stmt = stmt.where(SupportTicket.created_at >= created_from)
     if created_to is not None:
@@ -1303,7 +1356,7 @@ async def set_ticket_status(
     #      an HTTP call inside a lock blocks the person's message for as
     #      long as comms takes.
     """
-    _, ticket = await _require_ticket(session, thread_id)
+    pointer, ticket = await _require_ticket(session, thread_id)
     if ticket.status != STATUS_OPEN:
         raise ConflictError(
             "Only an open ticket changes its status",
@@ -1323,8 +1376,15 @@ async def set_ticket_status(
                 status=status,
                 status_changed_at=func.now(),
                 version=SupportTicket.version + 1,
+                # H41: who resolved it -- the last to do so. Any other
+                # close leaves the last resolver standing.
+                resolved_by_user_id=(
+                    operator.id
+                    if status == STATUS_RESOLVED
+                    else SupportTicket.resolved_by_user_id
+                ),
             )
-            .returning(SupportTicket.version)
+            .returning(SupportTicket.version, SupportTicket.rating)
         )
     ).first()
     if changed is None:
@@ -1333,6 +1393,9 @@ async def set_ticket_status(
             "The ticket changed meanwhile -- read it again",
             code="support_ticket_changed",
         )
+    version, rating = changed
+    if status == STATUS_RESOLVED and rating is None:
+        await _emit_rating_request(session, pointer=pointer, version=version)
     logger.info("support_ticket_status", thread_id=str(thread_id), status=status)
     return await get_ticket(session, thread_id=thread_id)
 
@@ -1465,6 +1528,326 @@ async def list_support_operators(session: AsyncSession) -> dict[str, Any]:
         )
     ).scalars()
     return {"items": [_person(u) for u in users], "next_cursor": None}
+
+
+# ---------------------------------------------------------------------------
+# The rating (H41)
+# ---------------------------------------------------------------------------
+#
+# When an operator RESOLVES a ticket nobody rated yet, its person is asked
+# at once -- "How did we do?" -- and rates it once, for good: 1..5 stars
+# and, if they like, a comment kept as written (owner ruling). A ticket
+# back at work and resolved again asks again while it is unrated; a rated
+# ticket never asks again, and its rating stays with the operator it rated.
+
+RATING_REQUEST_TYPE = "support.rating_requested"
+OPEN_RATING_ACTION = "open_support_rating"
+
+# In-app text in the person's language: ru for a person who reads Russian,
+# en for everyone else (owner ruling, as support.translation_unavailable).
+_RATING_REQUEST_TEXT = {
+    "ru": (
+        "Как мы помогли?",
+        "Ваше обращение в поддержку решено. Оцените нашу помощь: это займёт "
+        "пару секунд.",
+    ),
+    "en": (
+        "How did we do?",
+        "Your support request is resolved. Please rate our help: it takes a "
+        "couple of seconds.",
+    ),
+}
+
+
+async def _emit_rating_request(
+    session: AsyncSession, *, pointer: SupportThread, version: int
+) -> None:
+    """Ask the person to rate the ticket just RESOLVED, in the transaction
+    that resolves it. The person's own delivery hours are kept (the type
+    declares no `recipient_schedule`, comms' default `respect`).
+
+    One request per move to RESOLVED: the key names the ticket's version
+    after that move, so a repeat of the same document is one notification
+    and a later RESOLVED (after back to work) is a new one. The action
+    opens the rating of THIS ticket. Gated on comms like every emitter: a
+    box without comms ships no row."""
+    from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
+
+    if not comms_configured():
+        return
+    person = await session.get(User, pointer.user_id)
+    reads_ru = (
+        person is not None and translation.normalize_language(person.language) == "ru"
+    )
+    language = "ru" if reads_ru else "en"
+    title, body = _RATING_REQUEST_TEXT[language]
+    await emit_event(
+        session,
+        EVENT_NOTIFICATION_REQUEST,
+        {
+            "idempotency_key": (
+                f"aivis:support-rating:{pointer.comms_thread_id}:{version}"
+            ),
+            "type": RATING_REQUEST_TYPE,
+            "target_type": "user",
+            "target_value": str(pointer.user_id),
+            "title": title,
+            "body": body,
+            "action_data": {
+                "action": OPEN_RATING_ACTION,
+                "params": {"id": str(pointer.comms_thread_id)},
+            },
+        },
+    )
+
+
+async def rate_ticket(
+    session: AsyncSession,
+    *,
+    user: User,
+    thread_id: UUID,
+    stars: int,
+    comment: str | None,
+) -> dict[str, Any]:
+    """The person rates their own RESOLVED ticket, once.
+
+    404 unless the ticket is the caller's: another person's ticket, a
+    history thread, an id nobody has -- one answer, existence does not
+    leak. 409 when the ticket is not RESOLVED (back at work, or closed
+    another way) or is rated already -- a retry after a lost answer is
+    that 409 too, and the screen reads the ratings again.
+
+    ONE WRITE DECIDES, under the row's lock: RESOLVED and still unrated. A
+    message of the person reopening the ticket, or a second rating, in the
+    same instant comes first or second -- never both through. The rating
+    keeps the operator who resolved the ticket at this moment.
+    """
+    pointer, ticket = await _ticket_by_thread(session, thread_id)
+    if pointer is None or ticket is None or pointer.user_id != user.id:
+        raise NotFoundError("Ticket not found", code="support_ticket_not_found")
+    text = (comment or "").strip() or None
+    rated = (
+        await session.execute(
+            update(SupportTicket)
+            .where(
+                SupportTicket.support_thread_id == ticket.support_thread_id,
+                SupportTicket.status == STATUS_RESOLVED,
+                SupportTicket.rating.is_(None),
+            )
+            .values(
+                rating=stars,
+                rating_comment=text,
+                rating_locale=translation.normalize_language(user.language),
+                rated_at=func.now(),
+                rated_resolver_user_id=SupportTicket.resolved_by_user_id,
+            )
+            .returning(SupportTicket.rated_at)
+        )
+    ).first()
+    if rated is None:
+        raise ConflictError(
+            "Only a resolved ticket not rated yet is rated",
+            code="support_ticket_not_ratable",
+        )
+    logger.info("support_ticket_rated", thread_id=str(thread_id), stars=stars)
+    return {
+        "id": str(thread_id),
+        "stars": stars,
+        "comment": text,
+        "rated_at": rated[0].isoformat(),
+    }
+
+
+async def my_ratings(session: AsyncSession, *, user: User) -> dict[str, Any]:
+    """The caller's ratings: `pending` -- tickets RESOLVED and not rated,
+    the ones the conversation asks about, most recently resolved first;
+    `rated` -- every ticket they rated, whatever its status now, so a
+    rating shows as given after a reload too (owner ruling)."""
+    rows = (
+        await session.execute(
+            select(SupportTicket, SupportThread)
+            .join(SupportThread, SupportThread.id == SupportTicket.support_thread_id)
+            .where(
+                SupportThread.user_id == user.id,
+                (
+                    (SupportTicket.status == STATUS_RESOLVED)
+                    & SupportTicket.rating.is_(None)
+                )
+                | SupportTicket.rating.is_not(None),
+            )
+            .order_by(
+                SupportTicket.status_changed_at.desc(),
+                SupportTicket.support_thread_id.desc(),
+            )
+        )
+    ).all()
+    pending = []
+    rated = []
+    for ticket, pointer in rows:
+        if ticket.rating is None:
+            pending.append(
+                {
+                    "id": str(pointer.comms_thread_id),
+                    "topic": ticket.topic,
+                    "category": ticket.category,
+                    "resolved_at": ticket.status_changed_at.isoformat(),
+                }
+            )
+        else:
+            rated.append(
+                {
+                    "id": str(pointer.comms_thread_id),
+                    "topic": ticket.topic,
+                    "stars": ticket.rating,
+                    "comment": ticket.rating_comment,
+                    "rated_at": (
+                        ticket.rated_at.isoformat() if ticket.rated_at else None
+                    ),
+                }
+            )
+    return {"pending": pending, "rated": rated}
+
+
+def _rating_figures(count: int, total: int | None, top: int | None) -> dict:
+    """The rating columns of a statistics row: how many rated, the average
+    (two decimals) and the share of 4-5 (0..1, three decimals); null when
+    nothing was rated -- no rating is not a zero."""
+    if not count:
+        return {"rated": 0, "average": None, "share_4_5": None}
+    return {
+        "rated": count,
+        "average": round((total or 0) / count, 2),
+        "share_4_5": round((top or 0) / count, 3),
+    }
+
+
+async def support_stats(
+    session: AsyncSession, *, created_from: datetime, created_to: datetime
+) -> dict[str, Any]:
+    """Support over a period of APPEALS -- tickets created in
+    [created_from, created_to), the list's own date filter, so the
+    categories add up to the list without spam for the same period.
+
+      categories -- all six, zeros included: tickets, and their ratings
+                    (rated, average, share of 4-5); spam left out, its
+                    rating too.
+      total      -- the sum of the categories, the same figures.
+      spam       -- the period's spam: the spam tickets that still exist
+                    plus the tombstones of those the bin took (by the date
+                    of the appeal).
+      resolvers  -- per operator a rating is about (rated_resolver), the
+                    same rating figures, spam left out; a rating whose
+                    operator is gone is in its category, not here.
+
+    History threads have no ticket and are not here: statistics start with
+    tickets.
+    """
+    in_period = (
+        SupportTicket.created_at >= created_from,
+        SupportTicket.created_at < created_to,
+    )
+    not_spam = SupportTicket.status != STATUS_SPAM
+    top = case((SupportTicket.rating >= 4, 1), else_=0)
+    per_category = {
+        category: (tickets, rated, total, best)
+        for category, tickets, rated, total, best in (
+            await session.execute(
+                select(
+                    SupportTicket.category,
+                    func.count(),
+                    func.count(SupportTicket.rating),
+                    func.sum(SupportTicket.rating),
+                    func.sum(top),
+                )
+                .where(*in_period, not_spam)
+                .group_by(SupportTicket.category)
+            )
+        ).all()
+    }
+    categories = []
+    for category in CATEGORIES:
+        tickets, rated, total, best = per_category.get(category, (0, 0, None, None))
+        categories.append(
+            {
+                "category": category,
+                "tickets": tickets,
+                **_rating_figures(rated, total, best),
+            }
+        )
+    all_rated = sum(per_category.get(c, (0, 0, None, None))[1] for c in CATEGORIES)
+    all_total = sum(per_category.get(c, (0, 0, 0, 0))[2] or 0 for c in CATEGORIES)
+    all_best = sum(per_category.get(c, (0, 0, 0, 0))[3] or 0 for c in CATEGORIES)
+    live_spam = (
+        await session.execute(
+            select(func.count())
+            .select_from(SupportTicket)
+            .where(*in_period, SupportTicket.status == STATUS_SPAM)
+        )
+    ).scalar_one()
+    buried_spam = (
+        await session.execute(
+            select(func.count())
+            .select_from(SupportSpamTombstone)
+            .where(
+                SupportSpamTombstone.appealed_at >= created_from,
+                SupportSpamTombstone.appealed_at < created_to,
+            )
+        )
+    ).scalar_one()
+    by_resolver = (
+        await session.execute(
+            select(
+                SupportTicket.rated_resolver_user_id,
+                func.count(SupportTicket.rating),
+                func.sum(SupportTicket.rating),
+                func.sum(top),
+            )
+            .where(
+                *in_period,
+                not_spam,
+                SupportTicket.rating.is_not(None),
+                SupportTicket.rated_resolver_user_id.is_not(None),
+            )
+            .group_by(SupportTicket.rated_resolver_user_id)
+        )
+    ).all()
+    operators: dict[UUID, User] = {}
+    if by_resolver:
+        operators = {
+            u.id: u
+            for u in (
+                await session.execute(
+                    select(User).where(User.id.in_([r[0] for r in by_resolver]))
+                )
+            ).scalars()
+        }
+    resolvers = sorted(
+        (
+            {
+                "operator": _person_or_none(operators, operator_id),
+                **_rating_figures(count, total, best),
+            }
+            for operator_id, count, total, best in by_resolver
+        ),
+        key=lambda r: (-r["rated"], str((r["operator"] or {}).get("user_id"))),
+    )
+    return {
+        "period": {
+            "created_from": created_from.isoformat(),
+            "created_to": created_to.isoformat(),
+        },
+        "categories": categories,
+        "total": {
+            "tickets": sum(c["tickets"] for c in categories),
+            **_rating_figures(all_rated, all_total, all_best),
+        },
+        "spam": {
+            "tickets": live_spam + buried_spam,
+            "live": live_spam,
+            "deleted": buried_spam,
+        },
+        "resolvers": resolvers,
+    }
 
 
 # ---------------------------------------------------------------------------

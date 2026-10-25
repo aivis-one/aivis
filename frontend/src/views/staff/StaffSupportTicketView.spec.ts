@@ -46,6 +46,8 @@ function ticket(over: Partial<SupportTicketRow> = {}): SupportTicketRow {
     opener: { user_id: 'person', first_name: 'Pat', last_name: null, email: 'pat@example.com' },
     claimed_by: null,
     history_thread_id: null,
+    resolved_by: null,
+    rating: null,
     ...over,
   }
 }
@@ -158,6 +160,39 @@ describe('the ticket card', () => {
     await flushPromises()
     expect(getFeed).toHaveBeenLastCalledWith(ID)
     expect(wrapper.find('textarea').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('a rated ticket shows the stars, the comment as written with its language, and whom', async () => {
+    const wrapper = await open(
+      ticket({
+        status: 'resolved',
+        claimed_by: ME,
+        resolved_by: COLLEAGUE,
+        rating: {
+          stars: 2,
+          comment: 'долго',
+          comment_locale: 'ru',
+          rated_at: '2026-10-25T13:00:00Z',
+          rated_resolver: COLLEAGUE,
+        },
+      }),
+    )
+    const rating = wrapper.find('.stck__rating')
+    expect(rating.text()).toContain('★★☆☆☆')
+    expect(rating.find('blockquote').text()).toBe('долго')
+    expect(rating.find('blockquote').attributes('lang')).toBe('ru')
+    expect(rating.text()).toContain('staff.support.rating.commentLocale')
+    expect(rating.text()).toContain('staff.support.rating.about')
+    expect(wrapper.text()).toContain('staff.support.resolver')
+    expect(wrapper.text()).not.toContain('staff.support.lastResolver')
+    wrapper.unmount()
+  })
+
+  it('closed another way since, the resolver reads as the last one', async () => {
+    const wrapper = await open(ticket({ status: 'rejected', resolved_by: COLLEAGUE }))
+    expect(wrapper.text()).toContain('staff.support.lastResolver')
+    expect(wrapper.find('.stck__rating').exists()).toBe(false)
     wrapper.unmount()
   })
 })

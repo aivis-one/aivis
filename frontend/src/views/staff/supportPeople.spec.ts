@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { describe, expect, it } from 'vitest'
-import { dayEdges, personName, statusVariant } from './supportPeople'
+import { dayEdges, personName, starsText, statusVariant } from './supportPeople'
 import type { SupportPerson, SupportTicketStatus } from '@/api/support'
 
 const person = (over: Partial<SupportPerson> = {}): SupportPerson => ({
@@ -65,5 +65,18 @@ describe('dayEdges', () => {
     for (const value of ['', '2026-10', '25.10.2026', 'garbage']) {
       expect(dayEdges(value)).toBeNull()
     }
+  })
+})
+
+describe('starsText', () => {
+  it('fills as many stars as given, of five', () => {
+    expect(starsText(4)).toBe('★★★★☆')
+    expect(starsText(1)).toBe('★☆☆☆☆')
+    expect(starsText(5)).toBe('★★★★★')
+  })
+
+  it('never draws more than five or fewer than none', () => {
+    expect(starsText(9)).toBe('★★★★★')
+    expect(starsText(-1)).toBe('☆☆☆☆☆')
   })
 })

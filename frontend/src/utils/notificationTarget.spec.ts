@@ -130,4 +130,26 @@ describe('notificationTarget', () => {
       notificationTarget({ ...base, shell: 'agent', type: 'support.ticket_assigned' }),
     ).toBeNull()
   })
+
+  it("the rating request opens its ticket's card in the shell's own support (H41)", () => {
+    const actionData = { action: 'open_support_rating', params: { id: 't1' } }
+    const type = 'support.rating_requested'
+    for (const [shell, name] of [
+      ['investor', 'investor-support'],
+      ['agent', 'agent-support'],
+      ['company', 'company-support'],
+    ] as const) {
+      expect(notificationTarget({ ...base, shell, type, actionData })).toEqual({
+        name,
+        query: { rate: 't1' },
+      })
+    }
+    // Without an id: the conversation alone.
+    expect(notificationTarget({ ...base, type })).toEqual({ name: 'investor-support' })
+    // The pair: another action's id is not taken for a rating.
+    const other = { action: 'post', params: { id: 't1' } }
+    expect(notificationTarget({ ...base, shell: 'agent', type, actionData: other })).toEqual({
+      name: 'agent-support',
+    })
+  })
 })

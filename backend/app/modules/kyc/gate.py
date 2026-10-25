@@ -123,9 +123,6 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/email/register"),
         ("POST", "/api/v1/auth/email/login"),
         ("POST", "/api/v1/auth/telegram"),
-        ("POST", "/api/v1/auth/telegram/link/email"),
-        ("POST", "/api/v1/auth/telegram/link/confirm"),
-        ("POST", "/api/v1/telegram/webhook"),
         ("POST", "/api/v1/auth/2fa/login-verify"),
         ("POST", "/api/v1/auth/password-reset/request"),
         ("POST", "/api/v1/auth/password-reset/confirm"),
@@ -191,6 +188,9 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         # translation for yet is queued by the read (support/translation.py,
         # the catch-up). It moves no money; open like the rest of support.
         ("GET", "/api/v1/support/messages"),
+        # The rating of a resolved ticket (H41): the person's word about
+        # the help they got; no money moves.
+        ("POST", "/api/v1/support/tickets/{thread_id}/rating"),
     }
 )
 

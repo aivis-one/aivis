@@ -1,12 +1,12 @@
 // =============================================================================
-// AIVIS.ONE Frontend -- Support API (Ф-1, H40 tickets)
+// AIVIS.ONE Frontend -- Support API (Ф-1, H40 tickets, H41 ratings)
 // =============================================================================
 //
 // Typed wrappers for /api/v1/support/* and /api/v1/staff/support/*.
 // Source of truth: backend/app/modules/support/router.py and
 // staff_router.py -- paths, bodies, status codes. Request bodies come
 // from api/generated.ts (TicketIn, SendMessageIn, SetTicketStatusIn,
-// AssignIn, EmptyBodyIn) and are not redeclared here.
+// AssignIn, RatingIn, EmptyBodyIn) and are not redeclared here.
 //
 // RESPONSE TYPES HAVE NO GENERATED COUNTERPART, ON PURPOSE. Every handler
 // returns `dict[str, Any]`: a message is comms' own (forwarded, or rendered
@@ -31,6 +31,7 @@ import { buildQueryString } from '@/utils/querystring'
 import type {
   AssignIn,
   EmptyBodyIn,
+  RatingIn,
   SendMessageIn,
   SetTicketStatusIn,
   TicketIn,
@@ -216,6 +217,82 @@ export interface SupportTicketRow extends SupportTicket {
   opener: SupportPerson | null
   claimed_by: SupportPerson | null
   history_thread_id: string | null
+  /** H41: the operator who LAST resolved it (kept when it is back at work
+   * or closed another way since). */
+  resolved_by: SupportPerson | null
+  rating: SupportRating | null
+}
+
+/**
+ * The person's rating of a ticket, as an operator reads it (H41). The
+ * comment is as written, never translated. `comment_locale` is the
+ * person's INTERFACE language when they rated -- the likely language of
+ * the text, nothing detects it. `rated_resolver` is the operator the
+ * rating is about: who had resolved the ticket when it was rated.
+ */
+export interface SupportRating {
+  stars: number
+  comment: string | null
+  comment_locale: string | null
+  rated_at: string | null
+  rated_resolver: SupportPerson | null
+}
+
+/** The staff list's rating filter: stars, and "none" for no rating. */
+export type SupportRatingFilter = '1' | '2' | '3' | '4' | '5' | 'none'
+
+export const SUPPORT_RATING_FILTERS: readonly SupportRatingFilter[] = [
+  '5',
+  '4',
+  '3',
+  '2',
+  '1',
+  'none',
+]
+
+/** The longest comment a rating keeps (backend RATING_COMMENT_MAX_LENGTH). */
+export const SUPPORT_RATING_COMMENT_MAX = 1000
+
+/** One of the person's resolved tickets waiting for their rating. */
+export interface SupportPendingRating {
+  id: string
+  topic: SupportTopic
+  category: SupportCategory
+  resolved_at: string
+}
+
+/** One rating the person gave. */
+export interface SupportGivenRating {
+  id: string
+  topic: SupportTopic
+  stars: number
+  comment: string | null
+  rated_at: string | null
+}
+
+export interface SupportMyRatings {
+  pending: SupportPendingRating[]
+  rated: SupportGivenRating[]
+}
+
+/** The rating figures of a statistics row; null figures -- nothing rated. */
+export interface SupportStatsFigures {
+  rated: number
+  average: number | null
+  share_4_5: number | null
+}
+
+export interface SupportStatsCategory extends SupportStatsFigures {
+  category: SupportCategory
+  tickets: number
+}
+
+export interface SupportStatsResponse {
+  period: { created_from: string; created_to: string }
+  categories: SupportStatsCategory[]
+  total: SupportStatsFigures & { tickets: number }
+  spam: { tickets: number; live: number; deleted: number }
+  resolvers: (SupportStatsFigures & { operator: SupportPerson | null })[]
 }
 
 export interface SupportTicketListResponse {
@@ -240,6 +317,7 @@ export interface ListMessagesParams {
  */
 export interface ListTicketsParams {
   category?: readonly SupportCategory[]
+  rating?: readonly SupportRatingFilter[]
   status?: SupportTicketStatus
   created_from?: string
   created_to?: string
@@ -325,6 +403,26 @@ export function getSupportUnread(): Promise<SupportUnreadResponse> {
   return api.get<SupportUnreadResponse>('/api/v1/support/unread')
 }
 
+/**
+ * POST /api/v1/support/tickets/{id}/rating -- the person rates their own
+ * RESOLVED ticket, once (H41). 404 when it is not theirs; 409 when it is
+ * not resolved or is rated already (a retry after a lost answer too -- read
+ * the ratings again).
+ */
+export function rateSupportTicket(
+  threadId: string,
+  stars: number,
+  comment: string | null,
+): Promise<{ id: string; stars: number; comment: string | null; rated_at: string }> {
+  const payload: RatingIn = { stars, comment }
+  return api.post(`/api/v1/support/tickets/${threadId}/rating`, payload)
+}
+
+/** GET /api/v1/support/ratings -- the caller's pending and given ratings. */
+export function getMySupportRatings(): Promise<SupportMyRatings> {
+  return api.get<SupportMyRatings>('/api/v1/support/ratings')
+}
+
 // ---------------------------------------------------------------------------
 // Staff side -- /api/v1/staff/support/*
 // ---------------------------------------------------------------------------
@@ -336,6 +434,7 @@ export function getSupportUnread(): Promise<SupportUnreadResponse> {
 export function listStaffTickets(params?: ListTicketsParams): Promise<SupportTicketListResponse> {
   const qs = buildQueryString({
     category: params?.category,
+    rating: params?.rating,
     status: params?.status,
     created_from: params?.created_from,
     created_to: params?.created_to,
@@ -348,6 +447,19 @@ export function listStaffTickets(params?: ListTicketsParams): Promise<SupportTic
 /** GET /api/v1/staff/support/tickets/{id} -- one ticket's card. 404 for a history. */
 export function getStaffTicket(threadId: string): Promise<SupportTicketRow> {
   return api.get<SupportTicketRow>(`/api/v1/staff/support/tickets/${threadId}`)
+}
+
+/**
+ * GET /api/v1/staff/support/stats -- support over the appeals of
+ * [created_from, created_to): both edges with their zone (400 without
+ * one), the period not empty (400 `support_period_empty`).
+ */
+export function getStaffSupportStats(
+  createdFrom: string,
+  createdTo: string,
+): Promise<SupportStatsResponse> {
+  const qs = buildQueryString({ created_from: createdFrom, created_to: createdTo })
+  return api.get<SupportStatsResponse>(`/api/v1/staff/support/stats${qs}`)
 }
 
 /** GET /api/v1/staff/support/operators -- who a ticket can be handed to. */

@@ -1,5 +1,5 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support: the person's routes (T-65, H40)
+# AIVIS.ONE Backend -- Support: the person's routes (T-65, H40, H41)
 # =============================================================================
 #
 #   POST /api/v1/support/tickets   -- an appeal through the form: a topic
@@ -11,12 +11,18 @@
 #     thread of the caller, history and tickets, glued into one feed.
 #   POST /api/v1/support/read      -- read up to now, in every thread.
 #   GET  /api/v1/support/unread    -- what is unread, summed over them.
+#   POST /api/v1/support/tickets/{id}/rating -- the person rates their
+#     RESOLVED ticket, once (H41): 1..5 stars and a comment if they like.
+#   GET  /api/v1/support/ratings   -- the caller's ratings: `pending`, the
+#     resolved tickets waiting for one, and `rated`, the ones they gave.
 #
-# NO THREAD ID ON ANY OF THESE. The person has one conversation however
-# many tickets it holds, and its threads are read from the local pointer
-# table, never from the wire -- so there is no id here for a caller to
-# point at somebody else's conversation. (Until H40 these routes took a
-# thread id under /threads/{id}; they are gone, with no fallback.)
+# NO THREAD ID ON ANY OF THE CONVERSATION'S ROUTES. The person has one
+# conversation however many tickets it holds, and its threads are read from
+# the local pointer table, never from the wire -- so there is no id here
+# for a caller to point at somebody else's conversation. (Until H40 these
+# routes took a thread id under /threads/{id}; they are gone, with no
+# fallback.) The rating's route is the one that names a TICKET (H41), and
+# it is a 404 for anything that is not the caller's own ticket.
 #
 # WHO THE CALLER IS COMES FROM THE SESSION, ALWAYS. comms authenticates
 # the PRODUCT, not the person, and trusts every actor id it is handed. So
@@ -29,6 +35,7 @@
 # =============================================================================
 
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +47,7 @@ from app.modules.support.schemas import (
     SUPPORT_CLIENT_KEY_MAX_LEN,
     SUPPORT_CLIENT_KEY_PATTERN,
     EmptyBodyIn,
+    RatingIn,
     SendMessageIn,
     TicketIn,
 )
@@ -47,6 +55,8 @@ from app.modules.support.service import (
     client_support_messages,
     create_ticket,
     mark_support_read,
+    my_ratings,
+    rate_ticket,
     send_dialog_message,
     support_unread,
 )
@@ -154,3 +164,35 @@ async def unread(
     the badge of the Support row. 0 for a person with no conversation."""
     reject_actor_override(request)
     return await support_unread(session, user=user)
+
+
+@router.post("/tickets/{thread_id}/rating")
+async def rate(
+    request: Request,
+    thread_id: UUID,
+    body: RatingIn,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> Any:
+    """The caller rates their own RESOLVED ticket -- service.rate_ticket.
+    404 not theirs (or not a ticket); 409 not resolved, or rated already."""
+    reject_actor_override(request)
+    return await rate_ticket(
+        session,
+        user=user,
+        thread_id=thread_id,
+        stars=body.stars,
+        comment=body.comment,
+    )
+
+
+@router.get("/ratings")
+async def ratings(
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_reader),
+) -> Any:
+    """`{pending, rated}`: the caller's resolved tickets waiting for a
+    rating, and the ratings they gave -- service.my_ratings."""
+    reject_actor_override(request)
+    return await my_ratings(session, user=user)

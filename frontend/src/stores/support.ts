@@ -1,11 +1,12 @@
 // =============================================================================
-// AIVIS.ONE Frontend -- Support Store (Ф-1, H40 tickets)
+// AIVIS.ONE Frontend -- Support Store (Ф-1, H40 tickets, H41 ratings)
 // =============================================================================
 //
 // Pinia store for support. Two separate sections: the PERSON's one
 // conversation (InvestorSupportView, shared by the buyer, the integrator and
-// the project), and the OPERATOR's tickets -- the list (StaffSupportView)
-// and one ticket's card (StaffSupportTicketView).
+// the project) with the ratings of their resolved tickets (H41), and the
+// OPERATOR's tickets -- the list (StaffSupportView), one ticket's card
+// (StaffSupportTicketView) and the statistics (StaffSupportStats, H41).
 //
 // WHY ONE STORE, NOT TWO (per stores/portfolio.ts's own header, same
 // question for a different pair of surfaces): a staff member is also a
@@ -42,6 +43,8 @@ import {
   assignStaffTicket,
   claimStaffTicket,
   createSupportTicket,
+  getMySupportRatings,
+  getStaffSupportStats,
   getStaffThreadMessages,
   getStaffTicket,
   getSupportMessages,
@@ -49,6 +52,7 @@ import {
   listStaffOperators,
   listStaffTickets,
   markSupportRead,
+  rateSupportTicket,
   releaseStaffTicket,
   reopenStaffTicket,
   replyToStaffThread,
@@ -61,8 +65,10 @@ import type {
   ListTicketsParams,
   SupportClientMessage,
   SupportClosingStatus,
+  SupportMyRatings,
   SupportPerson,
   SupportStaffMessage,
+  SupportStatsResponse,
   SupportTicketRow,
   SupportTopic,
 } from '@/api/support'
@@ -234,6 +240,74 @@ export const useSupportStore = defineStore('support', () => {
     } catch {
       // Same rule as the bell (notifications store): never reset to 0 on
       // an error.
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // The person -- ratings of resolved tickets (H41)
+  // ---------------------------------------------------------------------
+  // null = not read yet (or the read failed): no card is drawn on a guess.
+  const myRatings = ref<SupportMyRatings | null>(null)
+  // Per ticket: a rating on its way, and why the last one did not go.
+  const rating = ref<Record<string, boolean>>({})
+  const ratingErrors = ref<Record<string, SupportActionError | null>>({})
+
+  async function fetchMyRatings(): Promise<void> {
+    try {
+      myRatings.value = await getMySupportRatings()
+    } catch {
+      // The cards keep what they showed; the next read corrects them.
+    }
+  }
+
+  /**
+   * Rate one resolved ticket. A 409 is "not ratable any more" -- rated
+   * already (a retry after a lost answer included), or back at work -- so
+   * the ratings are read again and the card shows what is true now.
+   */
+  async function rateTicket(
+    threadId: string,
+    stars: number,
+    comment: string | null,
+  ): Promise<boolean> {
+    if (rating.value[threadId]) return false
+    rating.value[threadId] = true
+    ratingErrors.value[threadId] = null
+    try {
+      await rateSupportTicket(threadId, stars, comment)
+      await fetchMyRatings()
+      return true
+    } catch (err) {
+      const error = toActionError(err)
+      ratingErrors.value[threadId] = error
+      if (error.status === 409) await fetchMyRatings()
+      return false
+    } finally {
+      rating.value[threadId] = false
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // The operator -- statistics (H41)
+  // ---------------------------------------------------------------------
+  const stats = ref<SupportStatsResponse | null>(null)
+  const statsLoading = ref<boolean>(false)
+  const statsError = ref<SupportActionError | null>(null)
+  let statsEpoch = 0
+
+  async function fetchStats(createdFrom: string, createdTo: string): Promise<void> {
+    const epoch = ++statsEpoch
+    statsLoading.value = true
+    statsError.value = null
+    try {
+      const resp = await getStaffSupportStats(createdFrom, createdTo)
+      if (epoch !== statsEpoch) return
+      stats.value = resp
+    } catch (err) {
+      if (epoch !== statsEpoch) return
+      statsError.value = toActionError(err)
+    } finally {
+      if (epoch === statsEpoch) statsLoading.value = false
     }
   }
 
@@ -469,6 +543,7 @@ export const useSupportStore = defineStore('support', () => {
    * resolves (same FP-17 pattern as portfolio.ts).
    */
   function reset(): void {
+    ++statsEpoch
     ++feedEpoch
     ++ticketsEpoch
     ++ticketEpoch
@@ -488,6 +563,12 @@ export const useSupportStore = defineStore('support', () => {
     createTicketError.value = null
     pendingTicket = null
     unread.value = null
+    myRatings.value = null
+    rating.value = {}
+    ratingErrors.value = {}
+    stats.value = null
+    statsLoading.value = false
+    statsError.value = null
 
     tickets.value = []
     ticketsNextCursor.value = null
@@ -539,6 +620,19 @@ export const useSupportStore = defineStore('support', () => {
     unread,
     markRead,
     fetchUnread,
+
+    // the person's ratings (H41)
+    myRatings,
+    rating,
+    ratingErrors,
+    fetchMyRatings,
+    rateTicket,
+
+    // the operator's statistics (H41)
+    stats,
+    statsLoading,
+    statsError,
+    fetchStats,
 
     // the operator's list
     tickets,

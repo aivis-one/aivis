@@ -62,6 +62,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -226,6 +227,37 @@ class SupportTicket(TimestampMixin, Base):
     # ticket and writing it.
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # -- The rating (H41) ------------------------------------------------
+    #
+    # The operator who LAST moved the ticket to RESOLVED: "who resolved" of
+    # the row and the card. Back to work keeps it; the next RESOLVED
+    # overwrites it; a later close of another kind leaves it standing (the
+    # card then reads it as the last resolver).
+    resolved_by_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # One rating per ticket, by its person, asked for at RESOLVED (owner
+    # ruling): 1..5 stars, an optional comment kept AS WRITTEN -- never
+    # translated -- and when.
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # THE PERSON'S INTERFACE LANGUAGE when they rated (users.language,
+    # normalized), NOT the language of the comment's text: nothing detects
+    # the language a text is written in. It is the best guess a screen has,
+    # and is labelled with it; it is set with the rating, comment or not.
+    rating_locale: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    rated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    # Who had resolved the ticket WHEN it was rated: the operator the rating
+    # is about. resolved_by_user_id may move on afterwards (back to work,
+    # another operator resolves); the rating stays with whom it rated.
+    rated_resolver_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             f"topic IN ({_sql_in(tuple(TOPICS))})",
@@ -238,6 +270,20 @@ class SupportTicket(TimestampMixin, Base):
         CheckConstraint(
             f"status IN ({_sql_in(STATUSES)})",
             name="ck_support_tickets_status",
+        ),
+        CheckConstraint(
+            "rating IS NULL OR rating BETWEEN 1 AND 5",
+            name="ck_support_tickets_rating",
+        ),
+        # A rating is a whole: the stars, when, and the language -- or none.
+        CheckConstraint(
+            "(rating IS NULL) = (rated_at IS NULL) "
+            "AND (rating IS NULL) = (rating_locale IS NULL)",
+            name="ck_support_tickets_rating_whole",
+        ),
+        CheckConstraint(
+            "rating IS NOT NULL OR rating_comment IS NULL",
+            name="ck_support_tickets_rating_comment",
         ),
         Index("ix_support_tickets_created", "created_at", "support_thread_id"),
     )

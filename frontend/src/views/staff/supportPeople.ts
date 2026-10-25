@@ -60,3 +60,9 @@ export function dayEdges(value: string): { from: string; to: string } | null {
     to: new Date(y, m, d + 1).toISOString(),
   }
 }
+
+/** Stars as text, filled then empty: 4 -> "★★★★☆" (H41). */
+export function starsText(stars: number): string {
+  const n = Math.max(0, Math.min(5, Math.round(stars)))
+  return '★'.repeat(n) + '☆'.repeat(5 - n)
+}

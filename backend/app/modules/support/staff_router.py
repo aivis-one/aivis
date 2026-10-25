@@ -1,9 +1,13 @@
 # =============================================================================
-# AIVIS.ONE Backend -- Support: the operator's routes (T-66, H40)
+# AIVIS.ONE Backend -- Support: the operator's routes (T-66, H40, H41)
 # =============================================================================
 #
 #   GET  /api/v1/staff/support/tickets               -- every ticket, with
-#     filters: category (repeatable), status, a day (its edges), a cursor.
+#     filters: category and rating (both repeatable), status, a day (its
+#     edges), a cursor.
+#   GET  /api/v1/staff/support/stats                 -- support over a period
+#     of appeals: the six categories without spam, the total, spam, and
+#     the ratings by the operator each is about (H41).
 #   GET  /api/v1/staff/support/tickets/{id}          -- one ticket's card.
 #   POST /api/v1/staff/support/tickets/{id}/claim    -- take it.
 #   POST /api/v1/staff/support/tickets/{id}/assign   -- hand it over.
@@ -60,6 +64,7 @@ from app.modules.support.schemas import (
     AssignIn,
     CategoryCode,
     EmptyBodyIn,
+    RatingFilterCode,
     SendMessageIn,
     SetTicketStatusIn,
     TicketStatusCode,
@@ -76,6 +81,7 @@ from app.modules.support.service import (
     reply_to_support_thread,
     retry_support_translation,
     set_ticket_status,
+    support_stats,
 )
 
 router = APIRouter(prefix="/api/v1/staff/support", tags=["support-staff"])
@@ -92,6 +98,9 @@ async def list_ticket_rows(
     # Repeatable: ?category=a&category=b is "a or b". Every value must be
     # a code (422 otherwise); a repeated one counts once.
     category: list[CategoryCode] | None = Query(default=None),
+    # H41: by rating, repeatable the same way -- "1".."5", and "none" for a
+    # ticket nobody rated.
+    rating: list[RatingFilterCode] | None = Query(default=None),
     status: TicketStatusCode | None = Query(default=None),
     created_from: datetime | None = Query(default=None),
     created_to: datetime | None = Query(default=None),
@@ -108,19 +117,49 @@ async def list_ticket_rows(
     operator's zone -- an edge without one would be read in the server's.
     """
     reject_actor_override(request)
-    for name, value in (("created_from", created_from), ("created_to", created_to)):
-        if value is not None and value.tzinfo is None:
-            raise BadRequestError(
-                f"{name} must carry a time zone", code="support_date_without_zone",
-            )
+    _require_zones(created_from=created_from, created_to=created_to)
     return await list_tickets(
         session,
         categories=set(category) if category else None,
+        ratings=set(rating) if rating else None,
         status=status,
         created_from=created_from,
         created_to=created_to,
         limit=limit,
         cursor=cursor,
+    )
+
+
+def _require_zones(**edges: datetime | None) -> None:
+    """Each edge given carries a time zone (400 otherwise): "a day" is the
+    operator's day, and only the screen knows the operator's zone -- an
+    edge without one would be read in the server's."""
+    for name, value in edges.items():
+        if value is not None and value.tzinfo is None:
+            raise BadRequestError(
+                f"{name} must carry a time zone", code="support_date_without_zone",
+            )
+
+
+@router.get("/stats")
+async def stats(
+    request: Request,
+    created_from: datetime = Query(),
+    created_to: datetime = Query(),
+    operator: SupportOperator = Depends(get_support_operator),
+    session: AsyncSession = Depends(get_db_reader),
+) -> Any:
+    """Support over the appeals of [created_from, created_to) --
+    service.support_stats. Both edges required (422 without one), each
+    with a time zone (400), and the period not empty (400)."""
+    reject_actor_override(request)
+    _require_zones(created_from=created_from, created_to=created_to)
+    if created_from >= created_to:
+        raise BadRequestError(
+            "The period ends before it starts", code="support_period_empty",
+        )
+    return await support_stats(
+        session, created_from=created_from, created_to=created_to,
     )
 
 

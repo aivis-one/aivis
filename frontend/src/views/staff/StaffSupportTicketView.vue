@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // =============================================================================
-// AIVIS.ONE Frontend -- StaffSupportTicketView (H40 tickets)
+// AIVIS.ONE Frontend -- StaffSupportTicketView (H40 tickets, H41 ratings)
 // =============================================================================
 //
 // One ticket's card: /staff/users/support/:id, where :id is the ticket's
@@ -19,6 +19,12 @@
 //                                its retention: the backend says when not.
 // Taking is what grants the right to reply; a reply on a ticket nobody took
 // is refused by comms, and the composer is not drawn.
+//
+// THE RATING (H41): who last resolved the ticket stands among its facts --
+// "resolved by" while it is resolved, "last resolved by" once it is not --
+// and the person's rating, when there is one, under them: the stars, the
+// comment as written with the person's interface language, the operator it
+// is about.
 //
 // THE PERSON'S CONVERSATION FROM BEFORE TICKETS (their history), when there
 // is one, is a second, read-only feed of the same card: "Earlier
@@ -50,7 +56,7 @@ import { useTranslationPoll } from '@/composables/useTranslationPoll'
 import { SUPPORT_CLOSING_STATUSES } from '@/api/support'
 import type { SupportActionError, TicketAction } from '@/stores/support'
 import type { SupportClosingStatus, SupportStaffMessage } from '@/api/support'
-import { personName, statusVariant } from './supportPeople'
+import { personName, starsText, statusVariant } from './supportPeople'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -340,9 +346,56 @@ watch(
           <dt>{{ t('staff.support.email') }}</dt>
           <dd>{{ ticket.opener.email }}</dd>
         </template>
+        <!-- H41: who resolved it. Once the ticket is no longer resolved (back
+             at work, or closed another way since) it is the LAST resolver. -->
+        <template v-if="ticket.resolved_by">
+          <dt>
+            {{
+              ticket.status === 'resolved'
+                ? t('staff.support.resolver')
+                : t('staff.support.lastResolver')
+            }}
+          </dt>
+          <dd>{{ personName(ticket.resolved_by) }}</dd>
+        </template>
         <dt>{{ t('staff.support.ticketIdLabel') }}</dt>
         <dd class="stck__mono">{{ ticket.id }}</dd>
       </dl>
+
+      <!-- H41: the person's rating -- the stars, the comment as written
+           (never translated) with the person's interface language, the
+           likely language of the text, and the operator it is about. -->
+      <section
+        v-if="ticket.rating"
+        class="stck__rating"
+        :aria-label="t('staff.support.rating.title')"
+      >
+        <p class="stck__rating-stars">
+          <span :aria-label="t('staff.support.rating.stars', { n: ticket.rating.stars })">
+            {{ starsText(ticket.rating.stars) }}
+          </span>
+          <span v-if="ticket.rating.rated_at" class="ds-note">
+            {{ formatDateTime(ticket.rating.rated_at, locale) }}
+          </span>
+        </p>
+        <blockquote
+          v-if="ticket.rating.comment"
+          class="stck__rating-comment"
+          :lang="ticket.rating.comment_locale ?? undefined"
+        >
+          {{ ticket.rating.comment }}
+        </blockquote>
+        <p v-if="ticket.rating.comment && ticket.rating.comment_locale" class="ds-note">
+          {{
+            t('staff.support.rating.commentLocale', {
+              lang: ticket.rating.comment_locale.toUpperCase(),
+            })
+          }}
+        </p>
+        <p v-if="ticket.rating.rated_resolver" class="ds-note">
+          {{ t('staff.support.rating.about', { name: personName(ticket.rating.rated_resolver) }) }}
+        </p>
+      </section>
 
       <!-- Actions on the ticket -->
       <div class="stck__actions">
@@ -587,6 +640,27 @@ watch(
 .stck__mono {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
+}
+.stck__rating {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+.stck__rating-stars {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--fs-lg);
+  color: var(--accent, currentColor);
+}
+.stck__rating-comment {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .stck__actions {
   display: flex;

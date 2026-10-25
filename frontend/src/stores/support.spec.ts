@@ -123,6 +123,8 @@ function row(id: string, over: Partial<SupportTicketRow> = {}): SupportTicketRow
     opener: null,
     claimed_by: null,
     history_thread_id: null,
+    resolved_by: null,
+    rating: null,
     ...over,
   }
 }

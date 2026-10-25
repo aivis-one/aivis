@@ -415,24 +415,6 @@ types:
     recipient_schedule: bypass
     lane: interactive
 
-  # The Telegram entry (backend/app/modules/auth/service.py,
-  # request_telegram_link_code / confirm_telegram_link). Same rules as the two
-  # above: e-mail only, no category (a person cannot mute their own way in),
-  # the schedule bypassed.
-  #   auth.telegram_link_code -- the code for an EXISTING account; the letter
-  #     names the Telegram account that asks to be linked, so the mailbox's
-  #     owner can refuse. (A new person's code is auth.verification_code.)
-  #   auth.telegram_linked -- the notice after a link: which Telegram was
-  #     linked, and where to complain.
-  auth.telegram_link_code:
-    channels: [email]
-    recipient_schedule: bypass
-    lane: interactive
-
-  auth.telegram_linked:
-    channels: [email]
-    recipient_schedule: bypass
-
   purchase.agreement:
     channels: [in_app, email]
 
@@ -559,3 +541,26 @@ types:
   support.ticket_released:
     channels: [in_app, telegram]
     recipient_schedule: bypass
+
+  # =============================================================================
+  # The rating request (H41)
+  # =============================================================================
+  #
+  # support.rating_requested -- an operator resolved the person's ticket
+  # and nobody rated it yet: "How did we do?" (backend support/service.py
+  # _emit_rating_request, at once, in the transaction that resolves it).
+  # One per move to RESOLVED while the ticket is unrated; the action opens
+  # the rating of that ticket (open_support_rating with its thread id).
+  #
+  # `support_messages`, the category support's replies reach the person
+  # under: a person who muted support's replies is not asked to rate
+  # either. The person's own delivery hours are KEPT -- comms' default
+  # `respect`, written nowhere (owner ruling): unlike the operator signals,
+  # nobody is waiting on this one.
+  #
+  # IN-APP ONLY, for support.translation_unavailable's reason above:
+  # Telegram for people comes with the Telegram sign-in (P-133), with its
+  # sheets. No template sheet: the inbox shows the stored title and body.
+
+  support.rating_requested:
+    category: support_messages

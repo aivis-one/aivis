@@ -123,3 +123,24 @@ class AssignIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     assignee: UUID
+
+
+# -- The rating (H41) ---------------------------------------------------------
+
+# The longest comment a rating keeps (owner ruling).
+RATING_COMMENT_MAX_LENGTH = 1000
+
+# The staff list's rating filter: stars "1".."5", and "none" for a ticket
+# nobody rated (service.RATING_NONE).
+RatingFilterCode = Literal["1", "2", "3", "4", "5", "none"]
+
+
+class RatingIn(BaseModel):
+    """The person's rating of their resolved ticket: 1..5 stars and, if
+    they like, a comment -- kept as written, never translated. Strict: the
+    stars are a number, not "4"."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    stars: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=RATING_COMMENT_MAX_LENGTH)
