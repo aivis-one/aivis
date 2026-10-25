@@ -73,23 +73,39 @@ const homeLabel = computed(() => `${t('app.name')}, ${t('tab.home')}`)
 function isHandler(back: unknown): back is BackHandler {
   return typeof back === 'object' && back !== null && 'handler' in back
 }
+
+// EVERY SCREEN HAS A WAY BACK, except the storefront and each cabinet's start. A screen of
+// the buyer's or the integrator's cabinet that sets no back control of its own gets one
+// step back; the cabinet's dashboard is where it ends, so it has none.
+const effectiveBack = computed(() => {
+  const own = header.value.back
+  if (own) return own
+  const shell = route.meta.shell
+  const inCabinet = shell === 'investor' || shell === 'agent'
+  return inCabinet && route.name !== `${shell}-dashboard` ? true : undefined
+})
+
 const backTarget = computed(() => {
-  const back = header.value.back
+  const back = effectiveBack.value
   return back === true || isHandler(back) ? undefined : back
 })
 
+// One step back when there was a page before (the history), else to the dashboard.
 function goBack(): void {
-  if (window.history.length > 1) {
+  if (window.history.state?.back) {
     router.back()
   } else {
-    void safeNavigate(router.push('/'), '[AppHeader] to home')
+    void safeNavigate(
+      router.push(getRoleDashboard(authStore.role ?? route.meta.shell ?? null)),
+      '[AppHeader] to dashboard',
+    )
   }
 }
 
 // A route target is a link and goes by itself; `true` is one step back; `{ handler }`
 // is the screen's own handler and the control a button calling it.
 const onBack = computed(() => {
-  const back = header.value.back
+  const back = effectiveBack.value
   if (back === true) return goBack
   return isHandler(back) ? back.handler : undefined
 })
@@ -186,9 +202,9 @@ watch(showBell, (isAuth) => {
 
 <template>
   <header class="ds-header">
-    <div v-if="header.back || navless" class="ds-header__lead">
+    <div v-if="effectiveBack || navless" class="ds-header__lead">
       <CBackLink
-        v-if="header.back"
+        v-if="effectiveBack"
         icon-only
         :label="t('common.back')"
         :to="backTarget"

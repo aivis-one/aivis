@@ -53,9 +53,11 @@ describe('AppNav', () => {
       ...extraTabsFor('investor').map((t) => t.path),
       INVESTOR_TABS[INVESTOR_TABS.length - 1]?.path,
     ])
-    for (const section of ['news', 'installments', 'docs', 'support', 'faq']) {
+    for (const section of ['news', 'docs', 'support', 'faq']) {
       expect(extraTabsFor('investor').map((t) => t.id)).toContain(section)
     }
+    // The instalment plans live inside Portfolio, not in the menu.
+    expect(extraTabsFor('investor').map((t) => t.id)).not.toContain('installments')
   })
 
   it('reports the press of the collapse control and names its state', async () => {

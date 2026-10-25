@@ -239,12 +239,12 @@ onMounted(() => {
           </p>
         </div>
 
-        <footer class="ds-card__foot bv__actions">
-          <CButton variant="primary" @click="goDeposit">
+        <footer class="ds-card__foot">
+          <CButton variant="primary" inline @click="goDeposit">
             <ArrowDownToLine size="sm" />
             {{ t('inv.balance.deposit') }}
           </CButton>
-          <CButton variant="outline" @click="goOperations">
+          <CButton variant="outline" inline @click="goOperations">
             <ListChecks size="sm" />
             {{ t('inv.balance.allOperations') }}
           </CButton>
@@ -339,10 +339,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.bv__actions {
-  flex-direction: column;
 }
 
 .bv__holder-title {

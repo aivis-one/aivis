@@ -75,17 +75,12 @@ export const STAFF_TABS: TabItem[] = [
 ]
 
 // The sections of a role that have a screen but no place among the five tabs: News and
-// events (promotions are part of it), Instalment plans, Documents, Support and FAQ.
+// events (promotions are part of it), Documents, Support and FAQ. The instalment plans are
+// reached from the Portfolio screen, not from the menu.
 // The web menu (the rail from 880) lists them beside the tabs; the phone's tab bar
 // keeps its five (AppNav).
 const EXTRA_INVESTOR: TabItem[] = [
   { id: 'news', path: '/investor/news', labelKey: 'tab.news', icon: 'Newspaper' },
-  {
-    id: 'installments',
-    path: '/investor/installments',
-    labelKey: 'tab.installments',
-    icon: 'CalendarClock',
-  },
   { id: 'docs', path: '/investor/docs', labelKey: 'tab.docs', icon: 'FileText' },
   { id: 'support', path: '/investor/support', labelKey: 'tab.support', icon: 'MessageCircle' },
   { id: 'faq', path: '/investor/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },

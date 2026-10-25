@@ -517,6 +517,17 @@ onMounted(load)
           </div>
         </dl>
 
+        <!-- Security warning, right under the network, amount and deadline: still the
+             only realistic mitigation at the UI layer for a cross-network transfer. -->
+        <div class="ds-alert ds-alert--warning" role="alert">
+          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">
+              {{ t(`inv.deposit.networks.${shownNetworkKey}.warning`) }}
+            </p>
+          </div>
+        </div>
+
         <!-- Terminal statuses. Each is its own message: "confirmed"
              and "stalled" have nothing in common for the user. -->
         <template v-if="isTerminal">
@@ -621,17 +632,6 @@ onMounted(load)
           </div>
         </div>
       </section>
-
-      <!-- Security warning. Still the only realistic mitigation at
-           the UI layer for a cross-network transfer. -->
-      <div class="ds-alert ds-alert--warning" role="alert">
-        <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
-        <div class="ds-alert__content">
-          <p class="ds-alert__text">
-            {{ t(`inv.deposit.networks.${shownNetworkKey}.warning`) }}
-          </p>
-        </div>
-      </div>
 
       <!-- After verification, a deposit by bank goes through support. -->
       <section v-if="showBankLine" class="ds-card">

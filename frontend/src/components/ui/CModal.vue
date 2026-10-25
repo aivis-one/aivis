@@ -6,7 +6,8 @@
 // a dialog that changes its content step by step and must not jump between steps.
 //
 // The caller's content is the dialog's body (the default slot). An optional
-// `title` is the dialog's heading and names it; without one the content carries
+// `title` is the dialog's heading and names it (a `title` slot may draw it with an icon
+// before the words); without one the content carries
 // its own heading and the head holds the close button alone.
 
 import { ref, toRef, useId } from 'vue'
@@ -61,7 +62,9 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
         tabindex="-1"
       >
         <div v-if="title || showClose" class="ds-dialog__head">
-          <h2 v-if="title" :id="titleId" class="ds-dialog__title">{{ title }}</h2>
+          <h2 v-if="title" :id="titleId" class="ds-dialog__title">
+            <slot name="title">{{ title }}</slot>
+          </h2>
           <span v-else aria-hidden="true" />
           <button
             v-if="showClose"

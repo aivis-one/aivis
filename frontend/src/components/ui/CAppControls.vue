@@ -20,9 +20,12 @@ import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { useTheme } from '@/composables/useTheme'
 import { Globe, Moon, Sun } from '@/components/ui/icons'
+import { useAuthStore } from '@/stores/auth'
+import { updateMe } from '@/api/users'
 
 const { locale, t } = useI18n()
 const { effective, set: setTheme } = useTheme()
+const auth = useAuthStore()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -33,6 +36,22 @@ const currentName = computed(() => current.value?.label ?? 'English')
 async function pick(code: string) {
   open.value = false
   await setLocale(code)
+  await saveLanguage(code)
+}
+
+// ONE LANGUAGE PER PERSON: a signed-in person's choice here is also saved as the
+// account's language, the same call the profile edit makes, so the interface, the
+// profile's Language row, the letters and the documents agree. A failed save never
+// undoes the switch: the interface has changed, and the next choice tries again.
+async function saveLanguage(code: string): Promise<void> {
+  const user = auth.user
+  if (!auth.isAuthenticated || !user || user.language === code) return
+  try {
+    await updateMe({ language: code })
+    user.language = code
+  } catch {
+    // Not saved: the switch stands for this visit.
+  }
 }
 
 function toggleTheme() {

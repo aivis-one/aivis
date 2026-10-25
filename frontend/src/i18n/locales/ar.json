@@ -584,9 +584,6 @@
     },
     "dashboard": {
       "title": "لوحة التحكم",
-      "greetingMorning": "صباح الخير",
-      "greetingAfternoon": "مساء الخير",
-      "greetingEvening": "مساء الخير",
       "portfolio": {
         "title": "المحفظة",
         "totalValue": "القيمة الإجمالية",
@@ -726,7 +723,6 @@
     "settings": {
       "title": "الإعدادات",
       "subtitle": "إدارة الملف الشخصي والتفضيلات",
-      "unnamed": "بدون اسم",
       "role": {
         "investor": "مستثمر",
         "agent": "وكيل",

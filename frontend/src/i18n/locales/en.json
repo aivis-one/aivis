@@ -1410,8 +1410,8 @@
       "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
       "allOperations": "All operations",
       "holder": {
-        "title": "Holder accruals and payouts",
-        "rule": "AIVIS pays your share of the distributable profit itself, once a quarter and only after the 14 days of withdrawal, to your bank account or card; if you paid in USDT, in USDT to your confirmed address. Each payment comes with a calculation of your share and a statement of your accruals and payments. There is no holder balance and no withdrawal request.",
+        "title": "Your share of the project's profit",
+        "rule": "You are a co-owner of the project. AIVIS itself pays your share of the project's distributable profit once a quarter, to your bank account or card, or in USDT to your confirmed address if you paid in USDT, with a calculation of your share and a statement of your accruals and payments. A part joins the distribution after the 14 days of withdrawal. A project's distributable profit is zero until its product sells. There is no holder balance and no withdrawal request.",
         "small": "An amount under 10 USD carries over to the next quarter."
       }
     },
@@ -1549,9 +1549,6 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "greetingMorning": "Good morning",
-      "greetingAfternoon": "Good afternoon",
-      "greetingEvening": "Good evening",
       "portfolio": {
         "title": "Portfolio",
         "totalValue": "Total value",
@@ -1752,6 +1749,10 @@
     "docs": {
       "title": "Documents",
       "subtitle": "Your legal documents and signing history",
+      "group": {
+        "sign": "To sign",
+        "read": "To read"
+      },
       "errorTitle": "Could not load documents",
       "empty": {
         "title": "No documents yet",
@@ -1792,7 +1793,6 @@
     },
     "settings": {
       "title": "Settings",
-      "unnamed": "No name",
       "role": {
         "investor": "Buyer",
         "agent": "Integrator",
@@ -1841,7 +1841,10 @@
           "what": "An integrator brings people to AIVIS and earns commission on what they buy.",
           "pointLink": "You get one personal link to share.",
           "pointCommission": "You earn commission on the purchases of the people you bring, on three levels.",
-          "pointWithdrawal": "You withdraw the commission to your wallet.",
+          "pointPools": "Every month the 20 integrators with the largest first-line volume share 2 percent of that month's purchases, and every quarter the 10 with the largest share 1 percent of that quarter's purchases.",
+          "pointBonus": "You receive bonus parts on a one-time purchase by a buyer who registered by your link: from 5 to 20 percent of its amount, by the size of the purchase.",
+          "pointWithdrawal": "Your commission is held in a separate withdrawal account: you ask for a payout and it is paid 14 days after your request.",
+          "feeLine": "Identity verification costs {fee} for each attempt.",
           "readAgreement": "Read the agent-integrator agreement",
           "readFaq": "Read the integrator FAQ",
           "submit": "Submit the application",
@@ -2029,6 +2032,8 @@
     "support": {
       "title": "Support",
       "invite": "Tell us what happened: choose a topic and write your request -- we'll answer here.",
+      "lead": "This is your chat with AIVIS support: questions about your purchases, documents and account.",
+      "welcome": "Hello! Write to us below, we are glad to answer.",
       "placeholder": "Your message",
       "send": "Send",
       "refresh": "Refresh conversation",
@@ -2993,6 +2998,7 @@
     "kycTitle": "Identity verification first",
     "kycText": "After it, purchases open to you. The verification needs $10 on the balance — we explain why.",
     "kycGo": "Verify your identity",
+    "projectValuation": "Project valuation",
     "partPrice": "Price of a part",
     "title": "Buy parts of {project}",
     "portfolio": "Portfolio",

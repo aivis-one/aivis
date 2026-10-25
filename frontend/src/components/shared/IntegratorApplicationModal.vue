@@ -9,15 +9,18 @@
 //     shown again when the person opens the button that reads "under review".
 // Sending is the parent's (it owns the request); this component only draws.
 
-import { computed, ref, useId } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { CButton, CModal } from '@/components/ui'
+import { UserPlus } from '@/components/ui/icons'
+import { getKycStatus } from '@/api/kyc'
+import { formatPrice } from '@/utils/format'
 import { safeNavigate } from '@/composables/safeNavigate'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   sent: boolean
   submitting: boolean
@@ -33,6 +36,23 @@ const router = useRouter()
 const docLang = computed(() => (locale.value === 'ru' ? 'ru' : 'en'))
 const faqUrl = computed(() => `${import.meta.env.BASE_URL}faq/${docLang.value}/agent.html`)
 const reading = ref(false)
+
+// The price of one identity verification, read from the server when the window opens
+// (never written into the texts). Without it the line is left out.
+const verificationFee = ref<string | null>(null)
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (!isOpen || props.sent || verificationFee.value !== null) return
+    try {
+      const status = await getKycStatus()
+      verificationFee.value = formatPrice(status.fee_cents, 'USD')
+    } catch {
+      verificationFee.value = null
+    }
+  },
+  { immediate: true },
+)
 const baseUrl = import.meta.env.BASE_URL
 
 function toSupport(): void {
@@ -50,6 +70,10 @@ function toSupport(): void {
     :title="sent ? t('inv.settings.agent.modal.sentTitle') : t('inv.settings.agent.modal.title')"
     @close="emit('close')"
   >
+    <template v-if="!sent" #title>
+      <UserPlus size="sm" aria-hidden="true" />
+      {{ t('inv.settings.agent.modal.title') }}
+    </template>
     <template v-if="sent">
       <p class="ds-dialog__text">
         {{ t('inv.settings.agent.modal.sentText') }}
@@ -66,8 +90,13 @@ function toSupport(): void {
       <ul class="ds-dialog__list" :aria-labelledby="whatId">
         <li>{{ t('inv.settings.agent.modal.pointLink') }}</li>
         <li>{{ t('inv.settings.agent.modal.pointCommission') }}</li>
+        <li>{{ t('inv.settings.agent.modal.pointPools') }}</li>
+        <li>{{ t('inv.settings.agent.modal.pointBonus') }}</li>
         <li>{{ t('inv.settings.agent.modal.pointWithdrawal') }}</li>
       </ul>
+      <p v-if="verificationFee" class="ds-dialog__text">
+        {{ t('inv.settings.agent.modal.feeLine', { fee: verificationFee }) }}
+      </p>
       <div class="ds-dialog__actions">
         <a
           class="ds-button ds-button--ghost"

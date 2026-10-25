@@ -133,6 +133,7 @@ import json
 import secrets
 from datetime import datetime, timedelta, UTC
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import pyotp
@@ -1405,6 +1406,43 @@ def _telegram_credentials(telegram_user: dict) -> dict:
     }
 
 
+def _clean_profile_text(value: object, limit: int) -> str | None:
+    """A profile text from Telegram: printable characters only, trimmed, capped."""
+    if not isinstance(value, str):
+        return None
+    cleaned = "".join(ch for ch in value if ch.isprintable()).strip()[:limit]
+    return cleaned or None
+
+
+def _fill_profile_from_telegram(user: User, telegram_creds: dict) -> None:
+    """Copy the Telegram photo and names into the profile where they are empty.
+
+    The picture goes to profile.avatar_url, the names to profile.first_name and
+    profile.last_name. A value the person already has -- set by hand or copied
+    earlier -- is never overwritten, so a later change of the Telegram account
+    changes nothing the person holds. Nothing is touched when nothing is missing
+    and Telegram knows nothing to put there.
+    """
+    profile = dict(user.profile or {})
+    wanted: dict[str, str | None] = {
+        "first_name": _clean_profile_text(telegram_creds.get("first_name"), 100),
+        "last_name": _clean_profile_text(telegram_creds.get("last_name"), 100),
+        "avatar_url": _clean_profile_text(telegram_creds.get("photo_url"), 500),
+    }
+    # Only an http(s) address is a picture the cabinet may show.
+    photo = wanted["avatar_url"]
+    if photo is not None and urlsplit(photo).scheme.lower() not in ("http", "https"):
+        wanted["avatar_url"] = None
+    changed = False
+    for key, value in wanted.items():
+        if value is None or profile.get(key):
+            continue
+        profile[key] = value
+        changed = True
+    if changed:
+        user.set_jsonb("profile", profile)
+
+
 def _telegram_display_name(telegram_creds: dict) -> str:
     """How a letter names the Telegram account: @username, else the numeric id.
 
@@ -1525,6 +1563,7 @@ async def upsert_telegram_user(
     updated_creds = dict(user.credentials)
     updated_creds["telegram"] = telegram_creds
     user.set_jsonb("credentials", updated_creds)
+    _fill_profile_from_telegram(user, telegram_creds)
 
     # A Telegram-only user born before the e-mail step was dropped for
     # Telegram sits on REGISTERED with no e-mail to confirm: lift such a user
@@ -2137,6 +2176,7 @@ async def _link_after_code(
     creds = dict(user.credentials or {})
     creds["telegram"] = telegram_creds
     user.set_jsonb("credentials", creds)
+    _fill_profile_from_telegram(user, telegram_creds)
     try:
         async with session.begin_nested():
             await session.flush()

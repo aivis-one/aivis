@@ -584,9 +584,6 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "greetingMorning": "Guten Morgen",
-      "greetingAfternoon": "Guten Tag",
-      "greetingEvening": "Guten Abend",
       "portfolio": {
         "title": "Portfolio",
         "totalValue": "Gesamtwert",
@@ -726,7 +723,6 @@
     "settings": {
       "title": "Einstellungen",
       "subtitle": "Profil und Einstellungen verwalten",
-      "unnamed": "Kein Name",
       "role": {
         "investor": "Investor",
         "agent": "Agent",

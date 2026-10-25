@@ -211,6 +211,18 @@ function needsSigning(doc: DocumentResponse): boolean {
   return authStore.role === 'staff' ? requiredIds.value.has(doc.id) : true
 }
 
+// The list in two groups, in the list's own order: the documents the person signs
+// (signed or waiting) come first, the read-only ones (accepted at each purchase, or
+// bound into the buyer agreement, or only to read) below. An empty group is not drawn.
+const groups = computed<{ id: 'sign' | 'read'; items: DocumentResponse[] }[]>(() => {
+  const sign = documents.value.filter((d) => d.is_signed || needsSigning(d))
+  const read = documents.value.filter((d) => !(d.is_signed || needsSigning(d)))
+  return [
+    { id: 'sign' as const, items: sign },
+    { id: 'read' as const, items: read },
+  ].filter((g) => g.items.length > 0)
+})
+
 // The static file of a document, the same one the reader shows; null when
 // the type or language is not a plain token.
 function fileUrl(doc: DocumentResponse): string | null {
@@ -386,30 +398,43 @@ function metaLabel(doc: DocumentResponse): string {
       :description="t('inv.docs.empty.description')"
     />
 
-    <!-- List (K44): a row's link is the document's own file; a tap opens the window -->
-    <ul v-else class="ds-rows">
-      <li v-for="doc in documents" :key="doc.id" class="ds-row ds-docrow">
-        <span class="ds-row__lead"><FileText size="sm" /></span>
-        <span class="ds-row__body">
-          <a
-            v-if="fileUrl(doc)"
-            class="ds-row__link"
-            :href="fileUrl(doc) ?? undefined"
-            @click.prevent="openDoc(doc)"
-          >
-            <span class="ds-row__title">{{ doc.title }}</span>
-            <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
-          </a>
-          <template v-else>
-            <span class="ds-row__title">{{ doc.title }}</span>
-            <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
-          </template>
-        </span>
-        <span class="ds-row__trail">
-          <CBadge :variant="statusVariant(doc)" :text="statusLabel(doc)" />
-        </span>
-      </li>
-    </ul>
+    <!-- The lists (K44): the documents to sign first, the read-only ones below; a row's
+         link is the document's own file, a tap opens the window -->
+    <template v-else>
+      <section
+        v-for="group in groups"
+        :key="group.id"
+        class="docs__group"
+        :aria-labelledby="`docs-group-${group.id}`"
+      >
+        <h2 :id="`docs-group-${group.id}`" class="ds-section-title">
+          {{ t(`inv.docs.group.${group.id}`) }}
+        </h2>
+        <ul class="ds-rows">
+          <li v-for="doc in group.items" :key="doc.id" class="ds-row ds-docrow">
+            <span class="ds-row__lead"><FileText size="sm" /></span>
+            <span class="ds-row__body">
+              <a
+                v-if="fileUrl(doc)"
+                class="ds-row__link"
+                :href="fileUrl(doc) ?? undefined"
+                @click.prevent="openDoc(doc)"
+              >
+                <span class="ds-row__title">{{ doc.title }}</span>
+                <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
+              </a>
+              <template v-else>
+                <span class="ds-row__title">{{ doc.title }}</span>
+                <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
+              </template>
+            </span>
+            <span class="ds-row__trail">
+              <CBadge :variant="statusVariant(doc)" :text="statusLabel(doc)" />
+            </span>
+          </li>
+        </ul>
+      </section>
+    </template>
 
     <!-- Detail window: the Document viewer (K36), placement modal -->
     <Teleport to="body">
@@ -513,5 +538,12 @@ function metaLabel(doc: DocumentResponse): string {
 .docs {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+}
+
+.docs__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 </style>

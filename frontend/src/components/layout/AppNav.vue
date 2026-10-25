@@ -6,7 +6,7 @@
 // labelled rail the wordmark stands beside it.
 //
 // THE WEB MENU holds more than the phone's five: `extra` are the role's other sections
-// that have a screen (News and events, Instalment plans, Documents, Support, FAQ), put
+// that have a screen (News and events, Documents, Support, FAQ), put
 // before the last item (Settings) from 880; the tab bar below 880 lists the five only.
 // The collapse control at the bottom of the labelled rail folds it to icons only; the
 // state belongs to the frame (`collapsed`, set on the shell as data-nav), this menu

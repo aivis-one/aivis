@@ -1,5 +1,6 @@
 // =============================================================================
-// InvestorSupportView -- one conversation, a form and a composer (H40)
+// InvestorSupportView -- one conversation, a form and a composer (H40);
+// the greeting of an empty conversation, the composer's line, the server's own words (F7)
 // =============================================================================
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -21,6 +22,8 @@ vi.mock('@/api/support', async (importActual) => ({
 import * as api from '@/api/support'
 import { ApiResponseError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import en from '@/i18n/locales/en.json'
+import ru from '@/i18n/locales/ru.json'
 import InvestorSupportView from './InvestorSupportView.vue'
 
 const feed = vi.mocked(api.getSupportMessages)
@@ -138,6 +141,44 @@ describe('the support conversation', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('inv.support.feedErrorTitle')
     expect(wrapper.text()).not.toContain('inv.support.form.title')
+    wrapper.unmount()
+  })
+})
+
+describe('the support screen of F7', () => {
+  it('an empty conversation opens with the greeting of support above the form', async () => {
+    feed.mockResolvedValue({ items: [], next_cursor: null })
+    const wrapper = mount(InvestorSupportView)
+    await flushPromises()
+    const first = wrapper.get('.ds-thread__feed .ds-message[data-from="other"]')
+    expect(first.text()).toContain('inv.support.welcome')
+    expect(first.text()).toContain('inv.support.sender.operator')
+    expect(wrapper.text()).toContain('inv.support.form.title')
+    wrapper.unmount()
+  })
+
+  it('words the greeting and the place in both languages', () => {
+    expect(en.inv.support.welcome).toBe('Hello! Write to us below, we are glad to answer.')
+    expect(ru.inv.support.welcome).toBe('Здравствуйте! Напишите нам ниже — мы рады ответить.')
+    expect(en.inv.support.lead).toBe(
+      'This is your chat with AIVIS support: questions about your purchases, documents and account.',
+    )
+    expect(ru.inv.support.lead).toBe(
+      'Это ваш чат с поддержкой AIVIS: вопросы о покупках, документах и аккаунте.',
+    )
+  })
+
+  it('keeps the composer field and the Send button on one line, the error above them', async () => {
+    feed.mockResolvedValue({ items: [MESSAGE], next_cursor: null })
+    send.mockRejectedValue(new ApiResponseError(502, 'Support is not reachable yet'))
+    const wrapper = mount(InvestorSupportView)
+    await flushPromises()
+    await wrapper.get('#isup-message').setValue('Hello')
+    await wrapper.get('form.ds-composer').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('#isup-message-error').text()).toBe('Support is not reachable yet')
+    expect(wrapper.get('form.ds-composer').find('.ds-field__error').exists()).toBe(false)
+    expect(wrapper.get('form.ds-composer').find('button').exists()).toBe(true)
     wrapper.unmount()
   })
 })

@@ -4,13 +4,12 @@
 // =============================================================================
 //
 // Investor home screen. Rendered by InvestorShell at /investor/dashboard
-// (the "home" tab). The frame's header (K25) holds the greeting and the line
-// under it, set here with `useScreenHeader`; this view is a plain content
-// column.
+// (the "home" tab). The frame's header (K25) holds the screen's name,
+// set here with `useScreenHeader`; this view is a plain content column.
 //
 // Widgets, in render order:
 //
-//   1. Greeting -- the time-of-day greeting is the header's title, no data call.
+//   1. Title -- the screen's name is the header's title, no data call.
 //
 //   2. Identity-verification alert (K09), straight under the header while the
 //      verification is not passed: "not passed -- verify ($10)", "under
@@ -52,13 +51,9 @@
 //   full empty-state screen and keeps the card at the same vertical
 //   size so the rest of the dashboard doesn't jump on first purchase.
 //
-// B5-post: reactive greeting.
-//   The greeting (Morning / Afternoon / Evening) depends on the local
-//   clock; a module-private `now` ref bumped by a setInterval keeps a
-//   long-open tab current. The interval is cleared on unmount.
 // =============================================================================
 
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -195,28 +190,9 @@ async function loadEvents(): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Greeting -- reactive by the minute so a long-open tab flips morning /
-// afternoon / evening as the local clock crosses the boundary.
-// ---------------------------------------------------------------------------
-
-const GREETING_TICK_MS = 60_000
-
-const now = ref<number>(Date.now())
-let tickHandle: ReturnType<typeof setInterval> | null = null
-
-const greeting = computed<string>(() => {
-  // Reading `now.value` ties this computed to the tick below.
-  const hour = new Date(now.value).getHours()
-  if (hour < 12) return t('inv.dashboard.greetingMorning')
-  if (hour < 18) return t('inv.dashboard.greetingAfternoon')
-  return t('inv.dashboard.greetingEvening')
-})
-
-// The frame's header: the greeting is the title, the screen's name the line under it.
+// The frame's header: the screen's name is the title; no second line under it.
 useScreenHeader({
-  title: greeting,
-  lead: () => t('inv.dashboard.title'),
+  title: () => t('inv.dashboard.title'),
 })
 
 // The alert of the verification card: the system's severity for each state.
@@ -296,19 +272,6 @@ onMounted(() => {
   void loadEvents()
   void loadGifts()
   void loadRejectionReason()
-
-  // Start the greeting tick. 60 s matches the worst-case lag we're
-  // willing to carry between a boundary crossing and the UI update.
-  tickHandle = setInterval(() => {
-    now.value = Date.now()
-  }, GREETING_TICK_MS)
-})
-
-onBeforeUnmount(() => {
-  if (tickHandle !== null) {
-    clearInterval(tickHandle)
-    tickHandle = null
-  }
 })
 </script>
 

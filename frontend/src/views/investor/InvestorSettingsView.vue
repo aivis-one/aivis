@@ -174,12 +174,19 @@ const lastName = computed<string>(() => {
   return typeof v === 'string' ? v : ''
 })
 
+const email = computed<string>(() => authStore.user?.email ?? '')
+
+// The heading of the profile card: the name; with no name given, the e-mail; with
+// neither, the plain title of the card. It never says the name is missing.
 const fullName = computed<string>(() => {
   const name = [firstName.value, lastName.value].filter(Boolean).join(' ').trim()
-  return name || t('inv.settings.unnamed')
+  return name || email.value || t('inv.settings.profile.title')
 })
 
-const email = computed<string>(() => authStore.user?.email ?? '')
+// The e-mail line under the heading, only when the heading is not already the e-mail.
+const showEmailLine = computed<boolean>(
+  () => email.value.length > 0 && fullName.value !== email.value,
+)
 
 // The verification screen sends a person here to confirm an address that is
 // already on the account; with no address yet the field comes first.
@@ -220,9 +227,11 @@ const countryLabel = computed<string>(() => {
 
 const phoneDisplay = computed<string>(() => phone.value || t('inv.settings.profile.notSet'))
 
-// The details are empty while there is no phone and no country: the card then offers
-// a visible "Fill in details" button beside the pencil.
-const detailsEmpty = computed<boolean>(() => !phone.value && !country.value)
+// The details are incomplete while a name is missing, or there is neither phone nor
+// country: the card then offers a visible "Fill in details" button beside the pencil.
+const detailsEmpty = computed<boolean>(
+  () => !firstName.value || !lastName.value || (!phone.value && !country.value),
+)
 
 const currentLanguage = computed<string>(() => authStore.user?.language ?? '')
 
@@ -516,7 +525,7 @@ onMounted(() => {
       <h2 id="sett-name" class="ds-section-title">
         {{ fullName }}
       </h2>
-      <p v-if="email" class="ds-note sett__email">
+      <p v-if="showEmailLine" class="ds-note sett__email">
         {{ email }}
       </p>
       <CBadge variant="neutral" :text="roleLabel" />
@@ -541,6 +550,14 @@ onMounted(() => {
       </header>
       <dl class="ds-kv">
         <div class="ds-kv__row">
+          <dt>{{ t('inv.settings.profile.firstName') }}</dt>
+          <dd>{{ firstName || t('inv.settings.profile.notSet') }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('inv.settings.profile.lastName') }}</dt>
+          <dd>{{ lastName || t('inv.settings.profile.notSet') }}</dd>
+        </div>
+        <div class="ds-kv__row">
           <dt>{{ t('inv.settings.profile.phone') }}</dt>
           <dd>{{ phoneDisplay }}</dd>
         </div>
@@ -563,6 +580,106 @@ onMounted(() => {
     <!-- The e-mail: added and confirmed here when the account has none -->
     <section v-if="showEmailSection || confirmEmail" class="ds-card">
       <EmailSection :confirm="confirmEmail" />
+    </section>
+
+    <!-- Actions -->
+    <section class="ds-card" aria-labelledby="sett-actions">
+      <header class="ds-card__head">
+        <h2 id="sett-actions" class="ds-card__title">
+          {{ t('inv.settings.actions.title') }}
+        </h2>
+      </header>
+
+      <ul class="ds-rows">
+        <!-- Identity verification, with where it stands -->
+        <li class="ds-row">
+          <span class="ds-row__lead"><Shield size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" to="/verification">
+              <span class="ds-row__title">{{ t('inv.settings.actions.kyc.title') }}</span>
+            </RouterLink>
+            <span class="ds-row__meta">{{ t(kycRowKey) }}</span>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+
+        <li class="ds-row">
+          <span class="ds-row__lead"><FileText size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: 'investor-docs' }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.docs') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+
+        <li class="ds-row">
+          <span class="ds-row__lead"><MessageCircle size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: supportRouteName }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.support') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail">
+            <CBadge
+              v-if="supportUnread > 0"
+              variant="primary"
+              :text="String(supportUnread)"
+              :aria-label="t('inv.support.unread', { n: supportUnread })"
+            />
+            <ChevronRight size="sm" />
+          </span>
+        </li>
+
+        <li class="ds-row">
+          <span class="ds-row__lead"><HelpCircle size="sm" /></span>
+          <span class="ds-row__body">
+            <RouterLink class="ds-row__link" :to="{ name: 'investor-faq' }">
+              <span class="ds-row__title">{{ t('inv.settings.actions.faq') }}</span>
+            </RouterLink>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
+
+      <!-- Security: two-factor, sessions, sign out of all devices, sign out -->
+      <TwoFactorSection tPrefix="inv.settings.actions" />
+      <ActiveSessionsSection tPrefix="inv.settings.actions" />
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOutAll ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button
+              type="button"
+              class="ds-row__link"
+              :disabled="loggingOutAll"
+              @click="handleLogoutAll"
+            >
+              <span class="ds-row__title" data-tone="danger">
+                {{ t('inv.settings.actions.logoutAll') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
+
+      <NotificationPreferencesSection tPrefix="inv.settings.actions" />
+      <DeactivateAccountSection tPrefix="inv.settings.actions" />
+
+      <ul class="ds-rows">
+        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
+          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
+          <span class="ds-row__body">
+            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
+              <span class="ds-row__title" data-tone="danger">
+                {{ t('inv.settings.actions.logout') }}
+              </span>
+            </button>
+          </span>
+          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
+        </li>
+      </ul>
     </section>
 
     <!-- Preferences -->
@@ -672,106 +789,6 @@ onMounted(() => {
         @close="agentModalOpen = false"
         @submit="applyForAgent"
       />
-    </section>
-
-    <!-- Actions -->
-    <section class="ds-card" aria-labelledby="sett-actions">
-      <header class="ds-card__head">
-        <h2 id="sett-actions" class="ds-card__title">
-          {{ t('inv.settings.actions.title') }}
-        </h2>
-      </header>
-
-      <ul class="ds-rows">
-        <!-- Identity verification, with where it stands -->
-        <li class="ds-row">
-          <span class="ds-row__lead"><Shield size="sm" /></span>
-          <span class="ds-row__body">
-            <RouterLink class="ds-row__link" to="/verification">
-              <span class="ds-row__title">{{ t('inv.settings.actions.kyc.title') }}</span>
-            </RouterLink>
-            <span class="ds-row__meta">{{ t(kycRowKey) }}</span>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-
-        <li class="ds-row">
-          <span class="ds-row__lead"><FileText size="sm" /></span>
-          <span class="ds-row__body">
-            <RouterLink class="ds-row__link" :to="{ name: 'investor-docs' }">
-              <span class="ds-row__title">{{ t('inv.settings.actions.docs') }}</span>
-            </RouterLink>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-
-        <li class="ds-row">
-          <span class="ds-row__lead"><MessageCircle size="sm" /></span>
-          <span class="ds-row__body">
-            <RouterLink class="ds-row__link" :to="{ name: supportRouteName }">
-              <span class="ds-row__title">{{ t('inv.settings.actions.support') }}</span>
-            </RouterLink>
-          </span>
-          <span class="ds-row__trail">
-            <CBadge
-              v-if="supportUnread > 0"
-              variant="primary"
-              :text="String(supportUnread)"
-              :aria-label="t('inv.support.unread', { n: supportUnread })"
-            />
-            <ChevronRight size="sm" />
-          </span>
-        </li>
-
-        <li class="ds-row">
-          <span class="ds-row__lead"><HelpCircle size="sm" /></span>
-          <span class="ds-row__body">
-            <RouterLink class="ds-row__link" :to="{ name: 'investor-faq' }">
-              <span class="ds-row__title">{{ t('inv.settings.actions.faq') }}</span>
-            </RouterLink>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-      </ul>
-
-      <!-- Security: two-factor, sessions, sign out of all devices, sign out -->
-      <TwoFactorSection tPrefix="inv.settings.actions" />
-      <ActiveSessionsSection tPrefix="inv.settings.actions" />
-      <ul class="ds-rows">
-        <li class="ds-row" :aria-disabled="loggingOutAll ? 'true' : undefined">
-          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
-          <span class="ds-row__body">
-            <button
-              type="button"
-              class="ds-row__link"
-              :disabled="loggingOutAll"
-              @click="handleLogoutAll"
-            >
-              <span class="ds-row__title" data-tone="danger">
-                {{ t('inv.settings.actions.logoutAll') }}
-              </span>
-            </button>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-      </ul>
-
-      <NotificationPreferencesSection tPrefix="inv.settings.actions" />
-      <DeactivateAccountSection tPrefix="inv.settings.actions" />
-
-      <ul class="ds-rows">
-        <li class="ds-row" :aria-disabled="loggingOut ? 'true' : undefined">
-          <span class="ds-row__lead" data-tone="danger"><LogOut size="sm" /></span>
-          <span class="ds-row__body">
-            <button type="button" class="ds-row__link" :disabled="loggingOut" @click="handleLogout">
-              <span class="ds-row__title" data-tone="danger">
-                {{ t('inv.settings.actions.logout') }}
-              </span>
-            </button>
-          </span>
-          <span class="ds-row__trail"><ChevronRight size="sm" /></span>
-        </li>
-      </ul>
     </section>
 
     <!-- Profile edit modal (TASK-38 item 3): first/last name, phone,
