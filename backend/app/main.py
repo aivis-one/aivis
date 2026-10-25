@@ -536,12 +536,36 @@ app.add_middleware(RequestBodyLimitMiddleware)
 _cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
 _allow_all = _cors_origins == ["*"]
 
+# Every request header the frontend sends (frontend/src/api/*.ts) -- the
+# API lives on its own api. host, so each of them is named in the
+# browser's preflight, and one missing here is a 400 preflight: the real
+# request never leaves the browser. A new header in the frontend needs
+# its line here (tests/test_cors_preflight.py holds the same list):
+#   Authorization    -- the bearer token, every authenticated call;
+#   Content-Type     -- application/json, every call with a body;
+#   Accept-Language  -- the UI locale, every call (client.languageHeaders).
+#                       Starlette lets it through by itself today
+#                       (SAFELISTED_HEADERS); named so that does not
+#                       depend on Starlette's internals;
+#   Idempotency-Key  -- the client's key on the support message routes.
+#                       Missing from H23 on, every support message from a
+#                       browser died at the preflight;
+#   X-Trace-ID       -- not sent by the frontend today; kept for callers
+#                       that pass their own trace id.
+CORS_ALLOW_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "Accept-Language",
+    "Idempotency-Key",
+    "X-Trace-ID",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=not _allow_all,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "X-Trace-ID"],
+    allow_headers=CORS_ALLOW_HEADERS,
     # Content-Disposition (TASK-39 item 2): NOT one of the CORS
     # "safelisted" response headers browsers expose to JS by default
     # (that list is Cache-Control/Content-Language/Content-Length/
