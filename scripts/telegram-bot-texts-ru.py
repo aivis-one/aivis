@@ -40,11 +40,12 @@ assert all(len(c["description"]) <= 256 for c in COMMANDS)
 
 
 def read_token(env_file: Path) -> str:
+    token = ""
     for line in env_file.read_text(encoding="utf-8").splitlines():
         if line.startswith("TELEGRAM_BOT_TOKEN="):
             token = line.split("=", 1)[1].strip().strip('"').strip("'")
-            if token:
-                return token
+    if token:
+        return token
     sys.exit(f"TELEGRAM_BOT_TOKEN not found in {env_file}")
 
 
@@ -57,7 +58,12 @@ def call(token: str, method: str, params: dict) -> bool:
         with urllib.request.urlopen(request, timeout=20) as response:
             answer = json.load(response)
     except urllib.error.HTTPError as error:
-        answer = json.load(error)
+        try:
+            answer = json.load(error)
+        except ValueError:
+            answer = {"description": f"HTTP {error.code}"}
+    except Exception as error:  # the message may carry the URL, so only the class name is printed
+        answer = {"description": type(error).__name__}
     print(method, "ok" if answer.get("ok") else f"refused: {answer.get('description', '')}")
     return bool(answer.get("ok"))
 
