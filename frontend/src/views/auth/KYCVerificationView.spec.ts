@@ -36,14 +36,16 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 vi.mock('@/composables/safeNavigate', () => ({ safeNavigate: vi.fn() }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ fetchMe: vi.fn() }) }))
 
-// The screen loads its status on mount. Funded above the fee, so the submit
-// button is rendered at all -- it sits behind v-if="canAfford".
+// The screen loads its status on mount. Funded above the fee unless a case sets
+// `balance.cents` lower: the form and its submit button open only when the balance
+// covers the fee (the screen checks the balance first).
+const balance = vi.hoisted(() => ({ cents: 5000 }))
 vi.mock('@/api/client', () => ({
   api: {
     get: vi.fn(async () => ({
       kyc_status: 'not_started',
       fee_cents: 1000,
-      available_cents: 5000,
+      available_cents: balance.cents,
     })),
   },
   ApiResponseError: class ApiResponseError extends Error {
@@ -89,9 +91,32 @@ async function mountForm(): Promise<VueWrapper> {
   return w
 }
 
+describe('KYCVerificationView — the balance is checked first', () => {
+  beforeEach(() => {
+    push.mockClear()
+    balance.cents = 5000
+  })
+
+  it('below the fee it opens no form and offers the deposit', async () => {
+    balance.cents = 999
+    const w = await mountForm()
+    expect(w.findAll('input')).toHaveLength(0)
+    expect(w.text()).toContain('kyc.needsTopUp')
+    expect(w.text()).toContain('kyc.toDeposit')
+  })
+
+  it('at the fee exactly the form opens', async () => {
+    balance.cents = 1000
+    const w = await mountForm()
+    expect(w.findAll('input[type="file"]')).toHaveLength(2)
+    expect(w.text()).not.toContain('kyc.toDeposit')
+  })
+})
+
 describe('KYCVerificationView — a rejected file leaves nothing staged', () => {
   beforeEach(() => {
     push.mockClear()
+    balance.cents = 5000
   })
 
   it('renders the passport form: a front and a selfie picker, no back', async () => {

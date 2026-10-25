@@ -3,7 +3,8 @@
 // design system's K40 contract: the buttons are the system's Button, and every
 // accessible name comes from the translation tables.
 //
-// LANGUAGE: the collapsed control shows the two-letter code alone; inside the
+// LANGUAGE: the collapsed control is the globe icon (a ghost icon button, as the
+// bell and the theme toggle beside it); inside the
 // open list each option shows its flag and the language's own name. The list is
 // built from SUPPORTED_LOCALES, which stays the single source of truth -- adding
 // a language lights it up here with no change to this file.
@@ -18,7 +19,7 @@ import { useI18n } from 'vue-i18n'
 import { setLocale } from '@/i18n'
 import { SUPPORTED_LOCALES } from '@/i18n/locales.config'
 import { useTheme } from '@/composables/useTheme'
-import { Moon, Sun } from '@/components/ui/icons'
+import { Globe, Moon, Sun } from '@/components/ui/icons'
 
 const { locale, t } = useI18n()
 const { effective, set: setTheme } = useTheme()
@@ -27,7 +28,6 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
 const current = computed(() => SUPPORTED_LOCALES.find((l) => l.code === locale.value))
-const currentShort = computed(() => current.value?.short ?? 'EN')
 const currentName = computed(() => current.value?.label ?? 'English')
 
 async function pick(code: string) {
@@ -62,13 +62,13 @@ onBeforeUnmount(() => {
     <div class="app-controls__lang">
       <button
         type="button"
-        class="ds-button ds-button--secondary"
+        class="ds-button ds-button--ghost ds-button--icon"
         :aria-expanded="open"
         aria-haspopup="listbox"
         :aria-label="t('common.language.current', { name: currentName })"
         @click="open = !open"
       >
-        {{ currentShort }}
+        <Globe size="sm" />
       </button>
 
       <ul
@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 
     <button
       type="button"
-      class="ds-button ds-button--secondary ds-button--icon"
+      class="ds-button ds-button--ghost ds-button--icon"
       :aria-label="effective === 'dark' ? t('common.theme.toLight') : t('common.theme.toDark')"
       @click="toggleTheme"
     >

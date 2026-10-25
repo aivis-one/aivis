@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// Modal dialog, on the design system's Dialog (K52), placement `modal`: centred
-// on a wide screen, capped at the system's form width. Closes on Escape, on a
-// click on the scrim (if allowed), or on the close button.
+// Modal dialog, on the design system's Dialog (K52), placement `wide`: on the web
+// (from the 640 width) a centred window at the reading width, on a phone the bottom
+// sheet. Closes on Escape, on a click on the scrim (if allowed), or on the close
+// button. `fixedBody` gives the body one height (the system's data-body="fixed"), for
+// a dialog that changes its content step by step and must not jump between steps.
 //
 // The caller's content is the dialog's body (the default slot). An optional
 // `title` is the dialog's heading and names it; without one the content carries
@@ -18,8 +20,9 @@ const props = withDefaults(
     closeOnOverlay?: boolean
     showClose?: boolean
     title?: string
+    fixedBody?: boolean
   }>(),
-  { closeOnOverlay: true, showClose: true },
+  { closeOnOverlay: true, showClose: true, fixedBody: false },
 )
 
 const emit = defineEmits<{ close: [] }>()
@@ -44,7 +47,8 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
     <div
       v-if="open"
       class="ds-dialog"
-      data-variant="modal"
+      data-variant="wide"
+      :data-body="fixedBody ? 'fixed' : undefined"
       :data-lock="closeOnOverlay ? undefined : 'true'"
       @click.self="onOverlay"
     >
@@ -72,6 +76,11 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
         </div>
         <div class="ds-dialog__body">
           <slot />
+        </div>
+        <!-- The actions row, when the caller fills it: it stands outside the body, so a
+             fixed body keeps it at the same place at every step. -->
+        <div v-if="$slots.actions" class="ds-dialog__actions">
+          <slot name="actions" />
         </div>
       </div>
     </div>

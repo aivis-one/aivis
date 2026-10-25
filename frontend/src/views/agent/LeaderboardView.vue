@@ -126,7 +126,7 @@ onMounted(() => {
 
     <ul class="ds-rows">
       <li v-for="entry in entries" :key="entry.agent_id" class="ds-row">
-        <span class="ds-row__lead">#{{ entry.rank }}</span>
+        <span class="ds-row__lead ds-lead">#{{ entry.rank }}</span>
         <span class="ds-row__body">
           <span class="ds-row__title">{{ entry.agent_name }}</span>
         </span>

@@ -21,6 +21,10 @@
     "all": "All",
     "statusActive": "Active",
     "primaryNav": "Main navigation",
+    "nav": {
+      "collapse": "Collapse the menu",
+      "expand": "Expand the menu"
+    },
     "language": {
       "current": "Language: {name}",
       "label": "Language"
@@ -1131,7 +1135,7 @@
         "desc": "Please go back and try again"
       },
       "error": {
-        "insufficientBalance": "Not enough money on your buyer account",
+        "insufficientBalance": "Not enough money on your active account",
         "kycRequired": "KYC verification required. Redirecting to verification",
         "productInactive": "This product is no longer available",
         "generic": "Purchase failed. Please try again",
@@ -1239,7 +1243,7 @@
     },
     "balance": {
       "title": "Balance",
-      "active": "Buyer account",
+      "active": "Active account",
       "frozen": "Awaiting confirmation",
       "deposit": "Deposit",
       "history": "Payment history",
@@ -1465,7 +1469,7 @@
         "emptyCta": "Browse the store"
       },
       "balance": {
-        "title": "Buyer account",
+        "title": "Active account",
         "available": "Available",
         "frozen": "Awaiting confirmation"
       },
@@ -1665,19 +1669,23 @@
       },
       "status": {
         "signed": "Signed",
-        "pending": "Pending"
+        "pending": "Pending",
+        "perPurchase": "At each purchase",
+        "read": "To read"
       },
       "meta": {
         "signed": "Already signed",
         "pending": "Action required",
+        "perPurchase": "Accepted at each purchase",
         "read": "To read and download"
       },
       "modal": {
         "loading": "Loading document...",
         "errorTitle": "Could not load document",
         "errorRetry": "Retry",
-        "sign": "Sign document",
+        "sign": "I agree",
         "signing": "Signing...",
+        "perPurchase": "Accepted at each purchase",
         "signSuccess": "Document signed",
         "signError": "Could not sign the document",
         "close": "Close",
@@ -1707,6 +1715,7 @@
         "country": "Country",
         "language": "Language",
         "notSet": "Not set",
+        "fill": "Fill in details",
         "editTitle": "Edit profile",
         "editSuccess": "Profile updated",
         "editError": "Could not update your profile",
@@ -1985,7 +1994,7 @@
       "agreementLink": "agreement"
     },
     "header": {
-      "balance": "Buyer account"
+      "balance": "Active account"
     }
   },
   "nav": {
@@ -2628,7 +2637,7 @@
       "errorTitle": "Couldn't load your balance",
       "errorRetry": "Retry",
       "card": {
-        "title": "Commission available to withdraw",
+        "title": "Passive account",
         "frozen": "Frozen"
       },
       "withdrawals": {
@@ -2668,7 +2677,7 @@
         "rule": "The minimum withdrawal is {min}. A payout is made after 14 days."
       },
       "account": {
-        "title": "Buyer account",
+        "title": "Active account",
         "frozen": "Awaiting confirmation",
         "deposit": "Top up",
         "operations": "All operations",
@@ -2713,7 +2722,7 @@
       "balanceSub": "{amount} available to withdraw"
     },
     "header": {
-      "commission": "Commission"
+      "commission": "Passive account"
     },
     "welcome": {
       "title": "Congratulations, you are an agent-integrator",
@@ -2808,7 +2817,7 @@
     "balance": "Your balance: ${available}",
     "start": "Start verification (${fee})",
     "startAgain": "Start a new verification (${fee})",
-    "needsTopUp": "Your balance does not cover the fee. Top up first.",
+    "needsTopUp": "Verification needs ${fee} on your account, funds awaiting confirmation included. Top up first.",
     "toDeposit": "Top up balance",
     "pendingTitle": "Verification in progress",
     "pendingText": "Your verification has been paid for and is waiting for a decision. You will be notified when it is made.",
@@ -2867,7 +2876,7 @@
     },
     "where": {
       "title": "Where you are",
-      "text": "This is your cabinet: the storefront of projects, your portfolio with the documents of every purchase, and your buyer account."
+      "text": "This is your cabinet: the storefront of projects, your portfolio with the documents of every purchase, and your active account."
     },
     "how": {
       "title": "What to do here",

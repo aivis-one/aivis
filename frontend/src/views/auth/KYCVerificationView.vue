@@ -366,6 +366,22 @@ onMounted(() => {
           </button>
         </div>
 
+        <!-- The balance first: below the fee the form does not open, the screen says what
+             the verification needs and offers the deposit. -->
+        <template v-else-if="!canAfford">
+          <p class="ds-auth__subtitle">{{ t('kyc.needsTopUp', { fee: feeUsd }) }}</p>
+          <button class="ds-button ds-button--primary ds-button--block" @click="toDeposit">
+            {{ t('kyc.toDeposit') }}
+          </button>
+          <button
+            v-if="status.kyc_status !== 'not_started'"
+            class="ds-button ds-button--secondary ds-button--block"
+            @click="toSupport"
+          >
+            {{ t('kyc.toSupport') }}
+          </button>
+        </template>
+
         <template v-else>
           <div class="ds-auth__form">
             <CInput
@@ -433,7 +449,6 @@ onMounted(() => {
           </div>
 
           <button
-            v-if="canAfford"
             class="ds-button ds-button--primary ds-button--block"
             :disabled="submitting || !canSubmit"
             @click="startVerification"
@@ -444,12 +459,6 @@ onMounted(() => {
                 : t('kyc.startAgain', { fee: feeUsd })
             }}
           </button>
-          <template v-else>
-            <p class="ds-auth__subtitle">{{ t('kyc.needsTopUp') }}</p>
-            <button class="ds-button ds-button--primary ds-button--block" @click="toDeposit">
-              {{ t('kyc.toDeposit') }}
-            </button>
-          </template>
           <button
             v-if="status.kyc_status !== 'not_started'"
             class="ds-button ds-button--secondary ds-button--block"

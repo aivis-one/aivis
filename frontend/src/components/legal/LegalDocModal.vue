@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The cabinet's own document window, on the design system's Document sheet and
-// viewer (K36), placement `modal`: fetches the static legal HTML the cabinet ships
+// viewer (K36), placement `wide` (a window on the web, the bottom sheet on a phone): fetches the static legal HTML the cabinet ships
 // (BASE_URL + legal/<lang>/<type>.html), keeps only the <body> content and shows it
 // in the viewer's scrollable body. Used by the onboarding signing screen and by the
 // consent line on the registration screen. The legal folder ships with our own
@@ -78,7 +78,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="ds-docviewer" data-variant="modal" @click.self="emit('close')">
+    <div v-if="open" class="ds-docviewer" data-variant="wide" @click.self="emit('close')">
       <div
         ref="dialogEl"
         class="ds-docviewer__dialog"

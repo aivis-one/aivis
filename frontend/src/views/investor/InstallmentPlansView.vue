@@ -70,6 +70,11 @@ const { t, locale } = useI18n()
 useScreenHeader({
   title: () => t('inv.installmentPlans.list.title'),
   lead: () => t('inv.installmentPlans.list.subtitle'),
+  // The way back: the portfolio the plans are opened from.
+  back: () =>
+    window.history.state?.back
+      ? true
+      : { name: isAgentShell(route) ? 'agent-portfolio' : 'investor-portfolio' },
 })
 
 const items = ref<InstallmentPlanResponse[]>([])

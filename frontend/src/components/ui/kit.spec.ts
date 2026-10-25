@@ -24,6 +24,7 @@ import CInput from './CInput.vue'
 import CSelect from './CSelect.vue'
 import CTextarea from './CTextarea.vue'
 import CButton from './CButton.vue'
+import { Download } from './icons'
 
 const OPTIONS = [
   { value: 'a', label: 'Alpha' },
@@ -161,6 +162,32 @@ describe('CButton', () => {
   it('applies the variant class', () => {
     const w = mount(CButton, { props: { variant: 'danger' }, slots: { default: 'Delete' } })
     expect(w.classes()).toContain('ds-button--danger')
+  })
+
+  it('puts an icon beside its label, not above it', () => {
+    // D1: the slot used to sit inside a wrapping <span>, a block that dropped under the
+    // icon (the global svg { display: block } made the icon a block of its own), so every
+    // button with an icon showed it above the words. The icon and the label are now both
+    // direct children of the button, the system's flex row with its gap.
+    const w = mount(CButton, {
+      slots: { default: () => [h(Download, { size: 'sm' }), 'Save'] },
+    })
+    const svg = w.find('svg').element
+    expect(svg.parentElement).toBe(w.element)
+    const label = (Array.from(w.element.childNodes) as ChildNode[]).find(
+      (n) => n.nodeType === Node.TEXT_NODE && n.textContent === 'Save',
+    )
+    expect(label).toBeDefined()
+    expect(w.find('span').exists()).toBe(false)
+  })
+
+  it('keeps the icon and the label beside each other while loading too', () => {
+    const w = mount(CButton, {
+      props: { loading: true },
+      slots: { default: () => [h(Download, { size: 'sm' }), 'Save'] },
+    })
+    expect(w.find('svg').element.parentElement).toBe(w.element)
+    expect(w.text()).toContain('Save')
   })
 
   it('is a real <button>, so Enter and Space come from the platform', () => {

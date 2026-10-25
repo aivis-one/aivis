@@ -74,6 +74,53 @@ export const STAFF_TABS: TabItem[] = [
   { id: 'settings', path: '/staff/settings', labelKey: 'tab.staff.settings', icon: 'Settings' },
 ]
 
+// The sections of a role that have a screen but no place among the five tabs: News and
+// events (promotions are part of it), Instalment plans, Documents, Support and FAQ.
+// The web menu (the rail from 880) lists them beside the tabs; the phone's tab bar
+// keeps its five (AppNav).
+const EXTRA_INVESTOR: TabItem[] = [
+  { id: 'news', path: '/investor/news', labelKey: 'tab.news', icon: 'Newspaper' },
+  {
+    id: 'installments',
+    path: '/investor/installments',
+    labelKey: 'tab.installments',
+    icon: 'CalendarClock',
+  },
+  { id: 'docs', path: '/investor/docs', labelKey: 'tab.docs', icon: 'FileText' },
+  { id: 'support', path: '/investor/support', labelKey: 'tab.support', icon: 'MessageCircle' },
+  { id: 'faq', path: '/investor/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
+]
+const EXTRA_AGENT: TabItem[] = EXTRA_INVESTOR.map((item) => ({
+  ...item,
+  path: item.path.replace('/investor/', '/agent/'),
+}))
+// The project account has no news or instalment screen of its own.
+const EXTRA_COMPANY: TabItem[] = [
+  { id: 'docs', path: '/company/docs', labelKey: 'tab.docs', icon: 'FileText' },
+  { id: 'support', path: '/company/support', labelKey: 'tab.support', icon: 'MessageCircle' },
+  { id: 'faq', path: '/company/faq', labelKey: 'tab.faq', icon: 'HelpCircle' },
+]
+// The staff member's own documents (the AML policy); support lives in the Users hub.
+const EXTRA_STAFF: TabItem[] = [
+  { id: 'docs', path: '/staff/docs', labelKey: 'tab.docs', icon: 'FileText' },
+]
+
+/** The extra sections of a shell for the web menu; none for a route outside the four cabinets. */
+export function extraTabsFor(shell: Shell | undefined): TabItem[] {
+  switch (shell) {
+    case 'investor':
+      return EXTRA_INVESTOR
+    case 'agent':
+      return EXTRA_AGENT
+    case 'company':
+      return EXTRA_COMPANY
+    case 'staff':
+      return EXTRA_STAFF
+    default:
+      return []
+  }
+}
+
 // The tabs of a shell, as the frame draws them; none for a route outside the four
 // cabinets (the storefront has no menu). The staff list is filtered by the member's
 // rights where it is drawn (AppShell).

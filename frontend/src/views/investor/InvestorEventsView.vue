@@ -35,6 +35,7 @@ import { AlertTriangle, Check } from '@/components/ui/icons'
 
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { CButton, CEmptyState } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import EventCard from '@/components/shared/EventCard.vue'
@@ -44,7 +45,13 @@ import type { EventResponse } from '@/api/types'
 
 const { t } = useI18n()
 
-useScreenHeader({ title: () => t('inv.events.title') })
+// The way back: the shell's home (one step back when there is a page to return to).
+const route = useRoute()
+useScreenHeader({
+  title: () => t('inv.events.title'),
+  back: () =>
+    window.history.state?.back ? true : { name: `${route.meta.shell ?? 'investor'}-dashboard` },
+})
 
 const PER_PAGE = 20
 

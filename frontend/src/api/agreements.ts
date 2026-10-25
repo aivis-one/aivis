@@ -52,10 +52,11 @@
 //   phases), and ApiResponseError / ApiNetworkError / ApiTimeoutError
 //   mapping. Callers treat thrown errors identically to api.get.
 //
-//   HTML is returned as a blob URL (createObjectURL) so the consumer
-//   (AgreementSheet) can drop it into `<iframe sandbox="" :src="...">`
-//   without leaking the auth token into the iframe URL or browser
-//   history -- the token lived only in the fetch headers.
+//   HTML is returned as a Blob. The consumer (useAgreementBlob) makes a blob URL of
+//   it for the download link and reads its text for the frame it shows
+//   (AgreementSheet, `<iframe sandbox="" :srcdoc="...">`), so the token never
+//   reaches the iframe URL or the browser history -- it lived only in the fetch
+//   headers.
 //
 //   The POST .../email handlers are plain api.post -- 204 No Content,
 //   the JSON client is perfectly happy. Callers can `catch (e) { if (e
@@ -72,11 +73,10 @@
 //   forever on slow 3G" bug.
 //
 // LIFECYCLE.
-//   createObjectURL() pins the underlying blob until URL.revokeObjectURL().
-//   The consumer (useAgreementBlob composable) owns the cleanup
-//   pattern -- this module just hands out the URL. Don't call these
-//   functions directly from a view; go through useAgreementBlob so
-//   onScopeDispose handles the revoke.
+//   The consumer (useAgreementBlob composable) makes the blob URL and owns its
+//   cleanup -- this module just hands out the Blob. Don't call these functions
+//   directly from a view; go through useAgreementBlob so onScopeDispose handles the
+//   revoke.
 //
 // PRESIGNED-URL NOTE (foreshadowing R2 §3 attachments, NOT this file).
 //   Attachment downloads go through a separate /attachments/{id}/download
@@ -101,8 +101,7 @@ const TIMEOUT_MS = 15_000
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch a text/html endpoint and return a blob URL suitable for
- * `<iframe sandbox="" :src>`. Centralises the auth-header injection,
+ * Fetch a text/html endpoint and return its body as a Blob. Centralises the auth-header injection,
  * timeout coverage, and error-mapping logic shared by every
  * agreement / ownership-certificate GET in this module.
  *
@@ -116,7 +115,7 @@ const TIMEOUT_MS = 15_000
  * the URL is now a caller-supplied path fragment so we can serve two
  * GETs from one helper.
  */
-async function _fetchHtmlBlob(path: string): Promise<string> {
+async function _fetchHtmlBlob(path: string): Promise<Blob> {
   const url = `${API_BASE_URL}${path}`
 
   const headers: Record<string, string> = {
@@ -176,7 +175,7 @@ async function _fetchHtmlBlob(path: string): Promise<string> {
       throw new ApiNetworkError(err instanceof Error ? err.message : 'Network error')
     }
 
-    return URL.createObjectURL(blob)
+    return blob
   } finally {
     clearTimeout(timeoutId)
   }
@@ -190,14 +189,14 @@ async function _fetchHtmlBlob(path: string): Promise<string> {
  * GET /api/v1/purchases/{id}/agreement
  *
  * Fetches the per-Purchase agreement HTML (snapshot, keyed on the
- * frozen `purchase.purchase_agreement_template_id`) and returns a
- * blob URL. Backend 404 if the caller is not the buyer; 500 if
+ * frozen `purchase.purchase_agreement_template_id`) and returns it as a
+ * Blob. Backend 404 if the caller is not the buyer; 500 if
  * template_id is NULL (R2 §5.3 -- broken-infra signal, not 404).
  *
- * Use through `useAgreementBlob` so the blob URL is revoked on scope
+ * Use through `useAgreementBlob` so the blob URL made of it is revoked on scope
  * dispose. Caller code in batch 2 (AgreementSheet) does exactly that.
  */
-export function fetchAgreementBlob(purchaseId: string): Promise<string> {
+export function fetchAgreementBlob(purchaseId: string): Promise<Blob> {
   return _fetchHtmlBlob(`/api/v1/purchases/${purchaseId}/agreement`)
 }
 
@@ -232,7 +231,7 @@ export function emailAgreement(purchaseId: string): Promise<void> {
  * active purchases for it; 500 if the template fallback misses across
  * all four stages (which a properly seeded platform default prevents).
  */
-export function fetchOwnershipCertificateBlob(companyId: string): Promise<string> {
+export function fetchOwnershipCertificateBlob(companyId: string): Promise<Blob> {
   return _fetchHtmlBlob(`/api/v1/companies/${companyId}/ownership-certificate`)
 }
 

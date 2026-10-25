@@ -19,31 +19,26 @@
 //   (GET /documents/by-type/{type}); a type with no active document
 //   (404) is left out. The list follows READ_TYPES' order; a required
 //   type outside it comes last. Every row opens for reading and can be
-//   downloaded; only a required, unsigned row offers "Sign".
+//   downloaded. A standing document (the cabinet terms, the privacy policy, the
+//   agent agreement and the other one-time ones) offers "I agree" while it is
+//   unsigned. The buyer agreement and the pre-purchase disclosure are accepted at
+//   each purchase, with a snapshot of the text accepted: the list shows that and
+//   offers no button for them, and nothing signed here stands in for a purchase.
+//   Every row carries a status badge.
 //
 // LAYOUT.
-//   The title is the frame's header (K25, `useScreenHeader`). As a top-level
-//   tab the view has no originating screen to navigate back to.
+//   The title is the frame's header (K25, `useScreenHeader`). As a second-level
+//   screen it goes back to the Settings screen it is opened from.
 //   Body: the system's document rows (K44 on the Row list, K23): icon + title
 //   + meta + status badge (signed / pending). The row's link is the document's
 //   own static file; a tap opens it in the detail window instead.
 //
-// DETAIL WINDOW (the system's Document viewer, K36, placement modal; B5-post hardening).
-//   B4 rendered the legal HTML via v-html after stripping the doc
-//   chrome with DOMParser. That gave the mounted node full access to
-//   the SPA origin (localStorage, auth token), which is unacceptable
-//   once legal content starts being templated (investor name, date,
-//   certificate number all become user-reachable injection points).
-//   B5-post replaces v-html with a sandboxed iframe -- identical
-//   pattern to CertificateSheet.vue:
-//     - fetch /legal/{language}/{type}.html
-//     - wrap the response body in a Blob(text/html)
-//     - URL.createObjectURL -> iframe src
-//     - sandbox="" (empty value) forbids scripts, forms, same-origin
-//       access, navigation, storage; the legal text is static and
-//       needs none of these. See TD-F11b.
-//   URL lifecycle: revoke-before-overwrite on each openDoc() and a
-//   final revoke on modal close / component unmount.
+// DETAIL WINDOW (the system's Document viewer, K36, placement wide).
+//   The static legal files are the cabinet's own (they ship with the repository, no
+//   field of a user or a purchase is in them), so the window shows them inline, as
+//   LegalDocModal does: the <body> of the file in the viewer's body, which follows the
+//   theme with the page. The per-purchase agreement, which is templated with a buyer's
+//   data, stays in a sandboxed frame (AgreementSheet).
 //
 //   Path safety. doc.type and doc.language are backend-driven free-
 //   form strings. A seed misconfig with "../../index" in either field
@@ -55,25 +50,27 @@
 //   regex by accident.
 //
 // DETAIL MODAL -- ACTIONS.
-//   - Pending doc -> Sign CTA. POST /documents/{id}/sign.
+//   - Standing unsigned doc -> "I agree". POST /documents/{id}/sign.
 //     201 success | 409 treated as idempotent success (concurrent
 //     tab, replayed request). Local is_signed flipped on the row in
 //     the list without a refetch; modal closes; toast on success.
 //   - Signed doc -> Close button, read-only.
+//   - Per-purchase doc -> a note that it is accepted at each purchase, no button.
 //   - Any other error on sign -> toast, button re-enables.
 //
 // ERROR HANDLING.
 //   List fetch fail: CEmptyState + Retry (common.retry key). Silent
 //   refresh on return is not needed -- docs rarely change mid-session.
-//   Modal body fetch fail: inline CEmptyState + Retry.
+//   Modal body fetch fail: inline Alert + Retry.
 //
 // EMPTY.
 //   Zero required documents for the role (backend returns []) is a
 //   valid state, rendered with a short CEmptyState. Not an error.
 // =============================================================================
 
-import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { AlertTriangle, Download, FileText, X } from '@/components/ui/icons'
 
 import { CBadge, CButton, CEmptyState, CLoader, CListSkeleton } from '@/components/ui'
@@ -89,7 +86,22 @@ const { t } = useI18n()
 const { showToast } = useToast()
 const authStore = useAuthStore()
 
-useScreenHeader({ title: () => t('inv.docs.title') })
+// The way back: the Settings screen of the shell the list is opened from (one step
+// back when there is a page to return to).
+const route = useRoute()
+useScreenHeader({
+  title: () => t('inv.docs.title'),
+  back: () =>
+    window.history.state?.back ? true : { name: `${route.meta.shell ?? 'investor'}-settings` },
+})
+
+// The documents accepted at each purchase, with a snapshot of the text accepted: they
+// are read and downloaded here but never signed here (the purchase flow takes the
+// acceptance, and a signature given in this list must not stand in for it).
+const PER_PURCHASE_TYPES: ReadonlySet<string> = new Set([
+  'buyer_agreement',
+  'pre_purchase_disclosure',
+])
 
 // Strict token for both doc.type and doc.language. Backend currently
 // emits plain identifiers (privacy_policy, terms_of_service, en, ru,
@@ -179,8 +191,15 @@ async function fetchDocuments(): Promise<void> {
   }
 }
 
+function isPerPurchase(doc: DocumentResponse): boolean {
+  return PER_PURCHASE_TYPES.has(doc.type)
+}
+
+// A standing document is signed here while it is unsigned. A staff member signs only
+// what the platform requires of them (the list the backend gives them).
 function needsSigning(doc: DocumentResponse): boolean {
-  return requiredIds.value.has(doc.id) && !doc.is_signed
+  if (doc.is_signed || isPerPurchase(doc)) return false
+  return authStore.role === 'staff' ? requiredIds.value.has(doc.id) : true
 }
 
 // The static file of a document, the same one the reader shows; null when
@@ -195,13 +214,14 @@ onMounted(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Modal + iframe blob lifecycle
+// Detail window
 // ---------------------------------------------------------------------------
 
 const viewingDoc = ref<DocumentResponse | null>(null)
 const viewLoading = ref<boolean>(false)
 const viewError = ref<boolean>(false)
-const viewBlobUrl = ref<string | null>(null)
+// The <body> of the legal file, shown inline.
+const viewHtml = ref<string>('')
 const signing = ref<boolean>(false)
 
 const modalOpen = computed<boolean>(() => viewingDoc.value !== null)
@@ -210,18 +230,9 @@ const modalOpen = computed<boolean>(() => viewingDoc.value !== null)
 const dialogEl = ref<HTMLElement | null>(null)
 const titleId = useId()
 
-// Monotonic per-view counter, same pattern as useCertificateBlob:
-// a second openDoc() call while the first fetch is still in flight
-// must not publish the losing result, and must revoke the losing
-// blob URL it just created.
+// Monotonic per-view counter: a second openDoc() call while the first
+// fetch is still in flight must not publish the losing result.
 let openEpoch = 0
-
-function _revokeBlob(): void {
-  if (viewBlobUrl.value) {
-    URL.revokeObjectURL(viewBlobUrl.value)
-    viewBlobUrl.value = null
-  }
-}
 
 async function openDoc(doc: DocumentResponse): Promise<void> {
   // Bump epoch BEFORE the SAFE_TOKEN guard so a still-in-flight
@@ -235,15 +246,14 @@ async function openDoc(doc: DocumentResponse): Promise<void> {
     viewingDoc.value = doc
     viewError.value = true
     viewLoading.value = false
-    _revokeBlob()
+    viewHtml.value = ''
     return
   }
   viewingDoc.value = doc
   viewError.value = false
   viewLoading.value = true
-  _revokeBlob()
+  viewHtml.value = ''
 
-  let nextUrl: string | null = null
   try {
     const lang = encodeURIComponent(doc.language)
     const type = encodeURIComponent(doc.type)
@@ -252,11 +262,10 @@ async function openDoc(doc: DocumentResponse): Promise<void> {
       throw new Error(`HTTP ${resp.status}`)
     }
     const raw = await resp.text()
-    // Wrap the raw HTML in a text/html blob so the iframe renders it
-    // as a standalone document. No DOMParser/innerHTML trickery --
-    // iframe is sandboxed so the document chrome is harmless.
-    const blob = new Blob([raw], { type: 'text/html' })
-    nextUrl = URL.createObjectURL(blob)
+    // Keep only the <body> content, so the window holds just the legal text and not
+    // <html>, <head>, <title>, <meta>.
+    const dom = new DOMParser().parseFromString(raw, 'text/html')
+    if (mine === openEpoch) viewHtml.value = dom.body.innerHTML
   } catch {
     if (mine === openEpoch) {
       viewError.value = true
@@ -266,14 +275,6 @@ async function openDoc(doc: DocumentResponse): Promise<void> {
       viewLoading.value = false
     }
   }
-
-  if (mine !== openEpoch) {
-    // Superseded -- another openDoc() started after us. Revoke our
-    // blob so the browser reclaims it.
-    if (nextUrl) URL.revokeObjectURL(nextUrl)
-    return
-  }
-  viewBlobUrl.value = nextUrl
 }
 
 async function retryModalBody(): Promise<void> {
@@ -288,14 +289,10 @@ function closeModal(): void {
   viewError.value = false
   viewLoading.value = false
   signing.value = false
-  _revokeBlob()
+  viewHtml.value = ''
 }
 
 useDialog(modalOpen, dialogEl, () => closeModal())
-
-onUnmounted(() => {
-  _revokeBlob()
-})
 
 // ---------------------------------------------------------------------------
 // Sign flow
@@ -334,25 +331,25 @@ async function onSign(): Promise<void> {
 // Display helpers
 // ---------------------------------------------------------------------------
 
-function statusVariant(doc: DocumentResponse): 'success' | 'warning' {
-  return doc.is_signed ? 'success' : 'warning'
+// Every row carries a badge: signed, to sign, accepted at each purchase, or (a
+// document that is only read) read.
+function statusVariant(doc: DocumentResponse): 'success' | 'warning' | 'neutral' {
+  if (doc.is_signed) return 'success'
+  return needsSigning(doc) ? 'warning' : 'neutral'
 }
 
 function statusLabel(doc: DocumentResponse): string {
-  return doc.is_signed ? t('inv.docs.status.signed') : t('inv.docs.status.pending')
-}
-
-// A row shows a status badge only when it was signed or is still to be
-// signed; a document that is only read carries none.
-function showsStatus(doc: DocumentResponse): boolean {
-  return doc.is_signed === true || needsSigning(doc)
+  if (doc.is_signed) return t('inv.docs.status.signed')
+  if (isPerPurchase(doc)) return t('inv.docs.status.perPurchase')
+  return needsSigning(doc) ? t('inv.docs.status.pending') : t('inv.docs.status.read')
 }
 
 function metaLabel(doc: DocumentResponse): string {
   // DocumentResponse does not carry a signed_at timestamp (is_signed
   // is a derived flag built by the backend on list), so the row says
-  // signed, to sign, or to read.
+  // signed, to sign, accepted at each purchase, or to read.
   if (doc.is_signed) return t('inv.docs.meta.signed')
+  if (isPerPurchase(doc)) return t('inv.docs.meta.perPurchase')
   return needsSigning(doc) ? t('inv.docs.meta.pending') : t('inv.docs.meta.read')
 }
 </script>
@@ -397,7 +394,7 @@ function metaLabel(doc: DocumentResponse): string {
             <span class="ds-row__meta">{{ metaLabel(doc) }}</span>
           </template>
         </span>
-        <span v-if="showsStatus(doc)" class="ds-row__trail">
+        <span class="ds-row__trail">
           <CBadge :variant="statusVariant(doc)" :text="statusLabel(doc)" />
         </span>
       </li>
@@ -405,7 +402,7 @@ function metaLabel(doc: DocumentResponse): string {
 
     <!-- Detail window: the Document viewer (K36), placement modal -->
     <Teleport to="body">
-      <div v-if="modalOpen" class="ds-docviewer" data-variant="modal" @click.self="closeModal">
+      <div v-if="modalOpen" class="ds-docviewer" data-variant="wide" @click.self="closeModal">
         <div
           ref="dialogEl"
           class="ds-docviewer__dialog"
@@ -455,20 +452,9 @@ function metaLabel(doc: DocumentResponse): string {
               </div>
             </div>
 
-            <!--
-              Loaded body. Rendered in a sandboxed iframe via blob URL,
-              mirroring CertificateSheet.vue. `sandbox=""` (empty value)
-              forbids scripts, forms, same-origin access, navigation,
-              and storage. Legal documents are static text -- none of
-              those are needed. See TD-F11b.
-            -->
-            <iframe
-              v-else-if="viewBlobUrl"
-              :src="viewBlobUrl"
-              sandbox=""
-              class="ds-docviewer__frame"
-              :title="viewingDoc?.title"
-            />
+            <!-- Loaded body: the cabinet's own static legal file, inline, following the theme. -->
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div v-else v-html="viewHtml" />
           </div>
 
           <!-- Footer actions. Hidden while loading so the user does not
@@ -483,6 +469,11 @@ function metaLabel(doc: DocumentResponse): string {
               <Download size="sm" />
               <span>{{ t('inv.docs.modal.download') }}</span>
             </a>
+            <CBadge
+              v-if="isPerPurchase(viewingDoc)"
+              variant="neutral"
+              :text="t('inv.docs.modal.perPurchase')"
+            />
             <CButton
               v-if="needsSigning(viewingDoc)"
               variant="primary"

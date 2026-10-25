@@ -26,7 +26,9 @@ const STEPS: Array<{ px: number; token?: string; md?: boolean }> = [
 ]
 
 function nearestStep(px: number) {
-  return STEPS.reduce((best, step) => (Math.abs(step.px - px) < Math.abs(best.px - px) ? step : best))
+  return STEPS.reduce((best, step) =>
+    Math.abs(step.px - px) < Math.abs(best.px - px) ? step : best,
+  )
 }
 
 export function icon(name: string, key: string) {
@@ -92,6 +94,7 @@ export const FileSpreadsheet = icon('FileSpreadsheet', 'file-spreadsheet')
 export const FileText = icon('FileText', 'file-text')
 export const Ghost = icon('Ghost', 'ghost')
 export const Gift = icon('Gift', 'gift')
+export const Globe = icon('Globe', 'globe')
 export const HelpCircle = icon('HelpCircle', 'help-circle')
 export const History = icon('History', 'history')
 export const Home = icon('Home', 'home')
@@ -116,6 +119,7 @@ export const Pencil = icon('Pencil', 'pencil')
 export const Plus = icon('Plus', 'plus')
 export const RefreshCw = icon('RefreshCw', 'refresh-cw')
 export const Repeat = icon('Repeat', 'repeat')
+export const Rocket = icon('Rocket', 'rocket')
 export const Search = icon('Search', 'search')
 export const Settings = icon('Settings', 'settings')
 export const Share2 = icon('Share2', 'share')

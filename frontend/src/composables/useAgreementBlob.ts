@@ -5,7 +5,7 @@
 //
 // Wrap an HTML-blob fetcher (fetchAgreementBlob or
 // fetchOwnershipCertificateBlob) with automatic lifecycle hygiene. The
-// fetcher returns a URL from URL.createObjectURL, which pins the
+// fetcher returns the document as a Blob; this composable makes a URL of it with URL.createObjectURL, which pins the
 // underlying blob in memory until URL.revokeObjectURL is called. Doing
 // that by hand at every call-site is error-prone:
 //   - a forgotten onUnmounted leaks for the whole SPA session (a
@@ -40,11 +40,15 @@
 //   the caller's contract with its fetcher.
 //
 // USAGE:
-//   const { blobUrl, loading, errored, load, clear } =
+//   const { blobUrl, html, loading, errored, load, clear } =
 //     useAgreementBlob(fetchAgreementBlob)
 //
-//   await load(purchaseId)  // populates blobUrl, or flips errored
-//   <iframe v-if="blobUrl" :src="blobUrl" sandbox="" />
+//   await load(purchaseId)  // populates blobUrl and html, or flips errored
+//   <iframe v-if="html" :srcdoc="html" sandbox="" />
+//
+//   `blobUrl` is the document as it came (the download link hands it over); `html` is
+//   its text, which the sheet gives the theme's colours before it shows it, so the
+//   document read in the frame follows the theme while the saved file stays as issued.
 //
 // ERROR MODEL.
 //   load() mirrors the fetcher's throw shape: ApiResponseError /
@@ -77,7 +81,8 @@
 // SANDBOX REMINDER.
 //   The blob URL shares the page's origin once rendered in an iframe,
 //   so consumers MUST set `sandbox=""` (or an allow-list stricter
-//   than the default same-origin) when embedding it. See TD-F11b in
+//   than the default same-origin) when embedding it, and the same holds for the text
+//   put in `srcdoc`. See TD-F11b in
 //   AIVIS-Frontend.md. This composable does not enforce the
 //   attribute -- Vue's template layer is the right place to lock it in.
 // =============================================================================
@@ -91,10 +96,11 @@ import { onScopeDispose, ref } from 'vue'
  * the same blob-URL contract can be plugged in here without changes
  * to this composable.
  */
-export type BlobFetcher = (id: string) => Promise<string>
+export type BlobFetcher = (id: string) => Promise<Blob>
 
 export function useAgreementBlob(fetcher: BlobFetcher) {
   const blobUrl = ref<string | null>(null)
+  const html = ref<string>('')
   const loading = ref(false)
   const errored = ref(false)
 
@@ -125,9 +131,12 @@ export function useAgreementBlob(fetcher: BlobFetcher) {
       URL.revokeObjectURL(blobUrl.value)
       blobUrl.value = null
     }
-    let fresh: string | null = null
+    html.value = ''
+    let fresh: Blob | null = null
+    let text = ''
     try {
       fresh = await fetcher(id)
+      text = await fresh.text()
     } catch (err) {
       if (mine === epoch) {
         errored.value = true
@@ -139,15 +148,14 @@ export function useAgreementBlob(fetcher: BlobFetcher) {
       }
     }
     if (mine !== epoch) {
-      // Superseded -- another load() started after us. Revoke the URL
-      // we just fetched (no consumer will ever see it) and drop out
-      // without touching shared state.
-      if (fresh) {
-        URL.revokeObjectURL(fresh)
-      }
+      // Superseded -- another load() started after us. Nothing was made of
+      // what we fetched (no URL exists yet); drop out without touching shared
+      // state.
       return
     }
-    blobUrl.value = fresh
+    if (!fresh) return
+    blobUrl.value = URL.createObjectURL(fresh)
+    html.value = text
   }
 
   /**
@@ -164,6 +172,7 @@ export function useAgreementBlob(fetcher: BlobFetcher) {
       URL.revokeObjectURL(blobUrl.value)
       blobUrl.value = null
     }
+    html.value = ''
     errored.value = false
     loading.value = false
   }
@@ -177,6 +186,7 @@ export function useAgreementBlob(fetcher: BlobFetcher) {
 
   return {
     blobUrl,
+    html,
     loading,
     errored,
     load,

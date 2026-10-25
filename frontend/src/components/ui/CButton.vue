@@ -41,6 +41,6 @@ const block = computed(() => !props.inline && props.variant !== 'link')
     <!-- The label stays in the tree while loading, so the button keeps its
          accessible name and its width; the spinner stands before it. -->
     <span v-if="loading" class="ds-button__spinner" aria-hidden="true" />
-    <span><slot /></span>
+    <slot />
   </button>
 </template>

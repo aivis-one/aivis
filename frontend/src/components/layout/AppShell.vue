@@ -14,7 +14,7 @@
 // The toast region and the pieces that are not the screen's (the banner of staff
 // acting as a user, the storefront's Register and Sign in) are the frame's too.
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppNav from '@/components/layout/AppNav.vue'
@@ -23,7 +23,7 @@ import PublicHeaderActions from '@/components/layout/PublicHeaderActions.vue'
 import { useCurrentScreenHeader } from '@/components/layout/screenHeader'
 import CToast from '@/components/ui/CToast.vue'
 import { useStaffRights } from '@/composables/useStaffRights'
-import { tabsFor } from '@/router/tabs'
+import { extraTabsFor, tabsFor } from '@/router/tabs'
 import { tabAllowed } from '@/utils/staffRights'
 
 const route = useRoute()
@@ -32,6 +32,30 @@ const header = useCurrentScreenHeader()
 
 // A staff tab that opens a hub is drawn only when the member has the right to at
 // least one of the hub's sections.
+// The web menu folds to icons only (the system's data-nav="collapsed"); the choice is
+// kept in the browser, per viewer. Storage that throws only means it is not kept.
+const NAV_KEY = 'aivis_nav_collapsed'
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(NAV_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const navCollapsed = ref<boolean>(readCollapsed())
+function toggleNav(): void {
+  navCollapsed.value = !navCollapsed.value
+  try {
+    localStorage.setItem(NAV_KEY, navCollapsed.value ? '1' : '0')
+  } catch {
+    // Not kept: the menu stays folded or open for this visit.
+  }
+}
+
+// The sections that have no tab; the staff member's rights decide nothing for them
+// (the screens check their own rights).
+const extras = computed(() => extraTabsFor(route.meta.shell))
+
 const tabs = computed(() => {
   const list = tabsFor(route.meta.shell)
   if (!list) return undefined
@@ -42,7 +66,11 @@ const tabs = computed(() => {
 </script>
 
 <template>
-  <div class="ds-shell" :class="{ 'ds-shell--navless': !tabs }">
+  <div
+    class="ds-shell"
+    :class="{ 'ds-shell--navless': !tabs }"
+    :data-nav="tabs && navCollapsed ? 'collapsed' : undefined"
+  >
     <AvatarBanner />
     <AppHeader>
       <template v-if="!tabs" #right>
@@ -57,7 +85,13 @@ const tabs = computed(() => {
       <p v-if="header.lead" class="ds-shell__lead">{{ header.lead }}</p>
       <RouterView />
     </main>
-    <AppNav v-if="tabs" :items="tabs" />
+    <AppNav
+      v-if="tabs"
+      :items="tabs"
+      :extra="extras"
+      :collapsed="navCollapsed"
+      @toggle="toggleNav"
+    />
     <CToast />
   </div>
 </template>

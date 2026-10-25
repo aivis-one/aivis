@@ -218,6 +218,10 @@ const countryLabel = computed<string>(() => {
 
 const phoneDisplay = computed<string>(() => phone.value || t('inv.settings.profile.notSet'))
 
+// The details are empty while there is no phone and no country: the card then offers
+// a visible "Fill in details" button beside the pencil.
+const detailsEmpty = computed<boolean>(() => !phone.value && !country.value)
+
 const currentLanguage = computed<string>(() => authStore.user?.language ?? '')
 
 const languageLabel = computed<string>(() => {
@@ -535,6 +539,11 @@ onMounted(() => {
           <dd>{{ languageLabel }}</dd>
         </div>
       </dl>
+      <div v-if="detailsEmpty" class="ds-card__foot">
+        <CButton variant="outline" size="sm" inline @click="openEditProfile">
+          {{ t('inv.settings.profile.fill') }}
+        </CButton>
+      </div>
     </section>
 
     <!-- The e-mail: added and confirmed here when the account has none -->

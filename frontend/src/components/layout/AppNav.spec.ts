@@ -5,9 +5,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AppNav from './AppNav.vue'
-import { INVESTOR_TABS } from '@/router/tabs'
+import { extraTabsFor, INVESTOR_TABS } from '@/router/tabs'
 
-async function mountAt(path: string) {
+async function mountAt(path: string, extra = false) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
@@ -15,7 +15,7 @@ async function mountAt(path: string) {
   await router.push(path)
   await router.isReady()
   const w = mount(AppNav, {
-    props: { items: INVESTOR_TABS },
+    props: { items: INVESTOR_TABS, extra: extra ? extraTabsFor('investor') : [] },
     global: { plugins: [router, createPinia()] },
   })
   await flushPromises()
@@ -43,5 +43,34 @@ describe('AppNav', () => {
   it('marks nothing on a screen no tab holds', async () => {
     const w = await mountAt('/investor/news')
     expect(w.findAll('a.ds-navitem[aria-current="page"]')).toHaveLength(0)
+  })
+
+  it('lists the other sections of the role before the last item, from the web width', async () => {
+    const w = await mountAt('/investor/dashboard', true)
+    const hrefs = w.findAll('a.ds-navitem').map((a) => a.attributes('href'))
+    expect(hrefs).toEqual([
+      ...INVESTOR_TABS.slice(0, -1).map((t) => t.path),
+      ...extraTabsFor('investor').map((t) => t.path),
+      INVESTOR_TABS[INVESTOR_TABS.length - 1]?.path,
+    ])
+    for (const section of ['news', 'installments', 'docs', 'support', 'faq']) {
+      expect(extraTabsFor('investor').map((t) => t.id)).toContain(section)
+    }
+  })
+
+  it('reports the press of the collapse control and names its state', async () => {
+    const w = await mountAt('/investor/dashboard')
+    const button = w.get('.ds-nav__foot button.ds-nav__collapse')
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(button.findAll('svg')).toHaveLength(2)
+    await button.trigger('click')
+    expect(w.emitted('toggle')).toHaveLength(1)
+    await w.setProps({ collapsed: true })
+    expect(w.get('.ds-nav__collapse').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('has the wordmark beside the mark', async () => {
+    const w = await mountAt('/investor/dashboard')
+    expect(w.find('li.ds-nav__brand svg.ds-nav__wordmark').exists()).toBe(true)
   })
 })

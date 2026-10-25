@@ -4,7 +4,8 @@
 //                       (iter 2.5 R2 §5.5; replaces CertificateSheet)
 // =============================================================================
 //
-// The design system's Document sheet and viewer (K36), placement sheet: it renders
+// The design system's Document sheet and viewer (K36), placement wide (a window on
+// the web, the bottom sheet on a phone): it renders
 // a document HTML (per-Purchase agreement OR per-investor-company ownership
 // certificate) in a sandboxed iframe and exposes two actions on it: "Close" and
 // "Download". There is no
@@ -46,10 +47,17 @@
 //   per surface; CompanyPositionView mounts two AgreementSheet's --
 //   one for purchases, one for ownership).
 //
+// THE THEME.
+//   The issued document paints fixed dark colours, and a frame cannot see the page's
+//   tokens, so the text handed to the frame (`srcdoc`) first gets a style with the
+//   theme's text and link colours and no ground (utils/themeDocument.ts); it is built
+//   again when the theme changes. The file the reader saves is the blob as it was
+//   issued, not this copy.
+//
 // SANDBOX -- TD-F11b MUST fix.
-//   The HTML returned by the backend is rendered in an iframe via a
-//   blob URL. Blob URLs inherit the page's origin, so without sandbox
-//   the iframe could read localStorage and the JWT token.
+//   The HTML returned by the backend is rendered in an iframe from its text
+//   (`srcdoc`). Without sandbox the iframe would share the page's origin and could
+//   read localStorage and the JWT token.
 //   `sandbox=""` (empty attribute value) forbids every capability:
 //   no scripts, no forms, no same-origin access, no top-level
 //   navigation, no storage. The document HTML is a static Jinja2
@@ -88,7 +96,9 @@ import { AlertTriangle, X } from '@/components/ui/icons'
 import { useDialog } from '@/composables/useDialog'
 import { fetchAgreementBlob, fetchOwnershipCertificateBlob } from '@/api/agreements'
 import { useAgreementBlob } from '@/composables/useAgreementBlob'
+import { useTheme } from '@/composables/useTheme'
 import { documentFilename } from '@/utils/documentFilename'
+import { themeDocument } from '@/utils/themeDocument'
 
 type AgreementMode = 'agreement' | 'ownership'
 
@@ -110,8 +120,30 @@ const { t } = useI18n()
 // setup time instead of recomputing on every render.
 const isOwnership = props.mode === 'ownership'
 
-const { blobUrl, loading, errored, load, clear } = useAgreementBlob(
+const { blobUrl, html, loading, errored, load, clear } = useAgreementBlob(
   isOwnership ? fetchOwnershipCertificateBlob : fetchAgreementBlob,
+)
+
+// The document as the frame shows it: the issued text with the theme's colours, read
+// from the page for the theme in force and built again when the theme changes (after
+// the page has applied it).
+const { effective } = useTheme()
+const shownHtml = ref('')
+watch(
+  [html, effective],
+  () => {
+    if (!html.value) {
+      shownHtml.value = ''
+      return
+    }
+    const style = getComputedStyle(document.documentElement)
+    shownHtml.value = themeDocument(html.value, {
+      scheme: effective.value,
+      text: style.getPropertyValue('--text-primary'),
+      link: style.getPropertyValue('--primary'),
+    })
+  },
+  { immediate: true, flush: 'post' },
 )
 
 // ---------------------------------------------------------------------------
@@ -205,7 +237,7 @@ useDialog(toRef(props, 'open'), dialogEl, onClose)
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="ds-docviewer" data-variant="sheet" @click.self="onClose">
+    <div v-if="open" class="ds-docviewer" data-variant="wide" @click.self="onClose">
       <div
         ref="dialogEl"
         class="ds-docviewer__dialog"
@@ -267,8 +299,8 @@ useDialog(toRef(props, 'open'), dialogEl, onClose)
             TD-F11b in AIVIS-Frontend.md.
           -->
           <iframe
-            v-else-if="blobUrl"
-            :src="blobUrl"
+            v-else-if="shownHtml"
+            :srcdoc="shownHtml"
             sandbox=""
             class="ds-docviewer__frame"
             :title="sheetTitle"

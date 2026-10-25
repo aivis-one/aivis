@@ -59,6 +59,7 @@ const { showToast } = useToast()
 useScreenHeader({
   title: () => t('comp.balance.title'),
   lead: () => t('comp.balance.subtitle'),
+  back: () => (window.history.state?.back ? true : { name: 'company-dashboard' }),
 })
 
 // ---------------------------------------------------------------------------

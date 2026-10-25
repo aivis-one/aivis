@@ -104,6 +104,6 @@ onMounted(() => {
   <!-- The message a closed action answers with before verification -->
   <KycRequiredPrompt />
 
-  <!-- What the service is, shown once before the first entry -->
+  <!-- What the service is, shown once to the buyer at the first entry to the home screen -->
   <IntroCards />
 </template>

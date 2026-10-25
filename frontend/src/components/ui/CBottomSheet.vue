@@ -3,10 +3,11 @@
 // AIVIS.ONE Frontend -- CBottomSheet (Phase F4.1)
 // =============================================================================
 //
-// Sheet from the bottom edge, on the design system's Dialog (K52), placement
-// `sheet` (the default): capped at the reading measure, closed by Escape, by a click
-// on the scrim (if allowed) and by the close button. Used for filter pickers,
-// action lists, and other sheets that should feel native on mobile.
+// Sheet from the bottom edge on a phone and a centred window at the reading width on
+// the web (from the 640 width), on the design system's Dialog (K52), placement
+// `wide`; closed by Escape, by a click on the scrim (if allowed) and by the close
+// button. Used for filter pickers, action lists, and other sheets that should feel
+// native on mobile.
 //
 // Structure:
 //   - head (the optional `title` prop, or the `header` slot, and the close button)
@@ -50,6 +51,7 @@ useDialog(toRef(props, 'open'), dialogEl, () => emit('close'))
     <div
       v-if="open"
       class="ds-dialog"
+      data-variant="wide"
       :data-lock="closeOnOverlay ? undefined : 'true'"
       @click.self="onOverlay"
     >

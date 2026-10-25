@@ -77,12 +77,15 @@ const { t, locale } = useI18n()
 // The project account reads its own operations here too: the same list, with
 // its own wording (a sale, not a purchase) and its own tabs.
 const isCompany = useRoute().meta.shell === 'company'
+// The way back: the balance screen the list is opened from, of the same shell.
+const balanceRouteName = `${useRoute().meta.shell ?? 'investor'}-balance`
 const store = useTransactionsStore()
 const { showToast } = useToast()
 
 useScreenHeader({
   title: () => t(isCompany ? 'comp.operations.title' : 'inv.transactions.title'),
   lead: () => t(isCompany ? 'comp.operations.subtitle' : 'inv.transactions.subtitle'),
+  back: () => (window.history.state?.back ? true : { name: balanceRouteName }),
   actions: () => [
     {
       id: 'export',
