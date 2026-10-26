@@ -105,12 +105,27 @@ const { restart: restartTranslationPoll } = useTranslationPoll({
 })
 
 /**
- * 502/504 (comms unreachable) reads as "try later"; anything else as a
- * plain retry prompt -- the same wording on every surface of this screen.
+ * 502/504 (comms unreachable) reads as "try later" in the person's language,
+ * whatever the gateway or the backend said; otherwise the server's own
+ * sentence when it answered with one (a status came with it), and
+ * everything else -- a network error, an answer with no text -- as a
+ * plain retry prompt. Applied uniformly to every error surface on
+ * this screen (init / feed / send), so "comms is down" says the same
+ * thing everywhere it shows up.
  */
 function errorMessage(err: SupportActionError | null): string {
   if (!err) return ''
-  if (err.status === 502 || err.status === 504) return t('inv.support.errorUnavailable')
+  if (err.status === 502 || err.status === 504) {
+    return t('inv.support.errorUnavailable')
+  }
+  const said = err.message.trim()
+  if (
+    err.status !== undefined &&
+    said !== '' &&
+    !/^HTTP \d{3}\b/.test(said) &&
+    !said.startsWith('{')
+  )
+    return said
   return t('inv.support.errorGeneric')
 }
 
@@ -268,6 +283,7 @@ const backFallbackRouteName = computed<string>(() => {
 
 useScreenHeader({
   title: () => t('inv.support.title'),
+  lead: () => t('inv.support.lead'),
   back: () => (window.history.state?.back ? true : { name: backFallbackRouteName.value }),
   actions: () => [
     ...(isEmpty.value
@@ -317,6 +333,16 @@ onMounted(async () => {
     </CEmptyState>
 
     <template v-else>
+      <!-- An empty conversation opens with support's greeting, so the person sees where to write (F7) -->
+      <section v-if="isEmpty" class="ds-thread" :aria-label="t('inv.support.title')">
+        <ul class="ds-thread__feed" role="log">
+          <li class="ds-message" data-from="other">
+            <span class="ds-message__author">{{ t('inv.support.sender.operator') }}</span>
+            <p class="ds-message__bubble">{{ t('inv.support.welcome') }}</p>
+          </li>
+        </ul>
+      </section>
+
       <!-- The form of a new appeal -->
       <form v-if="showForm" class="isup__form" novalidate @submit.prevent="handleCreateTicket">
         <h2 class="ds-section-title">{{ t('inv.support.form.title') }}</h2>
@@ -464,6 +490,11 @@ onMounted(async () => {
           </template>
         </ul>
 
+        <!-- The failure stands above the composer, so the field and the button keep one line (F7) -->
+        <p v-if="support.sendError" id="isup-message-error" class="ds-field__error" role="alert">
+          <AlertTriangle size="sm" />
+          <span>{{ errorMessage(support.sendError) }}</span>
+        </p>
         <form class="ds-composer" @submit.prevent="handleSend">
           <div class="ds-field ds-composer__input">
             <label class="ds-sr-only" for="isup-message">{{ t('inv.support.placeholder') }}</label>
@@ -471,17 +502,13 @@ onMounted(async () => {
               id="isup-message"
               v-model="composerText"
               class="ds-input"
-              rows="2"
+              rows="1"
               maxlength="4000"
               :placeholder="t('inv.support.placeholder')"
               :disabled="support.sending"
               :aria-invalid="support.sendError ? 'true' : undefined"
               :aria-describedby="support.sendError ? 'isup-message-error' : undefined"
             />
-            <p v-if="support.sendError" id="isup-message-error" class="ds-field__error">
-              <AlertTriangle size="sm" />
-              <span>{{ errorMessage(support.sendError) }}</span>
-            </p>
           </div>
           <CButton
             variant="primary"

@@ -22,8 +22,9 @@
     "statusActive": "Active",
     "primaryNav": "Main navigation",
     "nav": {
-      "collapse": "Collapse the menu",
-      "expand": "Expand the menu"
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "logout": "Log out"
     },
     "language": {
       "current": "Language: {name}",
@@ -207,11 +208,38 @@
       "confirmPassPlaceholder": "Repeat password",
       "confirmBtn": "Reset password",
       "confirmSuccessTitle": "Password updated",
-      "confirmSuccessText": "Your password has been changed and you've been signed out everywhere else. Sign in with your new password.",
+      "confirmSuccessText": "Your password has been changed and you've been logged out everywhere else. Sign in with your new password.",
       "invalidLinkTitle": "Invalid or expired link",
       "invalidLinkText": "This password reset link is invalid or has expired. Request a new one.",
       "requestNewLink": "Request a new link",
       "signInBtn": "Sign in"
+    },
+    "telegramEntry": {
+      "consentTitle": "Welcome to AIVIS.ONE",
+      "consentSubtitle": "To register, please confirm the two documents below.",
+      "consentTermsPrefix": "I consent to register under the",
+      "consentPrivacyPrefix": "I consent to the processing of my data under the",
+      "termsName": "Cabinet Terms",
+      "termsTitle": "Cabinet Terms",
+      "privacyName": "Privacy Policy",
+      "privacyTitle": "Privacy Policy",
+      "continueBtn": "Continue",
+      "emailTitle": "Your email",
+      "emailSubtitle": "We will send a 6-digit code to this address.",
+      "sendCodeBtn": "Send code",
+      "codeSubtitle": "We sent a 6-digit code, valid for {minutes} minutes, to",
+      "codeInvalid": "The code is incorrect. Check it and try again.",
+      "codeExpired": "The code has expired. Request a new one below.",
+      "locked": "Too many wrong codes for this email. Try again later.",
+      "emailsPerDay": "Too many codes requested today. Try again tomorrow.",
+      "conflict": "This account is already linked to another Telegram account. Contact support.",
+      "accountInactive": "This account is deactivated. Contact support.",
+      "secondCodeLabel": "Authenticator code",
+      "secondCodeHint": "Two-factor authentication is on for this account. Enter the code from your authenticator app, or a backup code.",
+      "secondCodeInvalid": "The authenticator code is incorrect.",
+      "secondCodeEnded": "The code was not accepted. Close the app and open it again from Telegram.",
+      "expiredTitle": "Open the app again",
+      "expired": "The time to sign in has run out. Close the app and open it again from Telegram."
     },
     "error": {
       "invalidCredentials": "Incorrect email or password",
@@ -220,26 +248,25 @@
       "fillAllFields": "Please fill in all fields",
       "networkError": "Connection error. Check your internet",
       "timeout": "Server did not respond. Try again",
-      "rateLimited": "Too many attempts. Please try again later",
-      "telegramMfaRequired": "Two-factor authentication is required. Please open AIVIS.ONE in a browser to finish signing in."
+      "rateLimited": "Too many attempts. Please try again later"
     },
-    "logout": "Sign out"
+    "logout": "Log out"
   },
   "tab": {
-    "home": "Home",
+    "home": "Dashboard",
     "portfolio": "Portfolio",
-    "market": "Store",
+    "market": "Projects",
     "balance": "Balance",
     "more": "More",
     "comp": {
-      "home": "Home",
+      "home": "Dashboard",
       "products": "Products",
       "analytics": "Analytics",
       "settings": "Settings",
       "publications": "Publications"
     },
     "staff": {
-      "home": "Home",
+      "home": "Dashboard",
       "users": "Users",
       "platform": "Platform",
       "finance": "Finance",
@@ -328,7 +355,8 @@
     "more": {},
     "settings": {
       "language": "Language",
-      "logout": "Sign out",
+      "logout": "Log out",
+      "leave": "Log out",
       "noName": "Staff",
       "roleStaff": "Staff",
       "roleAdmin": "Administrator",
@@ -383,9 +411,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -567,12 +595,7 @@
       "selectUser": "Select user",
       "portfolio": "portfolio",
       "referrals": "referrals",
-      "restrictions": "Restricted operations in the avatar mode",
-      "noPurchase": "Cannot make purchases on behalf of the user",
-      "noWithdraw": "Cannot withdraw funds",
-      "noPassword": "Cannot change password or email",
-      "noDelete": "Cannot delete account",
-      "noKyc": "Cannot modify KYC data",
+      "note": "In the avatar mode you act as the user: every action is the user's own, and the audit records the staff member who did it.",
       "session": "Active Session",
       "return": "Return to the staff cabinet",
       "start": "Start Session",
@@ -653,7 +676,7 @@
       "changeEmailReason": "Reason (required)",
       "emailChanged": "Email address changed",
       "deactivate": "Take off duty",
-      "deactivateConfirm": "The member loses access to the staff cabinet and is signed out everywhere at once. The profile and its history stay.",
+      "deactivateConfirm": "The member loses access to the staff cabinet and is logged out everywhere at once. The profile and its history stay.",
       "deactivated": "Member taken off duty",
       "offDuty": "Off duty",
       "onboardingSteps": {
@@ -1178,10 +1201,10 @@
   },
   "inv": {
     "unit": "unit",
-    "pack": "pack",
+    "pack": "portfolio",
     "available": "available",
     "market": {
-      "title": "Store",
+      "title": "Projects",
       "subtitle": "Available products",
       "filter": {
         "all": "All projects",
@@ -1197,36 +1220,36 @@
         "filteredTitle": "No products for this project",
         "filteredDesc": "Try another filter or clear it"
       },
-      "packsAvailable": "packs available"
+      "packsAvailable": "portfolios available"
     },
     "product": {
       "notFound": {
         "title": "Product not found",
         "desc": "This product may have been removed or is no longer available"
       },
-      "backToMarket": "Back to the store",
-      "pricePerPack": "Price per pack",
+      "backToMarket": "Back to Projects",
+      "pricePerPack": "Price per portfolio",
       "availability": "Availability",
       "description": "About",
       "installments": "Installment plans",
       "installmentsEmpty": "No installment plans available for this product",
-      "installmentsBonus": "+{n} bonus units",
+      "installmentsBonus": "+{n} bonus parts",
       "buy": "Buy now",
       "soldOut": "Sold out",
-      "packsAvailability": "Packs availability"
+      "packsAvailability": "Portfolios availability"
     },
     "purchase": {
       "title": "Purchase",
       "orderSummary": "Order summary",
-      "packageSize": "Package size",
+      "packageSize": "Portfolio size",
       "bonusParts": "Bonus parts",
-      "pricePerPack": "Price per pack",
+      "pricePerPack": "Price per portfolio",
       "total": "Total",
       "yourBalance": "Your balance",
       "insufficientHint": "Not enough balance to complete this purchase",
       "confirm": "Confirm purchase",
       "cancel": "Cancel",
-      "success": "Package purchased successfully",
+      "success": "Portfolio purchased successfully",
       "loadError": {
         "title": "Could not load purchase details",
         "desc": "Please go back and try again"
@@ -1237,7 +1260,7 @@
         "productInactive": "This product is no longer available",
         "generic": "Purchase failed. Please try again",
         "agreementMissing": "The buyer agreement is not available right now. Try again later.",
-        "soldOut": "Not enough parts are left for this package"
+        "soldOut": "Not enough parts are left for this portfolio"
       },
       "pay": "Pay",
       "shortfall": "{amount} is missing",
@@ -1294,7 +1317,7 @@
         "item": {
           "label": "Plan {id}",
           "totalPrice": "Total price",
-          "units": "Units",
+          "units": "Parts",
           "created": "Started"
         }
       },
@@ -1303,11 +1326,11 @@
         "errorTitle": "Could not load this plan",
         "notFoundTitle": "Plan not found",
         "notFoundDesc": "This plan does not exist or is not yours.",
-        "defaultedBanner": "This plan defaulted after a missed payment. Units from tranches already paid are kept; the remaining tranches were cancelled.",
+        "defaultedBanner": "This plan defaulted after a missed payment. Parts from tranches already paid are kept; the remaining tranches were cancelled.",
         "summary": {
           "totalPrice": "Total price",
-          "totalUnits": "Total units",
-          "pricePerUnit": "Price per unit",
+          "totalUnits": "Total parts",
+          "pricePerUnit": "Price of a part",
           "created": "Started",
           "completed": "Completed",
           "defaulted": "Defaulted"
@@ -1317,7 +1340,7 @@
           "tranche": "Tranche {n}",
           "due": "Due date",
           "amount": "Amount",
-          "units": "Units",
+          "units": "Parts",
           "paidOn": "Paid on {date}"
         }
       },
@@ -1414,8 +1437,8 @@
       "accountNote": "This account is spent on parts of AIVIS. It is returned only through support.",
       "allOperations": "All operations",
       "holder": {
-        "title": "Holder accruals and payouts",
-        "rule": "AIVIS pays your share of the distributable profit itself, once a quarter and only after the 14 days of withdrawal, to your bank account or card; if you paid in USDT, in USDT to your confirmed address. Each payment comes with a calculation of your share and a statement of your accruals and payments. There is no holder balance and no withdrawal request.",
+        "title": "Your share of the project's profit",
+        "rule": "You are a co-owner of the project. AIVIS itself pays your share of the project's distributable profit once a quarter, to your bank account or card, or in USDT to your confirmed address if you paid in USDT, with a calculation of your share and a statement of your accruals and payments. A part joins the distribution after the 14 days of withdrawal. A project's distributable profit is zero until its product sells. There is no holder balance and no withdrawal request.",
         "small": "An amount under 10 USD carries over to the next quarter."
       }
     },
@@ -1516,7 +1539,7 @@
         "deposit:confirmed": "Deposit confirmed",
         "deposit:reversed": "Deposit reversed",
         "purchase:completed": "Purchase",
-        "purchase:gift": "Bonus units",
+        "purchase:gift": "Bonus parts",
         "purchase:reversed": "Purchase reversed",
         "installment:tranche_paid": "Installment tranche paid",
         "installment:completed": "Installment plan completed",
@@ -1540,8 +1563,8 @@
           "tx_hash": "Transaction hash",
           "from_address": "From address",
           "product_name": "Product",
-          "units": "Units",
-          "price_per_unit_cents": "Price per unit",
+          "units": "Parts",
+          "price_per_unit_cents": "Price of a part",
           "reason": "Reason",
           "trigger_tranche_number": "Trigger tranche",
           "cancelled_count": "Tranches cancelled",
@@ -1553,17 +1576,14 @@
     },
     "dashboard": {
       "title": "Dashboard",
-      "greetingMorning": "Good morning",
-      "greetingAfternoon": "Good afternoon",
-      "greetingEvening": "Good evening",
       "portfolio": {
         "title": "Portfolio",
         "totalValue": "Total value",
         "products": "Products",
-        "units": "Units",
+        "units": "Parts",
         "companies": "Projects",
         "empty": "No purchases yet",
-        "emptyCta": "Browse the store"
+        "emptyCta": "Browse Projects"
       },
       "balance": {
         "title": "Active account",
@@ -1573,7 +1593,7 @@
       "actions": {
         "title": "Quick actions",
         "deposit": "Deposit",
-        "market": "Store"
+        "market": "Projects"
       },
       "posts": {
         "title": "Latest news",
@@ -1625,20 +1645,20 @@
       "subtitle": "Your holdings across all projects",
       "totalValue": "Total value",
       "products": "Products",
-      "units": "Units",
+      "units": "Parts",
       "invested": "Spent",
       "profit": "Profit",
       "position": {
-        "units": "Units",
-        "avgPrice": "Avg. price",
+        "units": "Parts",
+        "avgPrice": "Avg. price of a part",
         "value": "Value",
         "saleUnits": "Purchased",
         "giftUnits": "Gifted"
       },
       "empty": {
         "title": "No purchases yet",
-        "description": "Browse the store to start your portfolio.",
-        "cta": "Go to the store"
+        "description": "Browse Projects to start your portfolio.",
+        "cta": "Go to Projects"
       },
       "errorTitle": "Could not load portfolio"
     },
@@ -1660,9 +1680,7 @@
       "notFound": "Project not found",
       "sectionRoadmap": "Roadmap",
       "sectionDocuments": "Project documents",
-      "cta": {
-        "viewProducts": "View products"
-      },
+      "cta": {},
       "stats": {
         "poolTotalOptions": "Pool size",
         "optionsSold": "Sold",
@@ -1685,6 +1703,7 @@
       "status": {
         "planned": "Planned",
         "in_progress": "In progress",
+        "done": "Done",
         "completed": "Completed",
         "cancelled": "Cancelled"
       },
@@ -1702,8 +1721,8 @@
     "companyPosition": {
       "title": "Position",
       "aggregate": {
-        "totalUnits": "Total units",
-        "avgPrice": "Avg. price",
+        "totalUnits": "Total parts",
+        "avgPrice": "Avg. price of a part",
         "invested": "Spent",
         "currentValue": "Current value",
         "saleUnits": "Purchased",
@@ -1722,9 +1741,9 @@
           "installment_tranche": "Basis: one paid month of your instalment plan, its own purchase agreement accepted in the Cabinet.",
           "gift": "Basis: Parts given by AIVIS.ONE LLC under its order on gifts, accepted by you in the Cabinet."
         },
-        "units": "Units",
+        "units": "Parts",
         "paid": "Paid",
-        "pricePerUnit": "Price per unit",
+        "pricePerUnit": "Price of a part",
         "certificate": "Certificate",
         "booked": "Booked"
       },
@@ -1759,6 +1778,10 @@
     "docs": {
       "title": "Documents",
       "subtitle": "Your legal documents and signing history",
+      "group": {
+        "sign": "To sign",
+        "read": "To read"
+      },
       "errorTitle": "Could not load documents",
       "empty": {
         "title": "No documents yet",
@@ -1799,7 +1822,6 @@
     },
     "settings": {
       "title": "Settings",
-      "unnamed": "No name",
       "role": {
         "investor": "Buyer",
         "agent": "Integrator",
@@ -1848,7 +1870,10 @@
           "what": "An integrator brings people to AIVIS and earns commission on what they buy.",
           "pointLink": "You get one personal link to share.",
           "pointCommission": "You earn commission on the purchases of the people you bring, on three levels.",
-          "pointWithdrawal": "You withdraw the commission to your wallet.",
+          "pointPools": "Every month the 20 integrators with the largest first-line volume share 2 percent of that month's purchases, and every quarter the 10 with the largest first-line volume of the quarter share 1 percent of that quarter's purchases, each in proportion to their volume.",
+          "pointBonus": "You receive bonus parts on a one-time purchase by a buyer who registered by your link: from 5 to 20 percent of its amount, by the size of the purchase.",
+          "pointWithdrawal": "Your commission is held in a separate withdrawal account: you ask for a payout and it is paid 14 days after your request.",
+          "feeLine": "Identity verification costs {fee} for each attempt.",
           "readAgreement": "Read the agent-integrator agreement",
           "readFaq": "Read the integrator FAQ",
           "submit": "Submit the application",
@@ -1857,10 +1882,13 @@
           "toSupport": "Write to support"
         }
       },
+      "leave": {
+        "title": "Log out and deactivate"
+      },
       "actions": {
         "title": "Security and documents",
         "docs": "Documents",
-        "logout": "Sign out",
+        "logout": "Log out",
         "twoFactor": {
           "ctaEnable": "Enable two-factor authentication",
           "ctaManage": "Two-factor authentication",
@@ -1905,9 +1933,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -1956,7 +1984,7 @@
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
-          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "warning": "You'll be logged out on every device immediately. To use AIVIS.ONE again, contact support.",
           "passwordLabel": "Current password",
           "passwordPlaceholder": "Enter your current password",
           "cancelBtn": "Cancel",
@@ -1973,8 +2001,8 @@
         },
         "support": "Support",
         "faq": "FAQ",
-        "logoutAll": "Sign out of all devices",
-        "logoutAllError": "Could not sign out of all devices. Try again."
+        "logoutAll": "Log out of all devices",
+        "logoutAllError": "Could not log out of all devices. Try again."
       },
       "subtitle": "Manage your profile and preferences",
       "email": {
@@ -2036,6 +2064,8 @@
     "support": {
       "title": "Support",
       "invite": "Tell us what happened: choose a topic and write your request -- we'll answer here.",
+      "lead": "This is your chat with AIVIS support: questions about your purchases, documents and account.",
+      "welcome": "Hello! Write to us below, we are glad to answer.",
       "placeholder": "Your message",
       "send": "Send",
       "refresh": "Refresh conversation",
@@ -2228,9 +2258,12 @@
         "title": "Activity",
         "cta": "View activity history"
       },
+      "leave": {
+        "title": "Log out and deactivate"
+      },
       "actions": {
         "title": "Account",
-        "logout": "Sign out",
+        "logout": "Log out",
         "twoFactor": {
           "ctaEnable": "Enable two-factor authentication",
           "ctaManage": "Two-factor authentication",
@@ -2275,9 +2308,9 @@
           "current": "This device",
           "createdAt": "Signed in {date}",
           "revokeBtn": "Revoke",
-          "revokeConfirmTitle": "Sign out this device?",
+          "revokeConfirmTitle": "Log out this device?",
           "cancelBtn": "Cancel",
-          "confirmBtn": "Sign out",
+          "confirmBtn": "Log out",
           "revokeSuccess": "Session revoked",
           "errorGeneric": "Something went wrong. Please try again.",
           "authMethod": {
@@ -2326,7 +2359,7 @@
         "deactivate": {
           "cta": "Deactivate account",
           "title": "Deactivate your account?",
-          "warning": "You'll be signed out on every device immediately. To use AIVIS.ONE again, contact support.",
+          "warning": "You'll be logged out on every device immediately. To use AIVIS.ONE again, contact support.",
           "passwordLabel": "Current password",
           "passwordPlaceholder": "Enter your current password",
           "cancelBtn": "Cancel",
@@ -2997,6 +3030,65 @@
       "integrator": "To become an integrator, pass identity verification: $10"
     }
   },
+  "buy": {
+    "step": "Step {n} of 3 · {name}",
+    "stepAria": "Step {n} of 3",
+    "steps": {
+      "terms": "Terms",
+      "confirm": "Confirmation",
+      "done": "Done"
+    },
+    "viewProject": "View the project",
+    "kycTitle": "Identity verification first",
+    "kycText": "After it, purchases open to you. The verification needs $10 on the balance — we explain why.",
+    "kycGo": "Verify your identity",
+    "projectValuation": "Project valuation",
+    "partPrice": "Price of a part",
+    "title": "Buy parts of {project}",
+    "portfolio": "Portfolio",
+    "portfolioOption": "{price} · +{n}%",
+    "payment": "Payment",
+    "payAtOnce": "At once",
+    "bonusBadge": "+{n}% bonus",
+    "parts": "{n} parts",
+    "partsOver": "{n} parts over {plan}",
+    "bonusParts": "+ {n} bonus",
+    "partPriceAtOnce": "{price} per part · paid at once {total}",
+    "partPriceTotal": "{price} per part · total {total}",
+    "noBonus": "no bonus",
+    "instalmentMoney": "{count} × {each} and the last {last}",
+    "instalmentEqual": "{count} × {each}",
+    "instalmentLast": "{count} payments, the last {last}",
+    "partsByMonth": "Each month {each}% of the parts, with the last payment {last}%",
+    "buy": "Buy",
+    "soldOut": "Sold out",
+    "loadError": "The terms could not be loaded",
+    "retry": "Try again",
+    "shortTitle": "Short of {amount}",
+    "shortPortfolio": "Your balance is {balance}; the portfolio costs {need}.",
+    "shortFirst": "Your balance is {balance}; the first payment is {need}.",
+    "topUp": "Top up the balance",
+    "confirmTitle": "Confirmation",
+    "balanceNote": "Your balance: {balance} · to be charged now: {pay}",
+    "month": "Month {n}",
+    "monthShare": "{n}% of the parts",
+    "payAmount": "Pay {amount}",
+    "backToTerms": "Back to the terms",
+    "congratsTitle": "Congratulations — you are now a co-owner of {project}.",
+    "congratsText": "A visionary for visionaries.",
+    "nextPayment": "The next payment, {amount}, is due on {date} and is taken from your balance by itself.",
+    "documents": "Documents",
+    "toPortfolio": "To my portfolio",
+    "toStorefront": "To Projects"
+  },
+  "inst": {
+    "planMonths": {
+      "one": "{n} month",
+      "few": "{n} months",
+      "many": "{n} months",
+      "other": "{n} months"
+    }
+  },
   "intro": {
     "what": {
       "title": "What AIVIS.ONE is",
@@ -3004,7 +3096,7 @@
     },
     "where": {
       "title": "Where you are",
-      "text": "This is your cabinet: the storefront of projects, your portfolio with the documents of every purchase, and your active account."
+      "text": "This is your cabinet: the projects, your portfolio with the documents of every purchase, and your active account."
     },
     "how": {
       "title": "What to do here",
