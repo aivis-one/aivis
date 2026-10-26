@@ -2,7 +2,7 @@
 // StaffSupportStats -- the statistics tab (H41)
 // =============================================================================
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -82,6 +82,13 @@ describe('the statistics', () => {
   })
 
   it('a last day before the first asks nothing and says why', async () => {
+    // The screen opens on today; pin today to the day this test sets as the
+    // first, so changing the first day is no new valid period on any date.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-25T12:00:00'))
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     getStats.mockResolvedValue(stats())
     const wrapper = mount(StaffSupportStats)
     await flushPromises()
