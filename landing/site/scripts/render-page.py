@@ -925,9 +925,9 @@ _NBW = re.compile(r"[^\s‑]*‑[^\s‑]*(?:‑[^\s‑]*)*")
 USED_ICONS = set()
 # every page carries the same sprite subset (the C1 parity of ids between the locales and between the pages):
 # the icons of the header, the footer and every page body of the site
-COMMON_ICONS = ("arrow-right", "arrow-up-right", "bot", "check", "chevron-down", "info", "lock", "log-in", "menu",
+COMMON_ICONS = ("arrow-left", "arrow-right", "arrow-up-right", "bot", "check", "chevron-down", "info", "lock", "log-in", "menu",
                 "moon", "rocket", "shield-check", "sparkles", "sun", "target", "x", "zap",
-                "soc-telegram", "soc-mail", "soc-linkedin", "soc-x", "soc-medium")
+                "brand-telegram", "brand-mail", "brand-linkedin", "brand-x", "brand-medium")
 CUR_LOCALE = [""]
 FOOTER_TYPES = ("footer", "home_footer")
 
@@ -976,9 +976,9 @@ def home_href():
     return lroot() or "./"
 
 
-def ic(name, cls="icon", extra=""):
+def ic(name, cls="ds-icon ds-icon--md", extra=""):
     USED_ICONS.add(name)
-    return ('<svg class="%s"%s aria-hidden="true" focusable="false"><use href="#i-%s"/></svg>'
+    return ('<svg class="%s"%s aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#i-%s"/></svg>'
             % (esc(cls), extra, esc(name)))
 
 
@@ -999,12 +999,16 @@ def img(site, c, name, alt="", cls="", w=None, h=None):
     return '<img src="%sassets/img/%s" alt="%s"%s>' % (p, esc(name), esc(alt), attrs)
 
 
-def btn(label, href, variant="primary", size="lg", icon="arrow-right", external=False):
+BTN_LOOK = {"primary": "primary", "accent": "accent", "ghost": "secondary", "secondary": "secondary"}
+
+
+def btn(label, href, variant="primary", size="lg", icon="arrow-right", external=False, extra=""):
+    """The design system's Button (K01) as a link: ds-button in its look and size, the press and lift motion of the pack."""
     rel = ' rel="noopener"' if external else ""
     href = safe_href(href, "#", context="button")
-    icon_html = ic(icon, "icon icon--dir") if icon else ""
-    return ('<a class="btn ls-mo-press ls-mo-lift" data-component="Button" data-variant="%s" data-size="%s" href="%s"%s>'
-            '<span>%s</span>%s</a>' % (esc(variant), esc(size), esc(href), rel, T(label), icon_html))
+    icon_html = ic(icon, "ds-icon icon--dir") if icon else ""
+    return ('<a class="ds-button ds-button--%s ls-mo-press ls-mo-lift%s" data-size="%s" href="%s"%s>'
+            '<span>%s</span>%s</a>' % (esc(BTN_LOOK.get(variant, "primary")), extra, esc(size), esc(href), rel, T(label), icon_html))
 
 
 def r_home_aivis(sec, c, site):
@@ -1013,18 +1017,18 @@ def r_home_aivis(sec, c, site):
     explicit exception to 'mark in the header only'); equal-height cards, buttons on one line at the bottom."""
     sid = sec["id"]
     g = lambda k: c.get("%s.%s" % (sid, k))
-    facts = lambda keys: "".join('<li>%s<span>%s</span></li>' % (ic("check"), roll_figure(k, T(g(k)))) for k in keys)
+    facts = lambda keys: "".join('<li>%s<span>%s</span></li>' % (ic("check", "ds-icon"), roll_figure(k, T(g(k)))) for k in keys)
 
     def card(cls, variant, label, name, sub, img_html, fact_keys, button):
-        return ('<article class="card whocard %s" data-component="Card" data-variant="%s" data-size="lg">'
+        return ('<article class="ds-card ds-card--%s whocard %s">'
                 '<div class="whocard__top"><div class="whocard__head"><p class="label">%s</p><p class="whocard__name">%s</p>'
                 '<p class="whocard__sub">%s</p></div><div class="whocard__img">%s</div></div>'
                 '<ul class="facts">%s</ul><div class="actions">%s</div></article>'
-                % (cls, variant, T(label), T(name), T(sub), img_html, facts(fact_keys), button))
+                % (variant, cls, T(label), T(name), T(sub), img_html, facts(fact_keys), button))
 
     base = sec.get("cta_href", "about/")
     return "\n".join([
-        '<section class="block hero" id="%s" aria-labelledby="%s-h"><div class="wrap">' % (esc(sid), esc(sid)),
+        '<section class="block hero hero--home" id="%s" aria-labelledby="%s-h"><div class="wrap">' % (esc(sid), esc(sid)),
         '<p class="kicker">%s</p>' % T(g("kicker")),
         '<h1 id="%s-h" class="ls-mo-balance"><span class="h-main">%s</span> <span class="h-sub">%s</span></h1>'
         % (esc(sid), T(g("headline")), T(g("subtitle"))),
@@ -1033,7 +1037,7 @@ def r_home_aivis(sec, c, site):
         card("founder-card", "elevated", g("founder.label"), g("founder.name"), g("founder.sub"),
              photo(site, c, g("founder.photo_alt")), ["founder.fact1", "founder.fact2", "founder.fact3"],
              btn(g("founder.button"), base + "#founder")),
-        card("company", "outlined", g("company.label"), g("company.name"), g("company.sub"),
+        card("company", "elevated", g("company.label"), g("company.name"), g("company.sub"),
              img(site, c, "aivis-mark.svg", "", "whocard__mark", 112, 112), ["company.fact1", "company.fact2"],
              btn(g("button"), base + "#company")),
         '</div></div></section>',
@@ -1051,22 +1055,22 @@ def r_home_sankord(sec, c, site):
         text = g(k)
         if g(k + "b"):
             text = text.rstrip(" .") + ". " + g(k + "b")
-        return ('<li><span class="ic">%s</span><span class="tile__t"><span>%s</span></span></li>'
+        return ('<li class="ds-card" data-size="sm"><span class="ic">%s</span><span class="tile__t"><span>%s</span></span></li>'
                 % (ic(i), T(text)))
     tiles = "".join(tile(i, k) for i, k in (("shield-check", "fact1"), ("lock", "fact2"), ("zap", "fact3")))
     return "\n".join([
         '<section class="block sankord" id="%s" aria-labelledby="%s-h"><div class="wrap">' % (esc(sid), esc(sid)),
         '<header class="section-head"><h2 id="%s-h" class="ls-mo-balance">%s</h2><p class="lead">%s</p></header>'
         % (esc(sid), T(g("title")), T(g("story"))),
-        '<div class="card statement" data-component="Card" data-variant="elevated" data-size="lg">',
+        '<div class="ds-card ds-card--elevated statement">',
         '<p class="statement__name">%s</p><h3 class="statement__promise ls-mo-balance">%s</h3><p class="statement__cat">%s</p></div>'
         % (T(g("name")), T(g("promise")), T(g("category"))),
         '<div class="for"><p class="label">%s</p><p class="for__lead">%s</p><p>%s</p></div>'
         % (T(g("for.label")), T(g("for.lead")), T(g("for.who"))),
-        '<ul class="tiles">%s</ul>' % tiles,
-        '<div class="alert stage" role="status" data-component="Alert" data-severity="info" data-variant="persistent">%s'
-        '<p>%s %s</p></div>'
-        % (ic("info"), T(g("stage")), T(g("stage.more"))),
+        '<ul class="tiles ls-mo-stagger">%s</ul>' % tiles,
+        '<div class="ds-alert ds-alert--info stage" role="status"><span class="ds-alert__icon" aria-hidden="true">%s</span>'
+        '<div class="ds-alert__content"><p class="ds-alert__text">%s %s</p></div></div>'
+        % (ic("info", "ds-icon"), T(g("stage")), T(g("stage.more"))),
         '<div class="actions">%s</div>'
         % btn(g("button"), href, "primary", "lg", "arrow-up-right", True),
         '</div></section>',
@@ -1082,7 +1086,7 @@ def r_home_courses(sec, c, site):
     g = lambda k: c.get("%s.%s" % (sid, k))
     items = []
     for i in range(1, n + 1):
-        items.append('<li class="card course" data-component="Card" data-variant="elevated" data-size="md">'
+        items.append('<li class="ds-card ds-card--elevated course">'
                      '<div class="course__top"><span class="num" aria-hidden="true">%02d</span>'
                      '<span class="course__ic" aria-hidden="true">%s</span></div>'
                      '<h3><span class="course__main">%s</span> <span class="course__sub">%s</span></h3><p>%s</p></li>'
@@ -1107,13 +1111,13 @@ def r_home_faq(sec, c, site):
     for i in range(1, n + 1):
         paras = "".join("<p>%s</p>" % T(c.get("%s.a%d%s" % (sid, i, s))) for s in "abc"
                         if c.get("%s.a%d%s" % (sid, i, s)))
-        items.append('<details data-component="Accordion" data-orientation="vertical"><summary><span>%s</span>%s</summary>'
-                     '<div class="ls-mo-accordion"><div class="ans">%s</div></div></details>'
-                     % (T(g("q%d" % i)), ic("chevron-down", "icon chev"), paras))
+        items.append('<details class="ds-accordion__item"><summary class="ds-accordion__summary"><span>%s</span>%s</summary>'
+                     '<div class="ls-mo-accordion"><div class="ds-accordion__panel">%s</div></div></details>'
+                     % (T(g("q%d" % i)), ic("chevron-down", "ds-icon ds-icon--md ds-accordion__chev"), paras))
     return "\n".join([
         '<section class="block questions" id="%s" aria-labelledby="%s-h"><div class="wrap">' % (esc(sid), esc(sid)),
         '<header class="section-head"><h2 id="%s-h" class="ls-mo-balance">%s</h2></header>' % (esc(sid), T(g("title"))),
-        '<div class="faq">%s</div>' % "".join(items),
+        '<div class="ds-accordion faq ls-mo-stagger">%s</div>' % "".join(items),
         '<div class="actions">%s</div>' % btn(g("button"), sec.get("cta_href", "faq/")),
         '</div></section>',
     ])
@@ -1134,15 +1138,15 @@ def r_faq_page(sec, c, site):
             if not ans:   # an answer in parts (a<i>a, a<i>b, ...): each SANKORD part verbatim from statements.tsv
                 parts = [g("g%d.a%d%s" % (n, i, s)) for s in "abcdef" if g("g%d.a%d%s" % (n, i, s))]
                 ans = " ".join(x if x.rstrip()[-1:] in ".!?" else x + "." for x in parts)
-            items.append('<details data-component="Accordion" data-orientation="vertical"><summary><span>%s</span>%s</summary>'
-                         '<div class="ls-mo-accordion"><div class="ans"><p>%s</p></div></div></details>'
-                         % (T(g("g%d.q%d" % (n, i))), ic("chevron-down", "icon chev"), rich(ans)))
+            items.append('<details class="ds-accordion__item"><summary class="ds-accordion__summary"><span>%s</span>%s</summary>'
+                         '<div class="ls-mo-accordion"><div class="ds-accordion__panel"><p>%s</p></div></div></details>'
+                         % (T(g("g%d.q%d" % (n, i))), ic("chevron-down", "ds-icon ds-icon--md ds-accordion__chev"), rich(ans)))
             i += 1
         sid = "faq_g%d" % n
         out += ['<section class="block questions faq-group%s" id="%s" aria-labelledby="%s-h"><div class="wrap">'
                 % (" alt" if n % 2 == 0 else "", sid, sid),
                 '<header class="section-head"><h2 id="%s-h" class="ls-mo-balance">%s</h2></header>' % (sid, T(g("g%d.title" % n))),
-                '<div class="faq">%s</div>' % "".join(items), '</div></section>']
+                '<div class="ds-accordion faq ls-mo-stagger">%s</div>' % "".join(items), '</div></section>']
         n += 1
     return "\n".join(out)
 
@@ -1156,7 +1160,7 @@ def r_courses_page(sec, c, site):
     items = []
     for i, slug in enumerate(slugs, 1):
         items.append(
-            '<li class="card course course--full" data-component="Card" data-variant="elevated" data-size="md">'
+            '<li class="ds-card ds-card--elevated course course--full">'
             '<div class="course__top"><span class="num" aria-hidden="true">%02d</span>'
             '<span class="course__ic" aria-hidden="true">%s</span></div>'
             '<h3><span class="course__main">%s</span> <span class="course__sub">%s</span></h3>'
@@ -1200,20 +1204,20 @@ def lang_menu(site, c):
     rows = []
     for loc in site["locales"]:
         cur_attr = ' aria-current="true"' if loc == c.locale else ""
-        rows.append('<li><a href="%s" hreflang="%s" lang="%s"%s><span class="lang__code">%s</span>'
+        rows.append('<li><a class="ds-langswitch__option" href="%s" hreflang="%s" lang="%s"%s><span class="ds-langswitch__code">%s</span>'
                     '<span>%s</span></a></li>'
                     % (esc(lang_page_href(site, c, loc)), esc(loc), esc(loc), cur_attr,
                        esc(labels.get(loc, loc.upper())), esc(names.get(loc, labels.get(loc, loc)))))
-    return ('<details class="lang" data-ls-lang><summary class="lang__btn" data-ls-lang-switch aria-label="%s: %s">'
-            '<span aria-hidden="true">%s</span></summary><ul class="lang__list">%s</ul></details>'
+    return ('<details class="ds-langswitch" data-ls-lang><summary class="ds-langswitch__button" data-ls-lang-switch aria-label="%s: %s">'
+            '<span aria-hidden="true">%s</span></summary><ul class="ds-langswitch__list">%s</ul></details>'
             % (esc(c.get("nav.language", "Language")), esc(names.get(c.locale, cur)), esc(cur), "".join(rows)))
 
 
-def brand_html(site, c, wide=True):
-    return ('<a href="%s" aria-label="%s">%s%s</a>'
-            % (esc(home_href()), esc(c.get("brand.alt", "AIVIS.ONE")),
-               img(site, c, "aivis-mark.svg", "", "brand__mark", 26, 30),
-               img(site, c, "aivis-wordmark.svg", c.get("brand.alt", "AIVIS.ONE"), "brand__word img-invert", 96, 20)))
+def brand_html(site, c, cls="ds-siteheader__brand"):
+    return ('<a class="%s" href="%s" aria-label="%s">%s%s</a>'
+            % (cls, esc(home_href()), esc(c.get("brand.alt", "AIVIS.ONE")),
+               img(site, c, "aivis-mark.svg", "", "ds-siteheader__mark", 26, 30),
+               img(site, c, "aivis-wordmark.svg", c.get("brand.alt", "AIVIS.ONE"), "ds-siteheader__word", 96, 20)))
 
 
 def at(s):
@@ -1222,12 +1226,12 @@ def at(s):
     return esc(s).replace("@", "&#64;")
 
 
-def tile_link(href, icon, label, cls="icon icon--soc", rel="me noopener"):
+def tile_link(href, icon, label, rel="me noopener"):
     """ONE icon-only tile for every footer icon (networks, the founder's contacts, the app), the design system's
     Icon tile in its icon-only form (K57): the same box, the same colour, no caption; the name is the link's
     aria-label and its title, word for word."""
-    return ('<a class="social__a" href="%s" rel="%s" title="%s" aria-label="%s">%s</a>'
-            % (href, rel, at(label), at(label), ic("soc-" + icon, cls + " icon--soc-" + esc(icon))))
+    return ('<a class="ds-icontile" href="%s" rel="%s" title="%s" aria-label="%s"><span class="ds-icontile__box">%s</span></a>'
+            % (href, rel, at(label), at(label), ic("brand-" + icon, "ds-brandmark", ' data-mark="%s"' % esc(icon))))
 
 
 _FLAG_GE_PETAL = ('<path d="M-0.7032-2.046a5.4 5.4 0 0 0 1.4064 0 10.4 10.4 0 0 0 0 4.092 5.4 5.4 0 0 0-1.4064 0 10.4 10.4 0 0 0 0-4.092z"/>'
@@ -1257,9 +1261,9 @@ def r_home_footer(sec, c, site):
         h = safe_href(href if href is not None else g("link.%s.href" % key), "#", context="footer.%s" % key)
         ext = h.startswith("http")
         extra = ' rel="noopener"' if ext else ""
-        tail = '<span class="foot__hint">%s</span>' % esc(g("link.%s.hint" % key)) if hint else ""
+        tail = '<span class="ds-sitefooter__hint">%s</span>' % esc(g("link.%s.hint" % key)) if hint else ""
         cur = ' aria-current="page"' if h in CURRENT_HREFS else ""
-        return '<li><a href="%s"%s%s><span>%s</span>%s</a></li>' % (esc(h), extra, cur, T(g("link.%s" % key)), tail)
+        return '<li><a class="ds-sitefooter__link" href="%s"%s%s><span>%s</span>%s</a></li>' % (esc(h), extra, cur, T(g("link.%s" % key)), tail)
 
     site_links = "".join([link("about", L + "about/"), link("courses", L + "courses/"),
                           link("questions", L + "faq/"), link("sankord", None, True), link("login", "/login")])
@@ -1281,26 +1285,26 @@ def r_home_footer(sec, c, site):
             continue
         soc.append("<li>%s</li>" % tile_link(esc(safe_href(url, "#", context="social." + icon)), icon, name))
     return "\n".join([
-        '<footer class="foot" id="%s"><div class="wrap">' % esc(sid),
-        '<div class="foot__grid">',
-        '<div class="foot__brand"><div class="brand">%s</div><p class="foot__tag">%s</p></div>'
-        % (brand_html(site, c), T(c.get("aivis.subtitle"))),
-        '<nav class="foot__nav foot__nav--site" aria-label="%s"><h2 class="foot__h">%s</h2><ul>%s</ul></nav>'
+        '<footer class="ds-sitefooter foot" id="%s"><div class="ds-sitefooter__inner">' % esc(sid),
+        '<div class="ds-sitefooter__grid">',
+        '<div class="ds-sitefooter__about">%s<p class="ds-sitefooter__tag">%s</p></div>'
+        % (brand_html(site, c, "ds-sitefooter__brand"), T(c.get("aivis.subtitle"))),
+        '<nav class="ds-sitefooter__nav" aria-label="%s"><h2 class="ds-sitefooter__title">%s</h2><ul class="ds-sitefooter__list">%s</ul></nav>'
         % (esc(g("site.aria")), T(g("site.title")), site_links),
-        '<nav class="foot__nav foot__nav--legal" aria-label="%s"><h2 class="foot__h">%s</h2><ul>%s</ul></nav>'
+        '<nav class="ds-sitefooter__nav" aria-label="%s"><h2 class="ds-sitefooter__title">%s</h2><ul class="ds-sitefooter__list">%s</ul></nav>'
         % (esc(g("legal.aria")), T(g("legal.title")), legal_links),
         '</div>',
-        '<div class="foot__contacts">',
-        '<nav class="foot__group" aria-label="%s"><h2 class="foot__h">%s</h2><ul class="social">%s</ul></nav>'
+        '<div class="ds-sitefooter__contacts"><div class="ds-icongroups">',
+        '<nav class="ds-icongroup" aria-label="%s"><h2 class="ds-sitefooter__title">%s</h2><ul class="ds-icontiles" data-variant="icon">%s</ul></nav>'
         % (esc(g("social.aria")), T(g("social.title")), "".join(soc)),
-        '<section class="foot__group foot__me" aria-labelledby="foot-me-h"><h2 class="foot__h" id="foot-me-h">%s</h2>'
-        '<ul class="social">%s</ul></section>'
+        '<section class="ds-icongroup" aria-labelledby="foot-me-h"><h2 class="ds-sitefooter__title" id="foot-me-h">%s</h2>'
+        '<ul class="ds-icontiles" data-variant="icon">%s</ul></section>'
         % (T(g("me.title")), "".join("<li>%s</li>" % x for x in me_tiles)),
-        '<section class="foot__group foot__app" aria-labelledby="foot-app-h"><h2 class="foot__h" id="foot-app-h">%s</h2>'
-        '<ul class="social"><li>%s</li></ul></section>'
+        '<section class="ds-icongroup" aria-labelledby="foot-app-h"><h2 class="ds-sitefooter__title" id="foot-app-h">%s</h2>'
+        '<ul class="ds-icontiles" data-variant="icon"><li>%s</li></ul></section>'
         % (T(g("app.title")), app_tile),
-        '</div>',
-        '<div class="foot__bottom"><p class="foot__co">%s<span>%s</span></p><p>%s</p></div></div></footer>'
+        '</div></div>',
+        '<div class="ds-sitefooter__bottom"><p class="ds-sitefooter__company">%s<span>%s</span></p><p>%s</p></div></div></footer>'
         % (FLAG_GE % FLAG_GE_LABEL.get(loc, FLAG_GE_LABEL["en"]), T(g("company")), T(g("copyright"))),
     ])
 
@@ -1313,17 +1317,17 @@ def r_support(c):
     bot = esc(safe_href(g("bot.href"), "#", context="support.bot"))
     login = esc(safe_href(g("signin.href"), "#", context="support.signin"))
     return "\n".join([
-        '<div class="support" data-ls-support data-open="false">',
-        '<button class="support-launcher" type="button" aria-expanded="false" aria-controls="support-panel" aria-label="%s">%s<span class="support-launcher__word">%s</span></button>'
-        % (esc(g("launcher")), ic("info", "icon"), T(g("launcher"))),
-        '<section class="support__panel" id="support-panel" role="region" aria-labelledby="support-title" hidden>',
-        '<div class="support__head"><h2 class="support__title" id="support-title" tabindex="-1">%s</h2>'
-        '<button class="support__close" type="button" aria-label="%s">%s</button></div>'
-        % (T(g("title")), esc(g("close")), ic("x", "icon")),
-        '<p class="support__text">%s</p>' % T(g("text")),
-        '<div class="support__actions">',
-        '<a class="btn" data-variant="primary" href="%s" target="_blank" rel="noopener">%s</a>' % (bot, T(g("bot"))),
-        '<a class="btn" data-variant="ghost" href="%s">%s</a>' % (login, T(g("signin"))),
+        '<div class="ds-launcher support" data-ls-support data-open="false" data-fixed data-compact hidden>',
+        '<button class="ds-button ds-button--primary ds-launcher__trigger" data-size="lg" type="button" aria-expanded="false" aria-controls="support-panel">%s<span class="ds-launcher__label">%s</span></button>'
+        % (ic("info"), T(g("launcher"))),
+        '<section class="ds-launcher__panel" id="support-panel" role="region" aria-labelledby="support-title" hidden>',
+        '<div class="ds-launcher__head"><h2 class="ds-launcher__title" id="support-title" tabindex="-1">%s</h2>'
+        '<button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="%s">%s</button></div>'
+        % (T(g("title")), esc(g("close")), ic("x", "ds-icon")),
+        '<p class="ds-launcher__text">%s</p>' % T(g("text")),
+        '<div class="ds-launcher__actions">',
+        '<a class="ds-button ds-button--primary" href="%s" target="_blank" rel="noopener">%s</a>' % (bot, T(g("bot"))),
+        '<a class="ds-button ds-button--secondary" href="%s">%s</a>' % (login, T(g("signin"))),
         '</div></section></div>',
     ])
 
@@ -1351,7 +1355,7 @@ def rich(s):
         if not href.startswith("mailto:"):
             href = safe_href(href, "#", context="rich link")
         ext = href.startswith("http")
-        return '<a href="%s"%s>%s</a>' % (esc(href).replace("@", "&#64;"), ' rel="noopener"' if ext else "",
+        return '<a class="ds-link" href="%s"%s>%s</a>' % (esc(href).replace("@", "&#64;"), ' rel="noopener"' if ext else "",
                                           txt.replace("@", "&#64;"))
     return _LINK_MARK.sub(link, T(s))
 
@@ -1381,7 +1385,7 @@ def r_about_article(sec, c, site):
         end,
         sec_open("how", "about-how", "how.title"), P("how.p1", "how.p2", "how.p3"), end,
         sec_open("sankord", "about-sankord", "sankord.title", True),
-        '<div class="card sankord-block" data-component="Card" data-variant="elevated" data-size="lg">'
+        '<div class="ds-card ds-card--elevated sankord-block">'
         '<p class="statement__name">%s</p><h3 class="about-prom">%s</h3><p class="about-cat">%s</p></div>'
         % (T(g("sankord.name")), T(g("sankord.promise")), T(g("sankord.category"))),
         P("sankord.p1", "sankord.p2"),
@@ -1448,8 +1452,8 @@ def r_legal_doc(sec, c, site, legal_root=None):
     if not src.exists():
         raise SystemExit("FAIL: legal source missing: %s (run python landing/legal/build.py)" % src)
     h = _doc_fragment(read(src), c)
-    crumb = ('<nav class="crumb" aria-label="%s"><a href="%s">‹ %s</a></nav>'
-             % (esc(c.get("legalpage.crumb")), esc(page_href("about")), T(c.get("legalpage.back"))))
+    crumb = ('<nav class="crumb" aria-label="%s"><a class="ds-link ds-link--standalone" href="%s">%s<span>%s</span></a></nav>'
+             % (esc(c.get("legalpage.crumb")), esc(page_href("about")), ic("arrow-left", "ds-icon icon--dir"), T(c.get("legalpage.back"))))
     return ('<section class="block legal-page"><div class="wrap legal-wrap">%s%s</div></section>' % (crumb, h))
 
 
@@ -1459,6 +1463,7 @@ def _doc_fragment(h, c):
     (a document whose sections start at h3 under its h1 is lifted to h2), and a spaced hyphen used as a dash in
     Russian text is written as an em dash."""
     h = _LINK_RE.sub(lambda m: 'href="%s"' % esc(_rel_href(m.group(1))), h)
+    h = re.sub(r"<a (?![^>]*class=)", '<a class="ds-link" ', h)
     h = _EMAIL_RE.sub(lambda m: m.group(1) + "&#64;" + m.group(2), h)
     levels = sorted({int(x) for x in re.findall(r"<h([2-6])[ >]", h)})
     if levels and levels[0] > 2:
@@ -1583,17 +1588,17 @@ def drawer_tools(site, c, login_href, theme_on):
     labels = site.get("locale_labels", {})
     names = site.get("locale_names", {})
     langs = "".join(
-        '<a class="drawer__lang" href="%s" hreflang="%s" lang="%s"%s><span class="lang__code">%s</span><span>%s</span></a>'
+        '<a class="ds-sitedrawer__lang" href="%s" hreflang="%s" lang="%s"%s><span class="ds-langswitch__code">%s</span><span>%s</span></a>'
         % (esc(lang_page_href(site, c, loc)), esc(loc), esc(loc), ' aria-current="true"' if loc == c.locale else "",
            esc(labels.get(loc, loc.upper())), esc(names.get(loc, loc))) for loc in site["locales"])
-    out = ['<div class="drawer__tools"><p class="drawer__label">%s</p><div class="drawer__langs">%s</div>'
+    out = ['<div class="ds-sitedrawer__tools"><p class="ds-sitedrawer__label">%s</p><div class="ds-sitedrawer__langs">%s</div>'
            % (esc(c.get("nav.language", "Language")), langs)]
     if theme_on:
-        out.append('<button class="drawer__row" type="button" data-ls-theme-toggle aria-pressed="false" aria-label="%s">%s%s<span>%s</span></button>'
-                   % (esc(c.get("nav.theme", "Toggle dark mode")), ic("moon", "icon icon--moon"), ic("sun", "icon icon--sun"), T(c.get("nav.theme", "Toggle dark mode"))))
+        out.append('<button class="ds-sitedrawer__row" type="button" data-ls-theme-toggle aria-pressed="false" aria-label="%s">%s%s<span>%s</span></button>'
+                   % (esc(c.get("nav.theme", "Toggle dark mode")), ic("moon", "ds-icon ds-themetoggle__moon"), ic("sun", "ds-icon ds-themetoggle__sun"), T(c.get("nav.theme", "Toggle dark mode"))))
     if login_href:
-        out.append('<a class="drawer__row" href="%s">%s<span>%s</span></a>'
-                   % (esc(login_href), ic("log-in", "icon"), T(c.get("nav.cta", "Log in"))))
+        out.append('<a class="ds-sitedrawer__row" href="%s">%s<span>%s</span></a>'
+                   % (esc(login_href), ic("log-in", "ds-icon"), T(c.get("nav.cta", "Log in"))))
     out.append("</div>")
     return "".join(out)
 
@@ -1611,9 +1616,9 @@ def render_header(site, c, locale, has_dark_tokens):
         if not sid:
             raise SystemExit("FAIL: site.json nav entry %r has no section id." % (item,))
         links.append((sid, c.get("nav.%s" % sid, sid)))
-    nav_html = ('<nav class="nav" aria-label="%s">%s</nav>'
-                % (esc(c.get("nav.primary", "Primary")), "".join('<a href="%s">%s</a>' % (esc(nav_href(s)), T(l)) for s, l in links)))
-    drawer_links = "".join('<a class="drawer__link" href="%s">%s</a>' % (esc(nav_href(s)), T(l)) for s, l in links)
+    nav_html = ('<nav class="ds-siteheader__nav" aria-label="%s">%s</nav>'
+                % (esc(c.get("nav.primary", "Primary")), "".join('<a class="ds-siteheader__link" href="%s">%s</a>' % (esc(nav_href(s)), T(l)) for s, l in links)))
+    drawer_links = "".join('<a class="ds-sitedrawer__link" href="%s">%s</a>' % (esc(nav_href(s)), T(l)) for s, l in links)
     hc = site.get("header_cta")
     cta_label = c.get("nav.cta", "")
     login = ""
@@ -1621,27 +1626,27 @@ def render_header(site, c, locale, has_dark_tokens):
     if isinstance(hc, dict) and hc.get("href") and cta_label:
         href = safe_href(hc.get("href"), "#", context="header_cta.href")
         login_href = href
-        login = ('<a class="theme-toggle login-btn" href="%s" aria-label="%s" title="%s">%s</a>'
-                 % (esc(href), esc(cta_label), esc(cta_label), ic("log-in", "icon icon--login")))
+        login = ('<a class="ds-siteheader__tool" data-wide-only href="%s" aria-label="%s" title="%s">%s</a>'
+                 % (esc(href), esc(cta_label), esc(cta_label), ic("log-in", "ds-icon")))
     theme_html = ""
     if site.get("theme_toggle", True) is not False:
-        theme_html = ('<button class="theme-toggle" type="button" data-ls-theme-toggle aria-label="%s" aria-pressed="false">%s%s</button>'
-                      % (esc(c.get("nav.theme", "Toggle dark mode")), ic("moon", "icon icon--moon"), ic("sun", "icon icon--sun")))
+        theme_html = ('<button class="ds-themetoggle" type="button" data-ls-theme-toggle aria-label="%s" aria-pressed="false">%s%s</button>'
+                      % (esc(c.get("nav.theme", "Toggle dark mode")), ic("moon", "ds-icon ds-themetoggle__moon"), ic("sun", "ds-icon ds-themetoggle__sun")))
     menu_label = esc(c.get("nav.menu", "Menu"))
     return (
-        '<header class="site-header" data-ls-header><div class="wrap row">'
-        '<span class="brand">%s</span>%s'
-        '<div class="tools">%s%s%s'
-        '<button class="menu-toggle" type="button" data-ls-menu-open aria-label="%s" aria-expanded="false" aria-controls="drawer">%s</button>'
+        '<header class="ds-siteheader" data-ls-header><div class="ds-siteheader__bar">'
+        '%s%s'
+        '<div class="ds-siteheader__tools">%s%s%s'
+        '<button class="ds-siteheader__tool ds-siteheader__menu" type="button" data-ls-menu-open aria-label="%s" aria-expanded="false" aria-controls="drawer">%s</button>'
         '</div></div></header>'
-        '<div class="drawer" id="drawer" data-ls-drawer role="dialog" aria-modal="true" aria-label="%s">'
-        '<div class="drawer__bar">'
-        '<button class="drawer__close" type="button" data-ls-menu-close aria-label="%s">%s</button></div>'
+        '<div class="ds-sitedrawer" id="drawer" data-ls-drawer data-open="false" role="dialog" aria-modal="true" aria-label="%s">'
+        '<div class="ds-sitedrawer__bar">'
+        '<button class="ds-sitedrawer__close" type="button" data-ls-menu-close aria-label="%s">%s</button></div>'
         '%s%s</div>'
     ) % (brand_html(site, c), nav_html,
          lang_menu(site, c), theme_html, login,
-         menu_label, ic("menu"),
-         menu_label, esc(c.get("nav.close", "Close menu")), ic("x"),
+         menu_label, ic("menu", "ds-icon"),
+         menu_label, esc(c.get("nav.close", "Close menu")), ic("x", "ds-icon"),
          drawer_links, drawer_tools(site, c, login_href, bool(theme_html)))
 
 
@@ -1739,6 +1744,9 @@ PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_]+)\}\}")
 DS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "design-system"
 # Noto Sans Arabic serves Arabic script only, and no locale of this site is written in it
 FONT_LINE_SKIP = re.compile(r"noto-sans-arabic")
+# the brand files and the decorative elements the site serves, read from the design system at every build
+DS_BRAND_FILES = ("aivis-mark.svg", "aivis-wordmark.svg")
+DS_ELEMENT_FILES = ("pattern-lattice-light.svg", "pattern-lattice-dark.svg")
 DS_CLASS = re.compile(r"(?<![\w-])ds-[A-Za-z0-9_-]+")
 
 
@@ -1802,9 +1810,13 @@ def ds_css(assets, prefix, page_text=""):
         if FONT_LINE_SKIP.search(line):
             continue
         fonts.append(line.replace("url('./", "url('%sassets/fonts/" % prefix))
+    # the decorative lattice of the first screen (design-system/elements/), a mask file per theme, served at assets/elements/
+    lattice = (":root { --lattice-day: url('%sassets/elements/pattern-lattice-light.svg'); "
+               "--lattice-night: url('%sassets/elements/pattern-lattice-dark.svg'); }" % (prefix, prefix))
     parts = ["\n".join(fonts).strip(),
              read(DS_DIR / "tokens" / "tokens.css").rstrip(),
              read(DS_DIR / "tokens" / "tokens-dark.css").rstrip(),
+             lattice,
              ds_components_css(page_text),
              read(assets / "site.css").rstrip()]
     for name in ("bind.css", "micro.css", "polish.css", "reveal.css", "transitions.css"):
@@ -1824,13 +1836,9 @@ def icon_sprite(assets):
     """Inline sprite (R1-4), only the symbols the page uses, taken from the design system's own sprite."""
     src = read(DS_DIR / "components" / "icons" / "icons.svg")
     syms = []
-    soc = json.loads(read(assets / "social-icons.json"))
+    marks = read(DS_DIR / "components" / "icons" / "brand-marks.svg")
     for name in sorted(USED_ICONS):
-        if name.startswith("soc-"):
-            slug = name[4:]
-            syms.append('<symbol id="i-%s" viewBox="0 0 24 24"><path fill="currentColor" d="%s"/></symbol>' % (name, soc[slug]))
-            continue
-        m = re.search(r'<symbol id="i-%s".*?</symbol>' % re.escape(name), src, re.S)
+        m = re.search(r'<symbol id="i-%s".*?</symbol>' % re.escape(name), marks if name.startswith("brand-") else src, re.S)
         if not m:
             raise SystemExit("FAIL: icon '%s' is not in the design system sprite" % name)
         syms.append(m.group(0))

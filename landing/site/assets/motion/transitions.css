@@ -1,48 +1,20 @@
 /* animation-studio v1.0.0 -- assets/techniques/transitions.css (pack copy, pruned)
    #trn-cross-doc was DECLINED at the approval and its opt-in at-rule is NOT in
    this file. Shipping `@view-transition { navigation: auto; }` here would turn a
-   declined technique on the moment the pack is applied. */
+   declined technique on the moment the pack is applied.
+   The drawer and the language list fade by the design system's own rules (K59, K62). */
 
 @media (prefers-reduced-motion: no-preference) {
   /* Snapshot timing for #trn-same-doc. The theme swap is a root-level crossfade;
      these two rules are what stop it defaulting to the UA's own duration. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 220ms;
-    animation-timing-function: cubic-bezier(.2, .0, .2, 1);
-  }
-
-  /* #trn-discrete-enter on what already appears on demand -- no new component.
-     The mobile drawer: display none -> flex is carried by the discrete display transition, so the panel
-     fades and rises in, and fades out before it leaves the layout. The drawer takes no pointer while it fades out. */
-  .drawer {
-    opacity: 0; translate: 0 8px; pointer-events: none;
-    transition: opacity var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
-                translate var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
-                display var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)) allow-discrete;
-  }
-  .drawer.is-open { opacity: 1; translate: 0 0; pointer-events: auto; }
-  @starting-style {
-    .drawer.is-open { opacity: 0; translate: 0 8px; }
-  }
-
-  /* The language dropdown (a native details): its content box fades in and out. Opacity only: a transform on the
-     content box would become the containing block of the absolutely placed list. */
-  .lang::details-content {
-    opacity: 0;
-    transition: opacity var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)),
-                content-visibility var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)) allow-discrete;
-  }
-  .lang[open]::details-content { opacity: 1; }
-  @starting-style {
-    .lang[open]::details-content { opacity: 0; }
+    animation-duration: var(--dur-base);
+    animation-timing-function: var(--ease-standard);
   }
 }
 
-/* The reduced form is arrival without travel, not absence: the panel still
-   appears, because its appearance IS the state signal. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root) { animation: none; }
-  .drawer, .lang::details-content { transition: none; }
 }

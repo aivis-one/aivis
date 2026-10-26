@@ -29,13 +29,13 @@
     var close = drawer.querySelector('[data-ls-menu-close]');
     var main = document.getElementById('ls-main');
     var footer = document.querySelector('.foot');
-    var header = document.querySelector('.site-header');
+    var header = document.querySelector('.ds-siteheader');
     var isOpen = false;
 
     function open() {
       if (isOpen) { return; }
       isOpen = true;
-      drawer.classList.add('is-open');
+      drawer.setAttribute('data-open', 'true');
       toggle.setAttribute('aria-expanded', 'true');
       setInert(main, true); setInert(footer, true); setInert(header, true);
       (close || focusableIn(drawer)[0] || drawer).focus();
@@ -43,7 +43,7 @@
     function shut() {
       if (!isOpen) { return; }
       isOpen = false;
-      drawer.classList.remove('is-open');
+      drawer.setAttribute('data-open', 'false');
       toggle.setAttribute('aria-expanded', 'false');
       setInert(main, false); setInert(footer, false); setInert(header, false);
       toggle.focus();
@@ -105,7 +105,7 @@
     });
   }
 
-  /* the support launcher (home page only): a non-modal disclosure. The panel grows out of the launcher's own box: the script maps the
+  /* the support launcher (home page only), the design system's Launcher panel (K56): a non-modal disclosure. The panel grows out of the launcher's own box: the script maps the
      panel onto the button (four numbers), then lets them go, so the panel grows to its own size and its parts slide out by the
      stylesheet's delays; closing writes the numbers back and hides the panel when its transform has finished (at once under
      prefers-reduced-motion). Esc, the close button, a click outside and the launcher itself close it; focus goes to the panel
@@ -113,22 +113,22 @@
   function initSupport() {
     var root = document.querySelector('[data-ls-support]');
     if (!root) { return; }
-    var btn = root.querySelector('.support-launcher');
-    var panel = root.querySelector('.support__panel');
-    var close = root.querySelector('.support__close');
-    var title = root.querySelector('.support__title');
+    var btn = root.querySelector('.ds-launcher__trigger');
+    var panel = root.querySelector('.ds-launcher__panel');
+    var close = root.querySelector('.ds-launcher__close');
+    var title = root.querySelector('.ds-launcher__title');
     if (!btn || !panel) { return; }
     var calm = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
-    var VARS = ['--sx', '--sy', '--ss-x', '--ss-y'];
-    root.classList.add('is-ready');
+    var VARS = ['--_x', '--_y', '--_sx', '--_sy'];
+    root.hidden = false;
     function isOpen() { return root.getAttribute('data-open') === 'true'; }
     function mapOnto() {
       var b = btn.getBoundingClientRect();
       var r = panel.getBoundingClientRect();
-      panel.style.setProperty('--sx', (b.left - r.left) + 'px');
-      panel.style.setProperty('--sy', (b.top - r.top) + 'px');
-      panel.style.setProperty('--ss-x', String(b.width / r.width));
-      panel.style.setProperty('--ss-y', String(b.height / r.height));
+      panel.style.setProperty('--_x', (b.left - r.left) + 'px');
+      panel.style.setProperty('--_y', (b.top - r.top) + 'px');
+      panel.style.setProperty('--_sx', String(b.width / r.width));
+      panel.style.setProperty('--_sy', String(b.height / r.height));
     }
     function clearMap() { VARS.forEach(function (n) { panel.style.removeProperty(n); }); }
     function open() {

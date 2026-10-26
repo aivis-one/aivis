@@ -242,7 +242,8 @@ def is_deck_page(html_text, page, dist):
 # -------------------------------------------------------------- Q-RESPONSIVE
 
 FIXED_WIDTH_RE = re.compile(r"(?<![a-zA-Z-])width\s*:\s*(\d+(?:\.\d+)?)px")
-MIN_HEIGHT_44_RE = re.compile(r"min-height\s*:\s*44px")
+# a 44 px touch floor: the literal, or the design system's --touch-min (44px in design-system/tokens/tokens.css), on min-height or min-block-size
+MIN_HEIGHT_44_RE = re.compile(r"min-(?:height|block-size)\s*:\s*(?:44px|var\(--touch-min\))")
 MIN_WIDTH_MEDIA_RE = re.compile(r"@media[^{]*\bmin-width\s*:")
 STYLE_BLOCK_RE = re.compile(r"<style[^>]*>(.*?)</style>", re.DOTALL)
 

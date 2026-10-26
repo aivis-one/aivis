@@ -284,6 +284,13 @@ def main(argv):
         for f in sorted((args.assets_dir / "img").iterdir()):
             if f.is_file():
                 shutil.copy2(f, img_out / f.name)
+        # the logo files and the decorative elements are the design system's own, never a copy kept in this folder
+        for name in render_mod.DS_BRAND_FILES:
+            shutil.copy2(render_mod.DS_DIR / "brand" / name, img_out / name)
+        el_out = tmp_dir / "assets" / "elements"
+        el_out.mkdir(parents=True, exist_ok=True)
+        for name in render_mod.DS_ELEMENT_FILES:
+            shutil.copy2(render_mod.DS_DIR / "elements" / name, el_out / name)
         # the e-mail letters' logo, served at /email/logo.png (an address the letters carry for good)
         email_src = args.assets_dir / "email"
         if email_src.is_dir():

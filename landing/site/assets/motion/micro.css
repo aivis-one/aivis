@@ -2,32 +2,25 @@
    Only the four approved mic- blocks are present. mic-form-feedback was cut at
    select and its code is not shipped: a pack carrying code for a technique the
    user declined is a pack that can be turned on behind their back.
-
-   Token adaptation, recorded at the prototype run: this project's design system
-   exposes motion as SEMANTIC tokens that fuse duration and easing into one value
-   (--motion-quick is "140ms cubic-bezier(.2,.0,.2,1)"). The catalog's authoring
-   shape, `var(--ls-mo-dur-fast, 180ms) ease`, would emit two timing functions and
-   be dropped by the parser. The declarations therefore consume the fused token
-   directly. The primitive --dur-* and --ease-* atoms are NOT bound: primitive
-   layer, blocked by the design system's own layer rule. */
+   Every duration and easing is a motion token of the design system: the fused
+   semantic tokens (--motion-quick is "140ms cubic-bezier(.2,.0,.2,1)") where one
+   value is a whole timing, --dur-* with --ease-* where a property list needs both. */
 
 /* #mic-cta-press -- the primary path, built on :active, works on touch */
 @media (prefers-reduced-motion: no-preference) {
-  .ls-mo-press { transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)); }
+  .ls-mo-press { transition: transform var(--motion-quick); }
   .ls-mo-press:active { transform: scale(.97); }
   /* a button that also lifts on hover still presses: the press outranks the lift while the pointer is down */
   .ls-mo-press.ls-mo-lift:active { transform: scale(.97); }
 }
 
-/* #mic-hover-lift -- guarded, unlike the page's own unguarded rule (defect D2) */
+/* #mic-hover-lift -- guarded, so a tap on touch leaves nothing raised */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .ls-mo-lift {
-    transition: transform var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1)), box-shadow var(--motion-quick, 140ms cubic-bezier(.2,.0,.2,1));
-  }
-  .ls-mo-lift:hover { transform: translateY(-1px); }
+  .ls-mo-lift { transition: transform var(--motion-quick), box-shadow var(--motion-quick); }
+  .ls-mo-lift:hover { transform: translateY(calc(var(--border-input-width) * -1)); }
 }
 @media (hover: hover) {
-  .ls-mo-lift:hover { box-shadow: var(--shadow-2, 0 8px 24px rgba(0,0,0,.18)); }
+  .ls-mo-lift:hover { box-shadow: var(--shadow-2); }
 }
 
 /* #mic-focus-ring -- motion only. The ring itself is the design system's, drawn by site.css
@@ -36,18 +29,25 @@
    transitions (the button's colour, the press and the lift) are not replaced while it is focused. */
 @media (prefers-reduced-motion: no-preference) {
   a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible,
-  textarea:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible { animation: ls-mo-ring-in var(--motion-micro, 80ms cubic-bezier(.2,.0,.2,1)); }
+  textarea:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible { animation: ls-mo-ring-in var(--motion-micro); }
 }
 @keyframes ls-mo-ring-in { from { outline-offset: 0; } }
 
 /* #mic-accordion -- the named exception to the property whitelist: no composited
    path to animatable height exists and a JS height measurement is worse. */
 .ls-mo-accordion { display: grid; grid-template-rows: 1fr; }
-.ls-mo-accordion > * { overflow: hidden; min-height: 0; }
+.ls-mo-accordion > * { overflow: hidden; min-block-size: 0; }
 .ls-mo-accordion[data-open="false"] { grid-template-rows: 0fr; }
 @media (prefers-reduced-motion: no-preference) {
-  .ls-mo-accordion { transition: grid-template-rows 260ms var(--ease-standard, cubic-bezier(.2,0,.2,1)); }
+  .ls-mo-accordion { transition: grid-template-rows var(--dur-base) var(--ease-standard); }
 }
+/* on the design system's Accordion (K27): the panel's bottom space lives inside the clipped pane, so a collapsed pane is 0 px tall
+   and the close ends without a jump; the chevron and the raised edge follow the pane (data-open), so they turn with the motion */
+.ls-mo-accordion > .ds-accordion__panel { padding-block-end: 0; }
+.ls-mo-accordion > .ds-accordion__panel > :last-child { padding-block-end: var(--space-5); }
+.ls-mo-accordion > .ds-accordion__panel > p + p { margin-block-start: var(--space-3); }
+.ds-accordion__item:has(> .ls-mo-accordion[data-open="false"]) .ds-accordion__chev { rotate: 0deg; }
+.ds-accordion__item:has(> .ls-mo-accordion[data-open="false"]) { box-shadow: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .ls-mo-press, .ls-mo-lift, .ls-mo-accordion { transition: none; }
