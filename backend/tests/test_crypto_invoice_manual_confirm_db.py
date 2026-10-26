@@ -138,3 +138,48 @@ async def test_list_shows_credited_state_and_filters_by_user(
     by_id = {i["id"]: i for i in everything.json()["items"]}
     assert by_id[str(open_.id)]["credited"] is False
     assert by_id[str(open_.id)]["credited_by"] is None
+
+
+@pytest.mark.asyncio
+async def test_an_invoice_the_service_credited_is_409(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from app.modules.payments.models import CryptoWebhookEvent
+
+    _, token = await create_admin_user(client, db_session)
+    invoice = await _invoice(client, db_session)
+    frozen = Payment(
+        user_id=invoice.user_id,
+        amount_cents=20000,
+        currency="USD",
+        payment_type="crypto",
+        provider="crypto_usdt_usdt-trc20",
+        status="frozen",
+        frozen_until=datetime.now(UTC) + timedelta(hours=1),
+        provider_data={"service_invoice_id": str(invoice.service_invoice_id)},
+    )
+    db_session.add(frozen)
+    await db_session.flush()
+    db_session.add(
+        CryptoWebhookEvent(
+            invoice_id=invoice.service_invoice_id,
+            status="confirmed",
+            product_ref=invoice.id,
+            credited_amount_cents=20000,
+            occurred_at=datetime.now(UTC),
+            outcome="credited",
+            payment_id=frozen.id,
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.post(
+        f"{_URL}/{invoice.id}/confirm",
+        json={"reason": "paid by bank transfer"},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 409
+    listed = await client.get(
+        _URL, params={"user_id": str(invoice.user_id)}, headers=auth_headers(token)
+    )
+    assert listed.json()["items"][0]["credited_by"] == "service"

@@ -297,10 +297,10 @@ class ConfirmCryptoInvoiceRequest(BaseModel):
 
     reason: str = Field(min_length=3, max_length=500)
 
-    @field_validator("reason")
+    @field_validator("reason", mode="before")
     @classmethod
     def _strip_reason(cls, value: str) -> str:
-        value = value.strip()
+        value = str(value).strip()
         if len(value) < 3:
             raise ValueError("reason must be at least 3 characters")
         return value
