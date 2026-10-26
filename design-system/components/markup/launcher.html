@@ -1,0 +1,14 @@
+<!-- AIVIS Launcher panel (K56): a button that opens into a panel. The panel grows out of the button's own box, anchored at its corner, and its parts slide out one after another; closing reverses it.
+     The root carries data-open (false or true); the trigger carries aria-expanded and aria-controls; the panel is a region named by its heading and is hidden while shut. data-fixed pins the root to the end corner of the screen.
+     Under prefers-reduced-motion nothing moves: the panel shows and hides at once. Escape and the close button shut it and the focus returns to the button; the heading takes the focus on open (components.js). -->
+<div class="ds-launcher" data-open="false" data-fixed>
+  <button class="ds-button ds-button--primary ds-launcher__trigger" type="button" aria-expanded="false" aria-controls="help-panel"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg><span>Help</span></button>
+  <section class="ds-launcher__panel" id="help-panel" role="region" aria-labelledby="help-title" hidden>
+    <div class="ds-launcher__head"><h2 class="ds-launcher__title" id="help-title" tabindex="-1">Have questions?</h2><button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+    <p class="ds-launcher__text">A short explanation of two or three sentences, in plain words.</p>
+    <div class="ds-launcher__actions">
+      <a class="ds-button ds-button--primary" href="#first" target="_blank" rel="noopener">First action</a>
+      <a class="ds-button ds-button--secondary" href="#second">Second action</a>
+    </div>
+  </section>
+</div>

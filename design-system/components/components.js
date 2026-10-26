@@ -666,3 +666,74 @@
     btn.dispatchEvent(new CustomEvent('ds-nav-toggle', { bubbles: true, detail: { collapsed: collapsed } }));
   });
 })();
+
+/* ---------- K56 Launcher panel ----------
+   A click on .ds-launcher__trigger opens its panel out of the button: the script measures the button's box and the panel's box, writes the four numbers
+   (--_x, --_y, --_sx, --_sy) that map the panel onto the button, then lets them go, so the panel grows to its own size; the parts slide out by the stylesheet's staggered delays.
+   Closing writes the numbers back and waits for the panel's transform to finish (or for no motion at all under prefers-reduced-motion) before it hides the panel.
+   Escape and the close button shut it and give the focus back to the button; the heading takes the focus on open; a click outside shuts it without moving the focus.
+   The state is data-open on .ds-launcher and aria-expanded on the button. */
+(function () {
+  'use strict';
+  var calm = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+  function parts(root) {
+    return { btn: root.querySelector('.ds-launcher__trigger'), panel: root.querySelector('.ds-launcher__panel'), title: root.querySelector('.ds-launcher__title') };
+  }
+  function isOpen(root) { return root.getAttribute('data-open') === 'true'; }
+  function mapOnto(p) {
+    var b = p.btn.getBoundingClientRect(), r = p.panel.getBoundingClientRect();
+    p.panel.style.setProperty('--_x', (b.left - r.left) + 'px');
+    p.panel.style.setProperty('--_y', (b.top - r.top) + 'px');
+    p.panel.style.setProperty('--_sx', String(b.width / r.width));
+    p.panel.style.setProperty('--_sy', String(b.height / r.height));
+  }
+  function clear(panel) { ['--_x', '--_y', '--_sx', '--_sy'].forEach(function (n) { panel.style.removeProperty(n); }); }
+
+  function open(root) {
+    var p = parts(root);
+    if (!p.btn || !p.panel || isOpen(root)) return;
+    root.setAttribute('data-open', 'false');
+    p.panel.hidden = false;
+    p.panel.style.transition = 'none';
+    clear(p.panel);
+    mapOnto(p);
+    void p.panel.offsetWidth;
+    p.panel.style.transition = '';
+    clear(p.panel);
+    root.setAttribute('data-open', 'true');
+    p.btn.setAttribute('aria-expanded', 'true');
+    p.btn.tabIndex = -1;
+    (p.title || p.panel).focus();
+  }
+  function shut(root, back) {
+    var p = parts(root);
+    if (!p.btn || !p.panel || !isOpen(root)) return;
+    mapOnto(p);
+    root.setAttribute('data-open', 'false');
+    p.btn.setAttribute('aria-expanded', 'false');
+    p.btn.removeAttribute('tabindex');
+    if (back) p.btn.focus();
+    var done = function () { if (!isOpen(root)) { p.panel.hidden = true; clear(p.panel); } };
+    if (calm.matches) { done(); return; }
+    var finished = false;
+    var end = function (e) {
+      if (finished || (e && (e.target !== p.panel || e.propertyName !== 'transform'))) return;
+      finished = true; p.panel.removeEventListener('transitionend', end); done();
+    };
+    p.panel.addEventListener('transitionend', end);
+    setTimeout(function () { end(null); }, 700);
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('.ds-launcher__trigger');
+    if (t) { var r = t.closest('.ds-launcher'); if (r) { if (isOpen(r)) shut(r, true); else open(r); } return; }
+    var c = e.target.closest && e.target.closest('.ds-launcher__close');
+    if (c) { var r2 = c.closest('.ds-launcher'); if (r2) shut(r2, true); return; }
+    document.querySelectorAll('.ds-launcher[data-open="true"]').forEach(function (root) { if (!root.contains(e.target)) shut(root, false); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.ds-launcher[data-open="true"]').forEach(function (root) { shut(root, true); });
+  });
+})();

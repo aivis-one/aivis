@@ -403,3 +403,27 @@ Markup: `markup/purchase.html`. `div.ds-purchase` is a vertical stack inside a C
 | stack | `--space-3` between its parts; the head wraps with `--space-2`; inside the block a Segmented control fills the line and its labels wrap (`--space-2` inline padding), so four labels with the bonus fit the 480 width |
 
 The confirmation step is the same block with the schedule as a Row list (K23: month, the share of parts in the meta, the money in `.ds-row__value`), then `div.ds-purchase__terms` (the short lines of the terms as `.ds-note`, the link to the full text as a ghost Button, and the Checkbox K45 "I accept the agreement") and `div.ds-purchase__actions` (the primary Button "Pay" and the secondary Button "Back", one under the other); the terms and the Buttons stay inside the block, never in a card of their own under it, and the Pay Button stays shut until the Checkbox is ticked; the done step is the same block under a success Alert (K09) whose title is the congratulation, with the Row list of the documents. Stats of the project (K46), the roadmap rows (K23) and the cover (K47, `data-size="sm"`) are their own components. States: paid at once, on instalment, refused. Markup: `markup/purchase.html`.
+
+## K56 Launcher panel
+
+Markup: `markup/launcher.html`. `div.ds-launcher[data-open]` holds the trigger (`button.ds-button.ds-launcher__trigger`, a primary Button with an icon and a word) and the panel (`section.ds-launcher__panel[role=region][hidden]`) named by its heading. The panel is one heading with a close button, one short text and at most two actions (Buttons).
+
+| Part | Rule |
+|---|---|
+| opening | the panel grows out of the button's own box, anchored at the button's corner (the script maps the panel onto the button and lets it go), the button gives way to it, then the heading, the text and each action slide out in turn (`--dur-instant` apart, after `--dur-fast`); closing is the same backwards and faster |
+| motion | `--dur-slow` for the panel with `--ease-entrance` in and `--ease-exit` out; the parts `--dur-base`; under `prefers-reduced-motion` nothing moves and the panel shows and hides at once |
+| focus | the heading takes the focus on open; Escape and the close button shut the panel and return the focus to the button; a click outside shuts it and leaves the focus alone; no focus trap, the panel is not modal; while open the button is out of the tab order |
+| place | in flow, the panel opens upward and toward the start from the button; `data-fixed` pins the root to the end corner of the screen (`--space-4` in, `--z-menu`); at 480 and below a fixed panel is a sheet across the foot of the screen |
+| text | the text is `--fs-sm` in `--text-secondary`: two or three plain sentences; a longer explanation belongs in a page |
+
+Not a menu (use the Action menu K26) and not a dialog (the Dialog K52 blocks the page).
+
+## K57 Icon tile with a caption
+
+Markup: `markup/icon-tile.html`. `ul.ds-icontiles` is a wrapping row of tiles; each `a.ds-icontile` is one link: a `--touch-min` square box (`span.ds-icontile__box`, `--bg-subtle`, `thin` `--border-subtle`, `--radius-control`) holding the icon, and the caption under it (`span.ds-icontile__caption`, `--fs-xs`, `--text-secondary`).
+
+| Part | Rule |
+|---|---|
+| name | the caption is the tile's visible and accessible name: a handle, a network or an address, never a sentence; it breaks anywhere rather than overflow and the tile is at most `--space-9` wide |
+| states | hover fills the box with `--primary` and the glyph takes `--on-primary`, the caption turns `--primary`; pressed uses `--primary-active`; focus is the system outline around the whole tile |
+| icon | from the sprite, in `currentColor`; the icon is decorative |

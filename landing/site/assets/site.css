@@ -351,8 +351,8 @@ section.block { padding-block: var(--space-section-md); border-top: 0; }
 .call-note { align-self: center; max-inline-size: 44ch; font-size: var(--fs-sm); color: var(--text-secondary); line-height: var(--lh-snug); }
 
 /* footer: the information on top (brand | sections | legal),
-   ONE contacts block below it (company networks | write to me personally), then the legal strip.
-   DOM order is the phone order. All six icons are the SAME tile, .social__a. */
+   ONE contacts block below it (company networks | write to the founder | the Telegram app), then the legal strip.
+   DOM order is the phone order. Every icon is the SAME captioned tile: the link .social__link holds the box .social__a and its caption .social__cap. */
 .foot { background: var(--bg-surface); border-block-start: 1px solid var(--border-subtle); padding-block: var(--space-section-md) var(--space-6); }
 .foot .wrap { display: grid; gap: var(--space-6); }
 .foot__grid { display: grid; gap: var(--space-6); grid-template-columns: 1fr; }
@@ -365,12 +365,16 @@ section.block { padding-block: var(--space-section-md); border-top: 0; }
 .foot__nav a[aria-current="page"] { color: var(--primary); }
 .foot__hint { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-xs); color: var(--text-tertiary); }
 .foot__contacts { display: grid; gap: var(--space-6); padding-block-start: var(--space-6); border-block-start: 1px solid var(--border-subtle); }
-.foot__who { margin-block-start: var(--space-3); font-size: var(--fs-sm); color: var(--text-secondary); line-height: var(--lh-snug); }
 /* the one icon tile: 44 px box, subtle surface, hairline border, currentColor glyph of the text token, primary fill on hover */
-.social { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.social { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3) var(--space-2); }
+.social__link { display: grid; justify-items: center; align-content: start; gap: var(--space-1); min-inline-size: var(--touch-min); max-inline-size: var(--space-9); color: var(--text-primary); text-align: center; }
+.social__link:hover { text-decoration: none; }
+.social__link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-control); }
+.social__cap { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+a.social__link:hover .social__cap { color: var(--primary); }
 .social__a, .contact__ic { display: grid; place-items: center; inline-size: var(--touch-min); block-size: var(--touch-min); border-radius: var(--radius-control); background: var(--bg-subtle); border: 1px solid var(--border-subtle); color: var(--text-primary); transition: background var(--motion-quick), color var(--motion-quick), border-color var(--motion-quick), transform var(--motion-quick); }
-a.social__a:hover, a.contact:hover .contact__ic { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); text-decoration: none; }
-a.social__a:hover { transform: translateY(-1px); }
+a.social__link:hover .social__a, a.contact:hover .contact__ic { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); text-decoration: none; }
+a.social__link:hover .social__a { transform: translateY(-1px); }
 .icon--fill { stroke: none; }
 /* brand glyphs are filled shapes (the DS .icon stroke would thicken them); each glyph has its own size so the six read as one weight (2x checked) */
 .icon--soc { inline-size: 20px; block-size: 20px; stroke: none; }
@@ -394,11 +398,13 @@ a.social__a:hover { transform: translateY(-1px); }
   .foot__nav--site { grid-area: site; }
   .foot__nav--legal { grid-area: legal; }
   .foot__contacts { grid-template-columns: 1fr 1fr; column-gap: var(--space-5); }
+  .foot__contacts > :first-child { grid-column: 1 / -1; }
   .foot__bottom { flex-direction: row; justify-content: space-between; gap: var(--space-4); }
 }
 @media (min-width: 1024px) { /* ds-escape: media condition */
   .foot__grid { grid-template-columns: 5fr 3fr 4fr; grid-template-areas: "brand site legal"; column-gap: var(--space-6); }
-  .foot__contacts { grid-template-columns: 5fr 7fr; column-gap: var(--space-6); }
+  .foot__contacts { grid-template-columns: 5fr 4fr 3fr; column-gap: var(--space-6); }
+  .foot__contacts > :first-child { grid-column: auto; }
 }
 
 /* header: on a phone only the language, the brand and the menu stay; the theme and the login live in the drawer (320 px fits) */
@@ -592,30 +598,40 @@ html:has(.docs-accept) { scroll-behavior: auto; }
 }
 
 /* ---------- support launcher (home page only) ----------
-   z-index: launcher 50, panel 55, both below the mobile menu (60). Hidden until site.js marks it ready. */
+   The panel grows out of the launcher's own box (site.js maps the panel onto the button and lets it go), then its parts slide out in turn;
+   closing runs backwards. The same rules as the design system's Launcher panel (K56), on this page's own class names.
+   z-index: launcher 56, panel 55, both below the mobile menu (60). Hidden until site.js marks it ready. */
 .support:not(.is-ready) { display: none; }
 .support-launcher {
-  position: fixed; z-index: 50;
+  position: fixed; z-index: 56;
   inset-inline-end: max(16px, var(--space-safe-right)); inset-block-end: max(16px, var(--space-safe-bottom));
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   min-block-size: var(--touch-comfortable); padding-inline: var(--space-5);
   border: 1px solid transparent; border-radius: var(--radius-pill);
   background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-3);
   font: inherit; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-standard);
 }
 .support-launcher:hover { background: var(--primary-hover); }
 .support-launcher:active { background: var(--primary-active); }
-.support-launcher:focus-visible, .support__close:focus-visible, .support__list a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.support-launcher:focus-visible, .support__close:focus-visible, .support__actions .btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .support-launcher .icon { inline-size: var(--icon-size-md); block-size: var(--icon-size-md); }
+.support[data-open="true"] .support-launcher { opacity: 0; pointer-events: none; }
 .support__panel {
+  --sx: 0; --sy: 0; --ss-x: 1; --ss-y: 1;
   position: fixed; z-index: 55;
-  inset-inline-end: max(16px, var(--space-safe-right)); inset-block-end: calc(max(16px, var(--space-safe-bottom)) + var(--touch-comfortable) + var(--space-3));
-  inline-size: min(340px, calc(100vw - 32px)); max-block-size: 80dvh; overflow-y: auto;
-  padding: var(--space-4); background: var(--bg-surface); color: var(--text-primary);
+  inset-inline-end: max(16px, var(--space-safe-right)); inset-block-end: max(16px, var(--space-safe-bottom));
+  inline-size: min(360px, calc(100vw - 32px)); max-block-size: 80dvh; overflow-y: auto;
+  display: grid; gap: var(--space-3); padding: var(--space-4); background: var(--bg-surface); color: var(--text-primary);
   border: 1px solid var(--border-default); border-radius: var(--radius-card); box-shadow: var(--shadow-3);
+  transform-origin: 0 0; /* ds-escape: the panel is mapped onto the button's box from its top-start corner; site.js writes the four numbers */
+  transform: translate(var(--sx), var(--sy)) scale(var(--ss-x), var(--ss-y));
+  transition: transform var(--dur-slow) var(--ease-exit), background-color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
 .support__panel[hidden] { display: none; }
-.support__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-block-end: var(--space-3); }
+.support[data-open="true"] .support__panel { transition-timing-function: var(--ease-entrance), var(--ease-standard), var(--ease-standard); }
+.support[data-open="false"] .support__panel { background: var(--primary); border-color: var(--primary); }
+.support__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .support__title { font-size: var(--fs-h4); }
 .support__title:focus { outline: none; }
 .support__close {
@@ -624,14 +640,21 @@ html:has(.docs-accept) { scroll-behavior: auto; }
   border: 1px solid var(--border-default); border-radius: var(--radius-pill); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;
 }
 .support__close:hover { background: var(--bg-subtle); }
-.support__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.support__list a {
-  display: flex; align-items: center; min-block-size: var(--touch-min); padding-inline: var(--space-3);
-  border-radius: var(--radius-control); color: var(--text-primary); font-weight: 600;
+.support__text { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-secondary); }
+.support__actions { display: grid; gap: var(--space-2); }
+.support__head, .support__text, .support__actions > * {
+  opacity: 1; translate: 0 0;
+  transition: opacity var(--dur-base) var(--ease-entrance), translate var(--dur-base) var(--ease-entrance);
 }
-.support__list a:hover { background: var(--bg-subtle); text-decoration: none; }
+.support[data-open="false"] .support__head, .support[data-open="false"] .support__text, .support[data-open="false"] .support__actions > * {
+  opacity: 0; translate: 0 var(--space-2); transition-duration: var(--dur-instant);
+}
+.support[data-open="true"] .support__head { transition-delay: var(--dur-fast); }
+.support[data-open="true"] .support__text { transition-delay: calc(var(--dur-fast) + var(--dur-instant)); }
+.support[data-open="true"] .support__actions > :nth-child(1) { transition-delay: calc(var(--dur-fast) + var(--dur-instant) * 2); }
+.support[data-open="true"] .support__actions > :nth-child(2) { transition-delay: calc(var(--dur-fast) + var(--dur-instant) * 3); }
 body:has(.support-launcher) .foot { padding-block-end: calc(var(--space-6) + var(--touch-comfortable) + 16px); }
-@media (max-width: 479.98px) { /* ds-escape: media conditions cannot read custom properties; this is --bp-sm */
+@media (max-width: 480px) { /* ds-escape: media conditions cannot read custom properties; 480 and below is the design system's phone width */
   .support-launcher { padding-inline: 0; inline-size: var(--touch-comfortable); border-radius: 50%; }
   .support-launcher__word { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .support__panel {
@@ -640,12 +663,7 @@ body:has(.support-launcher) .foot { padding-block-end: calc(var(--space-6) + var
     border-end-start-radius: 0; border-end-end-radius: 0; border-inline: 0; border-block-end: 0;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .support__panel:not([hidden]) { animation: support-in var(--motion-moderate); }
-  .support-launcher { transition: background-color var(--motion-quick); }
-  @keyframes support-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  @media (max-width: 479.98px) { /* ds-escape: this is --bp-sm */
-    .support__panel:not([hidden]) { animation-name: support-sheet; }
-    @keyframes support-sheet { from { transform: translateY(100%); } to { transform: none; } }
-  }
+@media (prefers-reduced-motion: reduce) {
+  .support-launcher, .support__panel, .support__head, .support__text, .support__actions > * { transition: none; }
+  .support[data-open="false"] .support__head, .support[data-open="false"] .support__text, .support[data-open="false"] .support__actions > * { translate: 0 0; }
 }

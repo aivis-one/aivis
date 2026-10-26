@@ -1222,10 +1222,12 @@ def at(s):
     return esc(s).replace("@", "&#64;")
 
 
-def tile_link(href, icon, label, cls="icon icon--soc", rel="me noopener"):
-    """ONE icon tile for every footer icon (networks and personal contacts): the same box, the same colour."""
-    return ('<a class="social__a" href="%s" rel="%s" title="%s" aria-label="%s">%s</a>'
-            % (href, rel, at(label), at(label), ic("soc-" + icon, cls + " icon--soc-" + esc(icon))))
+def tile_link(href, icon, caption, cls="icon icon--soc", rel="me noopener"):
+    """ONE captioned icon tile for every footer icon (networks, the founder's contacts, the app): the same box, the
+    same colour, the caption under the box is the link's visible and accessible name."""
+    return ('<a class="social__link" href="%s" rel="%s"><span class="social__a" aria-hidden="true">%s</span>'
+            '<span class="social__cap">%s</span></a>'
+            % (href, rel, ic("soc-" + icon, cls + " icon--soc-" + esc(icon)), at(caption)))
 
 
 _FLAG_GE_PETAL = ('<path d="M-0.7032-2.046a5.4 5.4 0 0 0 1.4064 0 10.4 10.4 0 0 0 0 4.092 5.4 5.4 0 0 0-1.4064 0 10.4 10.4 0 0 0 0-4.092z"/>'
@@ -1241,10 +1243,10 @@ FLAG_GE_LABEL = {"en": "Flag of Georgia", "ru": "Флаг Грузии"}
 
 
 def r_home_footer(sec, c, site):
-    """The footer (footer.md section 3, restructured on his word of 2026-10-02): the single contentinfo, a
-    direct child of body. TOP the information (brand, sections, legal); BELOW it ONE contacts block with two
-    groups side by side, the company networks and 'write to me personally'; then the legal strip.
-    Every one of the six icons is the same tile (.social__a) with a currentColor glyph of its own size."""
+    """The footer (footer.md section 3): the single contentinfo, a
+    direct child of body. TOP the information (brand, sections, legal); BELOW it ONE contacts block with three
+    groups side by side, the company networks, "write to the founder" and the Telegram app; then the legal strip.
+    Every icon is the same captioned tile (.social__link, its box .social__a) with a currentColor glyph of its own size."""
     sid = sec["id"]
     g = lambda k: c.get("%s.%s" % (sid, k))
     loc = c.locale
@@ -1265,9 +1267,10 @@ def r_home_footer(sec, c, site):
                            link("cookies", L + "about/cookies/")])
     me_tiles = [
         tile_link(esc(safe_href(g("me.telegram.href"), "#", context="footer.me.telegram")), "telegram",
-                  "%s: %s" % (g("me.telegram"), g("me.telegram.handle"))),
-        tile_link(at(g("me.mail.href")), "mail", "%s: %s" % (g("me.mail"), g("me.mail.handle")),
-                  rel="noopener")]
+                  g("me.telegram.handle")),
+        tile_link(at(g("me.mail.href")), "mail", g("me.mail.handle"), rel="noopener")]
+    app_tile = tile_link(esc(safe_href(g("app.href"), "#", context="footer.app")), "telegram", g("app.handle"),
+                         rel="noopener")
     soc = []
     for item in site.get("social", []):
         name = item.get("names", {}).get(loc, item.get("name", ""))
@@ -1290,8 +1293,11 @@ def r_home_footer(sec, c, site):
         '<nav class="foot__group" aria-label="%s"><h2 class="foot__h">%s</h2><ul class="social">%s</ul></nav>'
         % (esc(g("social.aria")), T(g("social.title")), "".join(soc)),
         '<section class="foot__group foot__me" aria-labelledby="foot-me-h"><h2 class="foot__h" id="foot-me-h">%s</h2>'
-        '<ul class="social">%s</ul><p class="foot__who">%s</p></section>'
-        % (T(g("me.title")), "".join("<li>%s</li>" % x for x in me_tiles), T(g("me.name"))),
+        '<ul class="social">%s</ul></section>'
+        % (T(g("me.title")), "".join("<li>%s</li>" % x for x in me_tiles)),
+        '<section class="foot__group foot__app" aria-labelledby="foot-app-h"><h2 class="foot__h" id="foot-app-h">%s</h2>'
+        '<ul class="social"><li>%s</li></ul></section>'
+        % (T(g("app.title")), app_tile),
         '</div>',
         '<div class="foot__bottom"><p class="foot__co">%s<span>%s</span></p><p>%s</p></div></div></footer>'
         % (FLAG_GE % FLAG_GE_LABEL.get(loc, FLAG_GE_LABEL["en"]), T(g("company")), T(g("copyright"))),
@@ -1300,27 +1306,24 @@ def r_home_footer(sec, c, site):
 
 def r_support(c):
     """The floating support launcher and its panel: the home page only, no form, no storage.
-    The e-mail link goes through at() exactly like the footer tile, from the footer's own key (CF4); the panel stays
+    The panel holds a heading, a short explanation and two links (the Telegram bot, the cabinet's sign-in). It is
     hidden until site.js opens it, and the launcher itself stays hidden until site.js runs (the footer holds the contacts)."""
     g = lambda k: c.get("support." + k)
-    L = lroot()
-    mail = at(c.get("footer.me.mail.href"))
-    tg = esc(safe_href(c.get("footer.me.telegram.href"), "#", context="support.telegram"))
+    bot = esc(safe_href(g("bot.href"), "#", context="support.bot"))
     login = esc(safe_href(g("signin.href"), "#", context="support.signin"))
     return "\n".join([
-        '<div class="support" data-ls-support>',
+        '<div class="support" data-ls-support data-open="false">',
         '<button class="support-launcher" type="button" aria-expanded="false" aria-controls="support-panel" aria-label="%s">%s<span class="support-launcher__word">%s</span></button>'
         % (esc(g("launcher")), ic("info", "icon"), T(g("launcher"))),
         '<section class="support__panel" id="support-panel" role="region" aria-labelledby="support-title" hidden>',
         '<div class="support__head"><h2 class="support__title" id="support-title" tabindex="-1">%s</h2>'
         '<button class="support__close" type="button" aria-label="%s">%s</button></div>'
         % (T(g("title")), esc(g("close")), ic("x", "icon")),
-        '<ul class="support__list">',
-        '<li><a href="%s">%s</a></li>' % (login, T(g("signin"))),
-        '<li><a href="%s" rel="noopener">%s</a></li>' % (mail, T(g("mail"))),
-        '<li><a href="%s" rel="noopener">%s</a></li>' % (tg, T(g("telegram"))),
-        '<li><a href="%s">%s</a></li>' % (esc(L + "faq/"), T(g("faq"))),
-        '</ul></section></div>',
+        '<p class="support__text">%s</p>' % T(g("text")),
+        '<div class="support__actions">',
+        '<a class="btn" data-variant="primary" href="%s" target="_blank" rel="noopener">%s</a>' % (bot, T(g("bot"))),
+        '<a class="btn" data-variant="ghost" href="%s">%s</a>' % (login, T(g("signin"))),
+        '</div></section></div>',
     ])
 
 

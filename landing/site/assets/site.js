@@ -105,8 +105,11 @@
     });
   }
 
-  /* the support launcher (home page only): a non-modal disclosure -- Esc, the close button, a click outside and the launcher
-     itself close it; focus goes to the panel title on open and back to the launcher on close; no focus trap */
+  /* the support launcher (home page only): a non-modal disclosure. The panel grows out of the launcher's own box: the script maps the
+     panel onto the button (four numbers), then lets them go, so the panel grows to its own size and its parts slide out by the
+     stylesheet's delays; closing writes the numbers back and hides the panel when its transform has finished (at once under
+     prefers-reduced-motion). Esc, the close button, a click outside and the launcher itself close it; focus goes to the panel
+     title on open and back to the launcher on close; no focus trap */
   function initSupport() {
     var root = document.querySelector('[data-ls-support]');
     if (!root) { return; }
@@ -115,18 +118,52 @@
     var close = root.querySelector('.support__close');
     var title = root.querySelector('.support__title');
     if (!btn || !panel) { return; }
+    var calm = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+    var VARS = ['--sx', '--sy', '--ss-x', '--ss-y'];
     root.classList.add('is-ready');
-    function isOpen() { return !panel.hidden; }
+    function isOpen() { return root.getAttribute('data-open') === 'true'; }
+    function mapOnto() {
+      var b = btn.getBoundingClientRect();
+      var r = panel.getBoundingClientRect();
+      panel.style.setProperty('--sx', (b.left - r.left) + 'px');
+      panel.style.setProperty('--sy', (b.top - r.top) + 'px');
+      panel.style.setProperty('--ss-x', String(b.width / r.width));
+      panel.style.setProperty('--ss-y', String(b.height / r.height));
+    }
+    function clearMap() { VARS.forEach(function (n) { panel.style.removeProperty(n); }); }
     function open() {
+      if (isOpen()) { return; }
+      root.setAttribute('data-open', 'false');
       panel.hidden = false;
+      panel.style.transition = 'none';
+      clearMap();
+      mapOnto();
+      void panel.offsetWidth;
+      panel.style.transition = '';
+      clearMap();
+      root.setAttribute('data-open', 'true');
       btn.setAttribute('aria-expanded', 'true');
+      btn.tabIndex = -1;
       (title || panel).focus();
     }
     function shut(back) {
       if (!isOpen()) { return; }
-      panel.hidden = true;
+      mapOnto();
+      root.setAttribute('data-open', 'false');
       btn.setAttribute('aria-expanded', 'false');
+      btn.removeAttribute('tabindex');
       if (back) { btn.focus(); }
+      function done() { if (!isOpen()) { panel.hidden = true; clearMap(); } }
+      if (calm.matches) { done(); return; }
+      var finished = false;
+      function end(e) {
+        if (finished || (e && (e.target !== panel || e.propertyName !== 'transform'))) { return; }
+        finished = true;
+        panel.removeEventListener('transitionend', end);
+        done();
+      }
+      panel.addEventListener('transitionend', end);
+      setTimeout(function () { end(null); }, 700);
     }
     btn.addEventListener('click', function () { if (isOpen()) { shut(true); } else { open(); } });
     if (close) { close.addEventListener('click', function () { shut(true); }); }

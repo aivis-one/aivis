@@ -2683,5 +2683,94 @@
   "purpose": "The block under a project's cover where a buyer picks a portfolio and a payment, sees the parts and the terms, and goes on to buy.",
   "usage": "Use it for the buying path's steps inside a Card body; the congratulation of the last step is a success Alert (K09). Do not draw the switches, the badge or the buttons again: they are their own components.",
   "notes": ""
+ },
+ {
+  "id": "K56",
+  "name": "Launcher panel",
+  "status": "built",
+  "markup": "markup/launcher.html",
+  "class_root": ".ds-launcher, .ds-launcher__trigger, .ds-launcher__panel, .ds-launcher__head, .ds-launcher__title, .ds-launcher__close, .ds-launcher__text, .ds-launcher__actions",
+  "variants": {
+   "in flow": "div.ds-launcher: the button and, over its corner, the panel; the panel opens upward and toward the start from the button",
+   "fixed": "data-fixed on the root pins it to the end corner of the screen; at the 480 width and below the panel becomes a sheet across the screen's foot"
+  },
+  "sizes": [
+   "one size; the panel is --maxw-form wide at most"
+  ],
+  "states": [
+   "shut (the button only)",
+   "opening (the panel grows out of the button, then its parts slide out in turn)",
+   "open",
+   "closing (the same backwards)",
+   "focus on the button, the heading and each control",
+   "reduced motion (no movement, shown at once)"
+  ],
+  "tokens": [
+   "--dur-instant",
+   "--dur-fast",
+   "--dur-base",
+   "--dur-slow",
+   "--ease-entrance",
+   "--ease-exit",
+   "--ease-standard",
+   "--maxw-form",
+   "--radius-card",
+   "--shadow-3",
+   "--bg-surface",
+   "--primary",
+   "--border-default",
+   "--text-primary",
+   "--text-secondary",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--z-menu"
+  ],
+  "accessibility": "The trigger is a real button with aria-expanded and aria-controls; the panel is a region named by its heading (aria-labelledby) and is hidden while shut. The heading takes the focus on open (tabindex -1) and the focus returns to the button on Escape and on the close button; a click outside shuts it and leaves the focus where it was clicked; there is no focus trap (the panel is not modal). While open the button leaves the tab order. Under prefers-reduced-motion nothing moves. Text on the panel is --text-primary and --text-secondary on --bg-surface (4.5 or better in both themes). Every control is at least --touch-min high. Focus is a --focus-width solid outline in --focus-ring at --focus-offset.",
+  "purpose": "A small always-reachable button that opens a short panel of help or contact choices without leaving the page.",
+  "usage": "Use it for one short panel: a heading, two or three sentences and at most two actions. It is not a menu (that is the Action menu) and not a dialog (that blocks the page). Keep it to one page per product surface and keep the panel out of the way of the page's own controls.",
+  "notes": "components.js wires it; the panel is mapped onto the button's box by four numbers the script writes while it opens and closes."
+ },
+ {
+  "id": "K57",
+  "name": "Icon tile with a caption",
+  "status": "built",
+  "markup": "markup/icon-tile.html",
+  "class_root": ".ds-icontiles, .ds-icontile, .ds-icontile__box, .ds-icontile__caption",
+  "variants": {
+   "row": "ul.ds-icontiles: tiles side by side, wrapping",
+   "single": "a.ds-icontile on its own"
+  },
+  "sizes": [
+   "one size; the box is --touch-min square"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus"
+  ],
+  "tokens": [
+   "--touch-min",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-9",
+   "--radius-control",
+   "--bg-subtle",
+   "--border-subtle",
+   "--primary",
+   "--primary-active",
+   "--on-primary",
+   "--text-primary",
+   "--text-secondary",
+   "--fs-xs",
+   "--lh-snug",
+   "--dur-fast"
+  ],
+  "accessibility": "The tile is one link and its caption is its visible and accessible name; the icon is decorative (aria-hidden). The box is at least --touch-min square. Hover fills the box with --primary and the glyph takes --on-primary (4.5 or better); the caption is --text-secondary on the page or card ground. A long caption breaks anywhere rather than overflow. Focus is a --focus-width solid outline in --focus-ring at --focus-offset around the whole tile.",
+  "purpose": "An icon link that says what it is: a network, a messenger or an e-mail address, each with its name under it.",
+  "usage": "Use it where a row of icon links would otherwise be unnamed; the caption is the handle or the name, never a sentence. Icons come from the sprite; a brand glyph a product needs is added there first.",
+  "notes": ""
  }
 ]

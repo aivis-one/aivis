@@ -42,6 +42,7 @@ section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--spa
 .phone-wrap figcaption { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); text-align: center; }
 .announce { font-size: var(--fs-sm); color: var(--text-secondary); margin: 0; min-block-size: 1.5em; }
 .lbl-s { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); margin: 0; }
+.void { padding: var(--space-4); border: thin dashed var(--border-default); border-radius: var(--radius-card); }
 .menu-room { min-block-size: calc(var(--center-lg) + var(--size-4xl)); }
 .specimen { block-size: 34rem; overflow: auto; border: thin solid var(--border-default); border-radius: var(--radius-lg); }
 .photo-row { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
@@ -60,6 +61,9 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 .ds-checkbox.sim-hover .ds-checkbox__input + .ds-checkbox__box { border-color: var(--border-input-hover); }
 .ds-checkbox.sim-cbfocus .ds-checkbox__input + .ds-checkbox__box { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 .ds-header__figure.sim-hover { border-color: var(--primary); }
+.ds-icontile.sim-hover .ds-icontile__box { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.ds-icontile.sim-hover .ds-icontile__caption { color: var(--primary); }
+.ds-icontile.sim-pressed .ds-icontile__box { background-color: var(--primary-active); border-color: var(--primary-active); color: var(--on-primary); }
 .ds-header__figure.sim-hover .ds-header__figure-amount { color: var(--primary); }
 .ds-stat.sim-hover { border-color: var(--border-default); box-shadow: var(--shadow-2); }
 .ds-subnav__link.sim-hover { color: var(--text-primary); box-shadow: inset 0 calc(var(--border-input-width) * -2) 0 var(--border-default); }
@@ -84,7 +88,7 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </head>
 <body>
 <header class="top"><div class="wrap"><h1>AIVIS components, batch 5 additions for the cabinets</h1><p>The pieces the cabinets' screens need beyond the first four batches: Row list, Reorder list, Date picker, Card, Dialog, Timeline, Loader, Stat tile, the shared text parts, Action menu and Document row additions, and the buying path (Card call to action, step line, Purchase block), in use, in every state, day and night, desktop and the 480 phone width.</p></div></header>
-<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a><a href="#r13">Web: wide windows, rail, rows, icons</a><a href="#r14">Buying path</a></div></div></div>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#r15">Launcher, Icon tile</a><a href="#r1">Row list</a><a href="#r2">Reorder, Date</a><a href="#r4">Card, date</a><a href="#r6">Dialog, Timeline, Loader, Stat</a><a href="#r10">Text parts, Menu, Document row</a><a href="#r13">Web: wide windows, rail, rows, icons</a><a href="#r14">Buying path</a></div></div></div>
 <section class="blk" id="r1"><div class="wrap"><h2>Row list (K23): button form, trail controls, narrow row, thumbnail, tone</h2>
 <p class="lead">The additions to the Row list: the button form of the link, controls in the trail that stand above the stretched link, the trail that drops under the text on a narrow row, the square thumbnail (also for a Reorder item) and the tone of a figure and a title.</p>
 <div class="cols"><div class="stack" data-frag="r1a"><div class="padded desk"><h3>Row link as a button</h3>
@@ -493,6 +497,59 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 </div></article>
 </div></div>
 <figure class="phone-wrap"><iframe class="phone" title="Confirmation and done on a phone" data-src="components-6.html?fragment=r14c" height="1500"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+</div></section>
+<section class="blk" id="r15"><div class="wrap"><h2>Launcher panel (K56) and Icon tile with a caption (K57)</h2>
+<p class="lead">The launcher: a button that opens into a panel, the panel growing out of the button's own box and its parts sliding out in turn (click the live one; Escape or Close shuts it and the focus returns to the button; under reduced motion it shows at once). The icon tile: an icon link with its name under it. Day and night by the toolbar above.</p>
+<div class="cols"><div class="stack" data-frag="r15a"><div class="padded desk"><h3>Launcher: live, shut with focus, open</h3>
+<h4 class="lbl-s">live (click it)</h4>
+<div class="void" style="min-block-size: 22rem; display: flex; justify-content: flex-end; align-items: flex-end;"><div class="ds-launcher" data-open="false">
+  <button class="ds-button ds-button--primary ds-launcher__trigger" type="button" aria-expanded="false" aria-controls="lp-live"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg><span>Support</span></button>
+  <section class="ds-launcher__panel" id="lp-live" role="region" aria-labelledby="lp-live-t" hidden>
+    <div class="ds-launcher__head"><h2 class="ds-launcher__title" id="lp-live-t" tabindex="-1">Have questions?</h2><button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+    <p class="ds-launcher__text">Support answers registered users only. Registering checks only your e-mail, with a code we send to it. That also protects support from spam.</p>
+    <div class="ds-launcher__actions">
+      <a class="ds-button ds-button--primary" href="#first" target="_blank" rel="noopener">First action</a>
+      <a class="ds-button ds-button--secondary" href="#second">Second action</a>
+    </div>
+  </section>
+</div></div>
+<h4 class="lbl-s">shut, focus</h4>
+<div class="void"><div class="ds-launcher" data-open="false">
+  <button class="ds-button ds-button--primary ds-launcher__trigger sim-focus" type="button" aria-expanded="false" aria-controls="lp-focus"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg><span>Support</span></button>
+  <section class="ds-launcher__panel" id="lp-focus" role="region" aria-labelledby="lp-focus-t" hidden>
+    <div class="ds-launcher__head"><h2 class="ds-launcher__title" id="lp-focus-t" tabindex="-1">Have questions?</h2><button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+    <p class="ds-launcher__text">Support answers registered users only. Registering checks only your e-mail, with a code we send to it. That also protects support from spam.</p>
+    <div class="ds-launcher__actions">
+      <a class="ds-button ds-button--primary" href="#first" target="_blank" rel="noopener">First action</a>
+      <a class="ds-button ds-button--secondary" href="#second">Second action</a>
+    </div>
+  </section>
+</div></div>
+<h4 class="lbl-s">open (still)</h4>
+<div class="void" style="min-block-size: 22rem; display: flex; justify-content: flex-end; align-items: flex-end;"><div class="ds-launcher" data-open="true">
+  <button class="ds-button ds-button--primary ds-launcher__trigger" type="button" aria-expanded="true" aria-controls="lp-open"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg><span>Support</span></button>
+  <section class="ds-launcher__panel" id="lp-open" role="region" aria-labelledby="lp-open-t">
+    <div class="ds-launcher__head"><h2 class="ds-launcher__title" id="lp-open-t" tabindex="-1">Have questions?</h2><button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+    <p class="ds-launcher__text">Support answers registered users only. Registering checks only your e-mail, with a code we send to it. That also protects support from spam.</p>
+    <div class="ds-launcher__actions">
+      <a class="ds-button ds-button--primary" href="#first" target="_blank" rel="noopener">First action</a>
+      <a class="ds-button ds-button--secondary" href="#second">Second action</a>
+    </div>
+  </section>
+</div></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Launcher panel on a phone" data-src="components-6.html?fragment=r15a" height="900"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div>
+<div class="cols"><div class="stack" data-frag="r15b"><div class="padded desk"><h3>Icon tile with a caption: rest, hover, pressed, focus</h3>
+<ul class="ds-icontiles">
+  <li><a class="ds-icontile" href="#t1"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span><span class="ds-icontile__caption">@handle</span></a></li>
+  <li><a class="ds-icontile sim-hover" href="#t2"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span><span class="ds-icontile__caption">hover</span></a></li>
+  <li><a class="ds-icontile sim-pressed" href="#t3"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span><span class="ds-icontile__caption">pressed</span></a></li>
+  <li><a class="ds-icontile sim-focus" href="#t4"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span><span class="ds-icontile__caption">name@example.org</span></a></li>
+</ul>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Icon tiles on a phone" data-src="components-6.html?fragment=r15b" height="300"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>

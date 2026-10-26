@@ -2912,3 +2912,65 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
 .ds-purchase__actions { display: grid; gap: var(--space-2); min-inline-size: 0; }
 .ds-purchase .ds-segmented { display: flex; }
 .ds-purchase .ds-segmented__option { flex: 1 1 0; min-inline-size: 0; padding-inline: var(--space-2); white-space: normal; text-align: center; }
+
+/* ===== K56 Launcher panel (a button that opens into a panel: the panel grows out of the button's own box, anchored at its corner, then its parts slide out one after another; closing runs backwards) ===== */
+.ds-launcher { position: relative; display: inline-flex; }
+.ds-launcher[data-fixed] { position: fixed; z-index: var(--z-menu); inset-inline-end: var(--space-4); inset-block-end: var(--space-4); }
+.ds-launcher__trigger { position: relative; z-index: 2; box-shadow: var(--shadow-3); transition: opacity var(--dur-fast) var(--ease-standard); }
+.ds-launcher[data-open="true"] .ds-launcher__trigger { opacity: 0; pointer-events: none; }
+.ds-launcher__panel {
+  --_x: 0; --_y: 0; --_sx: 1; --_sy: 1;
+  position: absolute; z-index: 1; inset-inline-end: 0; inset-block-end: 0;
+  box-sizing: border-box; inline-size: min(var(--maxw-form), calc(100vw - var(--space-6)));
+  max-block-size: 80dvh; overflow-y: auto;
+  display: grid; gap: var(--space-3); padding: var(--space-4);
+  background-color: var(--bg-surface); color: var(--text-primary);
+  border: thin solid var(--border-default); border-radius: var(--radius-card); box-shadow: var(--shadow-3);
+  transform-origin: 0 0; /* ds-escape: the panel is mapped onto the button's box from its top-start corner; the script writes the four numbers */
+  transform: translate(var(--_x), var(--_y)) scale(var(--_sx), var(--_sy));
+  transition: transform var(--dur-slow) var(--ease-exit), background-color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+}
+.ds-launcher__panel[hidden] { display: none; }
+.ds-launcher[data-open="true"] .ds-launcher__panel {
+  transition-timing-function: var(--ease-entrance), var(--ease-standard), var(--ease-standard);
+}
+.ds-launcher[data-open="false"] .ds-launcher__panel { background-color: var(--primary); border-color: var(--primary); }
+.ds-launcher__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ds-launcher__title { margin: 0; font-size: var(--fs-h4); line-height: var(--lh-snug); }
+.ds-launcher__title:focus { outline: none; }
+.ds-launcher__text { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-secondary); }
+.ds-launcher__actions { display: grid; gap: var(--space-2); }
+.ds-launcher__head, .ds-launcher__text, .ds-launcher__actions > * {
+  opacity: 1; translate: 0 0;
+  transition: opacity var(--dur-base) var(--ease-entrance), translate var(--dur-base) var(--ease-entrance);
+}
+.ds-launcher[data-open="false"] .ds-launcher__head,
+.ds-launcher[data-open="false"] .ds-launcher__text,
+.ds-launcher[data-open="false"] .ds-launcher__actions > * { opacity: 0; translate: 0 var(--space-2); transition-duration: var(--dur-instant); }
+.ds-launcher[data-open="true"] .ds-launcher__head { transition-delay: var(--dur-fast); }
+.ds-launcher[data-open="true"] .ds-launcher__text { transition-delay: calc(var(--dur-fast) + var(--dur-instant)); }
+.ds-launcher[data-open="true"] .ds-launcher__actions > :nth-child(1) { transition-delay: calc(var(--dur-fast) + var(--dur-instant) * 2); }
+.ds-launcher[data-open="true"] .ds-launcher__actions > :nth-child(2) { transition-delay: calc(var(--dur-fast) + var(--dur-instant) * 3); }
+@media (max-width: 480px) {
+  .ds-launcher[data-fixed] .ds-launcher__panel { position: fixed; inset-inline: 0; inset-block-end: 0; inline-size: auto; border-end-start-radius: 0; border-end-end-radius: 0; border-inline: 0; border-block-end: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-launcher__trigger, .ds-launcher__panel, .ds-launcher__head, .ds-launcher__text, .ds-launcher__actions > * { transition: none; }
+  .ds-launcher[data-open="false"] .ds-launcher__head, .ds-launcher[data-open="false"] .ds-launcher__text, .ds-launcher[data-open="false"] .ds-launcher__actions > * { translate: 0 0; }
+}
+
+/* ===== K57 Icon tile with a caption (a square icon link with its name under it; the whole tile is one link) ===== */
+.ds-icontiles { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-2); }
+.ds-icontile { display: grid; justify-items: center; align-content: start; gap: var(--space-1); min-inline-size: var(--touch-min); max-inline-size: var(--space-9); color: var(--text-primary); text-align: center; text-decoration: none; }
+.ds-icontile:hover { text-decoration: none; }
+.ds-icontile__box {
+  display: grid; place-items: center; box-sizing: border-box; inline-size: var(--touch-min); block-size: var(--touch-min);
+  border: thin solid var(--border-subtle); border-radius: var(--radius-control); background-color: var(--bg-subtle); color: var(--text-primary);
+  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.ds-icontile__caption { font-size: var(--fs-xs); line-height: var(--lh-snug); color: var(--text-secondary); overflow-wrap: anywhere; }
+.ds-icontile:hover .ds-icontile__box { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.ds-icontile:active .ds-icontile__box { background-color: var(--primary-active); border-color: var(--primary-active); color: var(--on-primary); }
+.ds-icontile:hover .ds-icontile__caption { color: var(--primary); }
+.ds-icontile:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--radius-control); }
+@media (prefers-reduced-motion: reduce) { .ds-icontile__box { transition: none; } }
