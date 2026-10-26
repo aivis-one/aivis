@@ -66,10 +66,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
-from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.i18n import localized
+from app.letters import letter_request, recipient_language
 from app.modules.companies.constants import DocumentTemplateKind
 from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyProfile
@@ -412,6 +412,7 @@ async def request_ownership_email(
     # document has no state that moves, so a key built from the
     # investor-company pair alone would collapse every resend.
     requested_at = datetime.now(UTC)
+    language = await recipient_language(session, data.investor_id)
 
     await emit_event(
         session,
@@ -424,31 +425,21 @@ async def request_ownership_email(
             "type": "ownership.certificate",
             "target_type": "user",
             "target_value": str(data.investor_id),
-            "title": f"Ownership Certificate -- {data.company.name}",
-            "body": (
-                f"Dear {data.investor_name},\n\n"
-                f"Your ownership certificate for {data.company.name} is "
-                f"ready.\n\n"
-                f"Total parts owned: "
-                f"{parts_of(data.total_units, data.company.shares_per_option)}\n"
-                f"Current value: {format_cents(data.current_value_cents)}\n"
-                f"As of: {data.as_of_date.strftime('%B %d, %Y')}\n\n"
-                f"Open it here (you will be asked to sign in): "
-                f"{documents_link(data.company.id)}\n\n"
-                f"Best regards,\n"
-                f"AIVIS.ONE Platform"
-            ),
-            "action_data": email_action_data(
-                investor_name=data.investor_name,
-                company=data.company.name,
-                total_units=parts_of(
-                    data.total_units, data.company.shares_per_option
-                ),
-                current_value=format_cents(data.current_value_cents),
-                as_of=format_document_date(
-                    data.as_of_date, data.investor_language
-                ),
-                documents_url=documents_link(data.company.id),
+            # The letter and the bell's words: app/letters, in the
+            # investor's language -- the date printed in the same one.
+            **letter_request(
+                "ownership.certificate",
+                language,
+                {
+                    "investor_name": data.investor_name,
+                    "company": data.company.name,
+                    "total_units": parts_of(
+                        data.total_units, data.company.shares_per_option
+                    ),
+                    "current_value": format_cents(data.current_value_cents),
+                    "as_of": format_document_date(data.as_of_date, language),
+                    "documents_url": documents_link(data.company.id),
+                },
             ),
         },
     )

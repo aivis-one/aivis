@@ -10,13 +10,15 @@
 # agreement, and a role-neutral path the frontend resolves after sign-in.
 #
 # WHY THE EMITTERS ARE CALLED DIRECTLY WITH STAND-INS. The assertion is about
-# the text the emitter hands to emit_event, nothing about the outbox row or
+# the letter the emitter hands to emit_event (since H43 the backend builds it:
+# the request's `email` block, app/letters), nothing about the outbox row or
 # the HTTP layer (test_agreement_endpoints / test_ownership_endpoints cover
 # the routes, and patch these very emitters out). comms_configured and
 # emit_event are patched as the service module sees them, the pattern
 # test_auth_password_reset uses; the data carriers are plain namespaces with
-# exactly the attributes the emitters read, so no database is needed and none
-# is touched.
+# exactly the attributes the emitters read, and the one read an emitter makes
+# -- the person's language -- comes from a stand-in session, so no database is
+# needed and none is touched.
 # =============================================================================
 
 from __future__ import annotations
@@ -50,9 +52,19 @@ def _capture(monkeypatch: pytest.MonkeyPatch, module) -> list[dict]:  # type: ig
     return captured
 
 
-def _link_line(body: str) -> str:
-    """The one line of the body that carries the link -- exactly one."""
-    lines = [ln for ln in body.splitlines() if BASE in ln]
+class _Session:
+    """The emitter's one read: the person's users.language."""
+
+    async def execute(self, _statement):  # type: ignore[no-untyped-def]
+        return SimpleNamespace(scalar_one=lambda: "en")
+
+
+def _link_line(text: str) -> str:
+    """The one line of the letter's text part that carries the document link
+    -- exactly one. (Since H43 the text also ends with the support footer,
+    whose address may fall back to the site's origin; the document link is
+    the line under /portfolio/.)"""
+    lines = [ln for ln in text.splitlines() if f"{BASE}/portfolio/" in ln]
     assert len(lines) == 1, f"expected one link line, found {len(lines)}: {lines}"
     return lines[0]
 
@@ -115,10 +127,10 @@ async def test_agreement_email_links_to_this_purchase(monkeypatch: pytest.Monkey
         ),
     )
 
-    await agreement_service.request_agreement_email(data, None)  # type: ignore[arg-type]
+    await agreement_service.request_agreement_email(data, _Session())  # type: ignore[arg-type]
 
     assert len(captured) == 1
-    line = _link_line(captured[0]["body"])
+    line = _link_line(captured[0]["email"]["text"])
     assert line.endswith(documents_link(company_id, purchase_id))
 
 
@@ -136,9 +148,9 @@ async def test_ownership_email_links_to_this_company(monkeypatch: pytest.MonkeyP
         as_of_date=datetime.now(UTC),
     )
 
-    await ownership_certificate_service.request_ownership_email(data, None)  # type: ignore[arg-type]
+    await ownership_certificate_service.request_ownership_email(data, _Session())  # type: ignore[arg-type]
 
     assert len(captured) == 1
-    line = _link_line(captured[0]["body"])
+    line = _link_line(captured[0]["email"]["text"])
     assert line.endswith(documents_link(company_id))
     assert "purchase" not in line

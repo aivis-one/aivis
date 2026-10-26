@@ -98,7 +98,10 @@ def capture_reset_email(monkeypatch: pytest.MonkeyPatch) -> dict:
 
     async def _capturing_emit(session, event_type, data):  # type: ignore[no-untyped-def]
         if data.get("type") == "auth.password_reset":
-            captured["token"] = data["body"].rsplit("token=", 1)[-1].split("\n")[0]
+            # The link is in the letter's text part (H43: the request
+            # carries the letter itself, app/letters).
+            text = data["email"]["text"]
+            captured["token"] = text.rsplit("token=", 1)[-1].split("\n")[0]
             captured["target_value"] = data["target_value"]
             captured["type"] = data["type"]
             captured["names_a_channel"] = "channels" in data

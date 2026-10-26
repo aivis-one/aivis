@@ -2,11 +2,10 @@
 # AIVIS.ONE Backend -- the variables every e-mail letter shares
 # =============================================================================
 #
-# comms renders a letter from the profile's templates
-# (comms-profile/templates/<locale>.yaml) with str.format_map over the
-# notification's `action_data`. A template may carry no domain literal
-# (comms' profile loader refuses it), so every address a letter shows
-# reaches it here, as a variable, assembled at send time from settings:
+# The backend builds its letters itself (app/letters, H43): every address a
+# letter shows reaches it here, as a variable, assembled at build time from
+# settings -- a word in app/letters/copy.yaml carries no domain literal
+# (checks/deploy_addresses.py), only the variable:
 #
 #   support_url    the support bot a reader is sent to (SUPPORT_URL; else the
 #                  installer's TELEGRAM_BOT_URL; else the site's address)
@@ -17,14 +16,13 @@
 #   logo_url       the letter's logo, a PNG the site build publishes at
 #                  /email/logo.png
 #
-# The language of a letter is not decided here: comms takes it from the
-# recipient's `locale` (core/comms.py::user_snapshot sends the user's own).
+# The language of a letter is decided by the builder from the person's own
+# users.language (app/letters letter_language), not here.
 #
 # site_host() is the same parse of FRONTEND_BASE_URL, public for the seed
 # (scripts/seed.py), which builds its addresses on the box's own host.
 # =============================================================================
 
-from typing import Any
 from urllib.parse import urlsplit
 
 from app.core.config import settings
@@ -50,18 +48,17 @@ def site_host() -> str:
     return _site(settings.frontend_base_url)[1]
 
 
-def email_action_data(**fields: Any) -> dict[str, Any]:
-    """action_data for a letter: the shared addresses plus the type's own
-    fields. Every value is a scalar (comms refuses anything else); a None
-    becomes an empty string so a template never prints the word None."""
+def letter_vars() -> dict[str, str]:
+    """The addresses every letter may show, as the builder's variables.
+
+    A setting that is not set gives an empty string, never None: the
+    builder refuses a None (app/letters), and an address a deploy does not
+    have is printed as nothing rather than refusing every letter."""
     site, host = _site(settings.frontend_base_url)
-    data: dict[str, Any] = {
+    return {
         "support_url": settings.support_url or settings.telegram_bot_url or site,
         "support_email": settings.support_email or (f"hello@{host}" if host else ""),
         "cabinet_url": settings.frontend_base_url.rstrip("/"),
         "site_url": site,
         "logo_url": f"{site}{LOGO_PATH}" if site else "",
     }
-    for key, value in fields.items():
-        data[key] = "" if value is None else value
-    return data

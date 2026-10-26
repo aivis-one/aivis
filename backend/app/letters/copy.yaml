@@ -1,0 +1,443 @@
+# =============================================================================
+# AIVIS -- the words of every e-mail letter, both languages
+# =============================================================================
+#
+# The one copy of a letter's words. The backend's letter builder
+# (app/letters/__init__.py) writes them into a layout (layouts/<layout>.html)
+# for the html part and into the same layout's plain shape for the text part,
+# so the two parts of a letter cannot say different things.
+#
+# `common` -- the words every letter shares (the footer) and the words of the
+#   digest layout, per language.
+# `types`  -- one entry per letter type: `layout` names the layout, and the
+#   keys under `en` and `ru` are that layout's SLOTS (README.md lists them)
+#   plus:
+#     subject              -- the letter's subject;
+#     bell_title/bell_body -- the short text of the cabinet's notification
+#                             bell, only for a type that also lands there
+#                             (comms-profile/types.yaml `channels` with
+#                             in_app). A type without them sends its subject
+#                             and heading as the notification's title and
+#                             body, which comms requires and stores but
+#                             shows nowhere.
+#   `sent: false` marks a letter nothing sends yet.
+#
+# A word may carry data variables in {name} form; the emitter supplies them
+# and the builder HTML-escapes each value in the html part. The builder's
+# loader refuses this file on a missing or extra slot, a missing language, a
+# blank word, a key written twice, or a NUL -- at import, so neither the
+# application nor the test suite starts on a broken file.
+#
+# No domain literals: every address is a variable (core/email_vars.py
+# letter_vars; checks/deploy_addresses.py scans this file).
+# =============================================================================
+
+common:
+  en:
+    footer_company: "AIVIS.ONE LLC, Georgia. This is an automatic letter, replies are not read."
+    footer_support: "Support:"
+    footer_bot: "Telegram bot"
+    read_more: "Read more"
+    digest_reason: "You receive this letter because you subscribed to AIVIS news."
+    unsubscribe: "Unsubscribe"
+  ru:
+    footer_company: "AIVIS.ONE LLC, Грузия. Это автоматическое письмо, отвечать на него не нужно."
+    footer_support: "Поддержка:"
+    footer_bot: "бот в Telegram"
+    read_more: "Читать"
+    digest_reason: "Вы получаете это письмо, потому что подписались на новости AIVIS."
+    unsubscribe: "Отписаться"
+
+types:
+
+  auth.verification_code:
+    layout: code
+    en:
+      subject: "Your AIVIS verification code"
+      heading: "Verification code"
+      lead: "Enter this code to confirm your action in the AIVIS cabinet:"
+      valid_note: "The code is valid for {minutes} minutes."
+      ignore_note: "If you did not request it, ignore this letter. Never tell the code to anyone."
+    ru:
+      subject: "Код подтверждения AIVIS"
+      heading: "Код подтверждения"
+      lead: "Введите этот код, чтобы подтвердить действие в кабинете AIVIS:"
+      valid_note: "Код действует {minutes} минут."
+      ignore_note: "Если вы не запрашивали код, проигнорируйте письмо. Никому не сообщайте этот код."
+
+  auth.password_reset:
+    layout: action
+    en:
+      subject: "Reset your AIVIS password"
+      heading: "Reset your password"
+      lead: "We received a request to reset your AIVIS password."
+      highlight: "The link works once and expires in {minutes} minutes."
+      button_text: "Reset password"
+      button_url: "{reset_url}"
+      note: "If you did not ask for it, ignore this letter: your password stays the same."
+    ru:
+      subject: "Сброс пароля AIVIS"
+      heading: "Сброс пароля"
+      lead: "Мы получили запрос на сброс вашего пароля AIVIS."
+      highlight: "Ссылка работает один раз и действует {minutes} минут."
+      button_text: "Сбросить пароль"
+      button_url: "{reset_url}"
+      note: "Если вы не запрашивали сброс, проигнорируйте письмо: пароль останется прежним."
+
+  auth.telegram_link_code:
+    layout: code
+    en:
+      subject: "Link Telegram to your AIVIS account"
+      heading: "Link Telegram"
+      lead: "The Telegram account {telegram_name} asks to be linked to your AIVIS account. Enter this code to confirm:"
+      valid_note: "The code is valid for {minutes} minutes."
+      ignore_note: "If this was not you, ignore this letter: nothing will be linked. Never tell the code to anyone."
+    ru:
+      subject: "Привязка Telegram к аккаунту AIVIS"
+      heading: "Привязка Telegram"
+      lead: "Аккаунт Telegram {telegram_name} просит привязать его к вашему аккаунту AIVIS. Введите этот код, чтобы подтвердить:"
+      valid_note: "Код действует {minutes} минут."
+      ignore_note: "Если это были не вы, проигнорируйте письмо: ничего не будет привязано. Никому не сообщайте этот код."
+
+  auth.telegram_linked:
+    layout: action
+    en:
+      subject: "Telegram linked to your AIVIS account"
+      heading: "Telegram linked"
+      lead: "The Telegram account {telegram_name} was linked to your AIVIS account."
+      highlight: "{telegram_name}"
+      button_text: "Contact support"
+      button_url: "{support_url}"
+      note: "If this was not you, contact support right away."
+    ru:
+      subject: "Telegram привязан к вашему аккаунту AIVIS"
+      heading: "Telegram привязан"
+      lead: "Аккаунт Telegram {telegram_name} привязан к вашему аккаунту AIVIS."
+      highlight: "{telegram_name}"
+      button_text: "Написать в поддержку"
+      button_url: "{support_url}"
+      note: "Если это были не вы, сразу напишите в поддержку."
+
+  purchase.agreement:
+    layout: document
+    en:
+      subject: "Purchase agreement {agreement_number}"
+      bell_title: "Purchase agreement {agreement_number}"
+      bell_body: "Your purchase agreement is ready: {product}, {company}."
+      heading: "Your purchase agreement is ready"
+      lead: "Dear {investor_name}, the agreement for your purchase is ready. Open it in the cabinet."
+      row1_label: "Agreement"
+      row1_value: "{agreement_number}"
+      row2_label: "Company"
+      row2_value: "{company}"
+      row3_label: "Product"
+      row3_value: "{product}"
+      row4_label: "Units"
+      row4_value: "{units}"
+      row5_label: "Total paid"
+      row5_value: "${total_paid}"
+      button_text: "Open the agreement"
+      button_url: "{documents_url}"
+      note: "You will be asked to sign in."
+    ru:
+      subject: "Договор покупки {agreement_number}"
+      bell_title: "Договор покупки {agreement_number}"
+      bell_body: "Готов договор по вашей покупке: {product}, {company}."
+      heading: "Ваш договор покупки готов"
+      lead: "Здравствуйте, {investor_name}! Договор по вашей покупке готов. Откройте его в кабинете."
+      row1_label: "Договор"
+      row1_value: "{agreement_number}"
+      row2_label: "Компания"
+      row2_value: "{company}"
+      row3_label: "Продукт"
+      row3_value: "{product}"
+      row4_label: "Долей"
+      row4_value: "{units}"
+      row5_label: "Оплачено"
+      row5_value: "{total_paid} $"
+      button_text: "Открыть договор"
+      button_url: "{documents_url}"
+      note: "Потребуется вход в кабинет."
+
+  ownership.certificate:
+    layout: document
+    en:
+      subject: "Ownership certificate: {company}"
+      bell_title: "Ownership certificate: {company}"
+      bell_body: "Your ownership certificate for {company} is ready."
+      heading: "Your ownership certificate is ready"
+      lead: "Dear {investor_name}, the certificate of your ownership is ready. Open it in the cabinet."
+      row1_label: "Company"
+      row1_value: "{company}"
+      row2_label: "Parts owned"
+      row2_value: "{total_units}"
+      row3_label: "Current value"
+      row3_value: "${current_value}"
+      row4_label: "As of"
+      row4_value: "{as_of}"
+      row5_label: "Holder"
+      row5_value: "{investor_name}"
+      button_text: "Open the certificate"
+      button_url: "{documents_url}"
+      note: "You will be asked to sign in."
+    ru:
+      subject: "Свидетельство о владении: {company}"
+      bell_title: "Свидетельство о владении: {company}"
+      bell_body: "Готово свидетельство о вашем владении: {company}."
+      heading: "Ваше свидетельство о владении готово"
+      lead: "Здравствуйте, {investor_name}! Свидетельство о вашем владении готово. Откройте его в кабинете."
+      row1_label: "Компания"
+      row1_value: "{company}"
+      row2_label: "Частей во владении"
+      row2_value: "{total_units}"
+      row3_label: "Текущая стоимость"
+      row3_value: "{current_value} $"
+      row4_label: "На дату"
+      row4_value: "{as_of}"
+      row5_label: "Владелец"
+      row5_value: "{investor_name}"
+      button_text: "Открыть свидетельство"
+      button_url: "{documents_url}"
+      note: "Потребуется вход в кабинет."
+
+  withdrawal.processing:
+    layout: notice
+    en:
+      subject: "Your withdrawal is approved"
+      bell_title: "Withdrawal approved"
+      bell_body: "Your withdrawal of ${amount} is approved and is being processed."
+      heading: "Withdrawal approved"
+      lead: "Your withdrawal request is approved and is now being processed."
+      detail_label: "Amount"
+      detail_value: "${amount}"
+      status_label: "Status"
+      status_text: "Processing"
+      status_color: "#B1581B"
+      note: "You can follow it in the cabinet."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Вывод средств одобрен"
+      bell_title: "Вывод средств одобрен"
+      bell_body: "Ваш вывод {amount} $ одобрен и находится в обработке."
+      heading: "Вывод средств одобрен"
+      lead: "Ваш запрос на вывод одобрен и находится в обработке."
+      detail_label: "Сумма"
+      detail_value: "{amount} $"
+      status_label: "Статус"
+      status_text: "В обработке"
+      status_color: "#B1581B"
+      note: "Следить за ним можно в кабинете."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  withdrawal.completed:
+    layout: notice
+    en:
+      subject: "Your withdrawal is completed"
+      bell_title: "Withdrawal completed"
+      bell_body: "Your withdrawal of ${amount} has been sent."
+      heading: "Withdrawal completed"
+      lead: "Your withdrawal request is processed and the funds have been sent."
+      detail_label: "Amount"
+      detail_value: "${amount}"
+      status_label: "Status"
+      status_text: "Completed"
+      status_color: "#0E6E45"
+      note: "The operation is in your cabinet history. If you did not make it, write to us at once."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Вывод средств выполнен"
+      bell_title: "Вывод средств выполнен"
+      bell_body: "Ваш вывод {amount} $ отправлен."
+      heading: "Вывод средств выполнен"
+      lead: "Ваш запрос на вывод обработан, средства отправлены."
+      detail_label: "Сумма"
+      detail_value: "{amount} $"
+      status_label: "Статус"
+      status_text: "Выполнен"
+      status_color: "#0E6E45"
+      note: "Операция отражена в истории кабинета. Если вы её не совершали, сразу напишите нам."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  withdrawal.rejected:
+    layout: notice
+    en:
+      subject: "Your withdrawal was rejected"
+      bell_title: "Withdrawal rejected"
+      bell_body: "Your withdrawal of ${amount} was rejected and the amount is back on your balance. Reason: {reason}"
+      heading: "Withdrawal rejected"
+      lead: "Your withdrawal request was rejected. Reason: {reason}"
+      detail_label: "Amount"
+      detail_value: "${amount}"
+      status_label: "Status"
+      status_text: "Rejected"
+      status_color: "#9C231E"
+      note: "The amount has been returned to your balance."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Вывод средств отклонён"
+      bell_title: "Вывод средств отклонён"
+      bell_body: "Ваш вывод {amount} $ отклонён, сумма возвращена на баланс. Причина: {reason}"
+      heading: "Вывод средств отклонён"
+      lead: "Ваш запрос на вывод отклонён. Причина: {reason}"
+      detail_label: "Сумма"
+      detail_value: "{amount} $"
+      status_label: "Статус"
+      status_text: "Отклонён"
+      status_color: "#9C231E"
+      note: "Сумма возвращена на ваш баланс."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  withdrawal.failed:
+    layout: notice
+    en:
+      subject: "Your withdrawal could not be completed"
+      bell_title: "Withdrawal failed"
+      bell_body: "Your withdrawal of ${amount} could not be completed. The amount is back on your balance."
+      heading: "Withdrawal could not be completed"
+      lead: "Your withdrawal could not be completed."
+      detail_label: "Amount"
+      detail_value: "${amount}"
+      status_label: "Status"
+      status_text: "Failed"
+      status_color: "#9C231E"
+      note: "The amount has been returned to your balance. Questions: write to support."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Вывод средств не удалось выполнить"
+      bell_title: "Вывод средств не выполнен"
+      bell_body: "Ваш вывод {amount} $ не удалось выполнить. Сумма возвращена на баланс."
+      heading: "Вывод средств не удалось выполнить"
+      lead: "Ваш вывод не удалось выполнить."
+      detail_label: "Сумма"
+      detail_value: "{amount} $"
+      status_label: "Статус"
+      status_text: "Не выполнен"
+      status_color: "#9C231E"
+      note: "Сумма возвращена на ваш баланс. Вопросы: напишите в поддержку."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  installment.tranche_overdue:
+    layout: notice
+    en:
+      subject: "Installment payment overdue"
+      bell_title: "Installment payment overdue"
+      bell_body: "Tranche {tranche_number} of ${amount} could not be charged: your balance is too low. Please top it up."
+      heading: "Installment payment overdue"
+      lead: "The tranche of your installment plan could not be charged because your balance is too low."
+      detail_label: "Tranche {tranche_number}"
+      detail_value: "${amount}"
+      status_label: "Status"
+      status_text: "Overdue"
+      status_color: "#B1581B"
+      note: "Please top up your balance in the cabinet. The payment is retried automatically."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Платёж по рассрочке просрочен"
+      bell_title: "Платёж по рассрочке просрочен"
+      bell_body: "Транш {tranche_number} на {amount} $ не удалось списать: на балансе недостаточно средств. Пополните баланс."
+      heading: "Платёж по рассрочке просрочен"
+      lead: "Транш вашей рассрочки не удалось списать: на балансе недостаточно средств."
+      detail_label: "Транш {tranche_number}"
+      detail_value: "{amount} $"
+      status_label: "Статус"
+      status_text: "Просрочен"
+      status_color: "#B1581B"
+      note: "Пожалуйста, пополните баланс в кабинете. Списание будет повторено автоматически."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  installment.plan_defaulted:
+    layout: notice
+    en:
+      subject: "Your installment plan was defaulted"
+      bell_title: "Installment plan defaulted"
+      bell_body: "Your installment plan was defaulted after a missed payment. You keep the units from the paid tranches; the remaining tranches were cancelled."
+      heading: "Your installment plan was defaulted"
+      lead: "Your installment plan was defaulted after a missed payment. The remaining tranches were cancelled."
+      detail_label: "Units from paid tranches"
+      detail_value: "Kept"
+      status_label: "Status"
+      status_text: "Defaulted"
+      status_color: "#9C231E"
+      note: "Details are in your cabinet."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+    ru:
+      subject: "Рассрочка расторгнута"
+      bell_title: "Рассрочка расторгнута"
+      bell_body: "Рассрочка расторгнута из-за пропущенного платежа. Доли по оплаченным траншам остаются за вами, оставшиеся транши отменены."
+      heading: "Рассрочка расторгнута"
+      lead: "Ваша рассрочка расторгнута из-за пропущенного платежа. Оставшиеся транши отменены."
+      detail_label: "Доли по оплаченным траншам"
+      detail_value: "Сохранены"
+      status_label: "Статус"
+      status_text: "Расторгнута"
+      status_color: "#9C231E"
+      note: "Подробности в кабинете."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+
+  # ---------------------------------------------------------------------------
+  # Letters whose words exist and which nothing sends yet
+  # ---------------------------------------------------------------------------
+
+  welcome:
+    layout: action
+    sent: false
+    en:
+      subject: "Welcome to AIVIS"
+      heading: "Welcome to AIVIS"
+      lead: "Your account is ready. Open the cabinet to complete your profile and see what is available."
+      highlight: "Your e-mail is confirmed."
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+      note: "If you did not create this account, write to us."
+    ru:
+      subject: "Добро пожаловать в AIVIS"
+      heading: "Добро пожаловать в AIVIS"
+      lead: "Ваш аккаунт создан. Откройте кабинет, чтобы заполнить профиль и посмотреть, что доступно."
+      highlight: "Ваша почта подтверждена."
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+      note: "Если вы не создавали этот аккаунт, напишите нам."
+
+  installment.reminder:
+    layout: action
+    sent: false
+    en:
+      subject: "Installment payment coming up"
+      heading: "Installment payment coming up"
+      lead: "The next tranche of your installment plan is due soon."
+      highlight: "Tranche {tranche_number}: ${amount}, due {due_date}"
+      button_text: "Open the cabinet"
+      button_url: "{cabinet_url}"
+      note: "Keep enough balance on the due date, the payment is taken automatically."
+    ru:
+      subject: "Скоро платёж по рассрочке"
+      heading: "Скоро платёж по рассрочке"
+      lead: "Скоро срок очередного транша вашей рассрочки."
+      highlight: "Транш {tranche_number}: {amount} $, срок {due_date}"
+      button_text: "Открыть кабинет"
+      button_url: "{cabinet_url}"
+      note: "Держите на балансе достаточно средств, списание произойдёт автоматически."
+
+  news.digest:
+    layout: digest
+    sent: false
+    en:
+      subject: "AIVIS news"
+      heading: "AIVIS news"
+      lead: "{digest_intro}"
+    ru:
+      subject: "Новости AIVIS"
+      heading: "Новости AIVIS"
+      lead: "{digest_intro}"

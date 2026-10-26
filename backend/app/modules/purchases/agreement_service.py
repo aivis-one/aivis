@@ -81,10 +81,10 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.comms import comms_configured
-from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import AivisError, BadRequestError, NotFoundError
 from app.core.i18n import localized
+from app.letters import letter_request, recipient_language
 from app.modules.companies.media import company_logo_data_uri
 from app.modules.companies.models import CompanyDocumentTemplate, CompanyProfile
 from app.modules.companies.service import (
@@ -589,28 +589,22 @@ async def request_agreement_email(
             "type": "purchase.agreement",
             "target_type": "user",
             "target_value": str(data.purchase.user_id),
-            "title": f"Purchase Agreement -- {agreement_number}",
-            "body": (
-                f"Dear {data.investor_name},\n\n"
-                f"Your purchase agreement is ready.\n\n"
-                f"Agreement: {agreement_number}\n"
-                f"Company: {data.company.name}\n"
-                f"Product: {data.product.name}\n"
-                f"Units: {data.purchase.units}\n"
-                f"Total paid: {format_cents(data.purchase.paid_cents)}\n\n"
-                f"Open it here (you will be asked to sign in): "
-                f"{documents_link(data.company.id, data.purchase.id)}\n\n"
-                f"Best regards,\n"
-                f"AIVIS.ONE Platform"
-            ),
-            "action_data": email_action_data(
-                investor_name=data.investor_name,
-                agreement_number=agreement_number,
-                company=data.company.name,
-                product=data.product.name,
-                units=data.purchase.units,
-                total_paid=format_cents(data.purchase.paid_cents),
-                documents_url=documents_link(data.company.id, data.purchase.id),
+            # The letter and the bell's words: app/letters, in the
+            # investor's language.
+            **letter_request(
+                "purchase.agreement",
+                await recipient_language(session, data.purchase.user_id),
+                {
+                    "investor_name": data.investor_name,
+                    "agreement_number": agreement_number,
+                    "company": data.company.name,
+                    "product": data.product.name,
+                    "units": data.purchase.units,
+                    "total_paid": format_cents(data.purchase.paid_cents),
+                    "documents_url": documents_link(
+                        data.company.id, data.purchase.id
+                    ),
+                },
             ),
         },
     )

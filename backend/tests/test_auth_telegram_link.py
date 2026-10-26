@@ -1033,11 +1033,14 @@ async def test_threat16_code_for_an_existing_row_names_the_telegram_account(
     letter = letters[0]
     assert letter["target_type"] == "user"
     assert letter["target_value"] == body["user"]["id"]
-    assert letter["action_data"]["telegram_name"] == "@attacker_tg"
-    assert letter["action_data"]["code"] == code
-    assert letter["action_data"]["minutes"] == 10
-    assert "@attacker_tg" in letter["body"]
-    assert "Mallory" not in letter["body"]  # never the free-text name
+    # The letter itself is in the request (H43, app/letters).
+    text = letter["email"]["text"]
+    assert "@attacker_tg" in text
+    assert code in text
+    assert "10 minutes" in text or "10 минут" in text
+    assert "@attacker_tg" in letter["email"]["html"]
+    every_part = [letter["title"], letter["body"], *letter["email"].values()]
+    assert all("Mallory" not in part for part in every_part)  # never the free-text name
     assert not recorder.of_type("auth.verification_code")
 
 
@@ -1050,7 +1053,7 @@ async def test_threat16_code_for_a_new_person_reuses_the_existing_letter(
 
     letters = recorder.of_type("auth.verification_code")
     assert len(letters) == 1
-    assert letters[0]["action_data"]["code"] == code
+    assert code in letters[0]["email"]["text"]
     assert not recorder.of_type("auth.telegram_link_code")
 
 
@@ -1064,7 +1067,7 @@ async def test_threat16_a_notice_follows_every_link(
     notices = recorder.of_type("auth.telegram_linked")
     assert len(notices) == 1
     assert notices[0]["target_value"] == body["user"]["id"]
-    assert notices[0]["action_data"]["telegram_name"] == "@the_owner"
+    assert "@the_owner" in notices[0]["email"]["text"]
     assert "expiry_at" not in notices[0] or notices[0]["expiry_at"] is None
 
 

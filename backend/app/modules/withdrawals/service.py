@@ -31,6 +31,7 @@
 # =============================================================================
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -42,9 +43,9 @@ from app.core.audit import record_audit
 from app.core.comms import comms_configured
 from app.core.config import settings
 from app.core.constants import LedgerReason
-from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
+from app.letters import letter_request, recipient_language
 from app.modules.ledgers.models import LedgerStatus
 from app.modules.ledgers.service import get_passive_balance, record_passive_ledger
 from app.modules.transactions.constants import ReferenceType, TransactionType
@@ -59,18 +60,11 @@ from app.modules.withdrawals.models import Withdrawal
 logger = structlog.get_logger()
 
 # Batch 3 (2026-08-27), second aivis producer of notification_request (see
-# comms-profile/types.yaml). Titles keyed by the withdrawal's CURRENT
+# comms-profile/types.yaml). The type is keyed by the withdrawal's CURRENT
 # status -- confirm_withdrawal's MVP cascade means a withdrawal is never
 # actually left sitting in CONFIRMED, so PROCESSING is the status a user
-# is notified about, not CONFIRMED. English only: same pre-existing gap
-# as the kyc.* emitter, not a new one (core/email.py has no locale
-# branching either).
-_WITHDRAWAL_NOTIFICATION_TITLES = {
-    WithdrawalStatus.PROCESSING: "Withdrawal approved",
-    WithdrawalStatus.REJECTED: "Withdrawal rejected",
-    WithdrawalStatus.COMPLETED: "Withdrawal completed",
-    WithdrawalStatus.FAILED: "Withdrawal failed",
-}
+# is notified about, not CONFIRMED. The words -- the letter and the bell's
+# title and body -- are app/letters/copy.yaml's, in the person's language.
 
 
 async def _notify_withdrawal(
@@ -97,37 +91,25 @@ async def _notify_withdrawal(
         return
 
     amount = f"{withdrawal.amount_cents / 100:,.2f}"
-    if withdrawal.status == WithdrawalStatus.PROCESSING:
-        body = (
-            f"Your withdrawal of ${amount} has been approved and is "
-            f"now processing."
-        )
-    elif withdrawal.status == WithdrawalStatus.REJECTED:
-        body = (
-            f"Your withdrawal of ${amount} was rejected: {reason}. "
-            f"The amount has been returned to your balance."
-        )
-    elif withdrawal.status == WithdrawalStatus.COMPLETED:
-        body = f"Your withdrawal of ${amount} has been sent."
-    else:
-        body = (
-            f"Your withdrawal of ${amount} could not be completed. "
-            f"The amount has been returned to your balance."
-        )
+    type_key = f"withdrawal.{withdrawal.status}"
+    # Only a rejection has a reason, and its letter prints it.
+    fields: dict[str, Any] = {"amount": amount}
+    if withdrawal.status == WithdrawalStatus.REJECTED:
+        fields["reason"] = reason
 
     await emit_event(
         session,
         EVENT_NOTIFICATION_REQUEST,
         {
             "idempotency_key": f"withdrawal-{withdrawal.status}:{withdrawal.id}",
-            "type": f"withdrawal.{withdrawal.status}",
+            "type": type_key,
             "target_type": "user",
             "target_value": str(withdrawal.user_id),
-            "title": _WITHDRAWAL_NOTIFICATION_TITLES[withdrawal.status],
-            "body": body,
-            # E-mail since 2026-10-23: the wording, in the user's language,
-            # is comms-profile/templates/<locale>.yaml over these variables.
-            "action_data": email_action_data(amount=amount, reason=reason),
+            **letter_request(
+                type_key,
+                await recipient_language(session, withdrawal.user_id),
+                fields,
+            ),
         },
     )
 

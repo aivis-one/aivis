@@ -65,9 +65,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit import record_audit
 from app.core.comms import comms_configured
 from app.core.constants import LedgerReason
-from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import BadRequestError, InsufficientBalanceError, NotFoundError
+from app.letters import letter_request, recipient_language
 from app.modules.companies.models import CompanyProfile
 from app.modules.installments.constants import (
     InstallmentPlanStatus,
@@ -433,16 +433,14 @@ async def pay_tranche(
                         "type": "installment.tranche_overdue",
                         "target_type": "user",
                         "target_value": str(plan.investor_id),
-                        "title": "Installment payment overdue",
-                        "body": (
-                            f"Tranche #{tranche.number} of "
-                            f"${tranche.amount_cents / 100:,.2f} could not "
-                            f"be charged due to insufficient balance. "
-                            f"Please top up your balance."
-                        ),
-                        "action_data": email_action_data(
-                            tranche_number=tranche.number,
-                            amount=f"{tranche.amount_cents / 100:,.2f}",
+                        # The letter and the bell's words: app/letters.
+                        **letter_request(
+                            "installment.tranche_overdue",
+                            await recipient_language(session, plan.investor_id),
+                            {
+                                "tranche_number": tranche.number,
+                                "amount": f"{tranche.amount_cents / 100:,.2f}",
+                            },
                         ),
                     },
                 )
@@ -735,11 +733,11 @@ async def default_plan(
 
     # Batch 3 (2026-08-27), plan-level installment event. Terminal,
     # one-time: validate_plan_status_transition only allows the move into
-    # DEFAULTED once, so plan.id is a permanent idempotency key. The body
-    # states the one fact the investor most needs -- units already paid
-    # for are kept (this function cancels only the UNpaid tranches), which
-    # is a real product rule they would otherwise not know from a bare
-    # "plan defaulted" line.
+    # DEFAULTED once, so plan.id is a permanent idempotency key. The bell's
+    # body (app/letters/copy.yaml) states the one fact the investor most
+    # needs -- units already paid for are kept (this function cancels only
+    # the UNpaid tranches), which is a real product rule they would
+    # otherwise not know from a bare "plan defaulted" line.
     if comms_configured():
         await emit_event(
             session,
@@ -749,13 +747,11 @@ async def default_plan(
                 "type": "installment.plan_defaulted",
                 "target_type": "user",
                 "target_value": str(plan.investor_id),
-                "title": "Installment plan defaulted",
-                "body": (
-                    "Your installment plan was defaulted after a missed "
-                    "payment. You keep the units from tranches already "
-                    "paid; the remaining tranches were cancelled."
+                **letter_request(
+                    "installment.plan_defaulted",
+                    await recipient_language(session, plan.investor_id),
+                    {},
                 ),
-                "action_data": email_action_data(),
             },
         )
 

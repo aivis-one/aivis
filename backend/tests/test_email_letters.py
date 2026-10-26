@@ -1,17 +1,19 @@
 # =============================================================================
-# AIVIS.ONE Backend -- e-mail letters: the variables each emitter sends
+# AIVIS.ONE Backend -- e-mail letters: what each emitter puts in its request
 # =============================================================================
 #
-# comms renders an e-mail from comms-profile/templates/<locale>.yaml with
-# str.format_map over the request's `action_data`. A template naming a
-# variable the emitter did not send prints "{name}" in the letter, so what is
-# pinned here is the emitter's side of that contract: the shared addresses
-# (core/email_vars.py) and each type's own fields.
+# Since H43 the backend builds every letter itself (app/letters) and the
+# request carries it whole in its `email` block; comms sends exactly that.
+# What is pinned here is the emitter's side: each of the twelve e-mail
+# types carries the block, built in the person's language from the type's
+# own data, plus the title and body comms requires (the bell's words for a
+# type that lands in the cabinet); no other type carries a block; and the
+# shared addresses (core/email_vars.py letter_vars) a letter shows.
 #
-# No database and no network: emit_event is replaced by a recorder and the
-# stubs carry only the attributes the emitters read. comms-profile/ is not in
-# the test image (see test_comms_profile.py), so the templates' side of the
-# contract is checked where the profile lives, by comms's own loader.
+# No database and no network: emit_event is replaced by a recorder, the
+# person's language is read from a stand-in session, and the stubs carry
+# only the attributes the emitters read. The builder itself -- every type in
+# both languages, escaping, the loader -- is tests/test_letters.py.
 # =============================================================================
 
 import ast
@@ -25,8 +27,10 @@ import pytest
 
 import app
 from app.core.config import settings
-from app.core.email_vars import email_action_data
+from app.core.email_vars import letter_vars
+from app.letters import LetterError
 from app.modules.auth import service as auth_service
+from app.modules.installments import service as installment_service
 from app.modules.purchases import agreement_service, ownership_certificate_service
 from app.modules.withdrawals import service as withdrawal_service
 from app.modules.withdrawals.constants import WithdrawalStatus
@@ -63,6 +67,17 @@ class Recorder:
         self.payloads.append(data)
 
 
+class Session:
+    """Stands in for the caller's session: the one read an emitter makes is
+    the person's users.language (app/letters recipient_language)."""
+
+    def __init__(self, language: str = "en") -> None:
+        self.language = language
+
+    async def execute(self, statement: Any) -> Any:
+        return SimpleNamespace(scalar_one=lambda: self.language)
+
+
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> Recorder:
     rec = Recorder()
@@ -72,17 +87,24 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> Recorder:
         agreement_service,
         ownership_certificate_service,
         withdrawal_service,
+        installment_service,
     ):
         monkeypatch.setattr(module, "emit_event", rec)
         monkeypatch.setattr(module, "comms_configured", lambda: True)
     return rec
 
 
-def _assert_wire_safe(action_data: dict[str, Any]) -> None:
-    """comms accepts scalars only as template variables."""
-    assert set(action_data) >= SHARED
-    for key, value in action_data.items():
-        assert isinstance(value, (str, int, float, bool)), key
+def _letter(payload: dict[str, Any]) -> dict[str, str]:
+    """The request's letter, held to comms' form: subject and text non-blank,
+    html non-blank, no action_data any more (nothing renders it)."""
+    assert "action_data" not in payload
+    letter = payload["email"]
+    assert set(letter) == {"subject", "text", "html"}
+    for part in ("subject", "text", "html"):
+        assert letter[part].strip(), part
+    assert payload["title"].strip()
+    assert payload["body"].strip()
+    return letter
 
 
 # ---------------------------------------------------------------------------
@@ -94,16 +116,16 @@ def test_shared_addresses_come_from_the_frontend_origin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "frontend_base_url", "https://example.com/app/")
-    data = email_action_data(code="123456")
+    data = letter_vars()
+    assert set(data) == SHARED
     assert data["cabinet_url"] == "https://example.com/app"
     assert data["site_url"] == "https://example.com"
     assert data["logo_url"] == "https://example.com/email/logo.png"
-    assert data["code"] == "123456"
     # nothing configured: the letter points at the site and at hello@ on its host
     monkeypatch.setattr(settings, "support_url", "")
     monkeypatch.setattr(settings, "telegram_bot_url", "")
     monkeypatch.setattr(settings, "support_email", "")
-    data = email_action_data()
+    data = letter_vars()
     assert data["support_url"] == "https://example.com"
     assert data["support_email"] == "hello@example.com"
 
@@ -112,7 +134,7 @@ def test_configured_support_addresses_win(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(settings, "frontend_base_url", "https://example.com/app")
     monkeypatch.setattr(settings, "support_url", "https://t.example.org/bot")
     monkeypatch.setattr(settings, "support_email", "help@example.org")
-    data = email_action_data()
+    data = letter_vars()
     assert data["support_url"] == "https://t.example.org/bot"
     assert data["support_email"] == "help@example.org"
 
@@ -121,17 +143,12 @@ def test_support_url_falls_back_to_the_bot(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(settings, "frontend_base_url", "https://example.com/app")
     monkeypatch.setattr(settings, "support_url", "")
     monkeypatch.setattr(settings, "telegram_bot_url", "https://t.example.org/bot")
-    assert email_action_data()["support_url"] == "https://t.example.org/bot"
-
-
-def test_a_none_field_never_prints_none(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "frontend_base_url", "https://example.com/app")
-    assert email_action_data(reason=None)["reason"] == ""
+    assert letter_vars()["support_url"] == "https://t.example.org/bot"
 
 
 def test_no_logo_without_a_site_origin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "frontend_base_url", "")
-    data = email_action_data()
+    data = letter_vars()
     assert data["site_url"] == ""
     assert data["logo_url"] == ""
 
@@ -142,64 +159,82 @@ def test_no_logo_without_a_site_origin(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_verification_code_sends_code_and_minutes(recorder: Recorder) -> None:
+@pytest.mark.parametrize(
+    ("language", "word"), [("en", "Verification code"), ("ru", "Код подтверждения")]
+)
+async def test_verification_code_letter_carries_the_code_in_the_persons_language(
+    recorder: Recorder, language: str, word: str
+) -> None:
     await auth_service._request_verification_email(
-        None,
+        Session(language),  # type: ignore[arg-type]
         uuid4(),
         "482915",
-        datetime.now(UTC),  # type: ignore[arg-type]
+        datetime.now(UTC),
     )
     payload = recorder.payloads[-1]
     assert payload["type"] == "auth.verification_code"
-    _assert_wire_safe(payload["action_data"])
-    assert payload["action_data"]["code"] == "482915"
-    ttl = auth_service._VERIFICATION_CODE_TTL_MINUTES
-    assert payload["action_data"]["minutes"] == ttl
-    # the stored body stays as the fallback and keeps the code
-    assert "482915" in payload["body"]
+    letter = _letter(payload)
+    ttl = str(auth_service._VERIFICATION_CODE_TTL_MINUTES)
+    for part in ("text", "html"):
+        assert "482915" in letter[part]
+        assert word in letter[part]
+        assert ttl in letter[part]
+    # e-mail only: title and body are the subject and the heading, and the
+    # code is in neither
+    assert payload["title"] == letter["subject"]
+    assert payload["body"] == word
+    assert "482915" not in payload["title"] + payload["body"]
 
 
 @pytest.mark.asyncio
-async def test_telegram_link_code_sends_the_code_the_minutes_and_the_name(
+async def test_telegram_link_code_letter_names_the_telegram_account(
     recorder: Recorder,
 ) -> None:
     await auth_service._request_telegram_link_code_email(
-        None, uuid4(), "654321", datetime.now(UTC), "@alice"
+        Session("ru"),  # type: ignore[arg-type]
+        uuid4(),
+        "654321",
+        datetime.now(UTC),
+        "@alice",
     )
     payload = recorder.payloads[0]
     assert payload["type"] == "auth.telegram_link_code"
-    data = payload["action_data"]
-    _assert_wire_safe(data)
-    assert data["code"] == "654321"
-    assert data["minutes"] == 10
-    assert data["telegram_name"] == "@alice"
+    letter = _letter(payload)
+    for part in ("text", "html"):
+        assert "654321" in letter[part]
+        assert "@alice" in letter[part]
+        assert "Привязка Telegram" in letter[part]
 
 
 @pytest.mark.asyncio
-async def test_telegram_linked_notice_sends_the_name(recorder: Recorder) -> None:
-    await auth_service._request_telegram_linked_email(None, uuid4(), "@alice")
+async def test_telegram_linked_letter_names_the_account(recorder: Recorder) -> None:
+    await auth_service._request_telegram_linked_email(
+        Session(), uuid4(), "@alice"  # type: ignore[arg-type]
+    )
     payload = recorder.payloads[0]
     assert payload["type"] == "auth.telegram_linked"
-    _assert_wire_safe(payload["action_data"])
-    assert payload["action_data"]["telegram_name"] == "@alice"
+    letter = _letter(payload)
+    assert "@alice" in letter["text"]
+    assert "@alice" in letter["html"]
 
 
 @pytest.mark.asyncio
-async def test_password_reset_sends_the_link_and_minutes(recorder: Recorder) -> None:
+async def test_password_reset_letter_carries_the_link(recorder: Recorder) -> None:
     await auth_service._request_password_reset_email(
-        None,
+        Session(),  # type: ignore[arg-type]
         uuid4(),
         "tok123",
-        datetime.now(UTC),  # type: ignore[arg-type]
+        datetime.now(UTC),
     )
     payload = recorder.payloads[-1]
     assert payload["type"] == "auth.password_reset"
-    _assert_wire_safe(payload["action_data"])
-    assert payload["action_data"]["reset_url"] == (
-        "https://example.com/app/password-reset/confirm?token=tok123"
-    )
-    ttl = auth_service._PASSWORD_RESET_TOKEN_TTL_MINUTES
-    assert payload["action_data"]["minutes"] == ttl
+    letter = _letter(payload)
+    link = "https://example.com/app/password-reset/confirm?token=tok123"
+    assert link in letter["text"]
+    assert f'href="{link}"' in letter["html"]
+    ttl = str(auth_service._PASSWORD_RESET_TOKEN_TTL_MINUTES)
+    assert ttl in letter["text"]
+    assert link not in payload["title"] + payload["body"]
 
 
 @pytest.mark.asyncio
@@ -212,40 +247,48 @@ async def test_password_reset_sends_the_link_and_minutes(recorder: Recorder) -> 
         WithdrawalStatus.FAILED,
     ],
 )
-async def test_withdrawal_sends_the_amount(
+async def test_withdrawal_letter_and_bell_carry_the_amount(
     recorder: Recorder, status: WithdrawalStatus
 ) -> None:
     withdrawal = SimpleNamespace(
         id=uuid4(), user_id=uuid4(), amount_cents=25_000, status=status
     )
+    rejected = status == WithdrawalStatus.REJECTED
+    reason = "Wallet address is invalid" if rejected else None
     await withdrawal_service._notify_withdrawal(
-        None,
-        withdrawal,
-        reason="Wallet address is invalid",  # type: ignore[arg-type]
+        Session("ru"),  # type: ignore[arg-type]
+        withdrawal,  # type: ignore[arg-type]
+        reason=reason,
     )
     payload = recorder.payloads[-1]
     assert payload["type"] == f"withdrawal.{status}"
-    _assert_wire_safe(payload["action_data"])
-    assert payload["action_data"]["amount"] == "250.00"
-    assert payload["action_data"]["reason"] == "Wallet address is invalid"
+    letter = _letter(payload)
+    assert "250.00 $" in letter["text"]
+    assert "250.00 $" in payload["body"]
+    assert "Вывод средств" in payload["title"]
+    if reason is not None:
+        assert reason in letter["text"]
+        assert reason in payload["body"]
 
 
 @pytest.mark.asyncio
-async def test_withdrawal_without_a_reason_sends_an_empty_one(
+async def test_a_rejection_without_a_reason_is_refused(recorder: Recorder) -> None:
+    """The rejection's letter prints the reason; one without it is a defect
+    of the caller, and the builder refuses it rather than print nothing
+    (owner ruling, H43: a missing value is an error, an empty one is not)."""
+    withdrawal = SimpleNamespace(
+        id=uuid4(), user_id=uuid4(), amount_cents=1_000,
+        status=WithdrawalStatus.REJECTED,
+    )
+    with pytest.raises(LetterError, match="reason"):
+        await withdrawal_service._notify_withdrawal(Session(), withdrawal)  # type: ignore[arg-type]
+    assert recorder.payloads == []
+
+
+@pytest.mark.asyncio
+async def test_agreement_letter_carries_its_rows_and_the_link(
     recorder: Recorder,
 ) -> None:
-    withdrawal = SimpleNamespace(
-        id=uuid4(),
-        user_id=uuid4(),
-        amount_cents=1_000,
-        status=WithdrawalStatus.COMPLETED,
-    )
-    await withdrawal_service._notify_withdrawal(None, withdrawal)  # type: ignore[arg-type]
-    assert recorder.payloads[-1]["action_data"]["reason"] == ""
-
-
-@pytest.mark.asyncio
-async def test_agreement_sends_its_rows_and_the_link(recorder: Recorder) -> None:
     purchase = SimpleNamespace(
         id=uuid4(), user_id=uuid4(), units=12, paid_cents=150_000
     )
@@ -256,31 +299,33 @@ async def test_agreement_sends_its_rows_and_the_link(recorder: Recorder) -> None
         company=SimpleNamespace(id=uuid4(), name="Acme Robotics", shares_per_option=25),
         product=SimpleNamespace(name="Seed round"),
     )
-    await agreement_service.request_agreement_email(data, None)  # type: ignore[arg-type]
+    await agreement_service.request_agreement_email(data, Session())  # type: ignore[arg-type]
     payload = recorder.payloads[-1]
     assert payload["type"] == "purchase.agreement"
-    action = payload["action_data"]
-    _assert_wire_safe(action)
-    assert action["investor_name"] == "Anna Ivanova"
-    assert action["company"] == "Acme Robotics"
-    assert action["product"] == "Seed round"
-    assert action["units"] == 12
-    assert action["total_paid"] == "1,500.00"
-    assert action["agreement_number"] in payload["title"]
-    assert action["documents_url"].startswith("https://example.com/app/portfolio/")
+    letter = _letter(payload)
+    number = str(purchase.id).split("-")[0].upper()
+    for value in ("Anna Ivanova", "Acme Robotics", "Seed round", "Units: 12",
+                  "$1,500.00", number, "https://example.com/app/portfolio/"):
+        assert value in letter["text"], value
+    assert number in letter["subject"]
+    assert number in payload["title"]
+    assert "Seed round" in payload["body"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("language", "as_of"),
-    [("en", "October 23, 2026"), ("ru", "23 октября 2026 \u0433.")],
+    [
+        ("en", "October 23, 2026"),
+        ("ru", "23 октября 2026 \u0433."),
+        ("ru-RU", "23 октября 2026 \u0433."),
+    ],
 )
-async def test_certificate_date_follows_the_investors_language(
+async def test_certificate_date_follows_the_letters_language(
     recorder: Recorder, language: str, as_of: str
 ) -> None:
-    investor_id = uuid4()
     data = SimpleNamespace(
-        investor_id=investor_id,
+        investor_id=uuid4(),
         investor_language=language,
         investor_name="Anna Ivanova",
         investor_email="anna@example.com",
@@ -289,54 +334,59 @@ async def test_certificate_date_follows_the_investors_language(
         current_value_cents=2_000_000,
         as_of_date=datetime(2026, 10, 23, tzinfo=UTC),
     )
-    await ownership_certificate_service.request_ownership_email(data, None)  # type: ignore[arg-type]
+    await ownership_certificate_service.request_ownership_email(
+        data, Session(language)  # type: ignore[arg-type]
+    )
     payload = recorder.payloads[-1]
     assert payload["type"] == "ownership.certificate"
-    action = payload["action_data"]
-    _assert_wire_safe(action)
-    assert action["as_of"] == as_of
-    assert action["total_units"] == 1000  # 40 lots of 25 parts
-    assert action["current_value"] == "20,000.00"
-    assert "?doc=ownership" in action["documents_url"]
+    letter = _letter(payload)
+    assert as_of in letter["text"]
+    assert "1000" in letter["text"]  # 40 lots of 25 parts
+    assert "20,000.00" in letter["text"]
+    assert "?doc=ownership" in letter["text"]
+    assert "Acme Robotics" in payload["title"]
 
 
 # ---------------------------------------------------------------------------
-# Every emitter of an e-mail type carries action_data (source scan)
+# Every e-mail type carries the letter, and no other type does (source scan)
 # ---------------------------------------------------------------------------
 
 
-def test_every_email_type_emitter_carries_action_data() -> None:
-    """A dict literal that names one of the e-mail types must also carry
-    `action_data`, or its template would print raw {names}. The pair of
-    "none missing": the scan found every type it is about."""
-    found: set[str] = set()
-    missing: list[str] = []
+def _letter_type(call: ast.Call, path: Path) -> set[str]:
+    """The type(s) a letter_request(...) call builds: its literal first
+    argument, or -- in the withdrawals service, which keys the type by the
+    withdrawal's status -- the four withdrawal types."""
+    first = call.args[0] if call.args else None
+    if isinstance(first, ast.Constant) and isinstance(first.value, str):
+        return {first.value}
+    if "withdrawals" in path.parts and path.name == "service.py":
+        return {t for t in EMAIL_TYPES if t.startswith("withdrawal.")}
+    return {"<not a literal>"}
+
+
+def test_every_email_type_emitter_carries_the_letter_and_no_other_does() -> None:
+    """Each request dict that builds a letter (**letter_request(...)) builds
+    one of the twelve e-mail types, every one of the twelve is built
+    somewhere, and no request names `email` by hand. comms refuses an
+    `email` block on a type without e-mail, at intake (the pair: the scan
+    found every type it is about)."""
+    built: set[str] = set()
+    hand_written: list[str] = []
     for path in sorted(_APP.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Dict):
                 continue
-            keys = {
-                k.value: v
-                for k, v in zip(node.keys, node.values, strict=True)
-                if isinstance(k, ast.Constant)
-            }
-            type_node = keys.get("type")
-            if type_node is None:
-                continue
-            literal: set[str] = set()
-            if isinstance(type_node, ast.Constant) and type_node.value in EMAIL_TYPES:
-                literal.add(type_node.value)
-            elif (
-                isinstance(type_node, ast.JoinedStr)
-                and path.name == "service.py"
-                and "withdrawals" in path.parts
-            ):
-                literal.update(t for t in EMAIL_TYPES if t.startswith("withdrawal."))
-            if not literal:
-                continue
-            found |= literal
-            if "action_data" not in keys:
-                missing.append(f"{path.relative_to(_APP).as_posix()}:{node.lineno}")
-    assert found == EMAIL_TYPES
-    assert missing == []
+            for key, value in zip(node.keys, node.values, strict=True):
+                if key is None and (
+                    isinstance(value, ast.Call)
+                    and isinstance(value.func, ast.Name)
+                    and value.func.id == "letter_request"
+                ):
+                    built |= _letter_type(value, path)
+                if isinstance(key, ast.Constant) and key.value == "email" and any(
+                    isinstance(k, ast.Constant) and k.value == "type" for k in node.keys
+                ):
+                    hand_written.append(f"{path.relative_to(_APP).as_posix()}:{node.lineno}")
+    assert built == EMAIL_TYPES
+    assert hand_written == []

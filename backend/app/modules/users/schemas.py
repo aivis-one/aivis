@@ -18,6 +18,20 @@
 #     - Field set to null in JSON -> present with value None
 #   Service layer rejects explicit null for NOT NULL DB columns (language).
 #
+# THE NAMES IN THE PROFILE (H43). profile.first_name and profile.last_name
+# reach documents and e-mail letters (purchases/document_utils.py
+# extract_investor_name, app/letters), and comms refuses a letter over its
+# limits -- so every path that writes them holds them to one rule,
+# profile_name_problem() below: a string of at most PROFILE_NAME_MAX_CHARS
+# characters, counted as it arrives -- before any cleaning (the reason is in
+# that function's docstring). The writers:
+# PATCH /users/me (UserUpdate, a 422), the Telegram login (it caps at the
+# same number), the seed (scripts/seed.py refuses the project). Names
+# written before this rule are not migrated: a longer one stays until its
+# owner edits it, and the next edit is held to the rule. An empty string
+# and one of spaces are accepted as before -- the rule is about length and
+# type, the onboarding step already reads them as "no name".
+#
 # Sprint 6.3: payout_details schemas for withdrawal payment methods.
 # F2.3: SelectRoleRequest for onboarding role selection.
 # =============================================================================
@@ -72,6 +86,36 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# The rule above. 100 is what the Telegram login has always kept.
+PROFILE_NAME_KEYS = ("first_name", "last_name")
+PROFILE_NAME_MAX_CHARS = 100
+
+
+def clean_profile_text(value: object, limit: int) -> str | None:
+    """A profile text from Telegram: printable characters only, trimmed, capped."""
+    if not isinstance(value, str):
+        return None
+    cleaned = "".join(ch for ch in value if ch.isprintable()).strip()
+    return cleaned[:limit] or None
+
+
+def profile_name_problem(key: str, value: object) -> str | None:
+    """Why `value` cannot be profile.<key> (one of PROFILE_NAME_KEYS), or None.
+
+    THE LENGTH IS THE RAW ONE, counted before any cleaning (owner ruling,
+    H43). The value is stored as it arrives; measured after cleaning, 100
+    visible characters could carry a tail of unprintable ones of any length
+    (only nginx's 100M body limit would stop it), and that tail reaches the
+    e-mail letters whose length comms limits. An empty string and a string
+    of spaces within the 100 pass, as before.
+    """
+    if not isinstance(value, str):
+        return f"profile.{key} must be a string"
+    if len(value) > PROFILE_NAME_MAX_CHARS:
+        return f"profile.{key} is longer than {PROFILE_NAME_MAX_CHARS} characters"
+    return None
+
+
 class UserUpdate(BaseModel):
     """PATCH /api/v1/users/me -- updatable profile fields.
 
@@ -86,6 +130,21 @@ class UserUpdate(BaseModel):
 
     profile: dict[str, Any] | None = Field(default=None)
     language: str | None = Field(default=None, min_length=1, max_length=10)
+
+    @field_validator("profile")
+    @classmethod
+    def _names_follow_the_rule(
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        """The names in the profile (see the module header): a 422."""
+        if value is None:
+            return value
+        for key in PROFILE_NAME_KEYS:
+            if key in value:
+                problem = profile_name_problem(key, value[key])
+                if problem is not None:
+                    raise ValueError(problem)
+        return value
 
 
 # ---------------------------------------------------------------------------

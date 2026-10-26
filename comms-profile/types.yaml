@@ -142,7 +142,7 @@ types:
   # category is free later if that turns out to be wanted.
   #
   # title/body are sent as literal English strings by the emitter; these in-app
-  # types have no per-locale template (templates/<locale>.yaml holds the e-mail types only)
+  # types have no per-locale template (templates/<locale>.yaml holds Telegram texts only)
   # -- this matches every other backend-authored user-facing
   # string today (core/email.py has no locale branching either). Localizing
   # outbound notification copy is a real gap, but it is a PRE-EXISTING one
@@ -194,8 +194,10 @@ types:
   # E-MAIL FOR MONEY AND DEBT (2026-10-23). The four withdrawal types and
   # the two installment types tranche_overdue and plan_defaulted go to
   # e-mail as well as the cabinet: they touch the person's money or a debt.
-  # Every other type stays in the cabinet only. The texts are in
-  # templates/<locale>.yaml. A type routed to e-mail carries NO category
+  # Every other type stays in the cabinet only. The letter, and the
+  # bell's title and body, are built by the backend in the person's
+  # language (backend/app/letters, H43) and reach comms whole in the
+  # request; no template here. A type routed to e-mail carries NO category
   # (checks/comms_profile.py: a category is the mute gate, and nobody may
   # mute the word that their money was sent or that an installment is
   # overdue), so these six no longer carry theirs.

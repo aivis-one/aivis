@@ -152,7 +152,6 @@ from app.core.comms_sync import sync_recipient
 from app.core.config import settings
 from app.core.crypto import decrypt_secret
 from app.core.database import get_session_factory
-from app.core.email_vars import email_action_data
 from app.core.events.service import EVENT_NOTIFICATION_REQUEST, emit_event
 from app.core.exceptions import (
     BadRequestError,
@@ -164,6 +163,7 @@ from app.core.exceptions import (
 )
 from app.core.rate_limit import _RATE_LIMIT_SCRIPT, check_rate_limit
 from app.core.redis import get_redis
+from app.letters import letter_request, recipient_language
 from app.modules.documents.service import (
     get_current_document_by_type,
     has_signed_document_type,
@@ -171,6 +171,7 @@ from app.modules.documents.service import (
     sign_document,
 )
 from app.modules.users.models import KYCStatus, OnboardingStep, User, UserRole
+from app.modules.users.schemas import PROFILE_NAME_MAX_CHARS, clean_profile_text
 
 logger = structlog.get_logger()
 
@@ -323,9 +324,11 @@ def _generate_verification_code() -> str:
 #     and gets an error from a system that just told them the code was
 #     fine. The value is the credential's own expiry, not a constant.
 #
-#   title -- the profile carries no templates/ directory, so comms falls
-#     back to the stored title as the email subject. The subject is
-#     therefore ours to supply, per emission.
+#   THE LETTER IS OURS -- the request carries the finished letter in its
+#     `email` block (app/letters, H43), and comms sends exactly that,
+#     subject included. comms still requires a title and a body for a type
+#     delivered to people; for these e-mail-only types they are the
+#     letter's subject and heading, stored by comms and shown nowhere.
 #
 # NO try/except HERE, AND THAT IS THE CHANGE IN CONTRACT. The senders
 # these replaced swallowed every exception and logged: correct for a
@@ -365,18 +368,16 @@ async def _request_verification_email(
             "type": "auth.verification_code",
             "target_type": "user",
             "target_value": str(user_id),
-            "title": "AIVIS.ONE - Email Verification",
-            "body": (
-                f"Your verification code is: {code}\n\n"
-                f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} minutes.\n\n"
-                "If you did not request this, please ignore this email."
-            ),
             "expiry_at": expires_at.isoformat(),
-            # The variables of comms-profile/templates/<locale>.yaml: the
-            # letter's wording and language come from there, the body
-            # above stays as the fallback and the stored copy.
-            "action_data": email_action_data(
-                code=code, minutes=_VERIFICATION_CODE_TTL_MINUTES
+            # The letter, built here in the person's language (app/letters).
+            # The code rides in it, and comms keeps the request for its
+            # retention (90 days) -- knowingly (owner ruling, H43): before
+            # the block it rode in action_data and body for as long, and
+            # the code itself dies in _VERIFICATION_CODE_TTL_MINUTES.
+            **letter_request(
+                "auth.verification_code",
+                await recipient_language(session, user_id),
+                {"code": code, "minutes": _VERIFICATION_CODE_TTL_MINUTES},
             ),
         },
     )
@@ -406,18 +407,17 @@ async def _request_password_reset_email(
             "type": "auth.password_reset",
             "target_type": "user",
             "target_value": str(user_id),
-            "title": "AIVIS.ONE - Password Reset",
-            "body": (
-                "We received a request to reset your AIVIS.ONE password.\n\n"
-                f"Reset your password: {reset_link}\n\n"
-                f"This link expires in {_PASSWORD_RESET_TOKEN_TTL_MINUTES} "
-                "minutes and can only be used once.\n\n"
-                "If you did not request this, you can safely ignore this "
-                "email -- your password will not be changed."
-            ),
             "expiry_at": expires_at.isoformat(),
-            "action_data": email_action_data(
-                reset_url=reset_link, minutes=_PASSWORD_RESET_TOKEN_TTL_MINUTES
+            # The link rides in the letter, and comms keeps the request for
+            # its retention -- knowingly, as with the verification code
+            # above: the link dies in _PASSWORD_RESET_TOKEN_TTL_MINUTES.
+            **letter_request(
+                "auth.password_reset",
+                await recipient_language(session, user_id),
+                {
+                    "reset_url": reset_link,
+                    "minutes": _PASSWORD_RESET_TOKEN_TTL_MINUTES,
+                },
             ),
         },
     )
@@ -1406,14 +1406,6 @@ def _telegram_credentials(telegram_user: dict) -> dict:
     }
 
 
-def _clean_profile_text(value: object, limit: int) -> str | None:
-    """A profile text from Telegram: printable characters only, trimmed, capped."""
-    if not isinstance(value, str):
-        return None
-    cleaned = "".join(ch for ch in value if ch.isprintable()).strip()[:limit]
-    return cleaned or None
-
-
 def _fill_profile_from_telegram(user: User, telegram_creds: dict) -> None:
     """Copy the Telegram photo and names into the profile where they are empty.
 
@@ -1425,9 +1417,13 @@ def _fill_profile_from_telegram(user: User, telegram_creds: dict) -> None:
     """
     profile = dict(user.profile or {})
     wanted: dict[str, str | None] = {
-        "first_name": _clean_profile_text(telegram_creds.get("first_name"), 100),
-        "last_name": _clean_profile_text(telegram_creds.get("last_name"), 100),
-        "avatar_url": _clean_profile_text(telegram_creds.get("photo_url"), 500),
+        "first_name": clean_profile_text(
+            telegram_creds.get("first_name"), PROFILE_NAME_MAX_CHARS
+        ),
+        "last_name": clean_profile_text(
+            telegram_creds.get("last_name"), PROFILE_NAME_MAX_CHARS
+        ),
+        "avatar_url": clean_profile_text(telegram_creds.get("photo_url"), 500),
     }
     # Only an http(s) address is a picture the cabinet may show.
     photo = wanted["avatar_url"]
@@ -1694,20 +1690,17 @@ async def _request_telegram_link_code_email(
             "type": "auth.telegram_link_code",
             "target_type": "user",
             "target_value": str(user_id),
-            "title": "AIVIS.ONE - Link Telegram",
-            "body": (
-                f"A Telegram account ({telegram_name}) asks to be linked to "
-                "your AIVIS account.\n\n"
-                f"Your code is: {code}\n\n"
-                f"This code expires in {_VERIFICATION_CODE_TTL_MINUTES} "
-                "minutes. Do not share it with anyone.\n\n"
-                "If this was not you, ignore this email."
-            ),
             "expiry_at": expires_at.isoformat(),
-            "action_data": email_action_data(
-                code=code,
-                minutes=_VERIFICATION_CODE_TTL_MINUTES,
-                telegram_name=telegram_name,
+            # In the language of the row the code is addressed to -- the
+            # one found by the e-mail -- not of the Telegram that asks.
+            **letter_request(
+                "auth.telegram_link_code",
+                await recipient_language(session, user_id),
+                {
+                    "code": code,
+                    "minutes": _VERIFICATION_CODE_TTL_MINUTES,
+                    "telegram_name": telegram_name,
+                },
             ),
         },
     )
@@ -1733,13 +1726,11 @@ async def _request_telegram_linked_email(
             "type": "auth.telegram_linked",
             "target_type": "user",
             "target_value": str(user_id),
-            "title": "AIVIS.ONE - Telegram linked",
-            "body": (
-                f"The Telegram account {telegram_name} was linked to your "
-                "AIVIS account.\n\n"
-                "If this was not you, contact support."
+            **letter_request(
+                "auth.telegram_linked",
+                await recipient_language(session, user_id),
+                {"telegram_name": telegram_name},
             ),
-            "action_data": email_action_data(telegram_name=telegram_name),
         },
     )
 

@@ -383,7 +383,11 @@ from app.modules.users.models import (  # noqa: E402
     User,
     UserRole,
 )
-from app.modules.users.schemas import UserUpdate  # noqa: E402
+from app.modules.users.schemas import (  # noqa: E402
+    PROFILE_NAME_KEYS,
+    UserUpdate,
+    profile_name_problem,
+)
 from app.modules.users.service import select_role, update_user  # noqa: E402
 
 logger = structlog.get_logger()
@@ -711,11 +715,22 @@ def _check_address(spec: dict[str, Any], where: str) -> str:
         raise SeedRefusedError(f"{where}.email_local {local!r}: {exc}") from exc
 
 
+def _check_names(spec: dict[str, Any], where: str) -> None:
+    """An account's first and last name, held to the rule every writer of
+    profile names follows (users/schemas.py profile_name_problem)."""
+    for key in PROFILE_NAME_KEYS:
+        if key in spec:
+            problem = profile_name_problem(key, spec[key])
+            if problem is not None:
+                raise SeedRefusedError(f"{where}.{key}: {problem}")
+
+
 def _check_company(spec: dict[str, Any], where: str) -> None:
     key = spec.get("key")
     if not isinstance(key, str) or not key:
         raise SeedRefusedError(f"{where} has no `key`")
     email = _check_address(spec, where)
+    _check_names(spec, where)
     name = _text(spec.get("name"), f"{where}.name")
     description = _optional_text(spec, "description", where)
 
@@ -993,6 +1008,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
     for section in ("staff", "agents", "investors"):
         for i, spec in enumerate(profile.get(section, [])):
             _check_address(spec, f"{section}[{i}]")
+            _check_names(spec, f"{section}[{i}]")
 
     # An investor's agent and portfolio: a wrong agent key used to surface
     # as a KeyError half-way through the run, after the agents were made.
