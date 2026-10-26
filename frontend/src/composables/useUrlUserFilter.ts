@@ -21,22 +21,22 @@ export function userFromSearch(search: string, key: string): string {
 }
 
 /** The query string that names the user (or none), the other parameters kept. */
-export function searchForUser(search: string, id: string, key: string): string {
+export function searchForUser(search: string, userId: string, key: string): string {
   const params = new URLSearchParams(search)
-  if (id) params.set(key, id)
+  if (userId) params.set(key, userId)
   else params.delete(key)
   const text = params.toString()
   return text ? `?${text}` : ''
 }
 
 export function useUrlUserFilter(key: string): Ref<string> {
-  const id = ref(typeof window === 'undefined' ? '' : userFromSearch(window.location.search, key))
-  watch(id, (value) => {
+  const chosen = ref(typeof window === 'undefined' ? '' : userFromSearch(window.location.search, key))
+  watch(chosen, (value) => {
     if (typeof window === 'undefined') return
     const search = searchForUser(window.location.search, value, key)
     if (search === window.location.search) return
     const { pathname, hash } = window.location
     window.history.replaceState(window.history.state, '', `${pathname}${search}${hash}`)
   })
-  return id
+  return chosen
 }
