@@ -390,10 +390,34 @@ async def test_shipped_default_profile_passes_the_pre_write_checks(
     profile = seed.load_profile("default")
     assert profile["marker"] == "default"
     seed.validate_profile(profile)
-    assert profile["companies"], "the storefront cannot be empty"
-    assert not profile.get("staff"), "the default must run without --allow-live-staff"
-    locals_ = [i["email_local"] for i in profile["investors"]]
-    assert locals_ == ["test01", "test02", "test03", "test04", "test05"]
+    assert [c["key"] for c in profile["companies"]] == ["sankord", "nutreex"]
+    # The one operator the default declares: the live-staff refusal does not
+    # count the acting admin (the seed declares it itself), so the default
+    # runs without --allow-live-staff on a stand whose only staff is that admin.
+    assert [s["email_local"] for s in profile["staff"]] == ["test01"]
+    assert [a["email_local"] for a in profile["agents"]] == ["test03"]
+    assert [i["email_local"] for i in profile["investors"]] == [
+        "test02",
+        "test04",
+        "test05",
+    ]
+    portfolios = {i["email_local"]: i["portfolio"] for i in profile["investors"]}
+    assert portfolios["test02"] == {
+        "deposit_cents": 20_000,
+        "gifts": [{"company": "sankord", "product": "Portfolio 200 USD"}],
+        "purchases": [{"company": "nutreex", "product": "Portfolio 200 USD"}],
+    }
+    assert portfolios["test04"] == {
+        "deposit_cents": 120_000,
+        "purchases": [{"company": "sankord", "product": "Portfolio 1,000 USD"}],
+    }
+    assert portfolios["test05"] == {
+        "deposit_cents": 20_000,
+        "purchases": [
+            {"company": "sankord", "product": "Portfolio 200 USD", "plan": "6 months"}
+        ],
+    }
+    assert all("portfolio" not in e for e in profile["staff"] + profile["agents"])
 
 
 # ---------------------------------------------------------------------------
