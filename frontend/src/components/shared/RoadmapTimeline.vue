@@ -101,7 +101,7 @@ function statusLabel(status: string): string {
 // through to the neutral badge.
 type BadgeVariant = 'success' | 'accent' | 'danger' | 'neutral'
 function statusVariant(status: string): BadgeVariant {
-  if (status === 'done') return 'success'
+  if (status === 'completed') return 'success'
   if (status === 'in_progress') return 'accent'
   if (status === 'cancelled') return 'danger'
   return 'neutral'
@@ -109,7 +109,7 @@ function statusVariant(status: string): BadgeVariant {
 
 // The timeline's state of an entry (K54): done, current or upcoming.
 function stateOf(item: RoadmapItemResponse): 'done' | 'current' | 'upcoming' {
-  if (item.status === 'done') return 'done'
+  if (item.status === 'completed') return 'done'
   if (item.status === 'in_progress') return 'current'
   return 'upcoming'
 }

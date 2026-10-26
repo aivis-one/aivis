@@ -1685,7 +1685,7 @@
       "status": {
         "planned": "Planned",
         "in_progress": "In progress",
-        "done": "Done",
+        "completed": "Completed",
         "cancelled": "Cancelled"
       },
       "openProduct": "View product",

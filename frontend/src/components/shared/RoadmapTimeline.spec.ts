@@ -46,3 +46,40 @@ describe('RoadmapTimeline dates', () => {
     expect(text).not.toMatch(/\b15\b/)
   })
 })
+
+// The backend's roadmap statuses are planned, in_progress and completed
+// (companies/constants.py RoadmapItemStatus). The timeline once knew `done`
+// only, so every completed item read as upcoming with the raw word on its
+// chip.
+describe('RoadmapTimeline statuses', () => {
+  function mountWith(status: string, locale: 'en' | 'ru' = 'en') {
+    const i18n = createI18n({ legacy: false, locale, messages: { en, ru }, missingWarn: false })
+    return mount(RoadmapTimeline, {
+      props: { items: [{ ...item, status } as unknown as RoadmapItemResponse] },
+      global: { plugins: [i18n] },
+    })
+  }
+
+  it('shows a completed item as done, with its translated, success-looking chip', () => {
+    const w = mountWith('completed')
+    expect(w.find('li.ds-timeline__item').attributes('data-state')).toBe('done')
+    const chip = w.findAll('.ds-badge').find((b) => b.text() === 'Completed')
+    expect(chip).toBeDefined()
+    expect(chip!.classes()).toContain('ds-badge--success')
+    expect(w.text()).not.toContain('completed')
+  })
+
+  it('translates the completed chip into Russian', () => {
+    const w = mountWith('completed', 'ru')
+    expect(w.findAll('.ds-badge').some((b) => b.text() === 'Выполнено')).toBe(true)
+  })
+
+  it('shows an in-progress item as current and a planned one as upcoming', () => {
+    expect(mountWith('in_progress').find('li.ds-timeline__item').attributes('data-state')).toBe(
+      'current',
+    )
+    expect(mountWith('planned').find('li.ds-timeline__item').attributes('data-state')).toBe(
+      'upcoming',
+    )
+  })
+})
