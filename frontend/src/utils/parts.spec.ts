@@ -147,6 +147,7 @@ describe('a gift entered in parts', () => {
     expect(lotsForParts(260, 25)).toEqual({ below: 250, above: 275 })
     // Fewer parts than one lot: nothing valid below.
     expect(lotsForParts(10, 25)).toEqual({ below: 0, above: 25 })
+    expect(lotsForParts(270, 25)).toEqual({ below: 250, above: 275 })
   })
 
   it('writes the price of one part to the decimals it needs', () => {

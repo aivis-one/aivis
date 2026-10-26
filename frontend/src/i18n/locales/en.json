@@ -1253,7 +1253,7 @@
       "projectPlaceholder": "Choose a project",
       "offer": "The project's offer",
       "offerPlaceholder": "Choose the offer",
-      "perLotError": "The project's parts per lot could not be read. Choose the project again or reload the page.",
+      "perLotError": "The project's parts per lot could not be read. Reload the page.",
       "parts": "Parts of the project",
       "partsPlaceholder": "A whole number of parts",
       "partsError": "Enter a whole number of parts, 1 or more.",
