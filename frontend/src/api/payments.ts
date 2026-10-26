@@ -10,6 +10,8 @@
 //   GET  /api/v1/payments/invoices/current    -- the open invoice, if any
 //   GET  /api/v1/payments/invoices/{id}       -- one invoice, refreshed
 //   POST /api/v1/payments/invoices/{id}/txid  -- submit a transaction hash
+//   POST /api/v1/payments/invoices/{id}/manual-request
+//                                             -- ask an administrator to confirm
 //   GET  /api/v1/payments/history             -- paginated payment history
 //
 // THE BROWSER NEVER TALKS TO THE PAYMENTS SERVICE. Every call here goes
@@ -26,6 +28,7 @@ import { buildQueryString } from '@/utils/querystring'
 import type {
   CreateInvoiceRequest,
   InvoiceResponse,
+  ManualRequestResponse,
   PaymentHistoryResponse,
   TxidResultResponse,
 } from '@/api/types'
@@ -90,6 +93,17 @@ export function submitInvoiceTxid(
     `/api/v1/payments/invoices/${invoiceId}/txid`,
     { txid },
   )
+}
+
+/**
+ * POST /api/v1/payments/invoices/{id}/manual-request
+ *
+ * Asks an administrator to check the payment and confirm the invoice by hand.
+ * One request per invoice: a repeat answers with the existing one
+ * (`already_requested`). 409 once the invoice is credited.
+ */
+export function requestManualConfirmation(invoiceId: string): Promise<ManualRequestResponse> {
+  return api.post<ManualRequestResponse>(`/api/v1/payments/invoices/${invoiceId}/manual-request`)
 }
 
 /**

@@ -519,6 +519,8 @@ export type { SubmitTxidRequest } from './generated'
 
 export type { TxidResultResponse } from './generated'
 
+export type { ManualRequestResponse } from './generated'
+
 // ---------------------------------------------------------------------------
 // Payment history (Sprint 5.2) -- investor view
 //

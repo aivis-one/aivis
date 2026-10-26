@@ -31,6 +31,16 @@
 //
 // After verification the screen adds a line: to pay by bank, write to support.
 //
+// Asking an administrator (the triple click on the network warning):
+//   A person who paid another way (by bank, or with a hash that cannot be
+//   found) triple-clicks the warning. The screen sends ONE request for the
+//   invoice and, only once the server has it, says the administrator will
+//   check the payment and confirm the top-up. A request that could not be
+//   sent says so and never shows the sent line. The server keeps the request
+//   (`manual_requested_at` on every read of the invoice), so a reload shows the
+//   same waiting line until the invoice is credited; an invoice credited by
+//   hand (`manually_credited`) shows the usual confirmed state.
+//
 // THE COUNTER IS NEVER COMPUTED HERE. `attempts_remaining` comes from
 // the server on every read and on every submission, because two of the
 // six verdicts -- invalid_format and api_error -- never reach an
@@ -71,7 +81,13 @@ import { AlertTriangle, ArrowLeft, Check, Copy, Info } from '@/components/ui/ico
 import { CButton, CEmptyState, CInput, CLoader } from '@/components/ui'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { ApiNetworkError, ApiResponseError, ApiTimeoutError } from '@/api/client'
-import { createInvoice, getCurrentInvoice, getInvoice, submitInvoiceTxid } from '@/api/payments'
+import {
+  createInvoice,
+  getCurrentInvoice,
+  getInvoice,
+  requestManualConfirmation,
+  submitInvoiceTxid,
+} from '@/api/payments'
 import type { InvoiceResponse } from '@/api/types'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { useAuthStore } from '@/stores/auth'
@@ -149,25 +165,56 @@ const txidNotice = ref('')
 const submitting = ref(false)
 
 // A person who paid another way (by bank, or with a hash that cannot be found)
-// triple-clicks the network warning; the hash card's status line then says the
-// request went to an administrator, who finds the payment and confirms the
-// invoice by hand. Nothing is sent and nothing is stored from here. One or two
-// clicks do nothing: three clicks must fall within one short window.
+// triple-clicks the network warning: the screen asks the server to pass the
+// invoice to an administrator, who finds the payment and confirms it by hand
+// (see the header). One or two clicks do nothing: three clicks must fall within
+// one short window. Allowed until the invoice is credited, after its deadline
+// too.
 const MANUAL_CLICKS = 3
 const MANUAL_WINDOW_MS = 800
 let manualClickTimes: number[] = []
+// idle: nothing asked; sending: the request is on its way; waiting: the server
+// has it; failed: it could not be sent (the person may click again).
+const manualState = ref<'idle' | 'sending' | 'waiting' | 'failed'>('idle')
+
 function onWarningClick(): void {
-  if (!invoice.value || isTerminal.value) return
+  if (!invoice.value || isConfirmed.value) return
   const now = Date.now()
   manualClickTimes = [...manualClickTimes.filter((at) => now - at <= MANUAL_WINDOW_MS), now]
   if (manualClickTimes.length >= MANUAL_CLICKS) {
     manualClickTimes = []
-    txidNotice.value = t('inv.deposit.manualRequested')
+    void requestManual()
+  }
+}
+
+async function requestManual(): Promise<void> {
+  const current = invoice.value
+  if (!current || manualState.value === 'sending' || manualState.value === 'waiting') return
+  manualState.value = 'sending'
+  try {
+    await requestManualConfirmation(current.id)
+    manualState.value = 'waiting'
+  } catch (err: unknown) {
+    if (err instanceof ApiResponseError && err.status === 409) {
+      // Already credited: re-reading shows the confirmed state.
+      manualState.value = 'idle'
+      await refresh()
+    } else {
+      manualState.value = 'failed'
+    }
   }
 }
 
 const status = computed(() => invoice.value?.status ?? null)
-const isTerminal = computed(() => !!status.value && TERMINAL.includes(status.value))
+// Credited: by the service (its own status) or by an administrator's hand.
+const isConfirmed = computed(
+  () => status.value === 'confirmed' || invoice.value?.manually_credited === true,
+)
+const isTerminal = computed(
+  () => isConfirmed.value || (!!status.value && TERMINAL.includes(status.value)),
+)
+// The status the terminal block names: a hand credit reads as confirmed.
+const shownStatus = computed(() => (isConfirmed.value ? 'confirmed' : status.value))
 // Only `created` takes a hash. Every other status is refused by the
 // service with one of five 409s, so the field is hidden rather than
 // offered and then rejected.
@@ -176,11 +223,13 @@ const acceptsTxid = computed(() => status.value === 'created')
 const amountDisplay = computed(() =>
   invoice.value ? (invoice.value.invoice_amount_cents / 100).toFixed(2) : '',
 )
-const creditedDisplay = computed(() =>
-  invoice.value?.credited_amount_cents != null
-    ? (invoice.value.credited_amount_cents / 100).toFixed(2)
-    : null,
-)
+// A hand credit is the invoice's stated amount; the service reports its own.
+const creditedDisplay = computed(() => {
+  const credited =
+    invoice.value?.credited_amount_cents ??
+    (invoice.value?.manually_credited ? invoice.value.invoice_amount_cents : null)
+  return credited != null ? (credited / 100).toFixed(2) : null
+})
 const expiresDisplay = computed(() =>
   invoice.value?.expires_at ? formatDateTime(invoice.value.expires_at, locale.value) : null,
 )
@@ -223,6 +272,10 @@ function isOffline(err: unknown): boolean {
 }
 
 async function showInvoice(next: InvoiceResponse | null): Promise<void> {
+  // The request's line follows the invoice: another invoice starts with none,
+  // and one the server says was asked for shows the waiting line.
+  if (!next || next.id !== invoice.value?.id) manualState.value = 'idle'
+  if (next?.manual_requested_at) manualState.value = 'waiting'
   invoice.value = next
   qrSrc.value = next?.address ? await generateQr(next.address) : null
 }
@@ -388,6 +441,7 @@ async function submitTxid(): Promise<void> {
 }
 
 function startOver(): void {
+  manualState.value = 'idle'
   invoice.value = null
   qrSrc.value = null
   txidInput.value = ''
@@ -546,23 +600,46 @@ onMounted(load)
           </div>
         </div>
 
+        <!-- The request to an administrator: sent (and kept by the server
+             until the invoice is credited), or not sent. -->
+        <div
+          v-if="!isConfirmed && manualState === 'waiting'"
+          class="ds-alert ds-alert--info dv-manual"
+          role="status"
+        >
+          <span class="ds-alert__icon" aria-hidden="true"><Info size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ t('inv.deposit.manualRequested') }}</p>
+          </div>
+        </div>
+        <div
+          v-else-if="!isConfirmed && manualState === 'failed'"
+          class="ds-alert ds-alert--danger dv-manual"
+          role="alert"
+        >
+          <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
+          <div class="ds-alert__content">
+            <p class="ds-alert__text">{{ t('inv.deposit.manualFailed') }}</p>
+          </div>
+        </div>
+
         <!-- Terminal statuses. Each is its own message: "confirmed"
              and "stalled" have nothing in common for the user. -->
         <template v-if="isTerminal">
           <div
             class="ds-alert"
-            :class="status === 'confirmed' ? 'ds-alert--success' : 'ds-alert--warning'"
-            :role="status === 'confirmed' ? 'status' : 'alert'"
+            :class="isConfirmed ? 'ds-alert--success' : 'ds-alert--warning'"
+            :role="isConfirmed ? 'status' : 'alert'"
           >
             <span class="ds-alert__icon" aria-hidden="true">
-              <Check v-if="status === 'confirmed'" size="sm" />
+              <Check v-if="isConfirmed" size="sm" />
               <AlertTriangle v-else size="sm" />
             </span>
             <div class="ds-alert__content">
               <p class="ds-alert__title">
-                {{ t(`inv.deposit.status.${status}`) }}
+                {{ t(`inv.deposit.status.${shownStatus}`) }}
               </p>
-              <p v-if="status === 'confirmed'" class="ds-alert__text">
+              <p v-if="isConfirmed" class="ds-alert__text">
                 <!-- credited, not invoiced: the service credits what
                      actually arrived, which may be less -- and may be
                      zero for a dust transfer. Zero is a legitimate
