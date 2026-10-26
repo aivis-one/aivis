@@ -499,8 +499,8 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
 <figure class="phone-wrap"><iframe class="phone" title="Confirmation and done on a phone" data-src="components-6.html?fragment=r14c" height="1500"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
-<section class="blk" id="r15"><div class="wrap"><h2>Launcher panel (K56) and Icon tile with a caption (K57)</h2>
-<p class="lead">The launcher: a button that opens into a panel, the panel growing out of the button's own box and its parts sliding out in turn (click the live one; Escape or Close shuts it and the focus returns to the button; under reduced motion it shows at once). The icon tile: an icon link with its name under it. Day and night by the toolbar above.</p>
+<section class="blk" id="r15"><div class="wrap"><h2>Launcher panel (K56) and Icon tile (K57)</h2>
+<p class="lead">The launcher: a button that opens into a panel, the panel growing out of the button's own box and its parts sliding out in turn (click the live one; Escape or Close shuts it and the focus returns to the button; under reduced motion it shows at once). The icon tile: an icon link with its name under it, or icon only with its name in the hover hint, and the group row that sets three icon-only groups across a footer. Day and night by the toolbar above.</p>
 <div class="cols"><div class="stack" data-frag="r15a"><div class="padded desk"><h3>Launcher: live, shut with focus, open</h3>
 <h4 class="lbl-s">live (click it)</h4>
 <div class="void" style="min-block-size: 22rem; display: flex; justify-content: flex-end; align-items: flex-end;"><div class="ds-launcher" data-open="false">
@@ -548,8 +548,34 @@ footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-s
   <li><a class="ds-icontile sim-pressed" href="#t3"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span><span class="ds-icontile__caption">pressed</span></a></li>
   <li><a class="ds-icontile sim-focus" href="#t4"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span><span class="ds-icontile__caption">name@example.org</span></a></li>
 </ul>
+<h3>Icon only: rest, hover, pressed, focus (the name in the hover hint)</h3>
+<ul class="ds-icontiles" data-variant="icon">
+  <li><a class="ds-icontile" href="#u1" aria-label="@handle" title="@handle"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+  <li><a class="ds-icontile sim-hover" href="#u2" aria-label="hover" title="hover"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+  <li><a class="ds-icontile sim-pressed" href="#u3" aria-label="pressed" title="pressed"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+  <li><a class="ds-icontile sim-focus" href="#u4" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span></a></li>
+</ul>
+<h3>Group row: start edge, middle, end edge (stacked on a phone)</h3>
+<div class="ds-icongroups">
+  <nav class="ds-icongroup" aria-labelledby="ig-s1"><h4 class="ds-label" id="ig-s1">Online</h4>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#g1" aria-label="Channel" title="Channel"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+      <li><a class="ds-icontile" href="#g2" aria-label="Network one" title="Network one"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+      <li><a class="ds-icontile" href="#g3" aria-label="Network two" title="Network two"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+      <li><a class="ds-icontile" href="#g4" aria-label="Network three" title="Network three"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+    </ul></nav>
+  <section class="ds-icongroup" aria-labelledby="ig-s2"><h4 class="ds-label" id="ig-s2">Write to us</h4>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#g5" aria-label="@handle" title="@handle"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+      <li><a class="ds-icontile" href="#g6" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span></a></li>
+    </ul></section>
+  <section class="ds-icongroup" aria-labelledby="ig-s3"><h4 class="ds-label" id="ig-s3">App</h4>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#g7" aria-label="@bot" title="@bot"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+    </ul></section>
+</div>
 </div></div>
-<figure class="phone-wrap"><iframe class="phone" title="Icon tiles on a phone" data-src="components-6.html?fragment=r15b" height="300"></iframe><figcaption>480 phone frame</figcaption></figure>
+<figure class="phone-wrap"><iframe class="phone" title="Icon tiles on a phone" data-src="components-6.html?fragment=r15b" height="640"></iframe><figcaption>480 phone frame</figcaption></figure>
 </div>
 </div></section>
 <footer class="end"><div class="wrap">Sample data throughout.</div></footer>

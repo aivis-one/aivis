@@ -418,12 +418,16 @@ Markup: `markup/launcher.html`. `div.ds-launcher[data-open]` holds the trigger (
 
 Not a menu (use the Action menu K26) and not a dialog (the Dialog K52 blocks the page).
 
-## K57 Icon tile with a caption
+## K57 Icon tile
 
-Markup: `markup/icon-tile.html`. `ul.ds-icontiles` is a wrapping row of tiles; each `a.ds-icontile` is one link: a `--touch-min` square box (`span.ds-icontile__box`, `--bg-subtle`, `thin` `--border-subtle`, `--radius-control`) holding the icon, and the caption under it (`span.ds-icontile__caption`, `--fs-xs`, `--text-secondary`).
+Markup: `markup/icon-tile.html`. `ul.ds-icontiles` is a wrapping row of tiles; each `a.ds-icontile` is one link: a `--touch-min` square box (`span.ds-icontile__box`, `--bg-subtle`, `thin` `--border-subtle`, `--radius-control`) holding the icon, and, in the captioned form, the caption under it (`span.ds-icontile__caption`, `--fs-xs`, `--text-secondary`). Two forms: with a caption (the default) and icon only (`ul.ds-icontiles[data-variant="icon"]`). A group row (`div.ds-icongroups`) sets up to three groups of icon-only tiles side by side, each under its heading.
 
 | Part | Rule |
 |---|---|
-| name | the caption is the tile's visible and accessible name: a handle, a network or an address, never a sentence; it breaks anywhere rather than overflow and the tile is at most `--space-9` wide |
+| name | with a caption: the caption is the tile's visible and accessible name: a handle, a network or an address, never a sentence; it breaks anywhere rather than overflow and the tile is at most `--space-9` wide. Icon only: no caption; the same name is in the link's `aria-label` and in its `title` (the hover hint), word for word |
+| icon only | `data-variant="icon"` on the row: the boxes alone, one equal gap `--space-2` between tiles in both directions, the row pressed to the start of its group directly under the heading (the heading's own `--space-3` below it, nothing between) |
+| group row | `div.ds-icongroups` holds two or three `.ds-icongroup` (a `nav` for a list of networks, a `section` named by its heading otherwise), each its heading (the page's small heading, `.ds-label` in the system) then one icon-only row; inside a group the heading and the row sit at the group's start. Under the 640 width (`--bp-md`) the groups stack with `--space-6` between them; from 640 they stand in one line, `1fr auto 1fr` with `--space-5` between: the first group at the start edge, the second in the middle, the third at the end edge, and a group's row keeps its tiles on one line (it does not wrap) |
 | states | hover fills the box with `--primary` and the glyph takes `--on-primary`, the caption turns `--primary`; pressed uses `--primary-active`; focus is the system outline around the whole tile |
 | icon | from the sprite, in `currentColor`; the icon is decorative |
+
+Use the icon-only form where the icons are known at a glance (messengers, networks, mail) and the group's heading says what they are for; use the captioned form where the handle itself must be read.

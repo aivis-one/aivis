@@ -1,6 +1,32 @@
-<!-- AIVIS Icon tile with a caption (K57): a square icon link with its name under it. The whole tile is one link; its accessible name is the caption.
-     A row of tiles is ul.ds-icontiles; a tile that stands alone is the same a.ds-icontile. The icon is drawn from the sprite in currentColor. -->
+<!-- AIVIS Icon tile (K57): a square icon link. The whole tile is one link. The icon is drawn from the sprite in currentColor and is decorative.
+     With a caption: a row of tiles is ul.ds-icontiles, each tile carries its name under the box; its accessible name is the caption.
+     Icon only: ul.ds-icontiles[data-variant="icon"], no caption; the name is in aria-label and in title (the same words), one equal gap.
+     A tile that stands alone is the same a.ds-icontile. -->
 <ul class="ds-icontiles">
   <li><a class="ds-icontile" href="#one" target="_blank" rel="noopener"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span><span class="ds-icontile__caption">@handle</span></a></li>
   <li><a class="ds-icontile" href="#two"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span><span class="ds-icontile__caption">name@example.org</span></a></li>
 </ul>
+
+<!-- Icon only -->
+<ul class="ds-icontiles" data-variant="icon">
+  <li><a class="ds-icontile" href="#one" target="_blank" rel="noopener" aria-label="@handle" title="@handle"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+  <li><a class="ds-icontile" href="#two" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span></a></li>
+</ul>
+
+<!-- Group row: up to three groups, each a heading with its icon-only tiles under it. Stacked on a phone; from the 640 width
+     the first group at the start edge, the second in the middle, the third at the end edge; inside each group the heading and the tiles sit at its start. -->
+<div class="ds-icongroups">
+  <nav class="ds-icongroup" aria-labelledby="ig-1"><h2 class="ds-label" id="ig-1">Online</h2>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#a" rel="noopener" aria-label="Channel" title="Channel"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+      <li><a class="ds-icontile" href="#b" rel="noopener" aria-label="Network" title="Network"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+    </ul></nav>
+  <section class="ds-icongroup" aria-labelledby="ig-2"><h2 class="ds-label" id="ig-2">Write to us</h2>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#c" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-mail-check"/></svg></span></a></li>
+    </ul></section>
+  <section class="ds-icongroup" aria-labelledby="ig-3"><h2 class="ds-label" id="ig-3">App</h2>
+    <ul class="ds-icontiles" data-variant="icon">
+      <li><a class="ds-icontile" href="#d" rel="noopener" aria-label="@handle" title="@handle"><span class="ds-icontile__box"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg></span></a></li>
+    </ul></section>
+</div>

@@ -2733,13 +2733,15 @@
  },
  {
   "id": "K57",
-  "name": "Icon tile with a caption",
+  "name": "Icon tile",
   "status": "built",
   "markup": "markup/icon-tile.html",
-  "class_root": ".ds-icontiles, .ds-icontile, .ds-icontile__box, .ds-icontile__caption",
+  "class_root": ".ds-icontiles, .ds-icontile, .ds-icontile__box, .ds-icontile__caption, .ds-icongroups, .ds-icongroup",
   "variants": {
    "row": "ul.ds-icontiles: tiles side by side, wrapping",
-   "single": "a.ds-icontile on its own"
+   "single": "a.ds-icontile on its own",
+   "icon": "ul.ds-icontiles[data-variant=\"icon\"]: no caption, the name in aria-label and title, one equal --space-2 gap, the row at the start under its heading",
+   "groups": "div.ds-icongroups: two or three .ds-icongroup (heading, then an icon-only row), stacked under 640, from 640 one line 1fr auto 1fr -- start edge, middle, end edge"
   },
   "sizes": [
    "one size; the box is --touch-min square"
@@ -2766,11 +2768,14 @@
    "--text-secondary",
    "--fs-xs",
    "--lh-snug",
+   "--space-5",
+   "--space-6",
+   "--bp-md",
    "--dur-fast"
   ],
-  "accessibility": "The tile is one link and its caption is its visible and accessible name; the icon is decorative (aria-hidden). The box is at least --touch-min square. Hover fills the box with --primary and the glyph takes --on-primary (4.5 or better); the caption is --text-secondary on the page or card ground. A long caption breaks anywhere rather than overflow. Focus is a --focus-width solid outline in --focus-ring at --focus-offset around the whole tile.",
-  "purpose": "An icon link that says what it is: a network, a messenger or an e-mail address, each with its name under it.",
-  "usage": "Use it where a row of icon links would otherwise be unnamed; the caption is the handle or the name, never a sentence. Icons come from the sprite; a brand glyph a product needs is added there first.",
+  "accessibility": "The tile is one link; the icon is decorative (aria-hidden). With a caption, the caption is its visible and accessible name. Icon only, the same name is in aria-label and in title, word for word, and the group's heading says what the icons are for. The box is at least --touch-min square. Hover fills the box with --primary and the glyph takes --on-primary (4.5 or better); the caption is --text-secondary on the page or card ground. A long caption breaks anywhere rather than overflow. Focus is a --focus-width solid outline in --focus-ring at --focus-offset around the whole tile. A group row is in reading order: start, middle, end; stacked in the same order on a phone.",
+  "purpose": "An icon link that says what it is: a network, a messenger or an e-mail address, with its name under it or, icon only, in its hint and accessible name; a group row sets up to three such groups across a footer.",
+  "usage": "Use the captioned form where the handle itself must be read; use the icon-only form where the icons are known at a glance and the heading above them says what they are for, never a caption beside an icon-only row. Icons come from the sprite; a brand glyph a product needs is added there first.",
   "notes": ""
  }
 ]
