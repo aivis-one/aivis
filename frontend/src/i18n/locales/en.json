@@ -1169,7 +1169,13 @@
         "pending_acceptance": "Waiting for acceptance",
         "reversed": "Reversed",
         "cancelled": "Cancelled"
-      }
+      },
+      "reverse": "Reverse",
+      "reverseConfirm": "Reverse this purchase? The money of the purchase is taken back from everyone it reached, the parts return to the project, and the purchase cannot be restored.",
+      "reverseReason": "Reason",
+      "reverseReasonRequired": "Enter the reason for the reversal",
+      "reversedToast": "Purchase reversed",
+      "reverseError": "The purchase could not be reversed"
     },
     "gifts": {
       "hint": "A gift of the company is parts of a project given to a person from the list of the deed of gift, after that person has passed the paid identity check. The gift waits for the person to press \"accept the gift\" in their cabinet; nothing is credited before that.",

@@ -46,7 +46,9 @@ import type {
 import type {
   ConsistencyResponse,
   PurchaseResponse,
+  PurchaseReversalResponse,
   StaffPurchaseListResponse,
+  StaffReversePurchaseRequest,
 } from '@/api/generated'
 
 // ---------------------------------------------------------------------------
@@ -399,4 +401,17 @@ export function fetchStaffPurchases(params?: {
 /** POST /api/v1/staff/purchases/gifts/{id}/cancel -- cancel a gift not yet accepted. */
 export function cancelGift(purchaseId: string): Promise<PurchaseResponse> {
   return api.post<PurchaseResponse>(`/api/v1/staff/purchases/gifts/${purchaseId}/cancel`)
+}
+
+/**
+ * POST /api/v1/staff/purchases/{id}/reverse -- take a purchase back (needs
+ * payment_review). The server unwinds the whole money graph of the purchase
+ * and returns the parts to the pool; the funding payment is not touched. The
+ * reason is optional on the server and required by the screen.
+ */
+export function reversePurchase(
+  purchaseId: string,
+  body: StaffReversePurchaseRequest,
+): Promise<PurchaseReversalResponse> {
+  return api.post<PurchaseReversalResponse>(`/api/v1/staff/purchases/${purchaseId}/reverse`, body)
 }

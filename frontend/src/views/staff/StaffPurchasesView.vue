@@ -11,24 +11,26 @@
 // its certificate.
 //
 // A gift that the recipient has not accepted yet carries Cancel, so a gift can
-// be cancelled after the page it was granted from is closed. An accepted gift is
-// reversed through the payments, not here.
+// be cancelled after the page it was granted from is closed. An active purchase
+// carries Reverse for a member who may review payments: a reason is required,
+// the server takes the whole purchase back and returns its parts to the pool.
 //
 // GET  /api/v1/staff/purchases   (financial_operations; ?status= ?company_id= ?buyer_id= ?page= ?per_page=)
 // POST /api/v1/staff/purchases/gifts/{id}/cancel   (financial_operations)
+// POST /api/v1/staff/purchases/{id}/reverse   (payment_review)
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ShoppingBag } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CSelect } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CModal, CSelect } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { useUrlPage } from '@/components/ui/useUrlPage'
 import { ApiResponseError } from '@/api/client'
-import { cancelGift, fetchStaffPurchases } from '@/api/admin'
+import { cancelGift, fetchStaffPurchases, reversePurchase } from '@/api/admin'
 import { listProducts } from '@/api/products'
 import { fetchStaffCompanies } from '@/api/staff-companies'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
@@ -44,6 +46,7 @@ const { canDo } = useStaffPermissions()
 
 const canCancel = canDo('financial_operations')
 const canListProjects = canDo('company_manage')
+const canReverse = canDo('payment_review')
 
 const STATUSES = ['active', 'pending_acceptance', 'reversed', 'cancelled'] as const
 
@@ -170,6 +173,53 @@ async function handleCancel(row: StaffPurchaseItem): Promise<void> {
   }
 }
 
+// -- Reverse ----------------------------------------------------------------------
+
+const REASON_MAX = 500
+const reverseTarget = ref<StaffPurchaseItem | null>(null)
+const reverseReason = ref('')
+const reverseLoading = ref(false)
+const reverseError = ref('')
+
+/** An active purchase of a member who may review payments. */
+function reversible(row: StaffPurchaseItem): boolean {
+  return canReverse.value && row.status === 'active'
+}
+
+function openReverse(row: StaffPurchaseItem): void {
+  reverseTarget.value = row
+  reverseReason.value = ''
+  reverseError.value = ''
+}
+
+function closeReverse(): void {
+  if (reverseLoading.value) return
+  reverseTarget.value = null
+}
+
+async function handleReverse(): Promise<void> {
+  const target = reverseTarget.value
+  if (!target || reverseLoading.value) return
+  const reason = reverseReason.value.trim()
+  if (!reason) {
+    reverseError.value = t('staff.purchases.reverseReasonRequired')
+    return
+  }
+  reverseLoading.value = true
+  reverseError.value = ''
+  try {
+    await reversePurchase(target.id, { reason })
+    showToast(t('staff.purchases.reversedToast'), 'success')
+    reverseTarget.value = null
+    await load()
+  } catch (err) {
+    reverseError.value =
+      err instanceof ApiResponseError && err.detail ? err.detail : t('staff.purchases.reverseError')
+  } finally {
+    reverseLoading.value = false
+  }
+}
+
 // H38: project data is in the reader's language -- re-read it on a switch.
 useReloadOnLocale(() => load())
 
@@ -248,6 +298,15 @@ onMounted(() => {
           >
             <span>{{ t('staff.gifts.cancel') }}</span>
           </button>
+          <button
+            v-if="reversible(row)"
+            type="button"
+            class="ds-button ds-button--danger purch__reverse"
+            data-size="sm"
+            @click="openReverse(row)"
+          >
+            <span>{{ t('staff.purchases.reverse') }}</span>
+          </button>
         </span>
       </li>
     </ul>
@@ -259,6 +318,34 @@ onMounted(() => {
       :total-pages="totalPages"
       @update:page="goToPage"
     />
+
+    <!-- Reverse: a reason is required -->
+    <CModal
+      :open="reverseTarget !== null"
+      :title="t('staff.purchases.reverse')"
+      @close="closeReverse"
+    >
+      <p class="ds-dialog__text">
+        {{ t('staff.purchases.reverseConfirm') }}
+      </p>
+      <p v-if="reverseTarget" class="ds-amount" data-size="sm" data-tone="danger">
+        {{ formatPrice(reverseTarget.paid_cents, 'USD') }}
+      </p>
+      <CInput
+        v-model="reverseReason"
+        :label="t('staff.purchases.reverseReason')"
+        :maxlength="REASON_MAX"
+        :error="reverseError || undefined"
+      />
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="closeReverse">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="danger" size="sm" inline :loading="reverseLoading" @click="handleReverse">
+          {{ t('staff.purchases.reverse') }}
+        </CButton>
+      </div>
+    </CModal>
   </div>
 </template>
 

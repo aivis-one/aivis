@@ -10,11 +10,13 @@ import { createPinia, setActivePinia } from 'pinia'
 vi.mock('@/api/admin', () => ({
   fetchStaffPurchases: vi.fn(),
   cancelGift: vi.fn(),
+  reversePurchase: vi.fn(),
   fetchUsers: vi.fn(),
 }))
 vi.mock('@/api/products', () => ({ listProducts: vi.fn() }))
 vi.mock('@/api/staff-companies', () => ({ fetchStaffCompanies: vi.fn() }))
 
+import { ApiResponseError } from '@/api/client'
 import * as admin from '@/api/admin'
 import * as products from '@/api/products'
 import * as staffCompanies from '@/api/staff-companies'
@@ -230,6 +232,84 @@ describe('the cancel of a gift not yet accepted', () => {
     const wrapper = mount(StaffPurchasesView)
     await flushPromises()
     expect(wrapper.find('.purch__cancel').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+describe('the reverse of an active purchase', () => {
+  const reversePurchase = vi.mocked(admin.reversePurchase)
+
+  function dialogButton(label: string): HTMLButtonElement {
+    const buttons = Array.from(document.body.querySelectorAll('.ds-dialog__panel button'))
+    return buttons.find((b) => b.textContent?.includes(label)) as HTMLButtonElement
+  }
+
+  it('is on active rows only, and only for a member who may review payments', async () => {
+    answer([
+      row('paid', 'paid', 'active'),
+      row('pending', 'gift', 'pending_acceptance'),
+      row('gone', 'paid', 'reversed'),
+    ])
+    signInAs(['financial_operations', 'payment_review'])
+    const wrapper = mount(StaffPurchasesView)
+    await flushPromises()
+    const buttons = wrapper.findAll('.purch__reverse')
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0]!.element.closest('.purch__row')!.textContent).toContain('1250.00')
+    wrapper.unmount()
+
+    signInAs(['financial_operations'])
+    const plain = mount(StaffPurchasesView)
+    await flushPromises()
+    expect(plain.find('.purch__reverse').exists()).toBe(false)
+    plain.unmount()
+  })
+
+  it('refuses an empty reason and sends nothing', async () => {
+    answer([row('paid', 'paid', 'active')])
+    signInAs(['financial_operations', 'payment_review'])
+    const wrapper = mount(StaffPurchasesView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('.purch__reverse').trigger('click')
+    dialogButton('staff.purchases.reverse').click()
+    await flushPromises()
+    expect(reversePurchase).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain('staff.purchases.reverseReasonRequired')
+    wrapper.unmount()
+  })
+
+  it('sends the reason, then reads the list again', async () => {
+    answer([row('paid', 'paid', 'active')])
+    reversePurchase.mockResolvedValue({} as never)
+    signInAs(['financial_operations', 'payment_review'])
+    const wrapper = mount(StaffPurchasesView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('.purch__reverse').trigger('click')
+    const input = document.body.querySelector('.ds-dialog__panel input') as HTMLInputElement
+    input.value = 'duplicate payment'
+    input.dispatchEvent(new Event('input'))
+    dialogButton('staff.purchases.reverse').click()
+    await flushPromises()
+    expect(reversePurchase).toHaveBeenCalledWith('paid', { reason: 'duplicate payment' })
+    expect(fetchStaffPurchases).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('shows the server reason when the reverse fails, and keeps the dialog open', async () => {
+    answer([row('paid', 'paid', 'active')])
+    const err = new ApiResponseError(409, 'Purchase is already reversed')
+    reversePurchase.mockRejectedValue(err)
+    signInAs(['financial_operations', 'payment_review'])
+    const wrapper = mount(StaffPurchasesView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('.purch__reverse').trigger('click')
+    const input = document.body.querySelector('.ds-dialog__panel input') as HTMLInputElement
+    input.value = 'x'
+    input.dispatchEvent(new Event('input'))
+    dialogButton('staff.purchases.reverse').click()
+    await flushPromises()
+    expect(document.body.textContent).toContain('Purchase is already reversed')
+    expect(document.body.querySelector('.ds-dialog__panel')).not.toBeNull()
     wrapper.unmount()
   })
 })
