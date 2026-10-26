@@ -152,6 +152,41 @@ cd_compose() {
     cd "$COMPOSE_DIR" || { echo -e "${RED}ERROR: $COMPOSE_DIR not found${NC}"; exit 1; }
 }
 
+# ONE RUN AT A TIME: `update` (any flags, `deploy` included), `test` and
+# `restart` take one lock, and a second of them refuses at once instead of
+# running beside the first. On 2026-10-26 a second update recreated
+# aivis-app in the middle of the first one's test run, and the first died
+# mid-line with no summary; a restart does the same to a running suite.
+#
+# flock(1) on an open file, not a flag file: the kernel drops the lock when
+# the holder exits however it exits -- a crash, Ctrl+C, kill -9 -- so a
+# dead run never leaves the box locked. The file is opened for APPEND so a
+# refused run reads the start time the holder wrote, instead of truncating
+# it on the way in. `update` re-executes itself from a snapshot (see
+# update_all): the snapshot inherits the locked descriptor and the
+# variable below, checks that it really holds the lock, and goes on.
+AIVIS_LOCK_FILE="$INSTALL_BASE/.aivis-run.lock"
+
+acquire_run_lock() {
+    if [ "${AIVIS_LOCK_HELD:-0}" = "1" ] && { true >&9; } 2>/dev/null && flock -n 9; then
+        return 0
+    fi
+    if ! exec 9>>"$AIVIS_LOCK_FILE"; then
+        echo -e "${RED}✗ Cannot open the run lock $AIVIS_LOCK_FILE${NC}"
+        exit 1
+    fi
+    if ! flock -n 9; then
+        local since
+        since=$(head -n 1 "$AIVIS_LOCK_FILE" 2>/dev/null)
+        echo -e "${RED}✗ Another aivis update/test/restart is already running (started ${since:-at an unknown time}).${NC}"
+        echo "  Nothing was done. Run it again when that one has finished."
+        exit 1
+    fi
+    printf '%s, aivis %s, pid %s\n' "$(date '+%Y-%m-%d %H:%M:%S %Z')" "$CMD" "$$" >"$AIVIS_LOCK_FILE"
+    export AIVIS_LOCK_HELD=1
+}
+
+
 # Make sure the shared external docker network exists before any `up`.
 # docker-compose.yml declares `aivis-shared` as EXTERNAL (the comms stack
 # joins the same network) -- compose never creates external networks, it
@@ -268,6 +303,20 @@ case_logs() {
 # alembic, and seeds the minimum the suite needs (platform user + platform
 # templates; tests build the rest through register_user). Exports
 # TEST_DB_URL (global) for the caller to pass to pytest via -e.
+#
+# AND THE TEST REDIS (H42): the same Redis server, database TEST_REDIS_DB.
+# TEST_REDIS_URL is the app's own REDIS_URL with its database number
+# replaced (or added): host and password as the app has them, exactly as
+# TEST_DB_URL keeps the app's credentials. It is FLUSHED here, as aivis_test
+# is dropped and created -- each run starts from an empty one. The callers
+# pass it as -e REDIS_URL with -e AIVIS_TEST_REDIS_DB, and tests/conftest.py
+# refuses a run whose REDIS_URL names any other database.
+
+# The test Redis database. THE ONE LITERAL: tests/conftest.py is told it by
+# AIVIS_TEST_REDIS_DB, never writes it. (.github/workflows/ci.yml has its
+# own copy, for the reason it has its own `aivis_test`.)
+TEST_REDIS_DB=15
+
 prepare_test_db() {
     echo ""
     echo "Provisioning isolated test database (aivis_test)..."
@@ -282,6 +331,29 @@ prepare_test_db() {
     # % removes the shortest matching suffix, so credentials/host are
     # untouched even if the password contained the substring "aivis".
     TEST_DB_URL="${app_db_url%/aivis}/aivis_test"
+
+    local app_redis_url
+    app_redis_url=$(docker compose exec -T app printenv REDIS_URL | tr -d '\r\n')
+    if [ -z "$app_redis_url" ]; then
+        echo -e "${RED}✗ Could not read REDIS_URL from app container${NC}"
+        return 1
+    fi
+    # The database number is the trailing /<digits> and nothing else: a
+    # match on that pattern, never a cut at the last "/", so a "/" anywhere
+    # else in the URL (a password) cannot be taken for it. No number --
+    # the client reads that as 0 -- gets one appended.
+    if [[ "$app_redis_url" =~ ^(.*)/[0-9]+$ ]]; then
+        TEST_REDIS_URL="${BASH_REMATCH[1]}/$TEST_REDIS_DB"
+    else
+        TEST_REDIS_URL="$app_redis_url/$TEST_REDIS_DB"
+    fi
+    # Through the app container and the URL the tests will use: no password
+    # handling here, and a URL that does not work fails now, by name.
+    docker compose exec -T -e REDIS_URL="$TEST_REDIS_URL" app python -c \
+        "import os, redis; redis.Redis.from_url(os.environ['REDIS_URL']).flushdb()" || {
+        echo -e "${RED}✗ Could not empty the test Redis database ($TEST_REDIS_DB)${NC}"
+        return 1
+    }
 
     # Drop + recreate via the maintenance DB. FORCE terminates any
     # lingering connections left by a previous run (PG13+).
@@ -346,7 +418,7 @@ prepare_test_db() {
     echo "Smoke check: platform template objects present..."
     check_platform_template_objects || return 1
 
-    echo -e "${GREEN}✓ aivis_test ready (migrated + seeded, 16 templates)${NC}"
+    echo -e "${GREEN}✓ aivis_test ready (migrated + seeded, 16 templates); test Redis database $TEST_REDIS_DB emptied${NC}"
 }
 
 # ==============================================================================
@@ -365,7 +437,7 @@ case_test() {
             fi
             # --durations=25: the slowest tests at the end of the run -- see
             # the test step of update_product for why.
-            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25; then
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" -e REDIS_URL="$TEST_REDIS_URL" -e AIVIS_TEST_REDIS_DB="$TEST_REDIS_DB" app python -m pytest tests/ -v --tb=short --durations=25; then
                 FAILED=1
             fi
             ;;
@@ -405,7 +477,7 @@ case_test() {
             fi
             # --durations=25: the slowest tests at the end of the run -- see
             # the test step of update_product for why.
-            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25; then
+            if ! docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" -e REDIS_URL="$TEST_REDIS_URL" -e AIVIS_TEST_REDIS_DB="$TEST_REDIS_DB" app python -m pytest tests/ -v --tb=short --durations=25; then
                 FAILED=1
             fi
             ;;
@@ -1397,7 +1469,7 @@ update_product() {
         # grew from 8 to 18 minutes while its test count grew by a quarter,
         # and the list says where the time goes. The same flag stands on
         # both runs of case_test.
-        docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" app python -m pytest tests/ -v --tb=short --durations=25 \
+        docker compose exec -T -e DATABASE_URL="$TEST_DB_URL" -e REDIS_URL="$TEST_REDIS_URL" -e AIVIS_TEST_REDIS_DB="$TEST_REDIS_DB" app python -m pytest tests/ -v --tb=short --durations=25 \
             || pytest_status=$?
 
         if [ $pytest_status -eq 0 ]; then
@@ -2681,11 +2753,11 @@ shift 2>/dev/null || true
 case "$CMD" in
     status)         case_status ;;
     logs)           case_logs "$@" ;;
-    test)           case_test "$@" ;;
+    test)           acquire_run_lock; case_test "$@" ;;
     lint)           case_lint ;;
-    update|deploy)  update_all "$@" ;;
+    update|deploy)  acquire_run_lock; update_all "$@" ;;
     gen-types)      case_gen_types "$@" ;;
-    restart)        case_restart "$@" ;;
+    restart)        acquire_run_lock; case_restart "$@" ;;
     backup)         case_backup ;;
     db)             case_db "$@" ;;
     seed)           case_seed "$@" ;;

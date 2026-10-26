@@ -17,9 +17,20 @@
 #   `_test`, so tests can never silently write to the live DB regardless of
 #   entry point (IDE, CI, manual `docker compose exec app pytest`).
 #
+#   THE SAME FOR REDIS (H42): the CLI points the run at a DEDICATED Redis
+#   database of the same server (`-e REDIS_URL=.../<n>`) and tells the run
+#   which number that is (`-e AIVIS_TEST_REDIS_DB=<n>`; the one literal is
+#   TEST_REDIS_DB in scripts/aivis-manage.sh). The guard refuses a run
+#   whose REDIS_URL names another database, or none: until H42 the suite
+#   wrote into the live application's database 0 -- thousands of session
+#   keys per run, and the rate-limit clean-up below deleting live people's
+#   keys, a pending Telegram link among them.
+#
 # ISOLATION SCOPE:
-#   Per-RUN: each run starts from a freshly created aivis_test, so
-#   cross-run residue (the class of flakes behind TD-068) cannot accumulate.
+#   Per-RUN: each run starts from a freshly created aivis_test and a
+#   flushed test Redis database, so cross-run residue (the class of flakes
+#   behind TD-068, and the Redis keyspace that grew with every run) cannot
+#   accumulate.
 #   Per-TEST isolation is NOT provided -- tests still share state within a
 #   single run (no rollback-per-test). That is a possible Stage-3b (savepoint
 #   per test), gated on auditing for tests that fire concurrent requests on
@@ -33,6 +44,8 @@
 #   * db_session              -- AsyncSession from the app's session factory
 #                                (same engine as the HTTP layer).
 #   * clear_rate_limit autouse -- delete the email-auth Redis keys.
+#   * cheap_password_hashing   -- session-wide: argon2 at its minimum cost.
+#   * production_password_hasher -- the hasher the code was imported with.
 # =============================================================================
 
 from __future__ import annotations
@@ -53,8 +66,8 @@ from httpx import ASGITransport, AsyncClient
 def pytest_configure(config: pytest.Config) -> None:
     """Refuse to run under pytest-xdist.
 
-    The test suite shares a single dev DB and a single Redis instance
-    without transactional isolation. Parallel workers would race on
+    The test suite shares one test DB and one test Redis database within
+    a run, without transactional isolation. Parallel workers would race on
     rate-limit keys, _platform/templates rows, UUID-suffixed-but-still-
     shared identifiers, and every other globally-mutable singleton the
     HTTP layer touches. Fail loud with a clear message instead of
@@ -99,6 +112,64 @@ def pytest_sessionstart(session: pytest.Session) -> None:
             "'aivis_test'. To run pytest directly, first export DATABASE_URL "
             "pointing at a *_test database."
         )
+
+    import os
+
+    refusal = non_test_redis_refusal(
+        settings.redis_url, os.environ.get(TEST_REDIS_DB_ENV)
+    )
+    if refusal is not None:
+        raise pytest.UsageError(refusal)
+
+
+# The variable the CLI passes with the test Redis database's number. The
+# number itself is written once, in scripts/aivis-manage.sh (TEST_REDIS_DB),
+# and once more in .github/workflows/ci.yml, which says why.
+TEST_REDIS_DB_ENV = "AIVIS_TEST_REDIS_DB"
+
+
+def non_test_redis_refusal(redis_url: str, test_db: str | None) -> str | None:
+    """Why the run may not use this Redis, or None when it may.
+
+    The contract mirrors the database one: the run names its test Redis
+    database (`AIVIS_TEST_REDIS_DB`), and REDIS_URL must point at exactly
+    that one. Refused: no number given; a number that is not a whole
+    number; 0, the application's own database; a REDIS_URL with no
+    database in it (which a client reads as 0) or with any other one.
+    Read with the redis client's own parser -- the number the suite's
+    connections will use. Nothing is connected to, nothing secret is
+    printed: only the two numbers.
+    """
+    from redis.connection import parse_url
+
+    how = (
+        "Run via `aivis test` or `aivis update`, which point the run at the "
+        "test Redis database. To run pytest directly, export REDIS_URL "
+        f"ending in /<n> and {TEST_REDIS_DB_ENV}=<n>, the same <n>, not 0."
+    )
+    if not test_db:
+        return f"Refusing to run: {TEST_REDIS_DB_ENV} is not set. {how}"
+    if not test_db.isdigit():
+        return (
+            f"Refusing to run: {TEST_REDIS_DB_ENV}={test_db!r} is not a number. "
+            f"{how}"
+        )
+    if int(test_db) == 0:
+        return (
+            f"Refusing to run: {TEST_REDIS_DB_ENV}=0 is the application's own "
+            f"Redis database. {how}"
+        )
+    try:
+        url_db = parse_url(redis_url).get("db")
+    except ValueError:
+        url_db = None
+    if url_db is None or int(url_db) != int(test_db):
+        shown = "none" if url_db is None else str(url_db)
+        return (
+            f"Refusing to run: REDIS_URL names Redis database {shown}, not the "
+            f"test database {test_db}. {how}"
+        )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +289,12 @@ async def clear_rate_limit() -> None:
     A single test that exceeds settings.auth_rate_limit_max_requests
     would otherwise hit a 429 and fail for no real reason.
 
+    WHAT IT SCANS, since H42: the run's own test Redis database (the
+    guard in pytest_sessionstart), flushed at the start of every run, so
+    the two SCANs walk a few hundred keys at most. Before H42 they walked
+    the live application's whole keyspace before every test -- growing
+    with every run -- and deleted live people's keys of these families.
+
       password_reset:127.0.0.1
           -- password-reset request/confirm, shared key (same shape as
           email_auth above -- see auth/router.py header). Cleared for
@@ -252,3 +329,43 @@ async def clear_rate_limit() -> None:
     except RuntimeError:
         # Redis singleton not yet initialised (test collection error path).
         pass
+
+
+# ---------------------------------------------------------------------------
+# Password hashing at its minimum cost (H42)
+# ---------------------------------------------------------------------------
+#
+# Every registration hashes a password, every login verifies one, 2FA
+# hashes its backup codes: with argon2's defaults (t=3, m=64 MiB, p=4)
+# that is ~370 ms a hash on a 2-core box -- most of the suite's setup.
+# The run swaps the module's hasher for argon2 at its minimum cost for the
+# whole session and puts the original back at the end.
+#
+# The swap lives HERE and nowhere in the product: a setting that weakens
+# password hashing is a lever that one day reaches production (owner
+# ruling). Hashes made before the swap still verify -- an argon2 hash
+# carries its own parameters -- and production_password_hasher hands the
+# original to the one test that pins it to argon2's defaults.
+
+_CHEAP_ARGON2 = {"time_cost": 1, "memory_cost": 8, "parallelism": 1}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cheap_password_hashing() -> Any:
+    """The hasher the code was imported with, set aside for the run."""
+    from argon2 import PasswordHasher
+
+    from app.modules.auth import service as auth_service
+
+    original = auth_service._ph
+    auth_service._ph = PasswordHasher(**_CHEAP_ARGON2)
+    try:
+        yield original
+    finally:
+        auth_service._ph = original
+
+
+@pytest.fixture
+def production_password_hasher(cheap_password_hashing: Any) -> Any:
+    """The product's own password hasher -- not the run's cheap one."""
+    return cheap_password_hashing

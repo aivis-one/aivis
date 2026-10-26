@@ -46,6 +46,14 @@
 #     publishes an advisory, not when we push. Same failure mode as an
 #     always-red linter, so it runs as its own non-blocking job below.
 #
+# THE TEST DATABASE AND THE TEST REDIS ARE WRITTEN HERE A SECOND TIME, on
+# purpose: `aivis_test` in DATABASE_URL, and database 15 in REDIS_URL and
+# AIVIS_TEST_REDIS_DB (H42). Their one source is scripts/aivis-manage.sh
+# (prepare_test_db, TEST_REDIS_DB), which derives them from the box's own
+# app container -- something this runner does not have. So the values are
+# copied, and the "Check required environment" step holds them to the
+# same rules tests/conftest.py enforces, which is what catches a drift.
+#
 # THE SOURCE THIS REPRODUCES is scripts/aivis-manage.sh, prepare_test_db
 # and the object checks it calls (check_platform_template_objects), plus
 # the `storage` and `storage-init` services of docker-compose.yml. Where
@@ -111,7 +119,11 @@ jobs:
       # pytest. Written twice it would drift, and the run would migrate
       # one database while testing another.
       DATABASE_URL: postgresql+asyncpg://aivis:aivis@127.0.0.1:5432/aivis_test
-      REDIS_URL: redis://127.0.0.1:6379/0
+      # The test Redis database (H42): tests/conftest.py refuses a run whose
+      # REDIS_URL names any database but AIVIS_TEST_REDIS_DB, and 0. The
+      # number is written twice here -- the header says why.
+      REDIS_URL: redis://127.0.0.1:6379/15
+      AIVIS_TEST_REDIS_DB: "15"
       STORAGE_ENDPOINT: http://127.0.0.1:9000
       # Root credentials, and this is the one place CI differs from
       # compose on purpose: compose mints a service account for the
@@ -174,7 +186,7 @@ jobs:
       - name: Check required environment
         run: |
           set -euo pipefail
-          for var in APP_ENV SECRET_KEY DATABASE_URL REDIS_URL \
+          for var in APP_ENV SECRET_KEY DATABASE_URL REDIS_URL AIVIS_TEST_REDIS_DB \
                      STORAGE_ENDPOINT STORAGE_ACCESS_KEY STORAGE_SECRET_KEY \
                      STORAGE_BUCKET RUSTFS_ACCESS_KEY RUSTFS_SECRET_KEY; do
             if [ -z "${!var:-}" ]; then
@@ -185,6 +197,16 @@ jobs:
           case "$DATABASE_URL" in
             *_test) echo "DATABASE_URL targets a test database" ;;
             *) echo "::error::DATABASE_URL must end with _test"; exit 1 ;;
+          esac
+          # The same pair for Redis (H42), as tests/conftest.py checks it:
+          # a test database number that is not 0, and REDIS_URL ending in
+          # exactly that number.
+          case "${AIVIS_TEST_REDIS_DB:-}" in
+            ''|*[!0-9]*|0) echo "::error::AIVIS_TEST_REDIS_DB must be a number other than 0"; exit 1 ;;
+          esac
+          case "$REDIS_URL" in
+            */"$AIVIS_TEST_REDIS_DB") echo "REDIS_URL targets test Redis database $AIVIS_TEST_REDIS_DB" ;;
+            *) echo "::error::REDIS_URL must end with /$AIVIS_TEST_REDIS_DB"; exit 1 ;;
           esac
 
       # ONE COPY OF THE STORAGE PINS, and it is docker-compose.yml. CI used
