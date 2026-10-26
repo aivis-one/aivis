@@ -1,0 +1,14 @@
+<!-- AIVIS Theme toggle (K61): one round button that switches day and night. By day it shows the moon, by night the sun; aria-pressed is true at night.
+     Its aria-label comes from the translation tables. components.js wires [data-ds-theme-toggle]: data-theme on the root, aria-pressed on every toggle,
+     the choice kept under the storage key "aivis-theme". A page without a chosen theme follows the system, and so does the icon. -->
+<button class="ds-themetoggle" type="button" data-ds-theme-toggle aria-pressed="false" aria-label="Switch day and night">
+  <svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg>
+  <svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+</button>
+
+<!-- the row form, inside a drawer or a menu: the icon and the words on one line -->
+<button class="ds-themetoggle ds-themetoggle--row" type="button" data-ds-theme-toggle aria-pressed="false">
+  <svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg>
+  <svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg>
+  <span>Switch day and night</span>
+</button>

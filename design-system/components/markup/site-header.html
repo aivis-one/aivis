@@ -1,0 +1,36 @@
+<!-- AIVIS Site header (K59): the bar of the public site, sticky, on the page ground with a blur; one row of the logo, the sections and the tools.
+     The logo (.ds-siteheader__brand) is one link home: the colour mark and the wordmark, both files of ../../brand/; the wordmark is drawn light at night.
+     The sections (.ds-siteheader__nav) show from the 880 width; under it the menu button (.ds-siteheader__menu) opens the drawer, which holds the sections
+     and the tools a phone has no room for. Tools: the Language switch (K62), the Theme toggle (K61), the sign-in tool (data-wide-only: hidden at the 480
+     phone width, it is in the drawer), the menu button. The current section link carries aria-current="page".
+     The drawer (.ds-sitedrawer) is a modal dialog: components.js opens it from [data-ds-drawer-open], traps the focus, and shuts it on Escape, on the close
+     button and on a link. -->
+<header class="ds-siteheader">
+  <div class="ds-siteheader__bar">
+    <a class="ds-siteheader__brand" href="./" aria-label="AIVIS.ONE"><img class="ds-siteheader__mark" src="../../brand/aivis-mark.svg" alt="" width="26" height="30"><img class="ds-siteheader__word" src="../../brand/aivis-wordmark.svg" alt="AIVIS.ONE" width="96" height="20"></a>
+    <nav class="ds-siteheader__nav" aria-label="Sections">
+      <a class="ds-siteheader__link" href="#about" aria-current="page">About</a>
+      <a class="ds-siteheader__link" href="#courses">Courses</a>
+      <a class="ds-siteheader__link" href="#faq">Questions</a>
+    </nav>
+    <div class="ds-siteheader__tools">
+      <details class="ds-langswitch"><summary class="ds-langswitch__button" aria-label="Language: English"><span aria-hidden="true">EN</span></summary>
+        <ul class="ds-langswitch__list"><li><a class="ds-langswitch__option" href="./" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a></li><li><a class="ds-langswitch__option" href="ru/" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></li></ul></details>
+      <button class="ds-themetoggle" type="button" data-ds-theme-toggle aria-pressed="false" aria-label="Switch day and night"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+      <a class="ds-siteheader__tool" data-wide-only href="/login" aria-label="Sign in" title="Sign in"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-in"/></svg></a>
+      <button class="ds-siteheader__tool ds-siteheader__menu" type="button" data-ds-drawer-open aria-controls="site-drawer" aria-expanded="false" aria-label="Menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+<div class="ds-sitedrawer" id="site-drawer" data-open="false" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="ds-sitedrawer__bar"><button class="ds-sitedrawer__close" type="button" data-ds-drawer-close aria-label="Close the menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <a class="ds-sitedrawer__link" href="#about">About</a>
+  <a class="ds-sitedrawer__link" href="#courses">Courses</a>
+  <a class="ds-sitedrawer__link" href="#faq">Questions</a>
+  <div class="ds-sitedrawer__tools">
+    <p class="ds-sitedrawer__label">Language</p>
+    <div class="ds-sitedrawer__langs"><a class="ds-sitedrawer__lang" href="./" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a><a class="ds-sitedrawer__lang" href="ru/" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></div>
+    <button class="ds-sitedrawer__row" type="button" data-ds-theme-toggle aria-pressed="false"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg><span>Switch day and night</span></button>
+    <a class="ds-sitedrawer__row" href="/login"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-in"/></svg><span>Sign in</span></a>
+  </div>
+</div>

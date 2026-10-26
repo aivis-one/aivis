@@ -1,0 +1,11 @@
+<!-- AIVIS Language switch (K62): native details. The summary is a round button showing the current language code; its accessible name says
+     "Language: <name>". The list holds one link per language to the same page in that language (hreflang and lang on each), the current one with
+     aria-current="true". It opens and closes without script; components.js closes it on a click outside, on Escape and when the focus leaves it.
+     The languages come from the shared setting of the product, never written into a screen. -->
+<details class="ds-langswitch">
+  <summary class="ds-langswitch__button" aria-label="Language: English"><span aria-hidden="true">EN</span></summary>
+  <ul class="ds-langswitch__list">
+    <li><a class="ds-langswitch__option" href="./" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a></li>
+    <li><a class="ds-langswitch__option" href="ru/" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></li>
+  </ul>
+</details>

@@ -1,0 +1,42 @@
+<!-- AIVIS Site footer (K60): the single contentinfo of a public page, a direct child of body. Top: the logo with its one line (.ds-sitefooter__about),
+     the sections and the legal pages (.ds-sitefooter__nav, two nav elements, each named by its heading; the link to the page in view carries
+     aria-current="page"; a link may carry a quiet hint, .ds-sitefooter__hint). Below: the contacts as the Icon tile group row (K57) with the brand marks,
+     then the company strip. One column on a phone; from the 640 width the logo above two columns; from the 1120 width one row of three. -->
+<footer class="ds-sitefooter">
+  <div class="ds-sitefooter__inner">
+    <div class="ds-sitefooter__grid">
+      <div class="ds-sitefooter__about">
+        <a class="ds-sitefooter__brand" href="./" aria-label="AIVIS.ONE"><img class="ds-siteheader__mark" src="../../brand/aivis-mark.svg" alt="" width="26" height="30"><img class="ds-siteheader__word" src="../../brand/aivis-wordmark.svg" alt="AIVIS.ONE" width="96" height="20"></a>
+        <p class="ds-sitefooter__tag">A line that says what the company is.</p>
+      </div>
+      <nav class="ds-sitefooter__nav" aria-labelledby="sf-site"><h2 class="ds-sitefooter__title" id="sf-site">Site</h2>
+        <ul class="ds-sitefooter__list">
+          <li><a class="ds-sitefooter__link" href="#about" aria-current="page"><span>About</span></a></li>
+          <li><a class="ds-sitefooter__link" href="https://example.org" rel="noopener"><span>A sister site</span><span class="ds-sitefooter__hint">example.org</span></a></li>
+        </ul></nav>
+      <nav class="ds-sitefooter__nav" aria-labelledby="sf-legal"><h2 class="ds-sitefooter__title" id="sf-legal">Legal</h2>
+        <ul class="ds-sitefooter__list">
+          <li><a class="ds-sitefooter__link" href="#privacy"><span>Privacy Policy</span></a></li>
+          <li><a class="ds-sitefooter__link" href="#terms"><span>Terms of Use of the Site</span></a></li>
+        </ul></nav>
+    </div>
+    <div class="ds-sitefooter__contacts">
+      <div class="ds-icongroups">
+        <nav class="ds-icongroup" aria-labelledby="sf-net"><h2 class="ds-sitefooter__title" id="sf-net">Networks</h2>
+          <ul class="ds-icontiles" data-variant="icon">
+            <li><a class="ds-icontile" href="#tg" rel="me noopener" aria-label="Telegram channel" title="Telegram channel"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg></span></a></li>
+            <li><a class="ds-icontile" href="#x" rel="me noopener" aria-label="X" title="X"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="x" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-x"/></svg></span></a></li>
+          </ul></nav>
+        <section class="ds-icongroup" aria-labelledby="sf-me"><h2 class="ds-sitefooter__title" id="sf-me">Write to us</h2>
+          <ul class="ds-icontiles" data-variant="icon">
+            <li><a class="ds-icontile" href="#mail" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="mail" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-mail"/></svg></span></a></li>
+          </ul></section>
+        <section class="ds-icongroup" aria-labelledby="sf-app"><h2 class="ds-sitefooter__title" id="sf-app">App</h2>
+          <ul class="ds-icontiles" data-variant="icon">
+            <li><a class="ds-icontile" href="#app" rel="noopener" aria-label="@app" title="@app"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg></span></a></li>
+          </ul></section>
+      </div>
+    </div>
+    <div class="ds-sitefooter__bottom"><p class="ds-sitefooter__company"><span>The company, its country and number</span></p><p>© 2026 The company</p></div>
+  </div>
+</footer>

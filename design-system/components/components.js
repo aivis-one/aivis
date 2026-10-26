@@ -1,4 +1,4 @@
-/* AIVIS design system -- behaviour of components, batch 1.
+/* AIVIS design system -- behaviour of components, batch 1 and the later batches below (the Launcher panel, the Theme toggle, the Language switch, the site drawer).
    Plain script, no dependency; it only wires what markup cannot do alone, by event delegation on the document.
    Tabs: arrow keys, Home and End move between tabs (automatic activation); the panel follows aria-selected.
    Filter chip: a click toggles aria-pressed. Removable chip and dismissible alert or toast: a click removes it.
@@ -736,4 +736,76 @@
     if (e.key !== 'Escape') return;
     document.querySelectorAll('.ds-launcher[data-open="true"]').forEach(function (root) { shut(root, true); });
   });
+})();
+
+/* K61 Theme toggle, K62 Language switch, K59 the site drawer.
+   Theme toggle: a click on [data-ds-theme-toggle] switches data-theme on the root between light and dark, sets aria-pressed (true at night) on every
+   toggle of the page and keeps the choice under the storage key "aivis-theme" (a blocked storage keeps it for the visit only).
+   Language switch: the native details opens and closes by itself; a click outside it, Escape and focus leaving it close it.
+   Drawer: [data-ds-drawer-open][aria-controls] opens the .ds-sitedrawer it names (data-open="true", aria-expanded on the button), the focus goes to its close
+   button and stays inside it (Tab and Shift+Tab wrap); Escape, [data-ds-drawer-close] and a link inside it shut it and return the focus to the button. */
+(function () {
+  'use strict';
+  var KEY = 'aivis-theme';
+  var root = document.documentElement;
+  function theme() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'dark' || t === 'light') return t;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function paint(t) {
+    root.setAttribute('data-theme', t);
+    document.querySelectorAll('[data-ds-theme-toggle]').forEach(function (b) { b.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false'); });
+  }
+  function focusables(box) {
+    return Array.prototype.filter.call(box.querySelectorAll('a[href], button:not([disabled]), summary, [tabindex]'), function (n) { return n.tabIndex !== -1; });
+  }
+  var opened = null;
+  function openDrawer(btn) {
+    var d = document.getElementById(btn.getAttribute('aria-controls'));
+    if (!d) return;
+    opened = { drawer: d, btn: btn };
+    d.setAttribute('data-open', 'true');
+    btn.setAttribute('aria-expanded', 'true');
+    var f = d.querySelector('[data-ds-drawer-close]') || focusables(d)[0] || d;
+    f.focus();
+  }
+  function shutDrawer() {
+    if (!opened) return;
+    var o = opened; opened = null;
+    o.drawer.setAttribute('data-open', 'false');
+    o.btn.setAttribute('aria-expanded', 'false');
+    o.btn.focus();
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-ds-theme-toggle]');
+    if (t) {
+      var next = theme() === 'dark' ? 'light' : 'dark';
+      paint(next);
+      try { window.localStorage.setItem(KEY, next); } catch (err) { /* storage blocked: the choice lasts for this visit */ }
+      return;
+    }
+    var o = e.target.closest && e.target.closest('[data-ds-drawer-open]');
+    if (o) { if (opened) shutDrawer(); else openDrawer(o); return; }
+    if (opened && e.target.closest && (e.target.closest('[data-ds-drawer-close]') || e.target.closest('.ds-sitedrawer a[href]'))) { shutDrawer(); return; }
+    document.querySelectorAll('.ds-langswitch[open]').forEach(function (box) { if (!box.contains(e.target)) box.open = false; });
+  });
+  document.addEventListener('focusout', function (e) {
+    var box = e.target.closest && e.target.closest('.ds-langswitch[open]');
+    if (box && e.relatedTarget && !box.contains(e.relatedTarget)) box.open = false;
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (opened) { shutDrawer(); return; }
+      document.querySelectorAll('.ds-langswitch[open]').forEach(function (box) { box.open = false; var s = box.querySelector('summary'); if (s) s.focus(); });
+      return;
+    }
+    if (e.key !== 'Tab' || !opened) return;
+    var f = focusables(opened.drawer);
+    if (!f.length) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (e.shiftKey) { if (a === first || !opened.drawer.contains(a)) { e.preventDefault(); last.focus(); } }
+    else if (a === last || !opened.drawer.contains(a)) { e.preventDefault(); first.focus(); }
+  });
+  document.querySelectorAll('[data-ds-theme-toggle]').forEach(function (b) { b.setAttribute('aria-pressed', theme() === 'dark' ? 'true' : 'false'); });
 })();

@@ -1,5 +1,5 @@
 {
- "count": 99,
+ "count": 106,
  "style": "P1",
  "sprite": "icons.svg",
  "viewBox": "0 0 24 24",
@@ -102,11 +102,30 @@
   "qr",
   "list-checks",
   "panel-left-close",
-  "panel-left-open"
+  "panel-left-open",
+  "user",
+  "mail",
+  "alert-circle",
+  "award",
+  "navigation",
+  "send",
+  "star"
  ],
  "min_size_px": {
   "rocket": 24,
   "spark": 24,
   "qr": 24
+ },
+ "brand_marks": {
+  "sprite": "brand-marks.svg",
+  "keys": [
+   "brand-telegram",
+   "brand-x",
+   "brand-medium",
+   "brand-linkedin",
+   "brand-mail"
+  ],
+  "drawn": "filled, as their owners draw them, in currentColor; the second exception of ../../reference/refusals.md",
+  "source": "Telegram, X, Medium and LinkedIn: Simple Icons (CC0 1.0), https://simpleicons.org; mail: the AIVIS envelope, filled"
  }
 }

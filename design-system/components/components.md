@@ -1,6 +1,6 @@
-> WHAT THIS IS:  the components of batches 1, 2, 3 and 4 of the AIVIS design system: what each is for, how to choose and use it, its states, its tokens and its accessibility contract.
+> WHAT THIS IS:  the components of batches 1 to 7 of the AIVIS design system: what each is for, how to choose and use it, its states, its tokens and its accessibility contract.
 > FOR WHOM:      an agent or a person with no memory of earlier work, building a screen or a component.
-> WHEN:          before using or changing Button, Text field, Radio, Toggle, Checkbox, Card, Stat tile, Hero, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Key-value list, Empty state, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Avatar, Chat thread, Reorder list, Payout form, Auth shell, Action menu, Stepper, Dialog, Document viewer, Document row, Booking card, Copyable value, Invoice and QR block, Timeline, Bar chart or Purchase block.
+> WHEN:          before using or changing Button, Text field, Radio, Toggle, Checkbox, Card, Stat tile, Hero, Badge, Alert, Tabs, Filter chip, Toast, Progress, Loader, App shell, Tooltip, Pager, Skeleton, Row list, Key-value list, Empty state, Table, Accordion, Segmented control, Nav tile, OTP input, Date picker, File input, Combobox, Avatar, Chat thread, Reorder list, Payout form, Auth shell, Action menu, Stepper, Dialog, Document viewer, Document row, Booking card, Copyable value, Invoice and QR block, Timeline, Bar chart, Purchase block, Launcher panel, Icon tile, Link, Site header, Site footer, Theme toggle, Language switch or the brand marks.
 > WHO WRITES:    the maintainers of the AIVIS design system.
 
 # components, batch 1
@@ -431,3 +431,58 @@ Markup: `markup/icon-tile.html`. `ul.ds-icontiles` is a wrapping row of tiles; e
 | icon | from the sprite, in `currentColor`; the icon is decorative |
 
 Use the icon-only form where the icons are known at a glance (messengers, networks, mail) and the group's heading says what they are for; use the captioned form where the handle itself must be read.
+
+## Batch 7: the shared pieces of the public site
+
+The pieces every public page shares, taken into the system (decided by the owner, 2026-10-26: the link, the site header, the footer, the theme toggle and the language switch; a page's own layout, such as a legal document, a course card or a founder card, stays on the page, every value on tokens). Shown in `../examples/components-7.html`.
+
+## K56 Launcher panel, addition: the compact trigger
+
+`data-compact` on `.ds-launcher`: at the 480 phone width the trigger shows its icon alone, a square of `--control-height-lg`; the word is in `span.ds-launcher__label`, which stays in the tree as the accessible name. Wider, the trigger is the icon and the word.
+
+## Brand marks
+
+`icons/brand-marks.svg` holds the marks of Telegram, X, Medium, LinkedIn and mail (`i-brand-telegram`, `i-brand-x`, `i-brand-medium`, `i-brand-linkedin`, `i-brand-mail`; listed under `brand_marks` in `icons/icons.json`). They are filled, drawn as their owners draw them, in `currentColor`: the second exception of `../reference/refusals.md`, beside the Telegram button. Draw one as `<svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg>`: `--size-2xs` square, X at 0.9 of it, mail at 1.1, Medium at `--icon-size-md`, so the five read as one weight. A brand mark is never drawn in a brand colour and never stands for an action of ours: it names a network or the mail, usually in the Icon tile (K57).
+
+## K58 Link
+
+Markup: `markup/link.html`.
+
+| Part | Rule |
+|---|---|
+| forms | inline: `a.ds-link` inside a sentence, the weight of the text; standalone: `.ds-link--standalone` on its own line, weight 600, at least `--touch-min` high, an icon from the sprite before or after the words |
+| look | `--primary`, always underlined (`--border-input-width`, 0.2em under the text): a link is never colour alone; it breaks anywhere rather than overflow |
+| states | hover `--primary-hover` with the line at twice the width; pressed `--primary-active`; focus the system outline |
+
+An action that changes something is a Button (K01); a call to action is a Button too.
+
+## K59 Site header
+
+Markup: `markup/site-header.html`. `header.ds-siteheader` is sticky, on the page ground at 82 percent with a blur and a hairline below; `.ds-siteheader__bar` is one row `--header-height` high, `--maxw` wide.
+
+| Part | Rule |
+|---|---|
+| logo | `a.ds-siteheader__brand`: one link home, the colour mark (`.ds-siteheader__mark`, `--size-sm` high, `--size-md` from 480) and the wordmark (`.ds-siteheader__word`, `--icon-size-sm` high, `--size-2xs` from 480) from `../brand/`; the wordmark is drawn light at night |
+| sections | `nav.ds-siteheader__nav` of `a.ds-siteheader__link` (`--fs-sm`, 600, `--text-secondary`; hover `--text-primary` on `--bg-subtle`; the current one `aria-current="page"`, `--primary` on `--primary-subtle`), shown from the 880 width |
+| tools | `.ds-siteheader__tools` at the end: the Language switch (K62), the Theme toggle (K61), the sign-in (`a.ds-siteheader__tool`, `data-wide-only`: hidden at the 480 phone width), the menu (`button.ds-siteheader__tool.ds-siteheader__menu`, hidden from 880); every tool is the round `--touch-min` tool with a hairline `--border-default` edge, hover `--border-input` on `--bg-subtle` |
+| drawer | `.ds-sitedrawer`: a modal dialog over the page on `--bg-page` (`data-open="true"` shows it, it fades in by `--motion-moderate`): its close button, the sections (`.ds-sitedrawer__link`, `--font-display`, `--fs-h3`, `--touch-comfortable` high), then the tools: the label, the languages as pills (`.ds-sitedrawer__lang`), the theme and the sign-in as rows (`.ds-sitedrawer__row`) |
+| behaviour | `components.js` opens the drawer from `[data-ds-drawer-open][aria-controls]`, traps the focus, and shuts it on Escape, `[data-ds-drawer-close]` and a link; a page with its own script drives the same `data-open` and `aria-expanded` and makes the page behind it inert |
+
+## K60 Site footer
+
+Markup: `markup/site-footer.html`. `footer.ds-sitefooter` on `--bg-surface` with a hairline above; `.ds-sitefooter__inner` is `--maxw` wide.
+
+| Part | Rule |
+|---|---|
+| top | `.ds-sitefooter__grid`: the logo with its line (`.ds-sitefooter__about`: `a.ds-sitefooter__brand` with the header's mark and wordmark, `p.ds-sitefooter__tag` `--fs-sm` `--text-secondary`), then two `nav.ds-sitefooter__nav`, each its heading (`.ds-sitefooter__title`: `--font-mono`, `--fs-xs`, 700, uppercase, `--text-secondary`) and a list of `a.ds-sitefooter__link` (`--fs-sm`, 600, `--text-primary`, `--touch-min` high; hover and the current page `--primary`); a link may carry `span.ds-sitefooter__hint` (`--font-mono`, `--fs-xs`, `--text-tertiary`) |
+| layout | one column under 640; from 640 the logo above the two lists; from 1120 one row, 5fr 3fr 4fr |
+| contacts | `.ds-sitefooter__contacts` (a hairline above, `--space-6` in) holds the Icon tile group row (K57), the brand marks in its tiles |
+| strip | `.ds-sitefooter__bottom`: a hairline above, `--fs-xs` `--text-secondary`; `.ds-sitefooter__company` sets a small mark before the company line; from 640 the two lines stand at the two edges |
+
+## K61 Theme toggle
+
+Markup: `markup/theme-toggle.html`. `button.ds-themetoggle[data-ds-theme-toggle]` is the round `--touch-min` tool; it holds the moon (`.ds-themetoggle__moon`, shown by day) and the sun (`.ds-themetoggle__sun`, shown at night); `aria-pressed` is true at night; its name comes from the translation tables. `.ds-themetoggle--row` is the row form for a drawer or a menu (the icon and the words). `components.js` switches `data-theme` on the root, sets `aria-pressed` on every toggle of the page and keeps the choice under the storage key `aivis-theme`; a page with no chosen theme follows the system, and the icon does too.
+
+## K62 Language switch
+
+Markup: `markup/language-switch.html`. `details.ds-langswitch`: `summary.ds-langswitch__button` is the round tool with the current code (`--font-mono`, `--fs-xs`, 700), named "Language: <name>"; `ul.ds-langswitch__list` opens under it at the end edge (`--bg-surface`, `--border-default`, `--radius-card`, `--shadow-3`, `--z-menu`, fading in by `--motion-quick`), one `a.ds-langswitch__option` per language (`.ds-langswitch__code` and the name; hreflang and lang; the current one `aria-current="true"`, `--primary-subtle-text` on `--primary-subtle`). Open, the button's edge turns `--primary`. It works without script; `components.js` closes it on a click outside, on Escape and when the focus leaves it. The languages come from the product's shared setting.

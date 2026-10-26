@@ -2689,10 +2689,11 @@
   "name": "Launcher panel",
   "status": "built",
   "markup": "markup/launcher.html",
-  "class_root": ".ds-launcher, .ds-launcher__trigger, .ds-launcher__panel, .ds-launcher__head, .ds-launcher__title, .ds-launcher__close, .ds-launcher__text, .ds-launcher__actions",
+  "class_root": ".ds-launcher, .ds-launcher__trigger, .ds-launcher__panel, .ds-launcher__head, .ds-launcher__title, .ds-launcher__close, .ds-launcher__text, .ds-launcher__actions, .ds-launcher__label",
   "variants": {
    "in flow": "div.ds-launcher: the button and, over its corner, the panel; the panel opens upward and toward the start from the button",
-   "fixed": "data-fixed on the root pins it to the end corner of the screen; at the 480 width and below the panel becomes a sheet across the screen's foot"
+   "fixed": "data-fixed on the root pins it to the end corner of the screen; at the 480 width and below the panel becomes a sheet across the screen's foot",
+   "compact": "data-compact on .ds-launcher: at the 480 phone width the trigger shows its icon alone (its label, .ds-launcher__label, stays as the accessible name)"
   },
   "sizes": [
    "one size; the panel is --maxw-form wide at most"
@@ -2775,7 +2776,280 @@
   ],
   "accessibility": "The tile is one link; the icon is decorative (aria-hidden). With a caption, the caption is its visible and accessible name. Icon only, the same name is in aria-label and in title, word for word, and the group's heading says what the icons are for. The box is at least --touch-min square. Hover fills the box with --primary and the glyph takes --on-primary (4.5 or better); the caption is --text-secondary on the page or card ground. A long caption breaks anywhere rather than overflow. Focus is a --focus-width solid outline in --focus-ring at --focus-offset around the whole tile. A group row is in reading order: start, middle, end; stacked in the same order on a phone.",
   "purpose": "An icon link that says what it is: a network, a messenger or an e-mail address, with its name under it or, icon only, in its hint and accessible name; a group row sets up to three such groups across a footer.",
-  "usage": "Use the captioned form where the handle itself must be read; use the icon-only form where the icons are known at a glance and the heading above them says what they are for, never a caption beside an icon-only row. Icons come from the sprite; a brand glyph a product needs is added there first.",
+  "usage": "Use the captioned form where the handle itself must be read; use the icon-only form where the icons are known at a glance and the heading above them says what they are for, never a caption beside an icon-only row. Icons come from the sprite; a brand mark comes from icons/brand-marks.svg (the second exception of reference/refusals.md).",
   "notes": ""
+ },
+ {
+  "id": "K58",
+  "name": "Link",
+  "status": "built",
+  "markup": "markup/link.html",
+  "class_root": ".ds-link",
+  "variants": {
+   "inline": "a.ds-link in running text, the weight of the text",
+   "standalone": ".ds-link--standalone: on its own line, weight 600, --touch-min high, an icon allowed"
+  },
+  "sizes": [
+   "the size of its text"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus"
+  ],
+  "tokens": [
+   "--border-input-width",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--primary",
+   "--primary-active",
+   "--primary-hover",
+   "--radius-xs",
+   "--space-2",
+   "--touch-min"
+  ],
+  "accessibility": "A link is always underlined, never colour alone; --primary is 8.48 on the surface by day and 6.97 on the night surface. Its words say where it goes; an external link carries rel=\"noopener\". The standalone form is at least --touch-min high. Hover thickens the line; focus is a --focus-width solid outline in --focus-ring at --focus-offset.",
+  "purpose": "A link to another page or place: inside a sentence, or on its own line (a way back, a link to a document).",
+  "usage": "Use the inline form inside text and the standalone form for a single link that stands alone. An action that changes something is a Button, not a link; a call to action that leads somewhere important is a Button too.",
+  "notes": ""
+ },
+ {
+  "id": "K59",
+  "name": "Site header",
+  "status": "built",
+  "markup": "markup/site-header.html",
+  "class_root": ".ds-siteheader, .ds-siteheader__bar, .ds-siteheader__brand, .ds-siteheader__mark, .ds-siteheader__word, .ds-siteheader__nav, .ds-siteheader__link, .ds-siteheader__tools, .ds-siteheader__tool, .ds-siteheader__menu, .ds-sitedrawer, .ds-sitedrawer__bar, .ds-sitedrawer__close, .ds-sitedrawer__link, .ds-sitedrawer__tools, .ds-sitedrawer__label, .ds-sitedrawer__langs, .ds-sitedrawer__lang, .ds-sitedrawer__row",
+  "variants": {
+   "bar": "header.ds-siteheader: the logo, the sections from 880, the tools",
+   "drawer": ".ds-sitedrawer: the sections and the tools on a phone, a modal dialog",
+   "wide-only tool": "[data-wide-only] on a tool hides it at the 480 phone width (it is in the drawer)"
+  },
+  "sizes": [
+   "one height, --header-height"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "current section (aria-current=page)",
+   "drawer open (data-open=true)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-page",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-display",
+   "--font-mono",
+   "--fs-body",
+   "--fs-h3",
+   "--fs-sm",
+   "--fs-xs",
+   "--header-height",
+   "--icon-size-sm",
+   "--maxw",
+   "--motion-moderate",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-control",
+   "--radius-pill",
+   "--radius-xs",
+   "--size-2xs",
+   "--size-md",
+   "--size-sm",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-gutter-web",
+   "--space-safe-bottom",
+   "--space-safe-top",
+   "--text-primary",
+   "--text-secondary",
+   "--touch-comfortable",
+   "--touch-min",
+   "--tracking-wide",
+   "--z-dialog",
+   "--z-header"
+  ],
+  "accessibility": "The header is the banner; the sections are a nav named in the translation tables; the logo is one link home named by the brand. Every tool is a real button or link at least --touch-min square with an aria-label. The drawer is a modal dialog (role=dialog, aria-modal=true, named): it takes the focus on its close button, traps Tab and Shift+Tab, and returns the focus to the menu button on Escape, on the close button and on a link; the page behind it is made inert by the page. Text is --text-primary and --text-secondary on --bg-page (4.5 or better in both themes); the current section is --primary on --primary-subtle. Focus is a --focus-width solid outline in --focus-ring at --focus-offset.",
+  "purpose": "The bar at the top of every public page: the logo, the sections, the language, day and night, the sign-in, and on a phone the menu.",
+  "usage": "One header per public page, the first thing after the skip link. Keep the sections to four or five words; more go to the footer. The cabinet has its own header (the App shell); this one is for the public site.",
+  "notes": "components.js wires the drawer from [data-ds-drawer-open] and [data-ds-drawer-close]; a page with its own script drives the same data-open and aria-expanded."
+ },
+ {
+  "id": "K60",
+  "name": "Site footer",
+  "status": "built",
+  "markup": "markup/site-footer.html",
+  "class_root": ".ds-sitefooter, .ds-sitefooter__inner, .ds-sitefooter__grid, .ds-sitefooter__about, .ds-sitefooter__brand, .ds-sitefooter__tag, .ds-sitefooter__nav, .ds-sitefooter__title, .ds-sitefooter__list, .ds-sitefooter__link, .ds-sitefooter__hint, .ds-sitefooter__contacts, .ds-sitefooter__bottom, .ds-sitefooter__company",
+  "variants": {
+   "layout": "one column under 640; from 640 the logo above two columns; from 1120 one row of three (5fr 3fr 4fr)",
+   "contacts": "the Icon tile group row (K57) with the brand marks"
+  },
+  "sizes": [
+   "one size"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "current page (aria-current=page)"
+  ],
+  "tokens": [
+   "--bg-surface",
+   "--border-subtle",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--lh-normal",
+   "--lh-snug",
+   "--maxw",
+   "--primary",
+   "--radius-xs",
+   "--space-1",
+   "--space-2",
+   "--space-3",
+   "--space-4",
+   "--space-5",
+   "--space-6",
+   "--space-gutter-web",
+   "--space-section-md",
+   "--text-primary",
+   "--text-secondary",
+   "--text-tertiary",
+   "--touch-min",
+   "--tracking-wide"
+  ],
+  "accessibility": "The footer is the single contentinfo of the page, a direct child of body. Each list of links is a nav named by its heading; the link to the page in view carries aria-current=\"page\". Every link is at least --touch-min high. The headings and the strip are --text-secondary on --bg-surface (7.37 by day); a hint is --text-tertiary, which stands on the surface only (4.56 by day). Focus is a --focus-width solid outline in --focus-ring at --focus-offset.",
+  "purpose": "The end of every public page: what the company is, the sections, the legal pages, the contacts, the company line.",
+  "usage": "One footer per public page. The legal pages are always in it; the contacts are the Icon tile group row with up to three groups.",
+  "notes": ""
+ },
+ {
+  "id": "K61",
+  "name": "Theme toggle",
+  "status": "built",
+  "markup": "markup/theme-toggle.html",
+  "class_root": ".ds-themetoggle, .ds-themetoggle__moon, .ds-themetoggle__sun, .ds-themetoggle--row",
+  "variants": {
+   "round": "the --touch-min round tool (default)",
+   "row": ".ds-themetoggle--row: the icon and the words on one line, inside a drawer or a menu"
+  },
+  "sizes": [
+   "one size, --touch-min"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "night (aria-pressed=true, the sun shows)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--fs-body",
+   "--fs-sm",
+   "--radius-control",
+   "--radius-pill",
+   "--size-2xs",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--touch-comfortable",
+   "--touch-min"
+  ],
+  "accessibility": "A real button with an aria-label from the translation tables; aria-pressed is true at night. The icons are decorative. At least --touch-min square. Under prefers-reduced-motion nothing moves. Focus is a --focus-width solid outline in --focus-ring at --focus-offset.",
+  "purpose": "Switch the page between day and night and keep the choice.",
+  "usage": "One in the header (and its row form in the drawer); every toggle of the page shows the same state.",
+  "notes": "components.js wires [data-ds-theme-toggle]; the choice is kept under the storage key aivis-theme, which the page reads before it paints."
+ },
+ {
+  "id": "K62",
+  "name": "Language switch",
+  "status": "built",
+  "markup": "markup/language-switch.html",
+  "class_root": ".ds-langswitch, .ds-langswitch__button, .ds-langswitch__list, .ds-langswitch__option, .ds-langswitch__code",
+  "variants": {
+   "menu": "details.ds-langswitch: a round button with the current code and a list under it"
+  },
+  "sizes": [
+   "one size, --touch-min"
+  ],
+  "states": [
+   "rest",
+   "hover",
+   "pressed",
+   "focus",
+   "open (details open)",
+   "current language (aria-current=true)"
+  ],
+  "tokens": [
+   "--bg-inset",
+   "--bg-subtle",
+   "--bg-surface",
+   "--border-default",
+   "--border-input",
+   "--center-md",
+   "--dur-fast",
+   "--ease-standard",
+   "--focus-offset",
+   "--focus-ring",
+   "--focus-width",
+   "--font-body",
+   "--font-mono",
+   "--fs-sm",
+   "--fs-xs",
+   "--motion-quick",
+   "--primary",
+   "--primary-subtle",
+   "--primary-subtle-text",
+   "--radius-card",
+   "--radius-control",
+   "--radius-pill",
+   "--shadow-3",
+   "--space-2",
+   "--space-3",
+   "--text-primary",
+   "--touch-min",
+   "--tracking-wide",
+   "--z-menu"
+  ],
+  "accessibility": "A native details: the summary is the button, Enter and Space open it; its name says the current language. Each option is a link with hreflang and lang; the current one carries aria-current=\"true\" and is --primary-subtle-text on --primary-subtle. Every option is at least --touch-min high. It closes on Escape (the focus returns to the button), on a click outside and when the focus leaves it. Focus is a --focus-width solid outline in --focus-ring.",
+  "purpose": "Show the page in another language, at the same address in that language.",
+  "usage": "One in the header; on a phone the drawer lists the same languages as pills. The list is built from the product's shared language setting.",
+  "notes": "components.js closes it; it opens and closes without script."
  }
 ]

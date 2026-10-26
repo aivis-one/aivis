@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIVIS components, batch 7: the shared pieces of the public site</title>
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../tokens/tokens-dark.css">
+<link rel="stylesheet" href="../components/components.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-page); color: var(--text-primary); font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal); }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); margin: 0; }
+code { font-family: var(--font-mono); font-size: 0.875em; }
+.wrap { max-inline-size: var(--maxw-wide); margin-inline: auto; padding-inline: var(--space-gutter-mobile); }
+header.top { padding-block: var(--space-6) var(--space-4); border-block-end: thin solid var(--border-default); }
+header.top h1 { font-size: var(--fs-h1); }
+header.top p { color: var(--text-secondary); margin-block: var(--space-2) 0; max-inline-size: var(--maxw-prose); }
+.toolbar { position: sticky; inset-block-start: 0; z-index: 70; background: var(--bg-page); border-block-end: thin solid var(--border-subtle); padding-block: var(--space-3); }
+.toolbar .wrap { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); align-items: center; }
+.toolbar .grp { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.toolbar .lbl { font-size: var(--fs-sm); color: var(--text-secondary); }
+.toolbar a { color: var(--primary); font-weight: 600; font-size: var(--fs-sm); text-decoration: none; }
+.toolbar a:hover { text-decoration: underline; }
+.toolbar a:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+section.blk { scroll-margin-block-start: 4rem; padding-block: var(--space-7); border-block-end: thin solid var(--border-subtle); }
+section.blk h2:not([class]) { font-size: var(--fs-h2); margin-block-end: var(--space-3); }
+section.blk h3 { font-size: var(--fs-h4); margin-block: var(--space-5) var(--space-2); }
+.lead { color: var(--text-secondary); max-inline-size: var(--maxw-prose); margin-block: 0 var(--space-4); }
+.cols { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr)); align-items: start; }
+.stack { display: grid; gap: var(--space-3); align-content: start; min-inline-size: 0; }
+.padded { padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; min-inline-size: 0; }
+.desk { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; overflow: clip; }
+.phone { border: thin solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-page); display: block; inline-size: 100%; max-inline-size: 30rem; }
+.phone-wrap { display: grid; gap: var(--space-2); justify-items: center; margin: 0; min-inline-size: 0; }
+.phone-wrap figcaption { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); text-align: center; }
+.lbl-s { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); margin: 0; }
+.frame-row { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+.frame-row > div { display: grid; gap: var(--space-2); justify-items: start; }
+.room { min-block-size: calc(var(--center-md) + var(--space-6)); }
+.drawer-room { position: relative; block-size: 34rem; overflow: hidden; border: thin solid var(--border-default); border-radius: var(--radius-lg); }
+.drawer-room .ds-sitedrawer { position: absolute; display: flex; opacity: 1; translate: 0 0; }
+@media (max-width: 480px) { .toolbar { position: static; } }
+footer.end { padding-block: var(--space-6); color: var(--text-secondary); font-size: var(--fs-sm); }
+/* simulated states, drawn only so every state is visible at once */
+.sim-focus { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.ds-link.sim-hover { color: var(--primary-hover); text-decoration-thickness: calc(var(--border-input-width) * 2); }
+.ds-link.sim-pressed { color: var(--primary-active); }
+:is(.ds-themetoggle, .ds-siteheader__tool).sim-hover { border-color: var(--border-input); background: var(--bg-subtle); }
+:is(.ds-themetoggle, .ds-siteheader__tool).sim-pressed { background: var(--bg-inset); }
+.ds-siteheader__link.sim-hover { color: var(--text-primary); background: var(--bg-subtle); }
+.ds-sitefooter__link.sim-hover { color: var(--primary); }
+.ds-langswitch__option.sim-hover { background: var(--bg-subtle); }
+.ds-icontile.sim-hover .ds-icontile__box { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.sim-night .ds-themetoggle__moon { display: none; }
+.sim-night .ds-themetoggle__sun { display: inline-block; }
+.marks { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; color: var(--text-primary); }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>Components, batch 7: the shared pieces of the public site</h1>
+<p>The Link (K58), the Site header with its drawer (K59), the Site footer (K60), the Theme toggle (K61), the Language switch (K62), the compact trigger of the Launcher panel (K56) and the five brand marks, in every state, day and night, desktop and the 480 phone width.</p></div></header>
+<div class="toolbar"><div class="wrap"><div class="grp"><span class="lbl">Theme</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="light" aria-pressed="true">Day</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-theme-set="dark" aria-pressed="false">Night</button></div><div class="grp"><span class="lbl">Direction</span><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="ltr" aria-pressed="true">LTR</button><button class="ds-button ds-button--secondary" data-size="sm" type="button" data-dir-set="rtl" aria-pressed="false">RTL</button></div><div class="grp"><a href="#b1">Link</a><a href="#b2">Theme toggle, Language switch</a><a href="#b3">Site header</a><a href="#b4">Site footer</a><a href="#b5">Brand marks, compact launcher</a></div></div></div>
+
+<section class="blk" id="b1"><div class="wrap"><h2>Link (K58)</h2>
+<p class="lead">Always underlined, never colour alone. Inline inside text, standalone on its own line.</p>
+<div class="cols"><div class="stack" data-frag="f1"><div class="padded desk">
+<p class="lbl-s">inline: rest, hover, pressed, focus</p>
+<p>Read the <a class="ds-link" href="#t">terms of the site</a>, the <a class="ds-link sim-hover" href="#t">privacy policy</a>, the <a class="ds-link sim-pressed" href="#t">licence</a> and the <a class="ds-link sim-focus" href="#t">cookie notice</a>.</p>
+<p class="lbl-s">standalone</p>
+<div class="frame-row"><a class="ds-link ds-link--standalone" href="#b"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg><span>About the company</span></a><a class="ds-link ds-link--standalone sim-focus" href="https://example.org" rel="noopener"><span>example.org</span><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-arrow-up-right"/></svg></a></div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Link on a phone" data-src="components-7.html?fragment=f1" height="320"></iframe><figcaption>480 phone frame</figcaption></figure></div>
+</div></section>
+
+<section class="blk" id="b2"><div class="wrap"><h2>Theme toggle (K61) and Language switch (K62)</h2>
+<p class="lead">One round tool, a hairline edge; the moon by day, the sun at night. The language switch is a native details with the current code.</p>
+<div class="cols"><div class="stack" data-frag="f2"><div class="padded desk">
+<p class="lbl-s">theme toggle: rest, hover, pressed, focus, night</p>
+<div class="frame-row">
+<button class="ds-themetoggle" type="button" data-ds-theme-toggle aria-pressed="false" aria-label="Switch day and night"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+<button class="ds-themetoggle sim-hover" type="button" aria-label="Hover"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+<button class="ds-themetoggle sim-pressed" type="button" aria-label="Pressed"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+<button class="ds-themetoggle sim-focus" type="button" aria-label="Focus"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+<span class="sim-night"><button class="ds-themetoggle" type="button" aria-label="Night" aria-pressed="true"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button></span>
+</div>
+<p class="lbl-s">row form</p>
+<button class="ds-themetoggle ds-themetoggle--row" type="button" data-ds-theme-toggle aria-pressed="false"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg><span>Switch day and night</span></button>
+<p class="lbl-s">language switch: closed, and open with the current language and a hovered one</p>
+<div class="frame-row room">
+<details class="ds-langswitch"><summary class="ds-langswitch__button" aria-label="Language: English"><span aria-hidden="true">EN</span></summary><ul class="ds-langswitch__list"><li><a class="ds-langswitch__option" href="#en" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a></li><li><a class="ds-langswitch__option" href="#ru" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></li></ul></details>
+<details class="ds-langswitch" open><summary class="ds-langswitch__button" aria-label="Language: English"><span aria-hidden="true">EN</span></summary><ul class="ds-langswitch__list"><li><a class="ds-langswitch__option" href="#en" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a></li><li><a class="ds-langswitch__option sim-hover" href="#ru" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></li></ul></details>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Theme toggle and language switch on a phone" data-src="components-7.html?fragment=f2" height="560"></iframe><figcaption>480 phone frame</figcaption></figure></div>
+</div></section>
+
+<section class="blk" id="b3"><div class="wrap"><h2>Site header (K59) and its drawer</h2>
+<p class="lead">The logo, the sections from the 880 width, the tools. Under 880 the menu opens the drawer; at the 480 width the sign-in tool leaves the bar for the drawer.</p>
+<div class="stack" data-frag="f3"><div class="desk">
+<header class="ds-siteheader">
+  <div class="ds-siteheader__bar">
+    <a class="ds-siteheader__brand" href="#home" aria-label="AIVIS.ONE"><img class="ds-siteheader__mark" src="../brand/aivis-mark.svg" alt="" width="26" height="30"><img class="ds-siteheader__word" src="../brand/aivis-wordmark.svg" alt="AIVIS.ONE" width="96" height="20"></a>
+    <nav class="ds-siteheader__nav" aria-label="Sections"><a class="ds-siteheader__link" href="#about" aria-current="page">About</a><a class="ds-siteheader__link sim-hover" href="#courses">Courses</a><a class="ds-siteheader__link" href="#faq">Questions</a></nav>
+    <div class="ds-siteheader__tools">
+      <details class="ds-langswitch"><summary class="ds-langswitch__button" aria-label="Language: English"><span aria-hidden="true">EN</span></summary><ul class="ds-langswitch__list"><li><a class="ds-langswitch__option" href="#en" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a></li><li><a class="ds-langswitch__option" href="#ru" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></li></ul></details>
+      <button class="ds-themetoggle" type="button" data-ds-theme-toggle aria-pressed="false" aria-label="Switch day and night"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg></button>
+      <a class="ds-siteheader__tool sim-hover" data-wide-only href="#login" aria-label="Sign in" title="Sign in"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-in"/></svg></a>
+      <button class="ds-siteheader__tool ds-siteheader__menu" type="button" data-ds-drawer-open aria-controls="demo-drawer" aria-expanded="false" aria-label="Menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+<div class="padded"><p class="lbl-s">The page under the header.</p></div>
+</div></div>
+<div class="cols">
+<figure class="phone-wrap"><iframe class="phone" title="Site header on a phone" data-src="components-7.html?fragment=f3" height="200"></iframe><figcaption>480 phone frame: the bar</figcaption></figure>
+<div class="stack" data-frag="f3b"><p class="lbl-s">the drawer, open (drawn in place here)</p><div class="drawer-room">
+<div class="ds-sitedrawer" id="demo-drawer" data-open="true" role="dialog" aria-modal="false" aria-label="Menu">
+  <div class="ds-sitedrawer__bar"><button class="ds-sitedrawer__close" type="button" data-ds-drawer-close aria-label="Close the menu"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+  <a class="ds-sitedrawer__link" href="#about">About</a><a class="ds-sitedrawer__link" href="#courses">Courses</a><a class="ds-sitedrawer__link" href="#faq">Questions</a>
+  <div class="ds-sitedrawer__tools"><p class="ds-sitedrawer__label">Language</p>
+    <div class="ds-sitedrawer__langs"><a class="ds-sitedrawer__lang" href="#en" hreflang="en" lang="en" aria-current="true"><span class="ds-langswitch__code">EN</span><span>English</span></a><a class="ds-sitedrawer__lang" href="#ru" hreflang="ru" lang="ru"><span class="ds-langswitch__code">RU</span><span>Русский</span></a></div>
+    <button class="ds-sitedrawer__row" type="button" data-ds-theme-toggle aria-pressed="false"><svg class="ds-icon ds-themetoggle__moon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-moon"/></svg><svg class="ds-icon ds-themetoggle__sun" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-sun"/></svg><span>Switch day and night</span></button>
+    <a class="ds-sitedrawer__row" href="#login"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-log-in"/></svg><span>Sign in</span></a>
+  </div>
+</div></div></div>
+</div>
+</div></section>
+
+<section class="blk" id="b4"><div class="wrap"><h2>Site footer (K60)</h2>
+<p class="lead">The logo and its line, the sections, the legal pages, the contacts as the Icon tile group row with the brand marks, the company strip.</p>
+<div class="stack" data-frag="f4"><div class="desk">
+<footer class="ds-sitefooter">
+  <div class="ds-sitefooter__inner">
+    <div class="ds-sitefooter__grid">
+      <div class="ds-sitefooter__about"><a class="ds-sitefooter__brand" href="#home" aria-label="AIVIS.ONE"><img class="ds-siteheader__mark" src="../brand/aivis-mark.svg" alt="" width="26" height="30"><img class="ds-siteheader__word" src="../brand/aivis-wordmark.svg" alt="AIVIS.ONE" width="96" height="20"></a><p class="ds-sitefooter__tag">A visionary for visionaries.</p></div>
+      <nav class="ds-sitefooter__nav" aria-labelledby="f-site"><h2 class="ds-sitefooter__title" id="f-site">Site</h2><ul class="ds-sitefooter__list">
+        <li><a class="ds-sitefooter__link" href="#about" aria-current="page"><span>About</span></a></li>
+        <li><a class="ds-sitefooter__link sim-hover" href="#courses"><span>Courses</span></a></li>
+        <li><a class="ds-sitefooter__link" href="https://example.org" rel="noopener"><span>SANKORD</span><span class="ds-sitefooter__hint">sankord.com</span></a></li></ul></nav>
+      <nav class="ds-sitefooter__nav" aria-labelledby="f-legal"><h2 class="ds-sitefooter__title" id="f-legal">Legal</h2><ul class="ds-sitefooter__list">
+        <li><a class="ds-sitefooter__link" href="#privacy"><span>Privacy Policy</span></a></li>
+        <li><a class="ds-sitefooter__link sim-focus" href="#terms"><span>Terms of Use of the Site</span></a></li></ul></nav>
+    </div>
+    <div class="ds-sitefooter__contacts"><div class="ds-icongroups">
+      <nav class="ds-icongroup" aria-labelledby="f-net"><h2 class="ds-sitefooter__title" id="f-net">Networks</h2><ul class="ds-icontiles" data-variant="icon">
+        <li><a class="ds-icontile" href="#tg" rel="me noopener" aria-label="Telegram" title="Telegram"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg></span></a></li>
+        <li><a class="ds-icontile sim-hover" href="#x" rel="me noopener" aria-label="X" title="X"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="x" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-x"/></svg></span></a></li>
+        <li><a class="ds-icontile" href="#md" rel="me noopener" aria-label="Medium" title="Medium"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="medium" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-medium"/></svg></span></a></li>
+        <li><a class="ds-icontile" href="#li" rel="me noopener" aria-label="LinkedIn" title="LinkedIn"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="linkedin" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-linkedin"/></svg></span></a></li></ul></nav>
+      <section class="ds-icongroup" aria-labelledby="f-me"><h2 class="ds-sitefooter__title" id="f-me">Write to the founder</h2><ul class="ds-icontiles" data-variant="icon">
+        <li><a class="ds-icontile" href="#mail" aria-label="name@example.org" title="name@example.org"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="mail" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-mail"/></svg></span></a></li></ul></section>
+      <section class="ds-icongroup" aria-labelledby="f-app"><h2 class="ds-sitefooter__title" id="f-app">The app</h2><ul class="ds-icontiles" data-variant="icon">
+        <li><a class="ds-icontile" href="#app" rel="noopener" aria-label="@app" title="@app"><span class="ds-icontile__box"><svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg></span></a></li></ul></section>
+    </div></div>
+    <div class="ds-sitefooter__bottom"><p class="ds-sitefooter__company"><span>AIVIS.ONE LLC, Georgia</span></p><p>© 2026 AIVIS.ONE LLC</p></div>
+  </div>
+</footer>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Site footer on a phone" data-src="components-7.html?fragment=f4" height="1100"></iframe><figcaption>480 phone frame</figcaption></figure>
+</div></section>
+
+<section class="blk" id="b5"><div class="wrap"><h2>Brand marks and the compact launcher trigger (K56)</h2>
+<p class="lead">The five brand marks, filled as their owners draw them, each at its own optical size. A launcher with <code>data-compact</code> shows its icon alone at the 480 width.</p>
+<div class="cols"><div class="stack" data-frag="f5"><div class="padded desk">
+<div class="marks"><svg class="ds-brandmark" data-mark="telegram" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-telegram"/></svg><svg class="ds-brandmark" data-mark="x" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-x"/></svg><svg class="ds-brandmark" data-mark="medium" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-medium"/></svg><svg class="ds-brandmark" data-mark="linkedin" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-linkedin"/></svg><svg class="ds-brandmark" data-mark="mail" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-brand-mail"/></svg></div>
+<div class="ds-launcher" data-open="false" data-compact>
+  <button class="ds-button ds-button--primary ds-launcher__trigger" data-size="lg" type="button" aria-expanded="false" aria-controls="lp7"><svg class="ds-icon ds-icon--md" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-info"/></svg><span class="ds-launcher__label">Questions?</span></button>
+  <section class="ds-launcher__panel" id="lp7" role="region" aria-labelledby="lp7-t" hidden>
+    <div class="ds-launcher__head"><h2 class="ds-launcher__title" id="lp7-t" tabindex="-1">Have questions?</h2><button class="ds-button ds-button--ghost ds-button--icon ds-launcher__close" type="button" aria-label="Close"><svg class="ds-icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-x"/></svg></button></div>
+    <p class="ds-launcher__text">A short explanation in plain words.</p>
+    <div class="ds-launcher__actions"><a class="ds-button ds-button--primary" href="#a">First action</a><a class="ds-button ds-button--secondary" href="#b">Second action</a></div>
+  </section>
+</div>
+</div></div>
+<figure class="phone-wrap"><iframe class="phone" title="Brand marks and the compact launcher on a phone" data-src="components-7.html?fragment=f5" height="360"></iframe><figcaption>480 phone frame</figcaption></figure></div>
+</div></section>
+<footer class="end"><div class="wrap">Every value on this page is a token of <code>../tokens/</code>; the markup is in <code>../components/markup/</code>.</div></footer>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search);
+  var frag = qs.get('fragment');
+  if (frag) {
+    var el = document.querySelector('[data-frag="' + frag + '"]');
+    var clone = el ? el.cloneNode(true) : null;
+    Array.prototype.slice.call(document.body.children).forEach(function (c) { if (c.tagName !== 'SCRIPT') c.remove(); });
+    if (clone) { document.body.insertBefore(clone, document.body.firstChild); }
+  } else {
+    document.querySelectorAll('iframe[data-src]').forEach(function (f) { f.src = f.getAttribute('data-src'); });
+  }
+  if (qs.get('theme')) document.documentElement.setAttribute('data-theme', qs.get('theme'));
+  ['../components/icons/icons.svg', '../components/icons/brand-marks.svg'].forEach(function (u) {
+    fetch(u).then(function (r) { return r.text(); }).then(function (t) { document.body.insertAdjacentHTML('afterbegin', t); });
+  });
+  function frames() { return Array.prototype.slice.call(document.querySelectorAll('iframe[data-src]')); }
+  function press(attr, val) { document.querySelectorAll('[' + attr + ']').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+  function applyTo(doc, theme, dir) { try { doc.documentElement.setAttribute('data-theme', theme); doc.documentElement.setAttribute('dir', dir); } catch (e) {} }
+  var state = { theme: document.documentElement.getAttribute('data-theme') || 'light', dir: 'ltr' };
+  function apply() {
+    applyTo(document, state.theme, state.dir);
+    frames().forEach(function (f) { if (f.contentDocument) applyTo(f.contentDocument, state.theme, state.dir); });
+    press('data-theme-set', state.theme); press('data-dir-set', state.dir);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-theme-set]'); if (t) { state.theme = t.getAttribute('data-theme-set'); apply(); }
+    var d = e.target.closest('[data-dir-set]'); if (d) { state.dir = d.getAttribute('data-dir-set'); apply(); }
+  });
+  frames().forEach(function (f) { f.addEventListener('load', apply); });
+})();
+</script>
+<script src="../components/components.js"></script>
+</body>
+</html>

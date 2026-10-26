@@ -38,7 +38,8 @@ A prohibition without a replacement sends work back to guessing, so every row na
 
 | Do not | Instead | Why | Source |
 |---|---|---|---|
-| restyle the Telegram button, or hold it to the 4.5 text floor | the `telegram` button variant, bound to `--telegram`, `--telegram-hover` and `--on-telegram` as they stand: the one brand exception of the system | white on `#2AABEE` is 2.57 and on `#229ED9` 3.02, under 4.5; kept because Telegram's brand is not ours to restyle; no other component carries a brand colour | decided by the owner, 2026-10-17 |
+| restyle the Telegram button, or hold it to the 4.5 text floor | the `telegram` button variant, bound to `--telegram`, `--telegram-hover` and `--on-telegram` as they stand: the first brand exception of the system | white on `#2AABEE` is 2.57 and on `#229ED9` 3.02, under 4.5; kept because Telegram's brand is not ours to restyle; no other component carries a brand colour | decided by the owner, 2026-10-17 |
+| redraw the mark of a network or the mail in P1 lines, or draw it from outside the set | the brand marks of `../components/icons/brand-marks.svg` (Telegram, X, Medium, LinkedIn, mail), filled as their owners draw them, in `currentColor` at the sizes of `.ds-brandmark`: the second brand exception | a mark is its owner's, not ours to restyle; the P1 rules (no fill, 1.5 stroke) do not bind these five; they never carry a brand colour and never stand for an action of ours | decided by the owner, 2026-10-26 |
 
 ## Typefaces
 
@@ -53,7 +54,7 @@ A prohibition without a replacement sends work back to guessing, so every row na
 
 | Do not | Instead | Why | Source |
 |---|---|---|---|
-| use an icon from outside the set, or a second icon set | a key of `../components/icons/icons.json` | one set is the owner's decision | decided by the owner, 2026-10-16 |
+| use an icon from outside the set, or a second icon set | a key of `../components/icons/icons.json`; a brand mark only from `brand_marks` there (`brand-marks.svg`) | one set is the owner's decision; the brand marks are the second exception below | decided by the owner, 2026-10-16, 2026-10-26 |
 | draw an icon with a fill, a gradient, an opacity or a hard-coded colour, or with a stroke other than 1.5, round caps and joins | the rules of `../components/icons/STYLE-P1.md` | the set is one style | decided by the owner, 2026-10-16 |
 | show the rocket, the spark or the qr icon below 24 pixels | 24 pixels or larger | the rocket is dense, the spark reads as a spinner and the dots of the qr merge at 16 pixels | decided by the owner, 2026-10-17, 2026-10-18 |
 | draw an icon from the hexagon of the logo | the P1 rules | the hexagon is the logo and the decorative elements, never a rule for the icons | decided by the owner, 2026-10-16 |
