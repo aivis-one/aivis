@@ -442,6 +442,19 @@ export interface CompanyTransactionResponse {
   created_at: string
 }
 
+/** Body of the manual confirmation of a crypto invoice. */
+export interface ConfirmCryptoInvoiceRequest {
+  reason: string
+}
+
+/** The deposit written by a manual confirmation. */
+export interface ConfirmCryptoInvoiceResponse {
+  invoice_id: string
+  payment_id: string
+  user_id: string
+  amount_cents: number
+}
+
 /** GET /api/v1/staff/consistency -- all semaphore results. */
 export interface ConsistencyResponse {
   overall_status: string
@@ -1400,6 +1413,30 @@ export interface StaffAttachmentResponse {
   storage_key: string
   is_deleted: boolean
   created_by_id?: string | null
+}
+
+/** One crypto invoice for the staff Invoices view. */
+export interface StaffCryptoInvoiceItem {
+  id: string
+  user_id: string
+  user_email: string | null
+  user_name: string | null
+  network: string
+  amount_cents: number
+  status: string
+  created_at: string
+  expires_at: string
+  credited: boolean
+  credited_by?: string | null
+  payment_id?: string | null
+}
+
+/** Paged staff list of crypto invoices. */
+export interface StaffCryptoInvoiceListResponse {
+  items: StaffCryptoInvoiceItem[]
+  total: number
+  page: number
+  per_page: number
 }
 
 /** Staff grants gift parts to a user. The product names the project and the price snapshot the gift certificate is rendered against. The recipient must have passed KYC. Nothing is credited until the recipient accepts. */
