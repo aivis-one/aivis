@@ -46,6 +46,11 @@ export type VerificationMode = 'manual' | 'automatic'
 
 // -- Interfaces ---------------------------------------------------------------
 
+/** Body of an administrator's note on a crypto invoice. */
+export interface AddInvoiceNoteRequest {
+  text: string
+}
+
 /** Paginated list of agent applications. */
 export interface AgentApplicationListResponse {
   items: AgentApplicationResponse[]
@@ -583,6 +588,7 @@ export interface DashboardStatsResponse {
   pending_kyc_count: number
   active_avatar_sessions: number
   frozen_payments_count: number
+  manual_topup_requests_count: number
 }
 
 /** Full dashboard summary for the authenticated user. */
@@ -815,6 +821,8 @@ export interface InvoiceResponse {
   active_txid?: string | null
   credited_amount_cents?: number | null
   underpaid?: boolean | null
+  manual_requested_at?: string | null
+  manually_credited?: boolean
 }
 
 /** Compact KYCApplication row for the user detail history. Mirrors the columns the staff detail modal actually renders: id (for action endpoints), status (badge color), created_at (timeline ordering / submission date), updated_at (when the status changed for terminal statuses). Carries no user_id / email / name of its own: this row is always nested inside a per-user response (UserDetailResponse's kyc_applications_history), so repeating the parent's identity fields here would duplicate them for a reader who already has them from the object this list sits inside. */
@@ -886,6 +894,13 @@ export interface LoginResponse {
   session_token?: string | null
   link_required?: boolean
   link_token?: string | null
+}
+
+/** The client's request for a manual confirmation of one invoice. ``already_requested`` is true when the request existed before this call; the call then wrote nothing and ``requested_at`` is the first request's. */
+export interface ManualRequestResponse {
+  invoice_id: string
+  requested_at: string
+  already_requested: boolean
 }
 
 /** Navigational intent for one inbox item, or nothing. comms' frozen contract calls this `action_data`: {"action": ..., "params": {...}} | null. None of AIVIS's 16 event producers populate it today (checked at the emit_event call sites, e.g. withdrawals/service.py ~line 117 -- the payload carries no action_data key at all), so every item this proxy serves right now has it as null. Typed here anyway: comms may start sending it at any point and an untyped field showing up later would be a schema break for the frontend, not a feature. Wiring an actual navigation target from `action` + `params` is explicitly out of scope -- see the module header on notifications/service.py. */
@@ -1429,6 +1444,10 @@ export interface StaffCryptoInvoiceItem {
   credited: boolean
   credited_by?: string | null
   payment_id?: string | null
+  manual_requested_at?: string | null
+  manual_request_open?: boolean
+  confirm_reason?: string | null
+  notes?: StaffInvoiceNote[]
 }
 
 /** Paged staff list of crypto invoices. */
@@ -1444,6 +1463,15 @@ export interface StaffGrantGiftRequest {
   user_id: string
   product_id: string
   units: number
+}
+
+/** One administrator's note on a crypto invoice. */
+export interface StaffInvoiceNote {
+  id: string
+  text: string
+  author_id: string | null
+  author_name: string | null
+  created_at: string
 }
 
 /** Paginated payment list for staff. */
