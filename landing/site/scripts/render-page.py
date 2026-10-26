@@ -1734,22 +1734,83 @@ PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_]+)\}\}")
 
 
 # ---------- v2: the document's inline blocks and the CSP over them ----------
-FONT_LINE_SKIP = re.compile(r"noto-deva")
+# The design system is the one source of the page's fonts, tokens, components and icons:
+# ../../design-system/ beside landing/, read at every build, never copied into this folder.
+DS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "design-system"
+# Noto Sans Arabic serves Arabic script only, and no locale of this site is written in it
+FONT_LINE_SKIP = re.compile(r"noto-sans-arabic")
+DS_CLASS = re.compile(r"(?<![\w-])ds-[A-Za-z0-9_-]+")
 
 
-def ds_css(assets, prefix):
-    """tokens (immutable) + fonts (urls rewritten to assets/fonts/) + extension layer."""
-    tokens = read(assets / "ds" / "aivis-tokens.css").rstrip()
+def ds_font_files():
+    """The design system's woff2 files this site ships (build-site.py copies them to assets/fonts/)."""
+    return [f for f in sorted((DS_DIR / "fonts").glob("*.woff2")) if not FONT_LINE_SKIP.search(f.name)]
+
+
+def _css_blocks(css):
+    """Split CSS (comments already removed) into (prelude, body) pairs at one nesting level."""
+    out, i, n = [], 0, len(css)
+    while i < n:
+        j = css.find("{", i)
+        if j < 0:
+            break
+        depth, k = 1, j + 1
+        while k < n and depth:
+            if css[k] == "{":
+                depth += 1
+            elif css[k] == "}":
+                depth -= 1
+            k += 1
+        out.append((css[i:j].strip(), css[j + 1:k - 1].strip()))
+        i = k
+    return out
+
+
+def ds_components_css(page_text):
+    """The design system's components.css, pruned to what the page can use: a style rule is kept when its
+    selector names no ds- class or names one the page carries (class attributes and scripts alike); an
+    at-rule group is kept when a rule inside it is; a @keyframes is kept when a kept rule names it."""
+    used = set(DS_CLASS.findall(page_text))
+    src = re.sub(r"/\*.*?\*/", "", read(DS_DIR / "components" / "components.css"), flags=re.S)
+
+    def prune(css):
+        kept, frames = [], []
+        for pre, body in _css_blocks(css):
+            if pre.startswith("@keyframes"):
+                frames.append((pre, body))
+            elif pre.startswith("@"):
+                inner = prune(body)
+                if inner:
+                    kept.append("%s{%s}" % (pre, inner))
+            else:
+                names = set(DS_CLASS.findall(pre))
+                if not names or names & used:
+                    kept.append("%s{%s}" % (pre, body))
+        text = "\n".join(kept)
+        for pre, body in frames:
+            if re.search(r"(?<![\w-])%s(?![\w-])" % re.escape(pre.split()[-1]), text):
+                kept.append("%s{%s}" % (pre, body))
+        return "\n".join(kept)
+    return prune(src)
+
+
+def ds_css(assets, prefix, page_text=""):
+    """The design system first -- fonts (urls pointed at assets/fonts/), day and night tokens, the components the
+    page uses -- then the site's own layer (assets/site.css) and the motion pack."""
     fonts = []
-    for line in read(assets / "ds" / "fonts" / "aivis-fonts.source.css").splitlines():
-        if FONT_LINE_SKIP.search(line):          # Devanagari faces: no Hindi locale on this site
+    for line in read(DS_DIR / "fonts" / "fonts.css").splitlines():
+        if FONT_LINE_SKIP.search(line):
             continue
         fonts.append(line.replace("url('./", "url('%sassets/fonts/" % prefix))
-    parts = [tokens, "\n".join(fonts), read(assets / "site.css").rstrip()]
+    parts = ["\n".join(fonts).strip(),
+             read(DS_DIR / "tokens" / "tokens.css").rstrip(),
+             read(DS_DIR / "tokens" / "tokens-dark.css").rstrip(),
+             ds_components_css(page_text),
+             read(assets / "site.css").rstrip()]
     for name in ("bind.css", "micro.css", "polish.css", "reveal.css", "transitions.css"):
         parts.append(read(assets / "motion" / name).rstrip())
     parts.append(".sprite { position: absolute; inline-size: 0; block-size: 0; overflow: hidden; }")
-    return "\n".join(parts)
+    return "\n".join(p for p in parts if p)
 
 
 def site_js(assets):
@@ -1760,8 +1821,8 @@ def site_js(assets):
 
 
 def icon_sprite(assets):
-    """Inline sprite (R1-4), only the symbols the page uses, copied from the design system's own sprite."""
-    src = read(assets / "ds" / "icons.svg")
+    """Inline sprite (R1-4), only the symbols the page uses, taken from the design system's own sprite."""
+    src = read(DS_DIR / "components" / "icons" / "icons.svg")
     syms = []
     soc = json.loads(read(assets / "social-icons.json"))
     for name in sorted(USED_ICONS):
@@ -1868,10 +1929,9 @@ def main(argv):
             file=sys.stderr,
         )
 
-    # v2: the CSS is the design system's own stylesheet (assets/ds/aivis-tokens.css,
-    # byte for byte), the font stylesheet with its urls pointed at assets/fonts/,
-    # then the extension layer assets/site.css. tokens.tokens.json stays as the
-    # input of the contrast gate only.
+    # The CSS is the design system's own files, read from ../../design-system/ (fonts with
+    # their urls pointed at assets/fonts/, tokens, the components the page uses), then the
+    # site's layer assets/site.css. tokens.tokens.json stays as the input of the contrast gate only.
     prefix = prefix_for(site, locale)
     USED_ICONS.clear()
     USED_ICONS.update(COMMON_ICONS)
@@ -1917,7 +1977,7 @@ def main(argv):
         # (section 4.3: reject any value containing '<','>',';','{','}','@',
         # '/*','*/','url(' or a newline) -- by the time it reaches here it is
         # expected to already be safe CSS text.
-        "DS_CSS": ds_css(assets, prefix),
+        "DS_CSS": ds_css(assets, prefix, body + read(assets / "site.js")),
         "BODY": body,
         "PREBOOT_JS": read(assets / "preboot.js").rstrip(),
         "SITE_JS": site_js(assets) + (("\n" + read(assets / "invest.js").rstrip()) if has_invest else ""),

@@ -273,12 +273,12 @@ def main(argv):
             styles += [x for x in st if x not in styles]
             scripts += [x for x in sc if x not in scripts]
         write(tmp_dir / "_headers", headers_file(render_mod.csp_policy(styles, scripts, for_header=True)))
-        # static files the pages reference: fonts (design-system woff2) and the marks / photograph
+        # static files the pages reference: fonts (the design system's woff2, read from design-system/fonts/)
+        # and the marks / photograph
         fonts_out = tmp_dir / "assets" / "fonts"
         fonts_out.mkdir(parents=True, exist_ok=True)
-        for f in sorted((args.assets_dir / "ds" / "fonts").glob("*.woff2")):
-            if "noto-deva" not in f.name:
-                shutil.copy2(f, fonts_out / f.name)
+        for f in render_mod.ds_font_files():
+            shutil.copy2(f, fonts_out / f.name)
         img_out = tmp_dir / "assets" / "img"
         img_out.mkdir(parents=True, exist_ok=True)
         for f in sorted((args.assets_dir / "img").iterdir()):

@@ -12,20 +12,6 @@
     animation-timing-function: cubic-bezier(.2, .0, .2, 1);
   }
 
-  /* #trn-discrete-enter -- the waitlist success and error panels, which the
-     page toggles with the `hidden` attribute. Travel is on the block axis, so
-     there is no inline direction to mirror and no physical-axis defect to add
-     to a page that is already RTL-non-conformant. */
-  .ls-mo-enter {
-    transition: opacity var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
-                translate var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)),
-                display var(--motion-moderate, 220ms cubic-bezier(.16,.84,.44,1)) allow-discrete;
-  }
-  .ls-mo-enter:not([hidden]) { opacity: 1; translate: 0 0; }
-  @starting-style {
-    .ls-mo-enter:not([hidden]) { opacity: 0; translate: 0 8px; }
-  }
-
   /* #trn-discrete-enter on what already appears on demand -- no new component.
      The mobile drawer: display none -> flex is carried by the discrete display transition, so the panel
      fades and rises in, and fades out before it leaves the layout. The drawer takes no pointer while it fades out. */
@@ -58,6 +44,5 @@
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root) { animation: none; }
-  .ls-mo-enter { transition: none; translate: none; }
   .drawer, .lang::details-content { transition: none; }
 }
