@@ -144,7 +144,7 @@ section.block { padding-block: var(--space-section-md); }
    A layer under the content filling the section, the night file drawn at night, under the fade from the start corner. */
 .hero--home::after {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background-color: var(--deco-ink); opacity: calc(var(--deco-opacity) * 0.4);
+  background-color: var(--deco-ink); opacity: var(--deco-opacity);
   -webkit-mask-image: var(--lattice-day), linear-gradient(115deg, rgba(0, 0, 0, .2) 0%, #000 55%);
   mask-image: var(--lattice-day), linear-gradient(115deg, rgba(0, 0, 0, .2) 0%, #000 55%);
   -webkit-mask-size: 80px 138.56px, 100% 100%; mask-size: 80px 138.56px, 100% 100%; /* ds-escape: the fixed tile of the lattice, elements/README.md */
