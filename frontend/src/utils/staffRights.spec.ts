@@ -62,9 +62,11 @@ describe('the sections a member may use', () => {
     const ids = allowedSections(FINANCE_SECTIONS, financeMember).map((s) => s.id)
     expect(ids).toEqual(['payments', 'withdrawals', 'purchases'])
     expect(ids).not.toContain('gifts')
+    expect(ids).not.toContain('invoices')
     expect(ids).not.toContain('reconciliation')
     const everything = allowedSections(FINANCE_SECTIONS, EVERYTHING).map((s) => s.id)
     expect(everything).toContain('gifts')
+    expect(everything).toContain('invoices')
     expect(everything).toContain('reconciliation')
   })
 

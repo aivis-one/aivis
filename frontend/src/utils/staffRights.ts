@@ -97,6 +97,13 @@ export const FINANCE_SECTIONS: readonly StaffSection[] = [
     permission: 'payment_review',
   },
   {
+    id: 'invoices',
+    path: '/staff/finance/invoices',
+    labelKey: 'staff.hub.finance.invoices',
+    permission: 'financial_operations',
+    admin: true,
+  },
+  {
     id: 'withdrawals',
     path: '/staff/finance/withdrawals',
     labelKey: 'staff.hub.finance.withdrawals',

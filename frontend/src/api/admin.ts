@@ -225,6 +225,67 @@ export function reversePayment(
 }
 
 // ---------------------------------------------------------------------------
+// Crypto invoices: the administrator confirms one by hand
+// ---------------------------------------------------------------------------
+
+/** One crypto invoice of the staff list. `status` is the cached service status. */
+export interface StaffCryptoInvoice {
+  id: string
+  user_id: string
+  user_email: string | null
+  user_name: string | null
+  network: string
+  amount_cents: number
+  status: string
+  created_at: string
+  expires_at: string
+  credited: boolean
+  credited_by: 'manual' | 'service' | null
+  payment_id: string | null
+}
+
+export interface StaffCryptoInvoiceListResponse {
+  items: StaffCryptoInvoice[]
+  total: number
+  page: number
+  per_page: number
+}
+
+export interface ConfirmCryptoInvoiceResponse {
+  invoice_id: string
+  payment_id: string
+  user_id: string
+  amount_cents: number
+}
+
+/** GET /api/v1/staff/crypto-invoices — paginated invoices, newest first (administrator). */
+export function fetchCryptoInvoices(params?: {
+  status?: string
+  user_id?: string
+  page?: number
+  per_page?: number
+}): Promise<StaffCryptoInvoiceListResponse> {
+  const qs = buildQueryString({
+    status: params?.status,
+    user_id: params?.user_id,
+    page: params?.page,
+    per_page: params?.per_page,
+  })
+  return api.get<StaffCryptoInvoiceListResponse>(`/api/v1/staff/crypto-invoices${qs}`)
+}
+
+/** POST /api/v1/staff/crypto-invoices/{id}/confirm — credit the invoice's amount by hand (administrator). */
+export function confirmCryptoInvoice(
+  invoiceId: string,
+  body: { reason: string },
+): Promise<ConfirmCryptoInvoiceResponse> {
+  return api.post<ConfirmCryptoInvoiceResponse>(
+    `/api/v1/staff/crypto-invoices/${invoiceId}/confirm`,
+    body,
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Withdrawals (Sprint 6.3)
 // ---------------------------------------------------------------------------
 

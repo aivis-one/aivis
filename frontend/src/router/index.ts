@@ -834,6 +834,12 @@ export const router = createRouter({
               component: () => import('@/views/staff/StaffPaymentsView.vue'),
             },
             {
+              path: 'invoices',
+              name: 'staff-invoices',
+              meta: sectionMeta(FINANCE_SECTIONS, 'invoices'),
+              component: () => import('@/views/staff/StaffCryptoInvoicesView.vue'),
+            },
+            {
               path: 'withdrawals',
               name: 'staff-withdrawals',
               meta: sectionMeta(FINANCE_SECTIONS, 'withdrawals'),

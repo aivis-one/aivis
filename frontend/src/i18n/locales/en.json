@@ -322,6 +322,36 @@
       },
       "filterUser": "User"
     },
+    "invoices": {
+      "title": "Crypto invoices",
+      "hint": "A client's crypto top-up invoice. If the money did not arrive through the payments service, check where it came from and confirm the invoice by hand: the client's balance receives the amount of the invoice, once.",
+      "listTitle": "Invoices",
+      "filterUser": "User",
+      "empty": "No invoices found",
+      "network": "Network",
+      "created": "Created",
+      "invoiceStatus": "Invoice status",
+      "creditedService": "Credited (service)",
+      "creditedManual": "Credited by hand",
+      "notCredited": "Not credited",
+      "confirm": "Confirm by hand",
+      "confirmTitle": "Confirm the invoice by hand",
+      "confirmText": "The client will receive the amount of the invoice on the balance. Do it only when the money has really reached you. This cannot be done twice for one invoice.",
+      "client": "Client",
+      "amount": "Amount",
+      "reason": "Reason (required)",
+      "reasonHint": "For example: paid by bank transfer, order 123",
+      "confirmed": "Invoice confirmed, the balance is credited",
+      "alreadyCredited": "This invoice is already credited",
+      "statuses": {
+        "created": "Created",
+        "awaiting_confirmations": "Awaiting confirmations",
+        "confirmed": "Confirmed",
+        "attempts_exhausted": "Attempts exhausted",
+        "expired": "Expired",
+        "stalled": "Stalled"
+      }
+    },
     "withdrawals": {
       "stat": "Withdrawals",
       "title": "Withdrawals",
@@ -1048,6 +1078,7 @@
       },
       "finance": {
         "payments": "Payments",
+        "invoices": "Invoices",
         "withdrawals": "Withdrawals",
         "purchases": "Purchases",
         "gifts": "Gifts",
