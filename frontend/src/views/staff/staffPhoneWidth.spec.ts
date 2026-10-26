@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const root = join(__dirname, '..', '..')
-const dirs = [join(root, 'views', 'staff'), join(root, 'components', 'staff')]
+const dirs = [join(root, 'views', 'staff'), join(root, 'views', 'staff', 'platform'), join(root, 'components', 'staff')]
 
 function styleRules(file: string): string[] {
   const src = readFileSync(file, 'utf-8')
@@ -23,7 +23,8 @@ describe('staff screens at phone width', () => {
     for (const d of dirs) {
       for (const f of readdirSync(d).filter((n) => n.endsWith('.vue'))) {
         for (const rule of styleRules(join(d, f))) {
-          if (/display:\s*grid/.test(rule) && !/grid-template-columns/.test(rule)) {
+          const cols = /grid-template-columns:([^;]*)/.exec(rule)?.[1]
+          if (/display:\s*grid/.test(rule) && (cols === undefined || /\b1fr\b/.test(cols.replace(/minmax\([^)]*\)/g, '')))) {
             bad.push(`${f}: ${rule.split('{')[0].trim()}`)
           }
         }

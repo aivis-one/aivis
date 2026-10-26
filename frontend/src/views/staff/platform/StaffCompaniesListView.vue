@@ -826,12 +826,14 @@ async function handleCreate(): Promise<void> {
 <style scoped>
 .scl {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   align-content: start;
 }
 
 .scl__password-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: start;
   gap: var(--space-2);
 }

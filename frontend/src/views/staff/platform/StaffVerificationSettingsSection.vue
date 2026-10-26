@@ -123,6 +123,7 @@ onMounted(load)
 <style scoped>
 .verification {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   align-content: start;
 }

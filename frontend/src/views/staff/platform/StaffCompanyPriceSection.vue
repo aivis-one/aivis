@@ -277,6 +277,7 @@ onMounted(reload)
 <style scoped>
 .scpr {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-content: start;
 }
@@ -291,6 +292,7 @@ onMounted(reload)
 
 .scpr__history {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 

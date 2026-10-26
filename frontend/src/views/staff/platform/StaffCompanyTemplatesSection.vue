@@ -298,12 +298,14 @@ onMounted(loadTemplates)
 <style scoped>
 .sct {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-content: start;
 }
 
 .sct__filters {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 
@@ -318,10 +320,12 @@ onMounted(loadTemplates)
 
 .sct__block {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 .sct__assets-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1);
 }
 
