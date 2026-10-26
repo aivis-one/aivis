@@ -240,3 +240,122 @@ describe('the search box', () => {
     vi.useRealTimers()
   })
 })
+
+describe('the administrator mark on the rights card', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    document.body.innerHTML = ''
+    vi.clearAllMocks()
+    signInAs('viewer', [...PERMISSION_KEYS])
+  })
+
+  function press(label: string): void {
+    const all = Array.from(document.body.querySelectorAll('button'))
+    const found = all.find((b) => (b.textContent ?? '').includes(label)) as HTMLButtonElement
+    found.click()
+  }
+
+  function tick(key: string, checked: boolean): void {
+    const label = Array.from(document.body.querySelectorAll('label.ds-checkbox')).find(
+      (l) => (l.textContent ?? '').trim() === key,
+    )
+    const input = label!.querySelector('input') as HTMLInputElement
+    input.checked = checked
+    input.dispatchEvent(new Event('change'))
+  }
+
+  const ninth = PERMISSION_KEYS.filter((k) => k !== 'project_manage')
+
+  it('Make administrator warns first, then sends all ten keys on', async () => {
+    updatePermissions.mockResolvedValue({
+      id: 'p1',
+      permissions: permissions([...PERMISSION_KEYS]),
+      is_active: true,
+    } as never)
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions(['avatar_mode']),
+      is_active: true,
+    })
+    press('staff.userDetail.makeAdmin')
+    await flushPromises()
+    expect(bodyText()).toContain('staff.userDetail.makeAdminWarning')
+    expect(updatePermissions).not.toHaveBeenCalled()
+    press('common.confirm')
+    await flushPromises()
+    const [, body] = updatePermissions.mock.calls[0] as [string, Record<string, boolean>]
+    expect(Object.keys(body).sort()).toEqual([...PERMISSION_KEYS].sort())
+    expect(Object.values(body).every(Boolean)).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('does not offer Make administrator to a member who already is one', async () => {
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions([...PERMISSION_KEYS]),
+      is_active: true,
+    })
+    expect(bodyText()).not.toContain('staff.userDetail.makeAdmin')
+    wrapper.unmount()
+  })
+
+  it('the tick that marks the last right warns before it grants the mark', async () => {
+    updatePermissions.mockResolvedValue({
+      id: 'p1',
+      permissions: permissions([...PERMISSION_KEYS]),
+      is_active: true,
+    } as never)
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions(ninth),
+      is_active: true,
+    })
+    tick('project_manage', true)
+    await flushPromises()
+    expect(bodyText()).toContain('staff.userDetail.grantAdminWarning')
+    expect(updatePermissions).not.toHaveBeenCalled()
+    press('common.confirm')
+    await flushPromises()
+    expect(updatePermissions).toHaveBeenCalledWith('p1', {
+      project_manage: true,
+      translation_edit: true,
+    })
+    wrapper.unmount()
+  })
+
+  it('clearing a right of an administrator warns, and cancelling sends nothing', async () => {
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions([...PERMISSION_KEYS]),
+      is_active: true,
+    })
+    tick('payment_review', false)
+    await flushPromises()
+    expect(bodyText()).toContain('staff.userDetail.removeAdminWarning')
+    press('common.cancel')
+    await flushPromises()
+    expect(updatePermissions).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('an ordinary tick sends at once with no warning', async () => {
+    updatePermissions.mockResolvedValue({
+      id: 'p1',
+      permissions: permissions(['avatar_mode', 'user_block']),
+      is_active: true,
+    } as never)
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions(['avatar_mode']),
+      is_active: true,
+    })
+    tick('user_block', true)
+    await flushPromises()
+    expect(bodyText()).not.toContain('AdminWarning')
+    expect(updatePermissions).toHaveBeenCalledWith('p1', {
+      user_block: true,
+      translation_edit: false,
+    })
+    wrapper.unmount()
+  })
+})

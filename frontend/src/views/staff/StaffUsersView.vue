@@ -67,6 +67,7 @@ import {
   CInput,
   CCheckbox,
 } from '@/components/ui'
+import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
 import { useUrlPage } from '@/components/ui/useUrlPage'
@@ -74,6 +75,8 @@ import { tOrRaw } from '@/utils/i18n'
 import {
   PERMISSION_CARD_KEYS,
   PERMISSION_PRESETS,
+  adminChangeOfTick,
+  adminPatch,
   holdsEveryPermission,
   matchingPreset,
   presetPatch,
@@ -692,7 +695,27 @@ async function handlePromote(): Promise<void> {
 // that it had changed, so the caller passed the CURRENT value and this function
 // inverted it; CCheckbox emits the value it moved to, which removes that
 // round-trip and the double negation that came with it.
+//
+// A tick that marks the last shown right makes the member an administrator (the
+// card sends translation_edit on with it), and a tick that clears a right of an
+// administrator takes the mark away. Both are asked first, with a warning.
+type AdminChange = 'grant' | 'remove' | 'make'
+const adminAsk = ref<{ change: AdminChange; key?: PermissionKey; value?: boolean } | null>(null)
+const ownCard = computed(
+  () => detailUser.value != null && detailUser.value.id === authStore.user?.id,
+)
+
 async function setPermission(key: PermissionKey, value: boolean): Promise<void> {
+  if (!detailUser.value?.staff_profile) return
+  const change = adminChangeOfTick(detailUser.value.staff_profile.permissions, key, value)
+  if (change) {
+    adminAsk.value = { change, key, value }
+    return
+  }
+  await sendPermission(key, value)
+}
+
+async function sendPermission(key: PermissionKey, value: boolean): Promise<void> {
   if (!detailUser.value?.staff_profile) return
   const next = { ...detailUser.value.staff_profile.permissions, [key]: value }
   const everyShown = PERMISSION_CARD_KEYS.every((k) => next[k] === true)
@@ -706,6 +729,29 @@ async function setPermission(key: PermissionKey, value: boolean): Promise<void> 
   } catch (err) {
     showToast(serverReason(err, 'common.error'), 'error')
   }
+}
+
+// "Make administrator": every one of the ten keys on in one request.
+async function makeAdministrator(): Promise<void> {
+  if (!detailUser.value?.staff_profile || !isAdmin.value) return
+  try {
+    detailUser.value.staff_profile = await updatePermissions(
+      detailUser.value.staff_profile.id,
+      adminPatch(),
+    )
+    showToast(t('staff.userDetail.permissionsUpdated'), 'success')
+  } catch (err) {
+    showToast(serverReason(err, 'common.error'), 'error')
+  }
+}
+
+async function confirmAdminAsk(): Promise<void> {
+  const ask = adminAsk.value
+  adminAsk.value = null
+  if (!ask) return
+  if (ask.change === 'make') await makeAdministrator()
+  else if (ask.key !== undefined && ask.value !== undefined)
+    await sendPermission(ask.key, ask.value)
 }
 
 // One press of a preset marks its set: the member holds exactly those rights
@@ -1195,6 +1241,11 @@ onMounted(loadUsers)
               <span>{{ t(preset.labelKey) }}</span>
             </button>
           </div>
+          <div v-if="!isEveryRight" class="perm-admin">
+            <CButton variant="secondary" size="sm" inline @click="adminAsk = { change: 'make' }">
+              {{ t('staff.userDetail.makeAdmin') }}
+            </CButton>
+          </div>
           <CCheckbox
             v-for="key in PERMISSION_CARD_KEYS"
             :key="key"
@@ -1269,6 +1320,43 @@ onMounted(loadUsers)
           </CButton>
         </div>
       </template>
+    </CModal>
+
+    <!-- The administrator mark: asked before a tick or the button grants or removes it -->
+    <CModal
+      :open="adminAsk !== null"
+      :title="
+        adminAsk?.change === 'remove'
+          ? t('staff.userDetail.removeAdminTitle')
+          : t('staff.userDetail.makeAdmin')
+      "
+      @close="adminAsk = null"
+    >
+      <p class="ds-dialog__text">
+        {{
+          adminAsk?.change === 'remove'
+            ? t('staff.userDetail.removeAdminWarning')
+            : adminAsk?.change === 'grant'
+              ? t('staff.userDetail.grantAdminWarning')
+              : t('staff.userDetail.makeAdminWarning')
+        }}
+      </p>
+      <CAlert v-if="ownCard && adminAsk?.change === 'remove'" tone="warning">
+        {{ t('staff.userDetail.ownCardWarning') }}
+      </CAlert>
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="adminAsk = null">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton
+          :variant="adminAsk?.change === 'remove' ? 'danger' : 'primary'"
+          size="sm"
+          inline
+          @click="confirmAdminAsk"
+        >
+          {{ t('common.confirm') }}
+        </CButton>
+      </div>
     </CModal>
 
     <!-- Act as this user: the avatar mode -->

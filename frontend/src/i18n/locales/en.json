@@ -690,7 +690,13 @@
       },
       "linksTitle": "Money and purchases",
       "actAs": "Act as this user",
-      "actAsConfirm": "Open the cabinet as this user? Every action you take is the user's own, and the audit records that it was you."
+      "actAsConfirm": "Open the cabinet as this user? Every action you take is the user's own, and the audit records that it was you.",
+      "makeAdmin": "Make administrator",
+      "makeAdminWarning": "The administrator holds every right: appoints and takes off staff, changes rights and e-mails, gives gift parts and runs the money check. Make this member an administrator?",
+      "grantAdminWarning": "This tick marks the last right, so the member becomes an administrator with every right. Continue?",
+      "removeAdminTitle": "Remove administrator mark",
+      "removeAdminWarning": "Clearing this right takes the administrator mark from the member. Make sure another administrator remains. Continue?",
+      "ownCardWarning": "This is your own card: you may lose your own access to these screens."
     },
     "platform": {
       "tabs": {

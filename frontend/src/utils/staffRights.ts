@@ -282,3 +282,33 @@ export function holdsEveryPermission(
   if (!permissions) return false
   return PERMISSION_KEYS.every((key) => permissions[key] === true)
 }
+
+/**
+ * The update that makes a member an administrator: every one of the ten
+ * permissions on, translation_edit included (the card does not show that key,
+ * and the server counts all ten).
+ */
+export function adminPatch(): Record<StaffPermissionKey, boolean> {
+  const patch = {} as Record<StaffPermissionKey, boolean>
+  for (const key of PERMISSION_KEYS) patch[key] = true
+  return patch
+}
+
+/**
+ * What one tick of the card does to the administrator mark: 'grant' when it
+ * marks the last shown right (the card then sends translation_edit on too),
+ * 'remove' when it clears a right of an administrator, otherwise null. The
+ * card asks before either.
+ */
+export function adminChangeOfTick(
+  permissions: Readonly<Record<string, unknown>> | null | undefined,
+  key: StaffPermissionKey,
+  value: boolean,
+): 'grant' | 'remove' | null {
+  const before = holdsEveryPermission(permissions)
+  const next: Record<string, unknown> = { ...(permissions ?? {}), [key]: value }
+  const after = PERMISSION_CARD_KEYS.every((k) => next[k] === true)
+  if (after && !before) return 'grant'
+  if (before && !after) return 'remove'
+  return null
+}

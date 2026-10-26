@@ -20,6 +20,8 @@ import {
   PERMISSION_PRESETS,
   PLATFORM_SECTIONS,
   USERS_SECTIONS,
+  adminChangeOfTick,
+  adminPatch,
   allowedSections,
   firstAllowedSection,
   holdsEveryPermission,
@@ -160,5 +162,30 @@ describe('the permission presets', () => {
     )
     expect(holdsEveryPermission({})).toBe(false)
     expect(holdsEveryPermission(undefined)).toBe(false)
+  })
+})
+
+describe('the administrator mark of a tick', () => {
+  const all = Object.fromEntries(PERMISSION_KEYS.map((key) => [key, true]))
+  const allButOne = { ...all, project_manage: false, translation_edit: false }
+
+  it('adminPatch turns all ten keys on', () => {
+    const patch = adminPatch()
+    expect(Object.keys(patch).sort()).toEqual([...PERMISSION_KEYS].sort())
+    expect(Object.values(patch).every(Boolean)).toBe(true)
+  })
+
+  it('a tick that marks the last shown right grants the mark', () => {
+    expect(adminChangeOfTick(allButOne, 'project_manage', true)).toBe('grant')
+  })
+
+  it('a tick that clears a right of an administrator removes the mark', () => {
+    expect(adminChangeOfTick(all, 'payment_review', false)).toBe('remove')
+  })
+
+  it('any other tick changes nothing about the mark', () => {
+    expect(adminChangeOfTick({ avatar_mode: true }, 'user_block', true)).toBeNull()
+    expect(adminChangeOfTick(allButOne, 'avatar_mode', false)).toBeNull()
+    expect(adminChangeOfTick(null, 'avatar_mode', true)).toBeNull()
   })
 })
