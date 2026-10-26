@@ -159,6 +159,7 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         ("GET", "/api/v1/payments/invoices/current"),
         ("GET", "/api/v1/payments/invoices/{invoice_id}"),
         ("POST", "/api/v1/payments/invoices/{invoice_id}/txid"),
+        ("POST", "/api/v1/payments/invoices/{invoice_id}/manual-request"),
         # -- Verification itself ---------------------------------------
         # Takes the fee from the balance, but it is the way through the
         # gate, not past it.
