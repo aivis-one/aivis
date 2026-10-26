@@ -242,6 +242,22 @@ export interface StaffCryptoInvoice {
   credited: boolean
   credited_by: 'manual' | 'service' | null
   payment_id: string | null
+  /** When the client asked for a manual confirmation, or null. */
+  manual_requested_at: string | null
+  /** A request exists and the invoice is not credited yet. */
+  manual_request_open: boolean
+  /** The reason given when the invoice was confirmed by hand. */
+  confirm_reason: string | null
+  /** The administrators' notes, oldest first. Staff only. */
+  notes: StaffInvoiceNote[]
+}
+
+export interface StaffInvoiceNote {
+  id: string
+  text: string
+  author_id: string | null
+  author_name: string | null
+  created_at: string
 }
 
 export interface StaffCryptoInvoiceListResponse {
@@ -262,12 +278,15 @@ export interface ConfirmCryptoInvoiceResponse {
 export function fetchCryptoInvoices(params?: {
   status?: string
   user_id?: string
+  /** Only invoices with an open manual-confirmation request. */
+  open_request?: boolean
   page?: number
   per_page?: number
 }): Promise<StaffCryptoInvoiceListResponse> {
   const qs = buildQueryString({
     status: params?.status,
     user_id: params?.user_id,
+    open_request: params?.open_request || undefined,
     page: params?.page,
     per_page: params?.per_page,
   })
@@ -283,6 +302,14 @@ export function confirmCryptoInvoice(
     `/api/v1/staff/crypto-invoices/${invoiceId}/confirm`,
     body,
   )
+}
+
+/** POST /api/v1/staff/crypto-invoices/{id}/notes — an administrator's note, before or after Confirm. */
+export function addCryptoInvoiceNote(
+  invoiceId: string,
+  body: { text: string },
+): Promise<StaffInvoiceNote> {
+  return api.post<StaffInvoiceNote>(`/api/v1/staff/crypto-invoices/${invoiceId}/notes`, body)
 }
 
 // ---------------------------------------------------------------------------

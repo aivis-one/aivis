@@ -15,14 +15,26 @@
 // the one the client asked for. The invoice status shown is the payments
 // service's last word, kept as a cache; it decides nothing.
 //
-// GET  /api/v1/staff/crypto-invoices (?status=, ?user_id=, ?page=, ?per_page=)
+// A CLIENT'S REQUEST. A client who paid another way asks from the deposit
+// screen for the invoice to be confirmed by hand; such an invoice carries a
+// mark while it is not credited, and one chip keeps only those (the Home's
+// counter opens the list with it, ?open_request=1). An invoice confirmed by
+// hand shows the basis given at the confirmation.
+//
+// NOTES. The administrators write notes on an invoice at any time, before or
+// after Confirm; they are listed oldest first with date and author, and are
+// seen by staff only, never by the client.
+//
+// GET  /api/v1/staff/crypto-invoices (?status=, ?user_id=, ?open_request=, ?page=, ?per_page=)
 // POST /api/v1/staff/crypto-invoices/{id}/confirm   { reason }
+// POST /api/v1/staff/crypto-invoices/{id}/notes     { text }
 // =============================================================================
 
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CreditCard, Check } from '@/components/ui/icons'
-import { CBadge, CButton, CEmptyState, CInput, CModal } from '@/components/ui'
+import { CBadge, CButton, CEmptyState, CInput, CModal, CTextarea } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
@@ -31,7 +43,7 @@ import UserPicker from '@/components/staff/UserPicker.vue'
 import { useUrlUserFilter } from '@/composables/useUrlUserFilter'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
-import { confirmCryptoInvoice, fetchCryptoInvoices } from '@/api/admin'
+import { addCryptoInvoiceNote, confirmCryptoInvoice, fetchCryptoInvoices } from '@/api/admin'
 import type { StaffCryptoInvoice } from '@/api/admin'
 import { tOrRaw } from '@/utils/i18n'
 import { formatDateTime, formatPrice } from '@/utils/format'
@@ -44,6 +56,10 @@ const total = ref(0)
 const page = useUrlPage()
 const perPage = 20
 const statusFilter = ref('')
+// Only the invoices whose client asked for a manual confirmation and that are
+// not credited yet; the Home's counter opens the list with ?open_request=1.
+const route = useRoute()
+const openRequestOnly = ref(route.query.open_request === '1')
 // One person's invoices: the address names them (?user_id=), as in Payments.
 const userFilter = useUrlUserFilter('user_id')
 const loading = ref(true)
@@ -63,6 +79,12 @@ const showModal = ref(false)
 const target = ref<StaffCryptoInvoice | null>(null)
 const reason = ref('')
 const confirming = ref(false)
+
+// The notes modal.
+const notesFor = ref<StaffCryptoInvoice | null>(null)
+const noteText = ref('')
+const addingNote = ref(false)
+const noteValid = computed(() => noteText.value.trim().length >= 3)
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
 // The server wants 3 to 500 characters; the button waits for the 3.
@@ -89,6 +111,7 @@ async function load(): Promise<void> {
     const resp = await fetchCryptoInvoices({
       status: statusFilter.value || undefined,
       user_id: userFilter.value || undefined,
+      open_request: openRequestOnly.value || undefined,
       page: page.value,
       per_page: perPage,
     })
@@ -109,6 +132,37 @@ function goToPage(n: number): void {
 function setStatusFilter(s: string): void {
   statusFilter.value = s
   page.value = 1
+}
+
+function toggleOpenRequest(): void {
+  openRequestOnly.value = !openRequestOnly.value
+  page.value = 1
+}
+
+function noteMeta(note: StaffCryptoInvoice['notes'][number]): string {
+  const when = formatDateTime(note.created_at, locale.value)
+  return note.author_name ? `${note.author_name} \u2022 ${when}` : when
+}
+
+function openNotes(item: StaffCryptoInvoice): void {
+  notesFor.value = item
+  noteText.value = ''
+}
+
+async function handleAddNote(): Promise<void> {
+  const item = notesFor.value
+  if (!item || !noteValid.value || addingNote.value) return
+  addingNote.value = true
+  try {
+    const note = await addCryptoInvoiceNote(item.id, { text: noteText.value.trim() })
+    item.notes = [...(item.notes ?? []), note]
+    noteText.value = ''
+    showToast(t('staff.invoices.noteAdded'), 'success')
+  } catch (err) {
+    showToast(err instanceof ApiResponseError && err.detail ? err.detail : t('common.error'), 'error')
+  } finally {
+    addingNote.value = false
+  }
 }
 
 function openConfirm(item: StaffCryptoInvoice): void {
@@ -139,6 +193,7 @@ async function handleConfirm(): Promise<void> {
 }
 
 watch(statusFilter, () => void load())
+watch(openRequestOnly, () => void load())
 
 // A person chosen or cleared starts the list again from the first page.
 watch(userFilter, () => {
@@ -189,6 +244,19 @@ onMounted(() => void load())
         </button>
       </div>
 
+      <!-- The clients' requests for a manual confirmation, not credited yet -->
+      <div class="ds-chip-row" role="group" :aria-label="t('staff.invoices.requestsFilter')">
+        <button
+          class="ds-chip inv-open-filter"
+          :aria-pressed="openRequestOnly"
+          type="button"
+          @click="toggleOpenRequest"
+        >
+          <Check class="ds-chip__check" size="sm" />
+          <span>{{ t('staff.invoices.manualRequested') }}</span>
+        </button>
+      </div>
+
       <CListSkeleton v-if="loading" />
 
       <CEmptyState v-else-if="error" tone="danger" :title="t('common.error')">
@@ -216,13 +284,38 @@ onMounted(() => void load())
               <span class="ds-row__meta">
                 {{ t('staff.invoices.invoiceStatus') }}: {{ statusLabel(item.status) }}
               </span>
+              <span v-if="item.manual_requested_at" class="ds-row__meta">
+                {{
+                  t('staff.invoices.requestedAt', {
+                    date: formatDateTime(item.manual_requested_at, locale),
+                  })
+                }}
+              </span>
+              <span v-if="item.confirm_reason" class="ds-row__meta inv-item__basis">
+                {{ t('staff.invoices.confirmBasis') }}: {{ item.confirm_reason }}
+              </span>
             </span>
             <span class="ds-row__trail">
               <span class="ds-row__value">{{ formatPrice(item.amount_cents) }}</span>
               <CBadge
+                v-if="item.manual_request_open"
+                class="inv-item__requested"
+                variant="warning"
+                :text="t('staff.invoices.manualRequested')"
+              />
+              <CBadge
                 :variant="item.credited ? 'success' : 'neutral'"
                 :text="creditedLabel(item)"
               />
+              <CButton
+                variant="outline"
+                size="sm"
+                inline
+                class="inv-item__notes"
+                @click="openNotes(item)"
+              >
+                {{ t('staff.invoices.notes') }} ({{ item.notes?.length ?? 0 }})
+              </CButton>
               <button
                 v-if="!item.credited"
                 type="button"
@@ -239,6 +332,51 @@ onMounted(() => void load())
         <CPager :page="page" :total-pages="totalPages" @update:page="goToPage" />
       </template>
     </section>
+
+    <CModal
+      :open="notesFor !== null"
+      :title="t('staff.invoices.notesTitle')"
+      @close="notesFor = null"
+    >
+      <template v-if="notesFor">
+        <p class="ds-dialog__text inv-modal__client">
+          {{ t('staff.invoices.client') }}: {{ clientLabel(notesFor) }}
+        </p>
+        <p class="ds-dialog__text">{{ t('staff.invoices.notesHint') }}</p>
+        <ul v-if="notesFor.notes?.length" class="ds-rows inv-notes">
+          <li v-for="note in notesFor.notes" :key="note.id" class="ds-row inv-note">
+            <span class="ds-row__body">
+              <span class="ds-row__title">{{ note.text }}</span>
+              <span class="ds-row__meta">{{ noteMeta(note) }}</span>
+            </span>
+          </li>
+        </ul>
+        <p v-else class="ds-dialog__text">{{ t('staff.invoices.notesEmpty') }}</p>
+      </template>
+      <CTextarea
+        v-model="noteText"
+        :label="t('staff.invoices.noteLabel')"
+        :placeholder="t('staff.invoices.noteHint')"
+        :rows="3"
+        :maxlength="500"
+      />
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="notesFor = null">
+          {{ t('common.close') }}
+        </CButton>
+        <CButton
+          variant="primary"
+          size="sm"
+          inline
+          class="inv-notes__add"
+          :loading="addingNote"
+          :disabled="!noteValid"
+          @click="handleAddNote"
+        >
+          {{ t('staff.invoices.addNote') }}
+        </CButton>
+      </div>
+    </CModal>
 
     <CModal
       :open="showModal"

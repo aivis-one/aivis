@@ -343,6 +343,18 @@
       "reasonHint": "For example: paid by bank transfer, order 123",
       "confirmed": "Invoice confirmed, the balance is credited",
       "alreadyCredited": "This invoice is already credited",
+      "manualRequested": "Manual confirmation requested",
+      "requestedAt": "Request sent {date}",
+      "requestsFilter": "Client requests",
+      "confirmBasis": "Confirmation basis",
+      "notes": "Notes",
+      "notesTitle": "Notes on the invoice",
+      "notesHint": "Seen by staff only, never by the client.",
+      "notesEmpty": "No notes yet",
+      "noteLabel": "Note",
+      "noteHint": "3 to 500 characters",
+      "addNote": "Add note",
+      "noteAdded": "Note added",
       "statuses": {
         "created": "Created",
         "awaiting_confirmations": "Awaiting confirmations",
@@ -1091,7 +1103,8 @@
         "topups": "Top-ups in their hour",
         "withdrawals": "Withdrawals waiting",
         "agentApps": "Integrator applications",
-        "support": "Support requests nobody has taken"
+        "support": "Support requests nobody has taken",
+        "manualTopups": "Manual top-up requests"
       },
       "loadFailed": "Could not load",
       "someFailed": "Some counters could not be loaded. A dash is not a zero.",
