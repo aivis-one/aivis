@@ -2744,6 +2744,135 @@ asyncio.run(main())
 }
 
 # ==============================================================================
+# WEBSITE SIGN-IN THROUGH TELEGRAM (H45)
+# ==============================================================================
+#
+# "Log In With Telegram" on the cabinet's login and registration screens
+# (OpenID Connect, backend/app/modules/auth/telegram_oidc.py) takes two keys
+# from BotFather (the bot -> Login widget -> Switch to OpenID Connect Login):
+# TELEGRAM_LOGIN_CLIENT_ID and TELEGRAM_LOGIN_CLIENT_SECRET in backend/.env.
+# Both or neither -- app/core/config.py refuses to start with only one. This
+# command is the one way to set them on a live box:
+#
+#   aivis telegram-login set     asks both (the secret is not shown while
+#                                typing), writes them, recreates the app
+#   aivis telegram-login clear   removes both, recreates the app
+#   aivis telegram-login status  which key NAMES are set, whether the running
+#                                app offers the sign-in, and the return
+#                                address to register in BotFather
+#
+# No value is ever printed. The app container reads backend/.env only when
+# it is CREATED, so the change is applied with `up -d --force-recreate app`
+# -- `docker compose restart` would keep the old environment.
+
+TG_LOGIN_KEYS=(TELEGRAM_LOGIN_CLIENT_ID TELEGRAM_LOGIN_CLIENT_SECRET)
+# The frontend path Telegram returns to -- RETURN_PATH in
+# backend/app/modules/auth/web_login.py.
+TG_LOGIN_RETURN_PATH="/auth/telegram/return"
+
+# A value that is safe on one line of an env file: no whitespace, quote,
+# backslash, dollar, backtick or hash.
+tg_login_value_ok() {
+    [[ "$1" =~ ^[^[:space:]\"\'\\\$\`#]+$ ]]
+}
+
+# Drop both keys from the env file and append the given lines, keeping the
+# file's owner and mode (written through, not replaced).
+tg_login_write() {
+    local env_file="$1"; shift
+    local tmp
+    tmp=$(mktemp) || return 1
+    grep -vE '^TELEGRAM_LOGIN_CLIENT_(ID|SECRET)=' "$env_file" > "$tmp" || true
+    local line
+    for line in "$@"; do
+        printf '%s\n' "$line" >> "$tmp"
+    done
+    cat "$tmp" > "$env_file"
+    rm -f "$tmp"
+}
+
+tg_login_recreate_app() {
+    cd_compose
+    echo "Recreating the app with the new environment..."
+    docker compose up -d --force-recreate --no-deps app || {
+        echo -e "${RED}✗ The app could not be recreated (see above) -- what runs now: docker compose ps${NC}"
+        return 1
+    }
+    local i
+    for i in $(seq 1 30); do
+        if curl -sf "http://127.0.0.1:8000/ready" > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ The app is up${NC}"
+            return 0
+        fi
+        sleep 2
+    done
+    echo -e "${RED}✗ The app did not become ready in 60 s -- aivis logs app${NC}"
+    return 1
+}
+
+case_telegram_login() {
+    local env_file="$COMPOSE_DIR/backend/.env"
+    if [ ! -f "$env_file" ]; then
+        echo -e "${RED}✗ $env_file not found${NC}"
+        return 1
+    fi
+    case "${1:-status}" in
+        set)
+            local client_id secret
+            echo "BotFather -> your bot -> Login widget -> Switch to OpenID Connect Login."
+            echo "Register this return address there first:"
+            echo "  $(grep -E '^FRONTEND_BASE_URL=' "$env_file" | tail -n 1 | cut -d= -f2- | sed 's|/*$||')${TG_LOGIN_RETURN_PATH}"
+            read -rp "  Client ID: " client_id < /dev/tty
+            if ! tg_login_value_ok "$client_id"; then
+                echo -e "${RED}✗ The client ID is empty or holds a space, quote, \\, \$, \` or #. Nothing written.${NC}"
+                return 1
+            fi
+            read -rsp "  Client secret (not shown while typing): " secret < /dev/tty
+            echo ""
+            if ! tg_login_value_ok "$secret"; then
+                echo -e "${RED}✗ The client secret is empty or holds a space, quote, \\, \$, \` or #. Nothing written.${NC}"
+                return 1
+            fi
+            tg_login_write "$env_file" \
+                "TELEGRAM_LOGIN_CLIENT_ID=${client_id}" \
+                "TELEGRAM_LOGIN_CLIENT_SECRET=${secret}" || return 1
+            echo -e "${GREEN}✓ Both keys written to backend/.env${NC}"
+            tg_login_recreate_app || return 1
+            case_telegram_login status
+            ;;
+        clear)
+            tg_login_write "$env_file" || return 1
+            echo -e "${GREEN}✓ Both keys removed from backend/.env${NC}"
+            tg_login_recreate_app || return 1
+            case_telegram_login status
+            ;;
+        status)
+            local key value base answer
+            for key in "${TG_LOGIN_KEYS[@]}"; do
+                value=$(grep -E "^${key}=" "$env_file" | tail -n 1 | cut -d= -f2- || true)
+                if [ -n "$value" ]; then
+                    echo "  ${key}: set"
+                else
+                    echo "  ${key}: not set"
+                fi
+            done
+            answer=$(curl -s --max-time 5 "http://127.0.0.1:8000/api/v1/auth/telegram/web" 2>/dev/null || true)
+            case "$answer" in
+                *'"available":true'*)  echo "  available: yes (the login and registration screens show the Telegram button)" ;;
+                *'"available":false'*) echo "  available: no" ;;
+                *)                     echo "  available: unknown -- the app did not answer (aivis status)" ;;
+            esac
+            base=$(grep -E '^FRONTEND_BASE_URL=' "$env_file" | tail -n 1 | cut -d= -f2- | sed 's|/*$||')
+            echo "  return address for BotFather: ${base}${TG_LOGIN_RETURN_PATH}"
+            ;;
+        *)
+            echo "Usage: aivis telegram-login set|clear|status"
+            return 1
+            ;;
+    esac
+}
+
+# ==============================================================================
 # MAIN
 # ==============================================================================
 
@@ -2770,6 +2899,7 @@ case "$CMD" in
     storage)        case_storage "$@" ;;
     version)        case_version ;;
     email-status)   case_email_status ;;
+    telegram-login) case_telegram_login "$@" ;;
     help|*)
         echo -e "${CYAN}AIVIS.ONE Management Script${NC}"
         echo ""
@@ -2825,5 +2955,6 @@ case "$CMD" in
         echo "  nginx render [api|frontend|files|all]     — Render nginx templates from the repo (default: all)"
         echo "  site build|publish|deploy                 — Company site: build from landing/, copy to the nginx root, reload"
         echo "  email-status                              — Is the mail channel live at comms?"
+        echo "  telegram-login set|clear|status           -- Website sign-in through Telegram: its two keys (never printed)"
         ;;
 esac

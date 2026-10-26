@@ -1538,6 +1538,10 @@ async def upsert_telegram_user(
     gone; the one-row-per-id guarantee is ix_users_telegram_id, enforced when
     the link is written (confirm_telegram_link).
 
+    One function for both doors (H45): the Mini App's initData and the
+    website's OpenID Connect sign-in (telegram_oidc.as_init_data_user gives
+    the same dict). A language_code of None keeps the stored one (below).
+
     A found row that is inactive or self-deactivated is refused HERE, before
     its credentials are touched and before any session (threat 8); the platform
     role is refused as on the web; staff enter as on the web. A row that is
@@ -1557,6 +1561,14 @@ async def upsert_telegram_user(
 
     _raise_if_platform(user, background_tasks)
     _raise_if_inactive(user, background_tasks)
+
+    # A source that carries no language (the website sign-in, H45: OpenID
+    # Connect has no language claim) keeps the one an earlier sign-in
+    # stored, so that a website sign-in after a Mini App one does not erase
+    # it -- one person, one record, whichever door they used last.
+    previous = (user.credentials or {}).get("telegram") or {}
+    if telegram_creds.get("language_code") is None:
+        telegram_creds["language_code"] = previous.get("language_code")
 
     # Merge with existing credentials to preserve email auth data.
     updated_creds = dict(user.credentials)
@@ -1603,16 +1615,25 @@ async def upsert_telegram_user(
 
 
 async def create_telegram_link_token(
-    telegram_user: dict, referral_code: str | None
+    telegram_user: dict,
+    referral_code: str | None,
+    *,
+    language: str | None = None,
 ) -> str:
     """Mint the link token for a Telegram id that no row holds.
 
     Random (~256 bits), bound to this Telegram id by its record, live
     settings.telegram_link_token_ttl_seconds, deleted on success and on the
     capped number of wrong tries (threat 14).
+
+    The record's language becomes the language of a row the e-mail step
+    makes (its letters go out in it): `language` when the caller has one --
+    the website sign-in passes the interface language of the screen the
+    person started from (H45), because OpenID Connect carries none -- else
+    the Telegram language_code of the Mini App's initData, else "en".
     """
     token = secrets.token_urlsafe(32)
-    lang = (telegram_user.get("language_code") or "en")[:2] or "en"
+    lang = language or (telegram_user.get("language_code") or "en")[:2] or "en"
     record = {
         "telegram": _telegram_credentials(telegram_user),
         "language": lang,

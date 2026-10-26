@@ -35,6 +35,14 @@ export type {
   TelegramLinkConfirmRequest,
 } from './generated'
 
+// H45: the website sign-in through Telegram (OpenID Connect).
+export type {
+  TelegramWebAvailability,
+  TelegramWebStartRequest,
+  TelegramWebStartResponse,
+  TelegramWebCompleteRequest,
+} from './generated'
+
 export type { AuthResponse } from './generated'
 
 export type { VerifyEmailRequest } from './generated'

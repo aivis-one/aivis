@@ -250,7 +250,21 @@
       "secondCodeInvalid": "The authenticator code is incorrect.",
       "secondCodeEnded": "The code was not accepted. Close the app and open it again from Telegram.",
       "expiredTitle": "Open the app again",
-      "expired": "The time to sign in has run out. Close the app and open it again from Telegram."
+      "expired": "The time to sign in has run out. Close the app and open it again from Telegram.",
+      "expiredTitleWeb": "Sign in again",
+      "expiredWeb": "The time to sign in has run out. Start again with the Telegram button on the sign-in screen.",
+      "secondCodeEndedWeb": "The code was not accepted. Start again with the Telegram button on the sign-in screen."
+    },
+    "telegramWeb": {
+      "button": "Continue with Telegram",
+      "startFailed": "Could not start the sign-in through Telegram. Try again.",
+      "returnTitle": "Signing in with Telegram",
+      "checking": "Checking the sign-in…",
+      "expired": "The sign-in link has expired or was already used. Start again.",
+      "foreign": "This sign-in was started in another browser. Start again here.",
+      "failed": "Telegram did not confirm the sign-in. Try again.",
+      "cancelled": "The sign-in was cancelled in Telegram.",
+      "backToLogin": "Back to sign in"
     },
     "error": {
       "invalidCredentials": "Incorrect email or password",

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import AuthShell from '@/components/layout/AuthShell.vue'
 import { MailCheck } from '@/components/ui/icons'
-// Telegram Mini App entry: one screen, three steps, for a person whose Telegram
-// id no account holds yet.
+// The Telegram entry: one screen, three steps, for a person whose Telegram id
+// no account holds yet -- in the Mini App and, since H45, after the website
+// sign-in through Telegram (TelegramReturnView). On the website the consent
+// step offers the way back to sign in, and an expired link says to start
+// again there instead of reopening the app.
 //   1. Consent -- two ticks, the cabinet's user agreement and the privacy
 //      policy, worded as consent to register. The full texts open in the
 //      document window. Nothing is sent at this step.
@@ -26,10 +29,16 @@ import AivisLogo from '@/components/ui/AivisLogo.vue'
 import { CAlert, CBackLink, CCheckbox, CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { postEntryTarget } from '@/utils/postAuthReturn'
+import { platform } from '@/platform'
 
 const router = useRouter()
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
+
+// The Mini App and the website (H45) run these same steps; only the way out
+// of an expired sign-in differs: reopen the app from Telegram, or start again
+// from the website's sign-in screen.
+const onWebsite = platform.name !== 'telegram'
 
 const CODE_LENGTH = 6
 const RESEND_COOLDOWN = 60
@@ -124,10 +133,23 @@ function commonError(err: unknown): string {
   return t('common.error')
 }
 
-/** The link token expired or is unknown: the person has to open the app again. */
+/** The link token expired or is unknown: the person has to start again. */
 function expire(): void {
   authStore.clearTelegramEntry()
   expired.value = true
+}
+
+/** Website only: back to the sign-in screen, where the Telegram button is. */
+function toLogin(): void {
+  void safeNavigate(router.replace({ name: 'login' }), '[TelegramEntryView] to login')
+}
+
+/** Website only, at the consent step: drop this sign-in and go back. The
+ *  guard holds a person with a link token on this screen, so the token goes
+ *  first. */
+function cancelToLogin(): void {
+  authStore.clearTelegramEntry()
+  toLogin()
 }
 
 // ---------------------------------------------------------------------------
@@ -301,14 +323,28 @@ async function handleConfirm(): Promise<void> {
     <template #start>
       <AivisLogo :height="28" />
       <CBackLink v-if="step !== 'consent' && !expired" :label="t('auth.back')" @click="goBack" />
+      <CBackLink v-else-if="onWebsite && !expired" :label="t('auth.back')" @click="cancelToLogin" />
     </template>
 
     <!-- The link has expired: nothing here can continue -->
     <template v-if="expired">
       <h1 class="ds-auth__title">
-        {{ t('auth.telegramEntry.expiredTitle') }}
+        {{
+          t(onWebsite ? 'auth.telegramEntry.expiredTitleWeb' : 'auth.telegramEntry.expiredTitle')
+        }}
       </h1>
-      <CAlert tone="danger">{{ t('auth.telegramEntry.expired') }}</CAlert>
+      <CAlert tone="danger">{{
+        t(onWebsite ? 'auth.telegramEntry.expiredWeb' : 'auth.telegramEntry.expired')
+      }}</CAlert>
+      <div v-if="onWebsite" class="ds-auth__form">
+        <button
+          type="button"
+          class="ds-button ds-button--primary ds-button--block"
+          @click="toLogin"
+        >
+          {{ t('auth.telegramWeb.backToLogin') }}
+        </button>
+      </div>
     </template>
 
     <!-- Step 1: consent -->

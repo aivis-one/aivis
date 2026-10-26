@@ -9,9 +9,23 @@ import { createI18n } from 'vue-i18n'
 import { defineComponent, h } from 'vue'
 
 const push = vi.hoisted(() => vi.fn(async () => {}))
+const replace = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-router')>()
-  return { ...actual, useRouter: () => ({ push }) }
+  return { ...actual, useRouter: () => ({ push, replace }) }
+})
+// The screen runs in the Mini App and, since H45, on the website; the tests
+// above the website block are the Mini App's, so that is the default here.
+const platformMock = vi.hoisted(() => ({ name: 'telegram' as string }))
+vi.mock('@/platform', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/platform')>()
+  // The real platform (its storage driver serves the store); only the name
+  // answers from platformMock.
+  return {
+    platform: new Proxy(actual.platform, {
+      get: (target, key) => (key === 'name' ? platformMock.name : Reflect.get(target, key)),
+    }),
+  }
 })
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>()
@@ -53,6 +67,8 @@ describe('TelegramSecondCodeView', () => {
     setActivePinia(createPinia())
     verify.mockReset()
     push.mockClear()
+    replace.mockClear()
+    platformMock.name = 'telegram'
     useAuthStore().telegramMfaToken = 'MT1'
   })
 
@@ -101,5 +117,20 @@ describe('TelegramSecondCodeView', () => {
 
     expect(w.find('.ds-alert--danger').text()).toBe(en.auth.error.rateLimited)
     expect(useAuthStore().telegramMfaToken).toBe('MT1')
+  })
+
+  it('on the website says to start again from the sign-in screen, with the way back (H45)', async () => {
+    platformMock.name = 'standalone'
+    verify.mockRejectedValueOnce(new ApiResponseError(400, 'Invalid verification code'))
+    const w = mountView()
+
+    await w.find('input').setValue('000000')
+    await w.find('button.ds-button--primary').trigger('click')
+    await flushPromises()
+
+    expect(w.text()).toContain(en.auth.telegramEntry.secondCodeEndedWeb)
+    expect(w.text()).not.toContain(en.auth.telegramEntry.secondCodeEnded)
+    await w.find('button.ds-button--primary').trigger('click')
+    expect(replace).toHaveBeenCalledWith({ name: 'login' })
   })
 })

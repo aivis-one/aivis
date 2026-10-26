@@ -18,6 +18,7 @@ import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client
 import { safeNavigate } from '@/composables/safeNavigate'
 import { CAlert, CInput } from '@/components/ui'
 import { postEntryTarget } from '@/utils/postAuthReturn'
+import { platform } from '@/platform'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -28,6 +29,12 @@ const useBackupCode = ref(false)
 const error = ref('')
 // The pending token was used up by a wrong code: nothing can continue here.
 const ended = ref(false)
+// The website (H45) starts again from its sign-in screen; the Mini App reopens.
+const onWebsite = platform.name !== 'telegram'
+
+function toLogin(): void {
+  void safeNavigate(router.replace({ name: 'login' }), '[TelegramSecondCodeView] to login')
+}
 
 function toggleBackupCode(): void {
   useBackupCode.value = !useBackupCode.value
@@ -78,9 +85,26 @@ async function submitMfaCode(): Promise<void> {
     <!-- The wrong code used up the pending token -->
     <template v-if="ended">
       <h1 class="ds-auth__title">
-        {{ t('auth.telegramEntry.expiredTitle') }}
+        {{
+          t(onWebsite ? 'auth.telegramEntry.expiredTitleWeb' : 'auth.telegramEntry.expiredTitle')
+        }}
       </h1>
-      <CAlert tone="danger">{{ t('auth.telegramEntry.secondCodeEnded') }}</CAlert>
+      <CAlert tone="danger">{{
+        t(
+          onWebsite
+            ? 'auth.telegramEntry.secondCodeEndedWeb'
+            : 'auth.telegramEntry.secondCodeEnded',
+        )
+      }}</CAlert>
+      <div v-if="onWebsite" class="ds-auth__form">
+        <button
+          type="button"
+          class="ds-button ds-button--primary ds-button--block"
+          @click="toLogin"
+        >
+          {{ t('auth.telegramWeb.backToLogin') }}
+        </button>
+      </div>
     </template>
 
     <template v-else>

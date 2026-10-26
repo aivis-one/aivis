@@ -74,6 +74,7 @@ import { REFERRAL_KEY, useAuthStore } from '@/stores/auth'
 import { ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { CInput } from '@/components/ui'
+import TelegramWebSignIn from '@/components/shared/TelegramWebSignIn.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -312,6 +313,8 @@ async function submitMfaCode(): Promise<void> {
           <span v-if="authStore.loading" class="ds-button__spinner" aria-hidden="true" />
           <span>{{ t('auth.login.btn') }}</span>
         </button>
+
+        <TelegramWebSignIn />
 
         <div class="ds-auth__foot">
           <span>{{ t('auth.login.noAccount') }}</span>

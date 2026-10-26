@@ -9,9 +9,23 @@ import { createI18n } from 'vue-i18n'
 import { defineComponent, h } from 'vue'
 
 const push = vi.hoisted(() => vi.fn(async () => {}))
+const replace = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-router')>()
-  return { ...actual, useRouter: () => ({ push }) }
+  return { ...actual, useRouter: () => ({ push, replace }) }
+})
+// The screen runs in the Mini App and, since H45, on the website; the tests
+// above the website block are the Mini App's, so that is the default here.
+const platformMock = vi.hoisted(() => ({ name: 'telegram' as string }))
+vi.mock('@/platform', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/platform')>()
+  // The real platform (its storage driver serves the store); only the name
+  // answers from platformMock.
+  return {
+    platform: new Proxy(actual.platform, {
+      get: (target, key) => (key === 'name' ? platformMock.name : Reflect.get(target, key)),
+    }),
+  }
 })
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>()
@@ -84,6 +98,8 @@ describe('TelegramEntryView', () => {
     setActivePinia(createPinia())
     post.mockReset()
     push.mockClear()
+    replace.mockClear()
+    platformMock.name = 'telegram'
     sessionStorage.clear()
     useAuthStore().telegramLinkToken = 'LT1'
   })
@@ -303,6 +319,41 @@ describe('TelegramEntryView', () => {
       expect(w.text()).toContain(en.auth.telegramEntry.expired)
       expect(w.findAll('.ds-otp__cell')).toHaveLength(0)
       w.unmount()
+    })
+  })
+
+  describe('on the website (H45)', () => {
+    beforeEach(() => {
+      platformMock.name = 'standalone'
+    })
+
+    it('says to start again from the sign-in screen when the link is gone, with the way back', async () => {
+      post.mockRejectedValueOnce(apiError(400, 'link_token_invalid'))
+      const w = mountView()
+      await toEmailStep(w)
+      await sendEmail(w)
+
+      expect(w.text()).toContain(en.auth.telegramEntry.expiredTitleWeb)
+      expect(w.text()).toContain(en.auth.telegramEntry.expiredWeb)
+      expect(w.text()).not.toContain(en.auth.telegramEntry.expired)
+      await w.find('button.ds-button--primary').trigger('click')
+      expect(replace).toHaveBeenCalledWith({ name: 'login' })
+    })
+
+    it('offers the way back at the consent step and drops the link token first', async () => {
+      const w = mountView()
+      expect(useAuthStore().telegramLinkToken).toBe('LT1')
+      const back = w.findAll('button').find((b) => b.text() === en.auth.back)
+      expect(back).toBeDefined()
+      await back!.trigger('click')
+      expect(useAuthStore().telegramLinkToken).toBeNull()
+      expect(replace).toHaveBeenCalledWith({ name: 'login' })
+    })
+
+    it('shows no way back at the consent step in the Mini App', () => {
+      platformMock.name = 'telegram'
+      const w = mountView()
+      expect(w.findAll('button').some((b) => b.text() === en.auth.back)).toBe(false)
     })
   })
 })

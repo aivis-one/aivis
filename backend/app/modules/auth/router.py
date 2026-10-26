@@ -11,6 +11,11 @@
 #   POST /api/v1/auth/telegram/link/email -- send a code to the e-mail the
 #                                            person types (link token)
 #   POST /api/v1/auth/telegram/link/confirm -- prove the mailbox, link the id
+#   GET  /api/v1/auth/telegram/web        -- is the website sign-in on (H45)
+#   POST /api/v1/auth/telegram/web/start  -- website sign-in: Telegram's URL
+#   POST /api/v1/auth/telegram/web/complete -- website sign-in: the return;
+#                                            then the Mini App's own path
+#                                            (_telegram_sign_in)
 #   POST /api/v1/auth/verify-email        -- Verify 6-digit email code (G1)
 #   POST /api/v1/auth/verify-email/resend -- Resend verification code (G1)
 #   POST /api/v1/auth/password-reset/request -- Request password reset link
@@ -145,6 +150,7 @@ from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.rate_limit import check_rate_limit
+from app.modules.auth import telegram_oidc, web_login
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
 from app.modules.auth.schemas import (
@@ -161,6 +167,10 @@ from app.modules.auth.schemas import (
     TelegramLinkConfirmRequest,
     TelegramLinkEmailRequest,
     TelegramLinkEmailResponse,
+    TelegramWebAvailability,
+    TelegramWebCompleteRequest,
+    TelegramWebStartRequest,
+    TelegramWebStartResponse,
     TwoFactorConfirmRequest,
     TwoFactorConfirmResponse,
     TwoFactorDisableRequest,
@@ -401,19 +411,11 @@ async def auth_telegram(
     Flow:
       1. Validate initData signature (HMAC-SHA256)
       2. Anti-replay: reject reused initData (Redis SET NX)
-      3. Rate limit per telegram_id (Redis INCR + EXPIRE)
-      4. Find the User by telegram_id in credentials JSONB. FIND-ONLY: an
-         unknown Telegram id creates nothing; the answer is
-         link_required=True plus a link token (one person, one account:
-         Telegram entry creates no user) and the person
-         goes on through /telegram/link/email and /confirm.
-         A found row that is inactive or self-deactivated is refused here,
-         before any session (threat 8).
-      5. TASK-38: if this account has 2FA enabled, return
-         mfa_required=True instead of creating a session -- see the
-         module header's "TELEGRAM ALSO HONOURS 2FA" note for why this
-         path is gated too, not just email/password.
-      6. Otherwise create Redis session, return LoginResponse
+      3. Everything after the proof -- the rate limit per telegram_id, the
+         find-only lookup (an unknown id gets link_required plus a link
+         token and creates nothing), the refusals before any session, the
+         2FA gate, the session -- is _telegram_sign_in below, the one path
+         the website sign-in (H45) runs too.
 
     request (TASK-38): this endpoint had no Request param before --
     the other two create_session() call sites already had one in scope
@@ -438,17 +440,48 @@ async def auth_telegram(
         logger.warning("telegram_auth_replay", reason=str(exc))
         raise BadRequestError(str(exc)) from exc
 
-    # Step 3: Rate limit.
-    # iter 2.5-finishing: rate-limit hits raise RateLimitError (HTTP 429)
-    # and propagate to the global AivisError handler unchanged. Earlier
-    # revisions caught and remapped them to 400 alongside invalid-signature
-    # and replay errors -- that masked the rate-limit signal. Invalid
-    # signature and replay still raise TelegramValidationError above and
-    # get the 400 mapping; only rate-limit gets the dedicated 429.
+    return await _telegram_sign_in(
+        telegram_user,
+        referral_code=body.referral_code,
+        language=None,
+        request=request,
+        background_tasks=background_tasks,
+        session=session,
+    )
+
+
+async def _telegram_sign_in(
+    telegram_user: dict,
+    *,
+    referral_code: str | None,
+    language: str | None,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession,
+) -> LoginResponse:
+    """Everything after a Telegram user is PROVED -- one path for both doors.
+
+    The Mini App proves the user by the initData signature (auth_telegram);
+    the website by OpenID Connect (auth_telegram_web_complete, H45), whose
+    claims telegram_oidc.as_init_data_user turns into the same dict. From
+    here on the two are literally this code (owner ruling, H45):
+
+      1. Rate limit per telegram_id (check_auth_rate_limit). Rate-limit hits
+         raise RateLimitError (HTTP 429) and reach the global AivisError
+         handler unchanged (iter 2.5-finishing).
+      2. Find the User by telegram_id (upsert_telegram_user, FIND-ONLY: an
+         unknown Telegram id creates nothing). A found row that is inactive,
+         self-deactivated or the platform role is refused there, before any
+         session (threat 8).
+      3. Unknown id -> link_required + a link token carrying the referral
+         code and, for the website, the screen's interface language.
+      4. TASK-38: two-factor on -> mfa_required instead of a session -- see
+         the module header's "TELEGRAM ALSO HONOURS 2FA" note.
+      5. Otherwise a Redis session (auth_method "telegram" for both doors).
+    """
     await check_auth_rate_limit(telegram_user["id"])
 
-    # Step 4: Find the user (flush inside service, not here). Find-only:
-    # an unknown Telegram id gets a link token and no row.
+    # Flush inside the service, not here.
     user = await upsert_telegram_user(
         telegram_user,
         session,
@@ -456,11 +489,10 @@ async def auth_telegram(
     )
     if user is None:
         link_token = await create_telegram_link_token(
-            telegram_user, body.referral_code
+            telegram_user, referral_code, language=language
         )
         return LoginResponse(link_required=True, link_token=link_token)
 
-    # Step 5 (TASK-38): 2FA gate -- see module header note.
     totp_creds = (user.credentials or {}).get("totp") or {}
     if totp_creds.get("enabled"):
         mfa_token = await create_mfa_pending_token(user.id, auth_method="telegram")
@@ -469,7 +501,6 @@ async def auth_telegram(
         )
         return LoginResponse(mfa_required=True, mfa_token=mfa_token)
 
-    # Step 6: Create Redis session.
     token = await create_session(
         user,
         auth_method="telegram",
@@ -480,6 +511,114 @@ async def auth_telegram(
     return LoginResponse(
         user=UserResponse.model_validate(user),
         session_token=token,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Website sign-in through Telegram (H45, OpenID Connect)
+# ---------------------------------------------------------------------------
+#
+# Every refusal is a code the return screen turns into a phrase:
+#   404 login_not_configured -- the two TELEGRAM_LOGIN_* keys are not set;
+#   400 login_expired        -- the state is unknown, expired or taken;
+#   400 login_foreign        -- the return came to a browser that did not
+#                               start this sign-in (the mark does not match);
+#   400 telegram_failed      -- Telegram did not prove a user;
+#   then whatever the shared path answers (429, 403 account_blocked /
+#   account_self_deactivated, 401 for the platform role).
+# Rate limited per client IP (telegram_web_ip:{ip}, the auth defaults) on
+# start and complete, and per Telegram id in the shared path.
+
+
+def _web_login_not_configured() -> NotFoundError:
+    return NotFoundError(
+        "Sign-in through Telegram is not configured on this server",
+        code="login_not_configured",
+    )
+
+
+@router.get("/telegram/web", response_model=TelegramWebAvailability)
+async def auth_telegram_web_availability() -> TelegramWebAvailability:
+    """Whether the website sign-in through Telegram is on. Public, no state."""
+    return TelegramWebAvailability(available=web_login.available())
+
+
+@router.post("/telegram/web/start", response_model=TelegramWebStartResponse)
+async def auth_telegram_web_start(
+    body: TelegramWebStartRequest,
+    request: Request,
+) -> TelegramWebStartResponse:
+    """Begin a website sign-in: the Telegram URL to send the browser to.
+
+    The state is kept in Redis with the hash of the browser's mark, the
+    referral code and the interface language; nothing touches the database.
+    """
+    await check_rate_limit(f"telegram_web_ip:{get_client_ip(request)}")
+    if not web_login.available():
+        raise _web_login_not_configured()
+    url, state = await web_login.start(
+        mark=body.mark,
+        referral_code=body.referral_code,
+        language=body.language,
+    )
+    return TelegramWebStartResponse(url=url, state=state)
+
+
+@router.post("/telegram/web/complete", response_model=LoginResponse)
+async def auth_telegram_web_complete(
+    body: TelegramWebCompleteRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+) -> LoginResponse:
+    """Finish a website sign-in: Telegram's code -> the Mini App's own path.
+
+    ORDER, and why:
+      1. the IP limit, before anything else;
+      2. the state is TAKEN, once -- a reload or a second tab gets 400;
+      3. the mark is checked BEFORE Telegram is asked: a return opened in a
+         browser that did not start the sign-in never exchanges the code;
+      4. Telegram (two HTTP requests) -- with NO database connection held:
+         `session` has run no statement yet, and an AsyncSession takes its
+         connection on the first one (par0 §8: no external HTTP inside a
+         transaction);
+      5. the shared path (_telegram_sign_in) with the translated user, the
+         referral code and the language kept under the state.
+    """
+    await check_rate_limit(f"telegram_web_ip:{get_client_ip(request)}")
+    if not web_login.available():
+        raise _web_login_not_configured()
+
+    started = await web_login.take(body.state)
+    if started is None:
+        raise BadRequestError(
+            "The sign-in link has expired. Start again.", code="login_expired"
+        )
+    if not web_login.mark_matches(started, body.mark):
+        logger.warning("telegram_web_foreign_return")
+        raise BadRequestError(
+            "This sign-in was started in another browser.", code="login_foreign"
+        )
+
+    try:
+        identity = await telegram_oidc.complete_login(
+            code=body.code,
+            redirect_uri=started["redirect_uri"],
+            code_verifier=started["verifier"],
+        )
+    except telegram_oidc.TelegramLoginError as exc:
+        logger.info("telegram_web_failed", reason=exc.reason)
+        raise BadRequestError(
+            "Telegram did not confirm the sign-in.", code="telegram_failed"
+        ) from None
+
+    return await _telegram_sign_in(
+        telegram_oidc.as_init_data_user(identity),
+        referral_code=started.get("referral_code"),
+        language=started.get("language"),
+        request=request,
+        background_tasks=background_tasks,
+        session=session,
     )
 
 

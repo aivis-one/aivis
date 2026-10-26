@@ -236,6 +236,62 @@ class LoginResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Website sign-in through Telegram (H45, OpenID Connect -- auth/web_login.py)
+# ---------------------------------------------------------------------------
+
+
+class TelegramWebAvailability(BaseModel):
+    """GET /api/v1/auth/telegram/web -- whether the website sign-in is on.
+
+    The login and registration screens show the Telegram button only when
+    `available` is true: both keys are set on this box (config.py).
+    """
+
+    available: bool
+
+
+class TelegramWebStartRequest(BaseModel):
+    """POST /api/v1/auth/telegram/web/start -- request body."""
+
+    mark: str = Field(
+        ...,
+        min_length=32,
+        max_length=128,
+        description=(
+            "Random string the browser made and keeps until the return; only "
+            "its hash is stored (login CSRF)"
+        ),
+    )
+    referral_code: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Referral code of the agent link the visitor came by (optional)",
+    )
+    language: Literal["en", "ru", "ar", "de"] | None = Field(
+        default=None,
+        description=(
+            "Interface language of the screen; the language of an account "
+            "the Telegram entry goes on to make (optional)"
+        ),
+    )
+
+
+class TelegramWebStartResponse(BaseModel):
+    """Where to send the browser, and the state its return will carry."""
+
+    url: str
+    state: str
+
+
+class TelegramWebCompleteRequest(BaseModel):
+    """POST /api/v1/auth/telegram/web/complete -- the return from Telegram."""
+
+    code: str = Field(..., min_length=1, max_length=2048)
+    state: str = Field(..., min_length=1, max_length=128)
+    mark: str = Field(..., min_length=32, max_length=128)
+
+
+# ---------------------------------------------------------------------------
 # Telegram entry: link a Telegram id to an e-mail account
 # ---------------------------------------------------------------------------
 

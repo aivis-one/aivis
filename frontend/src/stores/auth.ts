@@ -340,25 +340,57 @@ export const useAuthStore = defineStore('auth', () => {
         // `|| null` -- same rationale as registerViaEmail above.
         { init_data: initData, referral_code: referralCode || null },
       )
-      if (response.link_required) {
-        telegramLinkToken.value = response.link_token ?? null
-        telegramMfaToken.value = null
-        return { mfaRequired: false, linkRequired: true }
-      }
-      if (response.mfa_required) {
-        telegramMfaToken.value = response.mfa_token as string
-        telegramLinkToken.value = null
-        return { mfaRequired: true, mfaToken: response.mfa_token as string }
-      }
-      await _completeSession(response as AuthResponse)
-      telegramLinkToken.value = null
-      telegramMfaToken.value = null
-      // Same cleanup as the email register path: the referral code is one-shot.
-      sessionStorage.removeItem(REFERRAL_KEY)
-      return { mfaRequired: false }
+      return await _applyTelegramLogin(response)
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * H45: the return of the website sign-in through Telegram
+   * (POST /api/v1/auth/telegram/web/complete). The server runs the Mini App's
+   * own path after it, so the answer is the same LoginResponse and is applied
+   * the same way: a link token (the Telegram entry screen), a pending second
+   * factor (the second-code screen), or a session. Throws ApiResponseError:
+   * `login_expired`, `login_foreign`, `telegram_failed`, `login_not_configured`,
+   * and the Mini App path's own refusals.
+   */
+  async function completeTelegramWebLogin(
+    code: string,
+    state: string,
+    mark: string,
+  ): Promise<TelegramLoginResult> {
+    loading.value = true
+    try {
+      const response = await api.post<LoginResponse>('/api/v1/auth/telegram/web/complete', {
+        code,
+        state,
+        mark,
+      })
+      return await _applyTelegramLogin(response)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** One answer of a Telegram sign-in, from either door, into the store. */
+  async function _applyTelegramLogin(response: LoginResponse): Promise<TelegramLoginResult> {
+    if (response.link_required) {
+      telegramLinkToken.value = response.link_token ?? null
+      telegramMfaToken.value = null
+      return { mfaRequired: false, linkRequired: true }
+    }
+    if (response.mfa_required) {
+      telegramMfaToken.value = response.mfa_token as string
+      telegramLinkToken.value = null
+      return { mfaRequired: true, mfaToken: response.mfa_token as string }
+    }
+    await _completeSession(response as AuthResponse)
+    telegramLinkToken.value = null
+    telegramMfaToken.value = null
+    // Same cleanup as the email register path: the referral code is one-shot.
+    sessionStorage.removeItem(REFERRAL_KEY)
+    return { mfaRequired: false }
   }
 
   /**
@@ -502,6 +534,7 @@ export const useAuthStore = defineStore('auth', () => {
     completeMfaLogin,
     registerViaEmail,
     loginViaTelegram,
+    completeTelegramWebLogin,
     sendTelegramLinkEmail,
     confirmTelegramLink,
     clearTelegramEntry,

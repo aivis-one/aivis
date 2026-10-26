@@ -1185,13 +1185,57 @@ prompt_llm() {
     success "  Model for support translation: $model"
 }
 
+# The website sign-in through Telegram (H45) -- OPTIONAL, both keys or
+# neither: app/core/config.py refuses to start with only one. ENTER at the
+# client ID skips the sign-in (no Telegram button on the login screens); it
+# can be switched on later with `aivis telegram-login set`. The secret is not
+# echoed. The values come from BotFather: the bot -> Login widget -> Switch
+# to OpenID Connect Login, with the return address printed below.
+#
+# Optional. Sets TELEGRAM_LOGIN_CLIENT_ID_VAL and TELEGRAM_LOGIN_CLIENT_SECRET_VAL
+# (both empty when skipped).
+tg_login_value_ok() {
+    [[ "$1" =~ ^[^[:space:]\"\'\\\$\`#]+$ ]]
+}
+
+prompt_telegram_login() {
+    local client_id secret
+    TELEGRAM_LOGIN_CLIENT_ID_VAL=""
+    TELEGRAM_LOGIN_CLIENT_SECRET_VAL=""
+    log "  Website sign-in through Telegram (optional; ENTER skips it)."
+    log "  Return address to register in BotFather: https://${FRONTEND_DOMAIN}/app/auth/telegram/return"
+    while true; do
+        read -rp "  Telegram login client ID [ENTER = skip]: " client_id < /dev/tty
+        if [ -z "$client_id" ]; then
+            success "  Website sign-in through Telegram: skipped (aivis telegram-login set switches it on later)"
+            return 0
+        fi
+        if tg_login_value_ok "$client_id"; then
+            break
+        fi
+        warn "  The client ID may not hold a space, quote, \\, \$, \` or #. Try again."
+    done
+    while true; do
+        read -rsp "  Telegram login client secret (not shown while typing): " secret < /dev/tty
+        echo ""
+        if tg_login_value_ok "$secret"; then
+            break
+        fi
+        warn "  The secret is required once the client ID is given, and may not hold a space, quote, \\, \$, \` or #. Try again."
+    done
+    TELEGRAM_LOGIN_CLIENT_ID_VAL="$client_id"
+    TELEGRAM_LOGIN_CLIENT_SECRET_VAL="$secret"
+    success "  Website sign-in through Telegram: both keys taken"
+}
+
 echo ""
-log "Enter secrets (all required):"
+log "Enter secrets (all required, except the optional Telegram website sign-in at the end):"
 echo ""
 prompt_telegram_bot
 prompt_mailgun
 prompt_llm
 prompt_support_language
+prompt_telegram_login
 
 # Storage root key -- ENTER keeps the random values generated above by
 # gen_short_id / gen_password, and is the recommended answer. Typing a
@@ -1274,6 +1318,11 @@ TELEGRAM_BOT_URL=${TELEGRAM_BOT_URL_VAL}
 # whose X-Telegram-Bot-Api-Secret-Token header differs. Registered with
 # Telegram by the setWebhook step at the end of the install.
 TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET_VAL}
+# Website sign-in through Telegram (H45, OpenID Connect): both or neither
+# (app/core/config.py refuses one). Empty = no Telegram button on the
+# website. Changed later with `aivis telegram-login set|clear`.
+TELEGRAM_LOGIN_CLIENT_ID=${TELEGRAM_LOGIN_CLIENT_ID_VAL}
+TELEGRAM_LOGIN_CLIENT_SECRET=${TELEGRAM_LOGIN_CLIENT_SECRET_VAL}
 
 # -- Telegram Auth Security --
 AUTH_RATE_LIMIT_MAX_REQUESTS=5

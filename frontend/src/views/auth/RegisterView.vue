@@ -51,6 +51,7 @@ import { safeNavigate } from '@/composables/safeNavigate'
 import AivisLogo from '@/components/ui/AivisLogo.vue'
 import { CBackLink, CCheckbox, CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
+import TelegramWebSignIn from '@/components/shared/TelegramWebSignIn.vue'
 import { acceptDocumentByType } from '@/api/documents'
 import { rememberReturnPath } from '@/utils/postAuthReturn'
 import { PASSWORD_MIN_LENGTH } from '@/utils/passwordRule'
@@ -256,6 +257,8 @@ async function handleRegister(): Promise<void> {
         <span v-if="authStore.loading" class="ds-button__spinner" aria-hidden="true" />
         <span>{{ t('auth.register.btn') }}</span>
       </button>
+
+      <TelegramWebSignIn />
 
       <div class="ds-auth__foot">
         <span>{{ t('auth.register.hasAccount') }}</span>

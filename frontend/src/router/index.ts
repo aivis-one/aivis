@@ -11,6 +11,7 @@
 // Structure:
 //   /                — redirect to role dashboard or /login (beforeEnter)
 //   /login, /register, /loading — public auth routes
+//   /auth/telegram/return      -- the website Telegram sign-in's return (H45)
 //   /verify, /onboarding/*     — onboarding (auth required, no role check)
 //   /set-password              -- the first password (H44; auth required, before onboarding)
 //   /portfolio/:id             -- document link from an email; redirects into
@@ -179,6 +180,15 @@ export const router = createRouter({
       path: '/telegram/second-code',
       name: 'telegram-second-code',
       component: () => import('@/views/auth/TelegramSecondCodeView.vue'),
+      meta: { public: true },
+    },
+    // H45: where Telegram sends the browser back from the website sign-in
+    // (the return address registered in BotFather is FRONTEND_BASE_URL plus
+    // this path). Public: no session exists yet.
+    {
+      path: '/auth/telegram/return',
+      name: 'telegram-return',
+      component: () => import('@/views/auth/TelegramReturnView.vue'),
       meta: { public: true },
     },
     {

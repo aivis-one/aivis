@@ -68,6 +68,13 @@ dependencies = [
     # actually installed in this seat (50.0.0, checked via
     # `python -c "import cryptography; print(cryptography.__version__)"`).
     "cryptography>=42.0.0,<51.0",
+    # H45: the id_token of the website sign-in through Telegram (OpenID
+    # Connect, app/modules/auth/telegram_oidc.py) is a JWT verified against
+    # Telegram's published keys. PyJWT was importable before only because
+    # `redis` pulls it in; the sign-in imports it directly, so it is declared.
+    # [crypto] brings the RSA/EC verification (through `cryptography`, above).
+    # Floor/cap around the version installed here (2.15.1).
+    "PyJWT[crypto]>=2.8.0,<3.0",
 ]
 
 [project.optional-dependencies]

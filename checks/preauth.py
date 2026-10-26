@@ -55,6 +55,8 @@ REGISTER = {
     "set-password": "a centred auth card at --maxw-form (360px), one stacked column: the password, its "
                     "confirmation, the save button and the way out (H44). Nothing in it reflows with width.",
     "telegram-entry": "a centred auth card at --maxw-form (360px), one stacked column across the consent, e-mail and code steps.",
+    "telegram-return": "a centred auth card at --maxw-form (360px): a title and one line while the "
+                       "return from Telegram is checked, or the reason and the way back to sign in (H45).",
     "telegram-second-code": "a centred auth card at --maxw-form (360px) with one code field, same shape as the login second-code step.",
     "onboarding-role": "centred role cards at --maxw-form-wide (400px).",
     "onboarding-profile": "a centred auth card at --maxw-form (360px).",

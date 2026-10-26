@@ -27,6 +27,9 @@ import type {
   TwoFactorLoginVerifyRequest,
   TwoFactorSetupRequest,
   TwoFactorSetupResponse,
+  TelegramWebAvailability,
+  TelegramWebStartRequest,
+  TelegramWebStartResponse,
 } from '@/api/types'
 
 /**
@@ -83,9 +86,7 @@ export function setupTwoFactor(body: TwoFactorSetupRequest): Promise<TwoFactorSe
  *   400 -- no pending setup, or the code did not verify (2FA stays off).
  *   429 -- rate limited.
  */
-export function confirmTwoFactor(
-  body: TwoFactorConfirmRequest,
-): Promise<TwoFactorConfirmResponse> {
+export function confirmTwoFactor(body: TwoFactorConfirmRequest): Promise<TwoFactorConfirmResponse> {
   return api.post<TwoFactorConfirmResponse>('/api/v1/auth/2fa/confirm', body)
 }
 
@@ -120,4 +121,28 @@ export function disableTwoFactor(body: TwoFactorDisableRequest): Promise<void> {
  */
 export function verifyTwoFactorLogin(body: TwoFactorLoginVerifyRequest): Promise<AuthResponse> {
   return api.post<AuthResponse>('/api/v1/auth/2fa/login-verify', body)
+}
+
+// ---------------------------------------------------------------------------
+// The website sign-in through Telegram (H45)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/v1/auth/telegram/web -- whether this server offers the sign-in
+ * (both TELEGRAM_LOGIN_* keys set). The login and registration screens show
+ * the Telegram button only when it does.
+ */
+export function getTelegramWebAvailability(): Promise<TelegramWebAvailability> {
+  return api.get<TelegramWebAvailability>('/api/v1/auth/telegram/web')
+}
+
+/**
+ * POST /api/v1/auth/telegram/web/start -- Telegram's URL for this browser and
+ * the state its return will carry. Throws ApiResponseError 404
+ * `login_not_configured` when the sign-in is off, 429 on the rate limit.
+ */
+export function startTelegramWebLogin(
+  body: TelegramWebStartRequest,
+): Promise<TelegramWebStartResponse> {
+  return api.post<TelegramWebStartResponse>('/api/v1/auth/telegram/web/start', body)
 }

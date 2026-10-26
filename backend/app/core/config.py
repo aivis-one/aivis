@@ -230,6 +230,20 @@ class Settings(BaseSettings):
     # refuses every call (fail closed).
     telegram_webhook_secret: str = ""
 
+    # -- Website sign-in through Telegram (H45, OpenID Connect) --
+    # The client id and secret BotFather shows after "Switch to OpenID
+    # Connect Login" (bot -> Login widget). OPTIONAL, and only as a PAIR:
+    # neither set -> the sign-in is off (GET /auth/telegram/web answers
+    # available=false, the login screens show no Telegram button) and the
+    # product runs as before; both set -> on; one set -> _validate refuses
+    # the start on every box, development included (see there). Written on a
+    # live box by `aivis telegram-login set` (scripts/aivis-manage.sh), at
+    # install by scripts/install_aivis.sh (both or neither).
+    telegram_login_client_id: str = ""
+    telegram_login_client_secret: str = ""
+    # Each of the two requests a sign-in makes to oauth.telegram.org.
+    telegram_login_http_timeout_seconds: float = 10.0
+
     # -- Telegram Auth Security --
     auth_rate_limit_max_requests: int = 5
     auth_rate_limit_window_seconds: int = 60
@@ -546,6 +560,27 @@ class Settings(BaseSettings):
             if is_dev:
                 raise ValueError(support_language_problem)
         self.support_language = support_language
+
+        # -- The website Telegram sign-in: both keys or neither (H45) --
+        # On EVERY box, development included: half a pair is a mistake
+        # wherever it is made, and the test suite runs in development. The
+        # refusal names the missing key, never a value.
+        login_id = self.telegram_login_client_id.strip()
+        login_secret = self.telegram_login_client_secret.strip()
+        if bool(login_id) != bool(login_secret):
+            missing = (
+                "TELEGRAM_LOGIN_CLIENT_SECRET" if login_id
+                else "TELEGRAM_LOGIN_CLIENT_ID"
+            )
+            raise ValueError(
+                "Half-configured website sign-in through Telegram: "
+                f"{missing} is empty while the other key is set. Set both "
+                "(BotFather -> the bot -> Login widget, OpenID Connect) with "
+                "`aivis telegram-login set`, or clear both with "
+                "`aivis telegram-login clear` to run without the sign-in."
+            )
+        self.telegram_login_client_id = login_id
+        self.telegram_login_client_secret = login_secret
 
         # -- Production requirements (P-108, P-116) --
         #

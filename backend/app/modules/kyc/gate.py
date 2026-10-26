@@ -125,6 +125,10 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/telegram"),
         ("POST", "/api/v1/auth/telegram/link/email"),
         ("POST", "/api/v1/auth/telegram/link/confirm"),
+        # The website sign-in through Telegram (H45): its start (a state in
+        # Redis, no database) and its return, then the Mini App's own path.
+        ("POST", "/api/v1/auth/telegram/web/start"),
+        ("POST", "/api/v1/auth/telegram/web/complete"),
         ("POST", "/api/v1/telegram/webhook"),
         ("POST", "/api/v1/auth/2fa/login-verify"),
         ("POST", "/api/v1/auth/password-reset/request"),
