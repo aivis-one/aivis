@@ -214,6 +214,17 @@
       "requestNewLink": "Запросить новую ссылку",
       "signInBtn": "Войти"
     },
+    "setPassword": {
+      "title": "Придумайте пароль",
+      "subtitle": "Почта подтверждена. Придумайте пароль — с ним и этой почтой вы войдёте на сайте.",
+      "password": "Пароль",
+      "hint": "Минимум {min} символов",
+      "passPlaceholder": "Минимум {min} символов",
+      "confirmPassword": "Подтверждение пароля",
+      "confirmPlaceholder": "Повторите пароль",
+      "tooLong": "Максимум {max} символов",
+      "btn": "Сохранить пароль"
+    },
     "telegramEntry": {
       "consentTitle": "Добро пожаловать в AIVIS.ONE",
       "consentSubtitle": "Чтобы зарегистрироваться, подтвердите два документа ниже.",

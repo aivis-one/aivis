@@ -139,6 +139,10 @@ KYC_GATE_OPEN_BY_DECISION: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/2fa/setup"),
         ("POST", "/api/v1/auth/2fa/confirm"),
         ("POST", "/api/v1/auth/2fa/disable"),
+        # The first password of an account with a confirmed e-mail and
+        # none (H44): the screen every such account is held on, before
+        # anything else. Writes no money.
+        ("POST", "/api/v1/users/me/password"),
         # -- Profile, onboarding, settings -----------------------------
         ("PATCH", "/api/v1/users/me"),
         ("POST", "/api/v1/users/me/select-role"),

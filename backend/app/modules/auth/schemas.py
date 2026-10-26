@@ -42,7 +42,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.modules.users.schemas import UserResponse
+from app.modules.users.schemas import NewPassword, UserResponse
 
 
 # ---------------------------------------------------------------------------
@@ -57,10 +57,8 @@ class EmailRegisterRequest(BaseModel):
         ...,
         description="User email address (normalized to lowercase)",
     )
-    password: str = Field(
+    password: NewPassword = Field(
         ...,
-        min_length=8,
-        max_length=128,
         description="Password (min 8 characters)",
     )
     # Sprint 7.2: optional referral code from agent link.
@@ -137,9 +135,9 @@ class PasswordResetRequestResponse(BaseModel):
 class PasswordResetConfirmRequest(BaseModel):
     """POST /api/v1/auth/password-reset/confirm -- request body.
 
-    `new_password` reuses EmailRegisterRequest.password's exact
-    constraints (min 8 / max 128 chars) -- password strength rules
-    live in one place, not duplicated per endpoint.
+    `new_password` is a NewPassword (users/schemas.py), the same rule
+    as EmailRegisterRequest.password -- the password rule lives in one
+    place, not duplicated per endpoint.
     """
 
     token: str = Field(
@@ -147,10 +145,8 @@ class PasswordResetConfirmRequest(BaseModel):
         min_length=1,
         description="Reset token from the emailed link",
     )
-    new_password: str = Field(
+    new_password: NewPassword = Field(
         ...,
-        min_length=8,
-        max_length=128,
         description="New password (min 8 characters)",
     )
 

@@ -53,6 +53,7 @@ import { CBackLink, CCheckbox, CInput } from '@/components/ui'
 import LegalDocModal from '@/components/legal/LegalDocModal.vue'
 import { acceptDocumentByType } from '@/api/documents'
 import { rememberReturnPath } from '@/utils/postAuthReturn'
+import { PASSWORD_MIN_LENGTH } from '@/utils/passwordRule'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -122,7 +123,7 @@ async function handleRegister(): Promise<void> {
     return
   }
 
-  if (password.value.length < 8) {
+  if (password.value.length < PASSWORD_MIN_LENGTH) {
     error.value = t('auth.register.passwordHint')
     return
   }

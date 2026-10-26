@@ -29,6 +29,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, ApiResponseError, ApiNetworkError, ApiTimeoutError } from '@/api/client'
 import { safeNavigate } from '@/composables/safeNavigate'
 import { CInput } from '@/components/ui'
+import { PASSWORD_MIN_LENGTH } from '@/utils/passwordRule'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -83,7 +84,7 @@ async function handleSubmit(): Promise<void> {
     return
   }
 
-  if (newPassword.value.length < 8) {
+  if (newPassword.value.length < PASSWORD_MIN_LENGTH) {
     error.value = t('auth.passwordReset.newPasswordHint')
     return
   }

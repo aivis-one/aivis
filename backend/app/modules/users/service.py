@@ -8,6 +8,8 @@
 #   update_payout_details() -- set withdrawal payment methods (Sprint 6.3)
 #   build_user_response()   -- iter 2.6c B6: assemble UserResponse with
 #                              staff_profile hydrated for staff users
+#   set_first_password()    -- H44: the first password of an account whose
+#                              e-mail is confirmed and that has none
 #
 # PARTIAL UPDATE STRATEGY:
 #   Uses Pydantic model_dump(exclude_unset=True) to distinguish between
@@ -52,6 +54,7 @@ from typing import Any
 import pyotp
 import structlog
 from cryptography.fernet import InvalidToken
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -395,6 +398,104 @@ async def attach_email_to_account(
     )
     await _request_verification_email(session, user.id, code, expires_at)
     return user
+
+
+# ---------------------------------------------------------------------------
+# The first password of an account that has none (H44)
+# ---------------------------------------------------------------------------
+
+
+async def set_first_password(
+    user: User,
+    password: str,
+    session: AsyncSession,
+) -> User:
+    """Give an account with a confirmed e-mail and no password its password.
+
+    Owner's rule (H44): an account whose e-mail is confirmed and that has no
+    password (User.password_required) must choose one before it goes on; the
+    person reached this call with a live session, so the mailbox is already
+    proven and nothing is asked again. Only a FIRST password: an account that
+    has one is refused, and there is no change of password here. The other
+    sessions of the account are left alone.
+
+    THE ROW IS TAKEN, NOT READ. Two calls at once must give one password and
+    one refusal, so the row is locked before the check -- FOR NO KEY UPDATE,
+    the columns written are not keys -- and loaded afresh under the lock
+    (populate_existing: get_current_user_write has already put this row in
+    the session's identity map, and a lock does not refresh it). The hash is
+    made under the lock, after the check, so a refused call costs no argon2.
+    The lock serialises this function with itself and with
+    auth/service.py::_link_after_code, the other writer that locks the row.
+
+    KNOWN CEILING -- writers of credentials that do not lock the row.
+      1. Mechanics: request_password_reset, upsert_telegram_user (every Mini
+         App sign-in), staff block_user and change_user_email read
+         users.credentials without a lock and write the whole column back.
+         One of them holding a copy read before this commit writes it over
+         the new hash after it: the caller already has its 200, and the next
+         GET /users/me says password_required again, so the screen returns.
+      2. Status: acknowledged by design.
+      3. Task: none -- this project has no tracker; recorded in the H44
+         delivery report (observations) as a class.
+      4. Trigger: an account with a `user.password_set` audit row and no
+         password_hash on its row.
+      5. Agreed fix: every writer of credentials takes the row FOR NO KEY
+         UPDATE with populate_existing before it reads credentials, as this
+         function does.
+      6. Rejected: locking only here (the other writers never wait for the
+         lock); writing the hash with jsonb_set (the others still write
+         their whole stale column back); re-reading after the commit (it
+         cannot stop a later overwrite).
+
+    Does NOT commit -- the router commits before it answers (users/router.py,
+    P-01's second exception).
+
+    Raises:
+        ConflictError: the account has a password (password_already_set),
+            or its e-mail is missing or unconfirmed (email_not_verified).
+    """
+    locked = (
+        await session.execute(
+            select(User)
+            .where(User.id == user.id)
+            .with_for_update(key_share=True)
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+
+    if locked.has_password:
+        raise ConflictError(
+            "This account already has a password",
+            code="password_already_set",
+        )
+    if not locked.email_verified:
+        raise ConflictError(
+            "Confirm the e-mail before choosing a password",
+            code="email_not_verified",
+        )
+
+    password_hash = await hash_password(password)
+    creds = dict(locked.credentials or {})
+    email_creds = dict(creds.get("email") or {})
+    email_creds["password_hash"] = password_hash
+    creds["email"] = email_creds
+    locked.set_jsonb("credentials", creds)
+    await session.flush()
+    # Reload expired attrs (updated_at) after set_jsonb + flush.
+    await session.refresh(locked)
+
+    await record_audit(
+        session=session,
+        event="user.password_set",
+        actor_id=locked.id,
+        actor_type="user",
+        target_type="user",
+        target_id=locked.id,
+        data={},
+    )
+    logger.info("password_set", user_id=str(locked.id))
+    return locked
 
 
 # ---------------------------------------------------------------------------

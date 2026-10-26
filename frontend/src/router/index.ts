@@ -12,6 +12,7 @@
 //   /                — redirect to role dashboard or /login (beforeEnter)
 //   /login, /register, /loading — public auth routes
 //   /verify, /onboarding/*     — onboarding (auth required, no role check)
+//   /set-password              -- the first password (H44; auth required, before onboarding)
 //   /portfolio/:id             -- document link from an email; redirects into
 //                                the reader's own shell (P-106)
 //   /investor/*                — AppShell (investor | agent)
@@ -194,6 +195,14 @@ export const router = createRouter({
       path: '/verify',
       name: 'verify',
       component: () => import('@/views/auth/VerifyEmailView.vue'),
+      meta: { skipOnboarding: true },
+    },
+    // The first password (H44): an account whose e-mail is confirmed and that
+    // has no password is held here by globalGuard, before any onboarding step.
+    {
+      path: '/set-password',
+      name: 'set-password',
+      component: () => import('@/views/auth/SetPasswordView.vue'),
       meta: { skipOnboarding: true },
     },
     // There is no profile screen and no role card: the name, phone and country

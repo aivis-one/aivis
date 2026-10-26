@@ -8,6 +8,9 @@
 #   POST  /api/v1/users/me/select-role    -- Select role during onboarding (F2.3)
 #   POST  /api/v1/users/me/email          -- Add an e-mail to an account that
 #                                             has none (code by e-mail)
+#   POST  /api/v1/users/me/password       -- The first password of an account
+#                                             with a confirmed e-mail and none
+#                                             (H44, avatar-blocked)
 #   GET   /api/v1/users/me/payout-details -- Get payout details (Sprint 6.3)
 #   PUT   /api/v1/users/me/payout-details -- Set payout details (Sprint 6.3)
 #   POST  /api/v1/users/me/deactivate     -- Self-deactivate (TASK-38,
@@ -27,6 +30,20 @@
 #   (_require_current_password in users/service.py) -- belt AND
 #   suspenders, since avatar mode does not hand staff the target's real
 #   password.
+#   forbid_avatar("change_password") guards POST /me/password (H44): a
+#   password set by an avatar would be one only staff knows, on an account
+#   that signs in with it from then on.
+#
+# COMMIT RULE (P-01) AND ITS SECOND EXCEPTION:
+#   Routers never call session.commit() -- get_db_session commits after
+#   yield -- except POST /auth/telegram/link/confirm (auth/router.py) and
+#   POST /me/password here. get_db_session's commit runs AFTER the response
+#   has been sent (FastAPI closes a yield dependency of request scope after
+#   `await response(...)`; measured for H44 under uvicorn), so a client can
+#   hold a 200 for a write that is then refused. /me/password answers
+#   "your password is set", and the screen leaves the person to sign in by
+#   it, so it commits before it builds the answer: a commit that fails is a
+#   500, not a 200 with no password behind it.
 # =============================================================================
 
 import structlog
@@ -42,6 +59,7 @@ from app.modules.users.schemas import (
     DeactivateAccountRequest,
     PayoutDetailsResponse,
     SelectRoleRequest,
+    SetPasswordRequest,
     UpdatePayoutDetailsRequest,
     UserResponse,
     UserUpdate,
@@ -51,6 +69,7 @@ from app.modules.users.service import (
     build_user_response,
     deactivate_own_account,
     select_role,
+    set_first_password,
     update_payout_details,
     update_user,
 )
@@ -165,6 +184,33 @@ async def attach_email_endpoint(
     (KYC) needs a confirmed e-mail.
     """
     updated = await attach_email_to_account(user, body.email, session)
+    return await build_user_response(updated, session)
+
+
+# ---------------------------------------------------------------------------
+# The first password (H44)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/me/password",
+    response_model=UserResponse,
+    dependencies=[Depends(forbid_avatar("change_password"))],
+)
+async def set_password_endpoint(
+    body: SetPasswordRequest,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    """The first password of an account whose e-mail is confirmed.
+
+    409 password_already_set when the account has one, 409
+    email_not_verified when its e-mail is missing or unconfirmed. The other
+    sessions of the account stay. Commits before answering -- see the
+    module header (P-01's second exception).
+    """
+    updated = await set_first_password(user, body.password, session)
+    await session.commit()
     return await build_user_response(updated, session)
 
 

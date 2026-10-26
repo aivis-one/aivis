@@ -32,12 +32,20 @@
 # and one of spaces are accepted as before -- the rule is about length and
 # type, the onboarding step already reads them as "no name".
 #
+# THE PASSWORD RULE (H44). Every password a person or staff sets -- at
+# registration, at a reset, at the first password of an account that has
+# none, for a new project account -- is a NewPassword: one declaration of
+# the length limits below, so a change to the rule is a change here and
+# nowhere else. The frontend holds the same two numbers in
+# frontend/src/utils/passwordRule.ts (Pydantic constraints do not reach
+# generated.ts).
+#
 # Sprint 6.3: payout_details schemas for withdrawal payment methods.
 # F2.3: SelectRoleRequest for onboarding role selection.
 # =============================================================================
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -58,6 +66,11 @@ class UserResponse(BaseModel):
     particular, see components/shared/TwoFactorSection.vue) know
     whether 2FA is currently on without a dedicated status endpoint.
 
+    password_required (H44): User.password_required -- the e-mail is
+    confirmed and there is no password. Computed here, on the server, and
+    nowhere else: the frontend router holds the account on the password
+    screen while it is true and does not repeat the formula.
+
     iter 2.6c B6:
       `staff_profile` is populated by the service layer when
       `role == "staff"` -- it carries the staff profile id, is_active
@@ -73,6 +86,13 @@ class UserResponse(BaseModel):
     two_factor_enabled: bool = Field(
         default=False, description="Whether TOTP 2FA is currently active"
     )
+    password_required: bool = Field(
+        default=False,
+        description=(
+            "The e-mail is confirmed and the account has no password: it "
+            "must choose one (POST /users/me/password) before going on"
+        ),
+    )
     is_active: bool
     onboarding_step: str
     kyc_status: str
@@ -84,6 +104,14 @@ class UserResponse(BaseModel):
     staff_profile: StaffProfileResponse | None = None
 
     model_config = {"from_attributes": True}
+
+
+# The password rule (see the module header).
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 128
+NewPassword = Annotated[
+    str, Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+]
 
 
 # The rule above. 100 is what the Telegram login has always kept.
@@ -170,6 +198,18 @@ class AttachEmailRequest(BaseModel):
     """POST /api/v1/users/me/email -- an account without an e-mail adds one."""
 
     email: EmailStr = Field(..., description="E-mail address to add")
+
+
+class SetPasswordRequest(BaseModel):
+    """POST /api/v1/users/me/password -- the first password of an account.
+
+    The password only: the confirmation field is the screen's check, not
+    the server's.
+    """
+
+    password: NewPassword = Field(
+        ..., description="The new password (min 8 characters)"
+    )
 
 
 class SelectRoleRequest(BaseModel):

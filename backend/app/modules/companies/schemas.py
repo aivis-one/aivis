@@ -119,6 +119,7 @@ from app.modules.companies.constants import (
     DocumentTemplateKind,
     RoadmapItemKind,
 )
+from app.modules.users.schemas import NewPassword
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +141,8 @@ class CreateCompanyRequest(BaseModel):
 
     # User credentials for the company account.
     email: EmailStr = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=8, max_length=128)
+    # The password rule of every account (users/schemas.py, H44).
+    password: NewPassword
 
     # Company profile.
     name: str = Field(min_length=1, max_length=500)

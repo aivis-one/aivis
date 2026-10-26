@@ -127,3 +127,19 @@ export function confirmEmailCode(code: string): Promise<UserResponse> {
 export function resendEmailCode(): Promise<void> {
   return api.post<void>('/api/v1/auth/verify-email/resend')
 }
+
+// ---------------------------------------------------------------------------
+// The first password (H44)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/v1/users/me/password -- the first password of an account whose
+ * e-mail is confirmed and that has none (UserResponse.password_required).
+ * Answers the updated user, password_required false.
+ *
+ * Throws ApiResponseError on 409 `password_already_set` (the account has a
+ * password) and 409 `email_not_verified` (no e-mail, or not confirmed).
+ */
+export function setPassword(password: string): Promise<UserResponse> {
+  return api.post<UserResponse>('/api/v1/users/me/password', { password })
+}

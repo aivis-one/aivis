@@ -1159,9 +1159,12 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
     guard from a route -- or adding a new endpoint for a restricted
     operation without wiring the guard -- fails this test.
 
-    Operations without live endpoints (change_password,
-    access_staff_shell) are intentionally absent from the expected set;
-    extend it when their endpoints appear. logout_all
+    Operations without live endpoints (access_staff_shell) are
+    intentionally absent from the expected set; extend it when their
+    endpoints appear. change_password was in that list until H44 gave it
+    POST /users/me/password: the list was true of a tree where the
+    operation had no route, and the route arriving is what moved it into
+    the expected set, guard and assertion in one change. logout_all
     (STAGE-III-FINDINGS.md #19) was added to the expected set the same
     day its guard was wired, not left for a later pass -- delete_account
     and revoke_session (TASK-38, users/router.py and auth/router.py
@@ -1231,6 +1234,7 @@ def test_every_restricted_operation_endpoint_carries_guard() -> None:
         "forbid_avatar_manage_2fa",
         "forbid_avatar_update_profile",
         "forbid_avatar_export_transactions",
+        "forbid_avatar_change_password",
     }
     missing = expected - guarded
     assert not missing, (

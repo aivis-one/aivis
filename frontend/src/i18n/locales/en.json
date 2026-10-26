@@ -214,6 +214,17 @@
       "requestNewLink": "Request a new link",
       "signInBtn": "Sign in"
     },
+    "setPassword": {
+      "title": "Create a password",
+      "subtitle": "Your e-mail is confirmed. Create a password — you will sign in with it and this e-mail on the website.",
+      "password": "Password",
+      "hint": "Minimum {min} characters",
+      "passPlaceholder": "Minimum {min} characters",
+      "confirmPassword": "Confirm password",
+      "confirmPlaceholder": "Repeat password",
+      "tooLong": "Maximum {max} characters",
+      "btn": "Save password"
+    },
     "telegramEntry": {
       "consentTitle": "Welcome to AIVIS.ONE",
       "consentSubtitle": "To register, please confirm the two documents below.",

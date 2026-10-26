@@ -63,10 +63,14 @@
 #   asserts every operation above carries its forbid_avatar_*
 #   dependency -- removing a guard from a route fails the suite.
 #   delete_account (TASK-38) has a live endpoint too -- POST
-#   /api/v1/users/me/deactivate (users/router.py). The remaining
-#   RESTRICTED_OPERATIONS entries still have no live endpoints
-#   (change_password / access_staff_shell) -- apply forbid_avatar when
-#   they appear. There used to be a third such entry, change_email: it
+#   /api/v1/users/me/deactivate (users/router.py). So does change_password
+#   since H44 -- POST /api/v1/users/me/password (users/router.py), the
+#   first password of an account with a confirmed e-mail and none: a
+#   password an avatar set would be one only staff knows, and the account
+#   would sign in by it after the impersonation ends. The one remaining
+#   RESTRICTED_OPERATIONS entry with no live endpoint is
+#   access_staff_shell -- apply forbid_avatar when it appears. There used
+#   to be another such entry, change_email: it
 #   was pre-declared, then wired to POST /me/email-change by TASK-38,
 #   and both the route and the entry went out together with the whole
 #   email-change feature (P-104). A staff-side address change is a

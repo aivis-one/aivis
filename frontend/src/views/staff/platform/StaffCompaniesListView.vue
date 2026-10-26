@@ -51,6 +51,7 @@ import { fetchStaffCompanies, assignCompany, createCompany } from '@/api/staff-c
 import UserPicker from '@/components/staff/UserPicker.vue'
 import type { CompanyResponse, UserListItem } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { passwordWithinRule } from '@/utils/passwordRule'
 
 const { t } = useI18n()
 const { showToast } = useToast()
@@ -416,9 +417,7 @@ const createEmailValid = computed<boolean>(() =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createEmail.value.trim()),
 )
 
-const createPasswordValid = computed<boolean>(
-  () => createPassword.value.length >= 8 && createPassword.value.length <= 128,
-)
+const createPasswordValid = computed<boolean>(() => passwordWithinRule(createPassword.value))
 
 // Price entered in dollars (mirrors Assign), converted to integer cents.
 const createPriceCents = computed<number | null>(() => {

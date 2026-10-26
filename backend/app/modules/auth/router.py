@@ -135,7 +135,8 @@
 # COMMIT RULE (P-01):
 #   Routers never call session.commit() -- get_db_session commits after
 #   yield -- except POST /telegram/link/confirm, which commits a claim
-#   before ending the row's other sessions.
+#   before ending the row's other sessions, and POST /users/me/password
+#   (users/router.py, H44), which commits before it answers.
 # =============================================================================
 
 import structlog
@@ -556,8 +557,9 @@ async def auth_telegram_link_confirm(
     if claimed:
         # The claim ended the row's sessions inside its transaction, but a
         # session opened by the unproven holder before the commit (his
-        # password still worked until then) would survive it. Commit now --
-        # the one place a router commits, for exactly this -- and end every
+        # password still worked until then) would survive it. Commit now,
+        # for exactly this -- one of the two places a router commits, the
+        # other is users/router.py's POST /me/password -- and end every
         # session of the row except the prover's new one.
         await session.commit()
         await end_other_sessions(user.id, token)

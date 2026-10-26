@@ -149,10 +149,16 @@ def selftest(root: str) -> list[str]:
         assert ok, "the untouched copy already fails"
 
         def plant(rel, old, new, label):
+            # `old` is a literal, or a compiled pattern where the formatter is
+            # free to break the anchor across lines (a tag and its attribute).
             path = os.path.join(base, "frontend", "src", rel)
             text = open(path, encoding="utf-8").read()
-            assert old in text, "selftest anchor missing for %r" % label
-            changed = text.replace(old, new, 1)
+            if isinstance(old, re.Pattern):
+                assert old.search(text), "selftest anchor missing for %r" % label
+                changed = old.sub(new, text, count=1)
+            else:
+                assert old in text, "selftest anchor missing for %r" % label
+                changed = text.replace(old, new, 1)
             assert changed != text, "selftest plant %r changed nothing" % label
             open(path, "w", encoding="utf-8").write(changed)
             broke, _ = run(base)
@@ -164,7 +170,7 @@ def selftest(root: str) -> list[str]:
 
         plant("components/layout/AppShell.vue", "'ds-shell--navless': !tabs",
               "'ds-shell--navless': false", "the storefront given the menu")
-        plant("components/layout/AppShell.vue", '<AppNav v-if="tabs"',
+        plant("components/layout/AppShell.vue", re.compile(r'<AppNav\s+v-if="tabs"'),
               "<AppNav", "the menu drawn without its gate")
         plant("components/layout/AppShell.vue", "route.meta.shell === 'staff' ? 'wide'",
               "route.meta.shell === 'staff' ? undefined", "staff's wide measure silently removed")
@@ -186,9 +192,12 @@ def selftest(root: str) -> list[str]:
         shell_rel = "components/layout/AppShell.vue"
         shell_path = os.path.join(base, "frontend", "src", shell_rel)
         original = open(shell_path, encoding="utf-8").read()
-        anchor = '<div class="ds-shell"'
-        assert anchor in original, "selftest anchor missing for the slot-above-root plant"
-        slotted = original.replace(anchor, '<template #decoy><span /></template>\n    ' + anchor, 1)
+        # A pattern, not a literal: the formatter puts the root's attributes on
+        # their own lines once the tag grows (H44 found it so).
+        anchor = re.search(r'<div\s+class="ds-shell"', original)
+        assert anchor, "selftest anchor missing for the slot-above-root plant"
+        slotted = (original[:anchor.start()] + '<template #decoy><span /></template>\n  '
+                   + original[anchor.start():])
         assert slotted != original, "slot-above-root plant changed nothing"
         non_greedy = re.search(r"<template>(.*?)</template>", slotted, re.S)
         assert (non_greedy.group(1) if non_greedy else None) != _template(slotted), \

@@ -264,6 +264,32 @@ class User(JSONBMixin, UUIDMixin, TimestampMixin, Base):
         return bool(email_creds.get("email")) and email_creds.get("verified") is True
 
     @property
+    def has_password(self) -> bool:
+        """True when the account holds a password it can sign in with by e-mail.
+
+        THE ONE PLACE THIS IS DECIDED (H44). A password is a non-empty
+        credentials.email.password_hash. Every other form is "no password":
+        no `email` block (a Telegram-only account), no `password_hash` key (a
+        row made at the e-mail step of the Telegram entry), the key removed
+        (a claimed row, auth/service.py::_link_after_code), or an empty
+        value -- login_email reads a missing hash as "" and refuses it.
+        """
+        email_creds = (self.credentials or {}).get("email") or {}
+        return bool(email_creds.get("password_hash"))
+
+    @property
+    def password_required(self) -> bool:
+        """The account must choose a password before it may go on (H44).
+
+        Owner's rule: the e-mail is confirmed and there is no password. An
+        account without an e-mail (Telegram only) is not asked: signing in by
+        e-mail looks the account up by its e-mail. Surfaced on UserResponse
+        the same way as `email`; the frontend reads the flag and never
+        repeats this formula.
+        """
+        return self.email_verified and not self.has_password
+
+    @property
     def two_factor_enabled(self) -> bool:
         """Whether TOTP 2FA is active (TASK-38).
 

@@ -4,11 +4,14 @@
 // =============================================================================
 //
 // Global navigation guard registered as router.beforeEach().
-// Handles three concerns in order:
+// Handles these concerns in order:
 //   1. Auth — unauthenticated users → /login (with ?next= propagation)
-//   2. Onboarding — incomplete onboarding → appropriate step
-//   3. Role — wrong role → role-specific dashboard
-//   4. Agreement — an integrator who has not accepted the agent-integrator
+//   2. Password -- an account whose e-mail is confirmed and that has no
+//      password (user.password_required, H44) -> /set-password, before
+//      anything else; a staff member operating as the person is not held
+//   3. Onboarding — incomplete onboarding → appropriate step
+//   4. Role — wrong role → role-specific dashboard
+//   5. Agreement — an integrator who has not accepted the agent-integrator
 //      agreement sees the acceptance screen and nothing else
 //
 // Route meta flags:
@@ -157,6 +160,34 @@ export function agentCounterpart(name: unknown): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// The first password (H44)
+// ---------------------------------------------------------------------------
+
+/** The screen an account with a confirmed e-mail and no password is held on. */
+export const SET_PASSWORD_ROUTE = 'set-password'
+
+/**
+ * Where a signed-in person goes for the password rule, or null.
+ *
+ * The rule is the server's (user.password_required): the e-mail is confirmed
+ * and there is no password. While it holds, every protected screen leads to
+ * the password screen -- in the Mini App and in the cabinet alike, through
+ * this one function. When it does not, the password screen itself leads to
+ * the dashboard. A staff member operating as the person never sets a password
+ * for them, so avatar mode is not held and is led away from the screen too.
+ */
+export function passwordRedirect(
+  to: RouteLocationNormalized,
+  authStore: ReturnType<typeof useAuthStore>,
+): RouteLocationRaw | null {
+  const required = authStore.user?.password_required === true && !avatarActive.value
+  if (to.name === SET_PASSWORD_ROUTE) {
+    return required ? null : getRoleDashboard(authStore.role)
+  }
+  return required ? { name: SET_PASSWORD_ROUTE } : null
+}
+
+// ---------------------------------------------------------------------------
 // The Telegram entry
 // ---------------------------------------------------------------------------
 
@@ -254,6 +285,15 @@ export async function globalGuard(to: RouteLocationNormalized): Promise<void | R
       query: next ? { next } : undefined,
     }
   }
+
+  // --- The first password (H44) -- before onboarding: without a password
+  // the person signs and chooses nothing ---
+  const password = passwordRedirect(to, authStore)
+  if (password) return password
+  // Held on the screen: nothing below may send the person elsewhere (the
+  // integrator's agreement and the project's documents would bounce back
+  // here for ever).
+  if (to.name === SET_PASSWORD_ROUTE) return
 
   // --- Onboarding check (skip for onboarding routes themselves) ---
   if (!to.meta.skipOnboarding) {
