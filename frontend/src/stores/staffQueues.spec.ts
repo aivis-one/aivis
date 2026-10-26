@@ -13,7 +13,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import * as admin from '@/api/admin'
 import * as support from '@/api/support'
-import { useStaffQueuesStore } from './staffQueues'
+import { QUEUES, queueAllowed, useStaffQueuesStore } from './staffQueues'
 import type { StaffPermissionKey } from '@/composables/useStaffPermissions'
 
 vi.mock('@/api/admin', () => ({
@@ -41,6 +41,7 @@ function stats(overrides: Record<string, number> = {}) {
     pending_kyc_count: 3,
     active_avatar_sessions: 0,
     frozen_payments_count: 2,
+    manual_topup_requests_count: 6,
     ...overrides,
   } as never
 }
@@ -161,5 +162,39 @@ describe('the staff Home counters', () => {
     const store = useStaffQueuesStore()
     await store.loadAll(ALL)
     expect(store.queues.support).toMatchObject({ count: 1, more: true })
+  })
+
+  it("counts the clients' manual top-up requests for an administrator", async () => {
+    mockAllOk()
+    const store = useStaffQueuesStore()
+    await store.loadAll(ALL, true)
+    expect(store.queues.manualTopups).toMatchObject({ status: 'ready', count: 6, more: false })
+  })
+
+  it('leaves the manual top-up requests out for a member who is not an administrator', async () => {
+    mockAllOk()
+    const store = useStaffQueuesStore()
+    await store.loadAll(ALL)
+    expect(store.queues.manualTopups.status).toBe('loading')
+    expect(QUEUES.filter((q) => queueAllowed(q, ALL, false)).map((q) => q.key)).not.toContain(
+      'manualTopups',
+    )
+    expect(QUEUES.filter((q) => queueAllowed(q, ALL, true)).map((q) => q.key)).toContain(
+      'manualTopups',
+    )
+  })
+
+  it('opens the crypto invoices filtered to the open requests', () => {
+    const spec = QUEUES.find((q) => q.key === 'manualTopups')!
+    expect(spec.path).toBe('/staff/finance/invoices?open_request=1')
+    expect(spec.permission).toBe('financial_operations')
+  })
+
+  it('shows the manual top-up counter as failed, not zero, when the statistics fail', async () => {
+    mockAllOk()
+    fetchDashboardStats.mockRejectedValue(new Error('down'))
+    const store = useStaffQueuesStore()
+    await store.loadAll(ALL, true)
+    expect(store.queues.manualTopups.status).toBe('error')
   })
 })

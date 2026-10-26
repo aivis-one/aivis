@@ -5,7 +5,8 @@
 //
 // One counter for every queue the member works from -- identity checks,
 // top-ups in their hour, withdrawals, integrator applications, support
-// requests nobody has taken -- and the number of users. A press on a counter
+// requests nobody has taken, the clients' requests for a manual top-up (the
+// administrator's) -- and the number of users. A press on a counter
 // opens its queue.
 //
 // ONLY THE QUEUES THE MEMBER MAY WORK are drawn: a member without the right to
@@ -37,7 +38,7 @@ import CAlert from '@/components/ui/CAlert.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useStaffRights } from '@/composables/useStaffRights'
 import { tOrRaw } from '@/utils/i18n'
-import { QUEUES, useStaffQueuesStore } from '@/stores/staffQueues'
+import { QUEUES, queueAllowed, useStaffQueuesStore } from '@/stores/staffQueues'
 import type { QueueKey, QueueSpec } from '@/stores/staffQueues'
 
 const { t } = useI18n()
@@ -52,6 +53,7 @@ const ICONS: Record<QueueKey, { icon: Component; tone: 'warning' | 'success' | '
   withdrawals: { icon: Banknote, tone: 'success' },
   agentApps: { icon: UserCheck, tone: 'accent' },
   support: { icon: MessageCircle, tone: 'accent' },
+  manualTopups: { icon: CreditCard, tone: 'warning' },
 }
 
 // The frame's header carries the tab's name (no greeting) and the panel's name.
@@ -63,7 +65,7 @@ useScreenHeader({
 /** The queues the member may work, in the Home's order. */
 const visibleQueues = computed<QueueSpec[]>(() => {
   const rights = current()
-  return QUEUES.filter((q) => !q.permission || rights.can(q.permission))
+  return QUEUES.filter((q) => queueAllowed(q, rights.can, rights.admin))
 })
 
 const loading = computed<boolean>(
@@ -102,7 +104,7 @@ function subOf(key: QueueKey): string | undefined {
 }
 
 function reload(): void {
-  void queues.loadAll((key) => current().can(key))
+  void queues.loadAll((key) => current().can(key), current().admin)
 }
 
 onMounted(reload)

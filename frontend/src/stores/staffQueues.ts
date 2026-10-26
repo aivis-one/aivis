@@ -4,7 +4,8 @@
 //
 // One counter for every queue a staff member works from: identity checks to
 // decide, top-ups still in their hour, withdrawals waiting, integrator
-// applications waiting, support requests nobody has taken.
+// applications waiting, support requests nobody has taken, and -- for the
+// administrator -- the clients' requests to confirm a top-up by hand.
 //
 // A FAILED READ IS AN ERROR, NEVER A ZERO. Each queue is read on its own and
 // keeps its own state -- `loading`, `ready` or `error` -- so one failing read
@@ -22,7 +23,7 @@ import { fetchAgentApplications, fetchDashboardStats, fetchWithdrawalsStaff } fr
 import { listStaffTickets } from '@/api/support'
 import type { StaffPermissionKey } from '@/composables/useStaffPermissions'
 
-export type QueueKey = 'kyc' | 'topups' | 'withdrawals' | 'agentApps' | 'support'
+export type QueueKey = 'kyc' | 'topups' | 'withdrawals' | 'agentApps' | 'support' | 'manualTopups'
 
 export type QueueStatus = 'loading' | 'ready' | 'error'
 
@@ -37,6 +38,8 @@ export interface QueueSpec {
   key: QueueKey
   /** The right the queue needs; none = every staff member works it. */
   permission?: StaffPermissionKey
+  /** True when the queue is the administrator's alone (the right is not enough). */
+  admin?: boolean
   /** Where a press on the card leads. */
   path: string
   labelKey: string
@@ -73,7 +76,25 @@ export const QUEUES: readonly QueueSpec[] = [
     path: '/staff/users/support',
     labelKey: 'staff.home.queues.support',
   },
+  {
+    // Crypto invoices whose client asked for a manual confirmation and that
+    // are not credited yet; the card opens the list filtered to them.
+    key: 'manualTopups',
+    permission: 'financial_operations',
+    admin: true,
+    path: '/staff/finance/invoices?open_request=1',
+    labelKey: 'staff.home.queues.manualTopups',
+  },
 ]
+
+/** True when a member with these rights works the queue. */
+export function queueAllowed(
+  q: QueueSpec,
+  can: (key: StaffPermissionKey) => boolean,
+  admin: boolean,
+): boolean {
+  return (!q.permission || can(q.permission)) && (!q.admin || admin)
+}
 
 /** How many support rows one read looks at; more than this shows as "N+". */
 const SUPPORT_WINDOW = 100
@@ -99,6 +120,7 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
       withdrawals: blank(),
       agentApps: blank(),
       support: blank(),
+      manualTopups: blank(),
     } as Record<QueueKey, QueueState>,
     /** All users of the platform (a figure, not a queue). */
     users: { status: 'loading', count: 0 } as { status: QueueStatus; count: number },
@@ -124,11 +146,12 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
   actions: {
     /**
      * Read the queues the member may work, each on its own. `can` says whether
-     * the member holds a right; a queue without it is left out of the reads
-     * (and is not drawn by the screen).
+     * the member holds a right and `admin` whether they are an administrator; a
+     * queue they may not work is left out of the reads (and is not drawn by the
+     * screen).
      */
-    async loadAll(can: (key: StaffPermissionKey) => boolean): Promise<void> {
-      const allowed = (q: QueueSpec) => !q.permission || can(q.permission)
+    async loadAll(can: (key: StaffPermissionKey) => boolean, admin = false): Promise<void> {
+      const allowed = (q: QueueSpec) => queueAllowed(q, can, admin)
       const wants = (key: QueueKey) => QUEUES.some((q) => q.key === key && allowed(q))
 
       for (const q of QUEUES) {
@@ -161,11 +184,21 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
                 more: false,
               }
             }
+            if (wants('manualTopups')) {
+              this.queues.manualTopups = {
+                status: 'ready',
+                count: stats.manual_topup_requests_count,
+                more: false,
+              }
+            }
           } catch {
             this.users = { status: 'error', count: 0 }
             this.overview = { status: 'error', byRole: {}, avatarSessions: 0 }
             if (wants('kyc')) this.queues.kyc = { status: 'error', count: 0, more: false }
             if (wants('topups')) this.queues.topups = { status: 'error', count: 0, more: false }
+            if (wants('manualTopups')) {
+              this.queues.manualTopups = { status: 'error', count: 0, more: false }
+            }
           }
         })(),
       )

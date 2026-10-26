@@ -107,6 +107,7 @@ describe('the staff Home', () => {
       pending_kyc_count: 3,
       active_avatar_sessions: 0,
       frozen_payments_count: 0,
+      manual_topup_requests_count: 4,
     } as never)
     fetchWithdrawalsStaff.mockResolvedValue({ items: [], total: 0, page: 1, per_page: 1 } as never)
     fetchAgentApplications.mockResolvedValue({ items: [], total: 0, page: 1, per_page: 1 } as never)
@@ -132,9 +133,12 @@ describe('the staff Home', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffDashboardView)
     await flushPromises()
-    expect(wrapper.findAll('.staff-dash > .ds-stats .ds-stat')).toHaveLength(6)
+    expect(wrapper.findAll('.staff-dash > .ds-stats .ds-stat')).toHaveLength(7)
     const values = wrapper.findAll('.staff-dash > .ds-stats .ds-stat__value').map((v) => v.text())
-    expect(values).toEqual(['12', '3', '0', '0', '0', '0'])
+    expect(values).toEqual(['12', '3', '0', '0', '0', '0', '4'])
+    // The clients' manual top-up requests: the administrator's counter.
+    const labels = wrapper.findAll('.ds-stat__label').map((l) => l.text())
+    expect(labels).toContain('staff.home.queues.manualTopups')
     wrapper.unmount()
   })
 
