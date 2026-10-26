@@ -39,6 +39,7 @@ import { tOrRaw } from '@/utils/i18n'
 import { formatDate, formatNumber, formatPrice } from '@/utils/format'
 import type { StaffPurchaseItem } from '@/api/generated'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { useUrlUserFilter } from '@/composables/useUrlUserFilter'
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
@@ -63,7 +64,8 @@ let epoch = 0
 
 const statusFilter = ref('')
 const projectFilter = ref('')
-const buyerFilter = ref('')
+// The buyer is also read from the address (?buyer_id=), so the user card can open the list narrowed.
+const buyerFilter = useUrlUserFilter('buyer_id')
 
 const totalPages = computed(() => Math.ceil(total.value / perPage))
 

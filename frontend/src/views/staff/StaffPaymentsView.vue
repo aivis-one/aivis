@@ -15,7 +15,8 @@
 //      still be reversed (a chargeback); every status, type and label is
 //      spoken in the interface language, never as a raw token.
 //
-// GET  /api/v1/staff/payments (?status=, ?user_id=, ?page=, ?per_page=)
+// GET  /api/v1/staff/payments (?status=, ?user_id=, ?page=, ?per_page=); the person filter
+// is also read from the address, so the user card can open the list already narrowed.
 // POST /api/v1/staff/payments/{id}/reverse   (frozen or confirmed)
 // =============================================================================
 
@@ -27,6 +28,8 @@ import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
 import { useUrlPage } from '@/components/ui/useUrlPage'
+import UserPicker from '@/components/staff/UserPicker.vue'
+import { useUrlUserFilter } from '@/composables/useUrlUserFilter'
 import { useToast } from '@/composables/useToast'
 import { ApiResponseError } from '@/api/client'
 import { fetchPayments, reversePayment } from '@/api/admin'
@@ -46,6 +49,8 @@ function goToPage(n: number): void {
 }
 const perPage = 20
 const statusFilter = ref('')
+// One person's payments: the address names them (?user_id=), the user card links here.
+const userFilter = useUrlUserFilter('user_id')
 const loading = ref(true)
 const error = ref(false)
 
@@ -115,6 +120,7 @@ async function loadPayments(): Promise<void> {
   try {
     const resp = await fetchPayments({
       status: statusFilter.value || undefined,
+      user_id: userFilter.value || undefined,
       page: page.value,
       per_page: perPage,
     })
@@ -131,7 +137,12 @@ async function loadQueue(): Promise<void> {
   queueLoading.value = true
   queueError.value = false
   try {
-    const resp = await fetchPayments({ status: 'frozen', page: 1, per_page: QUEUE_WINDOW })
+    const resp = await fetchPayments({
+      status: 'frozen',
+      user_id: userFilter.value || undefined,
+      page: 1,
+      per_page: QUEUE_WINDOW,
+    })
     // The soonest to confirm first: that is the one to look at next.
     queue.value = [...resp.items].sort(
       (a, b) =>
@@ -180,6 +191,13 @@ function canReverse(item: StaffPaymentResponse): boolean {
 }
 
 watch([statusFilter], () => loadPayments())
+
+// A person chosen or cleared starts both lists again from the first page.
+watch(userFilter, () => {
+  page.value = 1
+  void loadQueue()
+  void loadPayments()
+})
 
 onMounted(() => {
   void loadQueue()
@@ -254,6 +272,13 @@ onBeforeUnmount(() => {
       <h2 class="ds-section-title staff-pay__title">
         {{ t('staff.payments.listTitle') }}
       </h2>
+
+      <!-- One person's payments -->
+      <UserPicker
+        v-model="userFilter"
+        class="staff-pay__user"
+        :label="t('staff.payments.filterUser')"
+      />
 
       <!-- Status filters (K13) -->
       <div class="ds-chip-row" role="group" :aria-label="t('staff.payments.status')">

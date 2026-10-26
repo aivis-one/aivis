@@ -319,7 +319,8 @@
         "noEnd": "Конец часа не задан",
         "confirming": "Подтверждается",
         "minutesLeft": "осталось {n} мин"
-      }
+      },
+      "filterUser": "Пользователь"
     },
     "withdrawals": {
       "stat": "Выводы",
@@ -349,7 +350,8 @@
         "completed": "Выплачен",
         "rejected": "Отклонён",
         "failed": "Не прошёл"
-      }
+      },
+      "filterUser": "Пользователь"
     },
     "searchPlaceholder": "Поиск по имени, email...",
     "more": {},

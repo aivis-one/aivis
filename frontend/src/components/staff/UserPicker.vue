@@ -27,7 +27,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search, X } from '@/components/ui/icons'
 import { CAvatar } from '@/components/ui'
-import { fetchUsers } from '@/api/admin'
+import { fetchUserDetail, fetchUsers } from '@/api/admin'
 import type { UserListItem } from '@/api/types'
 import { tOrRaw } from '@/utils/i18n'
 
@@ -183,11 +183,49 @@ function clearSelection(): void {
 // A caller resetting the form (v-model set back to '' externally) drops
 // the selected-user chip too -- otherwise the chip would keep showing a
 // stale user after e.g. the parent modal reopens for a fresh assign.
+//
+// The other way round: a caller that hands in an id the picker has not chosen
+// itself (a list opened on an address that names a person) gets the chip too,
+// read from the user's card. A failed read still draws a chip, with the short id.
+function profileText(profile: Record<string, unknown> | undefined, key: string): string | null {
+  const value = profile?.[key]
+  return typeof value === 'string' && value ? value : null
+}
+
+async function showChosen(id: string): Promise<void> {
+  try {
+    const detail = await fetchUserDetail(id)
+    if (props.modelValue !== id) return
+    selectedUser.value = {
+      id: detail.id,
+      role: detail.role,
+      is_active: detail.is_active,
+      kyc_status: detail.kyc_status,
+      email: detail.email ?? null,
+      first_name: profileText(detail.profile, 'first_name'),
+      last_name: profileText(detail.profile, 'last_name'),
+      created_at: detail.created_at,
+    }
+  } catch {
+    if (props.modelValue !== id) return
+    selectedUser.value = {
+      id,
+      role: '',
+      is_active: true,
+      kyc_status: '',
+      first_name: id.slice(0, 8),
+      created_at: '',
+    }
+  }
+}
+
 watch(
   () => props.modelValue,
   (v) => {
     if (!v) selectedUser.value = null
+    else if (selectedUser.value?.id !== v) void showChosen(v)
   },
+  { immediate: true },
 )
 </script>
 

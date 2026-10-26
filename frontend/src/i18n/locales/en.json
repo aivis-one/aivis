@@ -319,7 +319,8 @@
         "noEnd": "No end of the hour set",
         "confirming": "Confirming now",
         "minutesLeft": "{n} min left"
-      }
+      },
+      "filterUser": "User"
     },
     "withdrawals": {
       "stat": "Withdrawals",
@@ -349,7 +350,8 @@
         "completed": "Paid out",
         "rejected": "Rejected",
         "failed": "Failed"
-      }
+      },
+      "filterUser": "User"
     },
     "searchPlaceholder": "Search by name, email...",
     "more": {},

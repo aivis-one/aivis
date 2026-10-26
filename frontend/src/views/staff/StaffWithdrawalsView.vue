@@ -19,6 +19,8 @@ import CAlert from '@/components/ui/CAlert.vue'
 import CListSkeleton from '@/components/ui/CListSkeleton.vue'
 import CPager from '@/components/ui/CPager.vue'
 import { useUrlPage } from '@/components/ui/useUrlPage'
+import UserPicker from '@/components/staff/UserPicker.vue'
+import { useUrlUserFilter } from '@/composables/useUrlUserFilter'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
 import { payoutLines } from '@/utils/payoutDetails'
@@ -39,6 +41,8 @@ function goToPage(n: number): void {
 }
 const perPage = 20
 const statusFilter = ref('')
+// One person's withdrawals: the address names them (?user_id=), the user card links here.
+const userFilter = useUrlUserFilter('user_id')
 const loading = ref(true)
 const error = ref(false)
 
@@ -90,6 +94,7 @@ async function loadWithdrawals(): Promise<void> {
   try {
     const resp = await fetchWithdrawalsStaff({
       status: statusFilter.value || undefined,
+      user_id: userFilter.value || undefined,
       page: page.value,
       per_page: perPage,
     })
@@ -154,6 +159,12 @@ function setStatusFilter(s: string): void {
 
 watch([statusFilter], () => loadWithdrawals())
 
+// A person chosen or cleared starts again from the first page.
+watch(userFilter, () => {
+  page.value = 1
+  void loadWithdrawals()
+})
+
 onMounted(loadWithdrawals)
 </script>
 
@@ -163,6 +174,9 @@ onMounted(loadWithdrawals)
     <CAlert tone="info">
       {{ t('staff.withdrawals.hint') }}
     </CAlert>
+
+    <!-- One person's withdrawals -->
+    <UserPicker v-model="userFilter" :label="t('staff.withdrawals.filterUser')" />
 
     <!-- Status filters (K13) -->
     <div class="ds-chip-row" role="group" :aria-label="t('staff.withdrawals.title')">
