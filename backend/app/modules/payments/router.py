@@ -7,6 +7,9 @@
 #   GET  /api/v1/payments/invoices/current     -- the open invoice, if any
 #   GET  /api/v1/payments/invoices/{id}        -- one invoice, refreshed
 #   POST /api/v1/payments/invoices/{id}/txid   -- submit a transaction hash
+#   POST /api/v1/payments/invoices/{id}/manual-request
+#                                              -- ask an administrator to
+#                                                 confirm the invoice by hand
 #   GET  /api/v1/payments/history              -- payment history (investor)
 #   POST /api/v1/payments/webhook              -- inbound event from the
 #                                                 payments service (H8)
@@ -47,9 +50,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_reader, get_db_session
 from app.modules.auth.avatar_guard import forbid_avatar
 from app.modules.auth.dependencies import get_current_user, get_current_user_write
+from app.modules.payments.manual_requests import request_manual_confirmation
 from app.modules.payments.schemas import (
     CreateInvoiceRequest,
     InvoiceResponse,
+    ManualRequestResponse,
     PaymentHistoryResponse,
     PaymentResponse,
     SubmitTxidRequest,
@@ -157,6 +162,28 @@ async def submit_txid(
     invalid_format among others arrives with it.
     """
     return await submit_invoice_txid(invoice_id, user.id, body.txid, session)
+
+
+@router.post(
+    "/invoices/{invoice_id}/manual-request",
+    response_model=ManualRequestResponse,
+    # Same guard as the hash: asking for a deposit to be credited is the
+    # client's own act, and staff in avatar mode must not make it for them.
+    dependencies=[Depends(forbid_avatar("create_payment"))],
+)
+async def request_manual_confirmation_endpoint(
+    invoice_id: UUID,
+    user: User = Depends(get_current_user_write),
+    session: AsyncSession = Depends(get_db_session),
+) -> ManualRequestResponse:
+    """Ask an administrator to check the payment and confirm the invoice.
+
+    Idempotent: one request per invoice, and a repeat returns the existing
+    one (``already_requested``) without writing. Allowed while the invoice is
+    not credited, after its deadline too; 409 once it is credited, by hand or
+    by the payments service. Somebody else's invoice answers 404.
+    """
+    return await request_manual_confirmation(invoice_id, user.id, session)
 
 
 @router.get(

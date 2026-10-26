@@ -76,6 +76,7 @@ from app.modules.auth.service import delete_all_sessions
 from app.modules.kyc.models import KYCApplication
 from app.modules.kyc.service import decide_by_application, decide_by_user
 from app.modules.payments.constants import PaymentStatus
+from app.modules.payments.manual_requests import count_open_requests
 from app.modules.payments.models import Payment
 from app.modules.staff.admin_schemas import (
     KYC_HISTORY_LIMIT,
@@ -647,12 +648,17 @@ async def dashboard_stats(
     )
     frozen_payments = (await session.execute(frozen_payments_stmt)).scalar_one()
 
+    # Crypto invoices whose client asked for a manual confirmation and that
+    # are not credited yet (computed from the audit log, no column).
+    manual_requests = await count_open_requests(session)
+
     return DashboardStatsResponse(
         total_users=total,
         users_by_role=users_by_role,
         pending_kyc_count=pending_kyc,
         active_avatar_sessions=active_avatars,
         frozen_payments_count=frozen_payments,
+        manual_topup_requests_count=manual_requests,
     )
 
 

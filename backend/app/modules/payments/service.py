@@ -40,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import payments_client
 from app.core.exceptions import NotFoundError
+from app.modules.payments.manual_requests import manual_state
 from app.modules.payments.models import CryptoInvoice, Payment
 from app.modules.payments.schemas import InvoiceResponse, TxidResultResponse
 
@@ -232,6 +233,24 @@ def _to_response(
     )
 
 
+async def _render(
+    invoice: CryptoInvoice,
+    remote: dict[str, Any],
+    session: AsyncSession,
+) -> InvoiceResponse:
+    """The client's render of one invoice, with its manual-request state.
+
+    Whether the client asked for a manual confirmation, and whether an
+    administrator credited the invoice by hand, are read from this product's
+    own records (manual_requests.manual_state) -- the service knows neither.
+    """
+    response = _to_response(invoice, remote=remote)
+    requested_at, by_hand = await manual_state(session, invoice)
+    response.manual_requested_at = requested_at
+    response.manually_credited = by_hand
+    return response
+
+
 def _cache_status(invoice: CryptoInvoice, remote: dict[str, Any]) -> None:
     """Copy the service's status onto the row.
 
@@ -320,7 +339,7 @@ async def current_invoice(
     if invoice.status in _TERMINAL_STATUSES:
         return None
 
-    return _to_response(invoice, remote=remote)
+    return await _render(invoice, remote, session)
 
 
 async def open_invoice(
@@ -389,7 +408,7 @@ async def open_invoice(
         network=invoice.network,
     )
 
-    return _to_response(invoice, remote=remote)
+    return await _render(invoice, remote, session)
 
 
 async def read_invoice(
@@ -407,7 +426,7 @@ async def read_invoice(
     invoice = await _load_owned(invoice_id, user_id, session)
     remote = await payments_client.get_invoice(invoice.service_invoice_id)
     _cache_status(invoice, remote)
-    return _to_response(invoice, remote=remote)
+    return await _render(invoice, remote, session)
 
 
 async def submit_invoice_txid(

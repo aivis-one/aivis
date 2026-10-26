@@ -54,6 +54,12 @@ from app.modules.payments.constants import (
     PaymentType,
     WebhookOutcome,
 )
+from app.modules.payments.manual_requests import (
+    confirm_reason_map,
+    notes_map,
+    open_request_condition,
+    requested_at_map,
+)
 from app.modules.payments.models import CryptoInvoice, CryptoWebhookEvent, Payment
 from app.modules.payments.schemas import StaffCryptoInvoiceItem
 from app.modules.transactions.constants import ReferenceType, TransactionType
@@ -76,13 +82,20 @@ def build_invoice_filters(
     *,
     user_id: UUID | None = None,
     status: str | None = None,
+    open_request: bool = False,
 ) -> list[ColumnElement[bool]]:
-    """The WHERE conditions of the list; an empty filter adds none."""
+    """The WHERE conditions of the list; an empty filter adds none.
+
+    ``open_request`` keeps the invoices whose client asked for a manual
+    confirmation and that are not credited yet (manual_requests.py).
+    """
     conditions: list[ColumnElement[bool]] = []
     if user_id is not None:
         conditions.append(CryptoInvoice.user_id == user_id)
     if status is not None:
         conditions.append(CryptoInvoice.status == status)
+    if open_request:
+        conditions.append(open_request_condition())
     return conditions
 
 
@@ -158,11 +171,19 @@ async def list_crypto_invoices(
     *,
     user_id: UUID | None = None,
     status: str | None = None,
+    open_request: bool = False,
     page: int = 1,
     per_page: int = 20,
 ) -> tuple[list[StaffCryptoInvoiceItem], int]:
-    """One page of crypto invoices and the total matching the filters."""
-    conditions = build_invoice_filters(user_id=user_id, status=status)
+    """One page of crypto invoices and the total matching the filters.
+
+    Each item carries the client's manual-confirmation request, the
+    administrators' notes and, for an invoice confirmed by hand, the reason
+    its confirmation stored.
+    """
+    conditions = build_invoice_filters(
+        user_id=user_id, status=status, open_request=open_request
+    )
     total = (
         await session.execute(
             select(func.count()).select_from(CryptoInvoice).where(*conditions)
@@ -176,9 +197,21 @@ async def list_crypto_invoices(
     credited = await credited_map(
         session, [invoice.service_invoice_id for invoice, _ in rows]
     )
+    invoice_ids = [invoice.id for invoice, _ in rows]
+    requested = await requested_at_map(session, invoice_ids)
+    notes = await notes_map(session, invoice_ids)
+    reasons = await confirm_reason_map(
+        session,
+        [
+            payment_id
+            for who, payment_id in credited.values()
+            if who == CREDITED_BY_MANUAL and payment_id is not None
+        ],
+    )
     items = []
     for invoice, user in rows:
         who, payment_id = credited.get(invoice.service_invoice_id, (None, None))
+        requested_at = requested.get(invoice.id)
         items.append(
             StaffCryptoInvoiceItem(
                 id=invoice.id,
@@ -193,6 +226,14 @@ async def list_crypto_invoices(
                 credited=who is not None,
                 credited_by=who,
                 payment_id=payment_id,
+                manual_requested_at=requested_at,
+                manual_request_open=requested_at is not None and who is None,
+                confirm_reason=(
+                    reasons.get(payment_id)
+                    if who == CREDITED_BY_MANUAL and payment_id is not None
+                    else None
+                ),
+                notes=notes.get(invoice.id, []),
             )
         )
     return items, total

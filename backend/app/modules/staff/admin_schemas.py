@@ -199,6 +199,8 @@ class DashboardStatsResponse(BaseModel):
     pending_kyc_count: int
     active_avatar_sessions: int
     frozen_payments_count: int
+    # Crypto invoices with an open manual-confirmation request.
+    manual_topup_requests_count: int
 
 
 class KYCDecisionRequest(BaseModel):

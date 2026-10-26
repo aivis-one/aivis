@@ -12,6 +12,7 @@
 #   TxidResultResponse        -- TXID submission outcome
 #   PaymentResponse           -- individual payment in history (investor)
 #   PaymentHistoryResponse    -- GET /payments/history (paginated)
+#   ManualRequestResponse     -- POST /payments/invoices/{id}/manual-request
 #
 # Sprint 5.3:
 #   ReversePaymentRequest     -- POST /staff/payments/{id}/reverse
@@ -158,6 +159,25 @@ class InvoiceResponse(BaseModel):
     active_txid: str | None = None
     credited_amount_cents: int | None = None
     underpaid: bool | None = None
+    # The client's request that an administrator confirms this invoice by
+    # hand: when it was made, or None. Read from the audit log on every
+    # render, so a reload shows the same state; no column holds it.
+    manual_requested_at: datetime | None = None
+    # True once an administrator confirmed the invoice by hand. The cached
+    # status above stays the service's word and never says this.
+    manually_credited: bool = False
+
+
+class ManualRequestResponse(BaseModel):
+    """The client's request for a manual confirmation of one invoice.
+
+    ``already_requested`` is true when the request existed before this call;
+    the call then wrote nothing and ``requested_at`` is the first request's.
+    """
+
+    invoice_id: UUID
+    requested_at: datetime
+    already_requested: bool
 
 
 class TxidResultResponse(BaseModel):
@@ -264,6 +284,30 @@ class StaffPaymentListResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class StaffInvoiceNote(BaseModel):
+    """One administrator's note on a crypto invoice."""
+
+    id: UUID
+    text: str
+    author_id: UUID | None
+    author_name: str | None
+    created_at: datetime
+
+
+class AddInvoiceNoteRequest(BaseModel):
+    """Body of an administrator's note on a crypto invoice."""
+
+    text: str = Field(min_length=3, max_length=500)
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _strip_text(cls, value: str) -> str:
+        value = str(value).strip()
+        if len(value) < 3:
+            raise ValueError("text must be at least 3 characters")
+        return value
+
+
 class StaffCryptoInvoiceItem(BaseModel):
     """One crypto invoice for the staff Invoices view."""
 
@@ -281,6 +325,14 @@ class StaffCryptoInvoiceItem(BaseModel):
     # "manual" | "service" | None (not credited)
     credited_by: str | None = None
     payment_id: UUID | None = None
+    # The client's request for a manual confirmation: when, or None. It is
+    # open while the invoice is not credited.
+    manual_requested_at: datetime | None = None
+    manual_request_open: bool = False
+    # The reason the administrator gave when confirming by hand.
+    confirm_reason: str | None = None
+    # The administrators' notes, oldest first. Staff only.
+    notes: list[StaffInvoiceNote] = []
 
 
 class StaffCryptoInvoiceListResponse(BaseModel):
