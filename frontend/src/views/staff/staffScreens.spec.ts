@@ -8,9 +8,10 @@
 // read must read as a failure, never as "nothing there".
 // =============================================================================
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { config, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: {}, query: {} }),
@@ -33,9 +34,15 @@ vi.mock('@/api/admin', () => ({
   fetchStaffPurchases: vi.fn(),
 }))
 vi.mock('@/api/products', () => ({ listProducts: vi.fn() }))
+vi.mock('@/api/companies', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/companies')>()),
+  getCompany: vi.fn(),
+}))
 
 import * as admin from '@/api/admin'
+import * as companies from '@/api/companies'
 import * as products from '@/api/products'
+import { resetSharesPerOptionCache } from '@/composables/useSharesPerOption'
 import StaffAgentAppsView from './StaffAgentAppsView.vue'
 import StaffGiftsView from './StaffGiftsView.vue'
 import StaffPaymentsView from './StaffPaymentsView.vue'
@@ -50,6 +57,7 @@ const grantGift = vi.mocked(admin.grantGift)
 const cancelGift = vi.mocked(admin.cancelGift)
 const fetchStaffPurchases = vi.mocked(admin.fetchStaffPurchases)
 const listProducts = vi.mocked(products.listProducts)
+const getCompany = vi.mocked(companies.getCompany)
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -255,6 +263,7 @@ describe('the money check', () => {
 })
 
 describe('gifts', () => {
+  // Project One has one offer and 25 parts in a lot; Project Two has two offers and 10.
   const PRODUCT = {
     id: 'prod-1',
     company_id: 'c1',
@@ -265,6 +274,47 @@ describe('gifts', () => {
     price_per_pack_cents: 5000,
     available_packages: 10,
     company_name: 'Project One',
+  }
+  const TWO_A = {
+    ...PRODUCT,
+    id: 'prod-2a',
+    company_id: 'c2',
+    name: 'Small',
+    company_name: 'Project Two',
+  }
+  const TWO_B = {
+    ...PRODUCT,
+    id: 'prod-2b',
+    company_id: 'c2',
+    name: 'Large',
+    company_name: 'Project Two',
+  }
+
+  // The texts these tests read with their numbers; the rest resolve to their keys.
+  function texts() {
+    return createI18n({
+      legacy: false,
+      locale: 'en',
+      missingWarn: false,
+      fallbackWarn: false,
+      messages: {
+        en: {
+          common: { close: 'Close' },
+          staff: {
+            gifts: {
+              partsCount: '{n} parts',
+              lots: 'Lots: {n}',
+              partsNotWhole: 'lots of {per}: {below} or {above}',
+              partsTooFew: 'lots of {per}: at least {above}',
+            },
+          },
+        },
+      },
+    })
+  }
+
+  function mountGifts(options: Record<string, unknown> = {}) {
+    return mount(StaffGiftsView, options)
   }
 
   function giftRow(id: string, status: string, kind = 'gift', created = '2026-10-23T10:00:00Z') {
@@ -293,8 +343,29 @@ describe('gifts', () => {
     })
   }
 
+  function productsAre(items: unknown[]) {
+    listProducts.mockResolvedValue({ items, total: items.length, page: 1, per_page: 100 } as never)
+  }
+
+  // The texts above stand in for the global catalogue while these tests run.
+  let globalPlugins: typeof config.global.plugins = []
+  beforeEach(() => {
+    globalPlugins = config.global.plugins
+    config.global.plugins = [texts()]
+  })
+  afterEach(() => {
+    config.global.plugins = globalPlugins
+  })
+
+  beforeEach(() => {
+    resetSharesPerOptionCache()
+    getCompany.mockImplementation(
+      async (id: string) => ({ shares_per_option: id === 'c2' ? 10 : 25 }) as never,
+    )
+  })
+
   it('lists the gifts from the purchases: waiting ones from the server filter, accepted ones picked out of the newest', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    productsAre([PRODUCT])
     purchasesAre(
       [giftRow('w1', 'pending_acceptance')],
       [
@@ -303,7 +374,7 @@ describe('gifts', () => {
         giftRow('p1', 'active', 'paid'),
       ],
     )
-    const wrapper = mount(StaffGiftsView)
+    const wrapper = mountGifts()
     await flushPromises()
     expect(fetchStaffPurchases).toHaveBeenCalledWith({
       status: 'pending_acceptance',
@@ -316,23 +387,35 @@ describe('gifts', () => {
     wrapper.unmount()
   })
 
-  it('shows the same list on a second visit (a reload does not lose it)', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+  it('shows each gift of the list in parts, never in lots', async () => {
+    productsAre([PRODUCT])
     purchasesAre([giftRow('w1', 'pending_acceptance')], [giftRow('w1', 'pending_acceptance')])
-    const first = mount(StaffGiftsView)
+    const wrapper = mountGifts()
+    await flushPromises()
+    const title = wrapper.find('.gifts__list .ds-row__title').text()
+    // 250 lots of 25 parts.
+    expect(title).toContain('6,250 parts')
+    expect(title).not.toMatch(/— 250 parts/)
+    wrapper.unmount()
+  })
+
+  it('shows the same list on a second visit (a reload does not lose it)', async () => {
+    productsAre([PRODUCT])
+    purchasesAre([giftRow('w1', 'pending_acceptance')], [giftRow('w1', 'pending_acceptance')])
+    const first = mountGifts()
     await flushPromises()
     first.unmount()
-    const second = mount(StaffGiftsView)
+    const second = mountGifts()
     await flushPromises()
     expect(second.findAll('.gifts__list .ds-row')).toHaveLength(1)
     second.unmount()
   })
 
   it('cancels a waiting gift and reads the list again', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    productsAre([PRODUCT])
     purchasesAre([giftRow('w1', 'pending_acceptance')], [giftRow('w1', 'pending_acceptance')])
     cancelGift.mockResolvedValue({} as never)
-    const wrapper = mount(StaffGiftsView)
+    const wrapper = mountGifts()
     await flushPromises()
     const before = fetchStaffPurchases.mock.calls.length
     await wrapper.find('.gifts__list .ds-button').trigger('click')
@@ -343,24 +426,99 @@ describe('gifts', () => {
   })
 
   it('says a failed read of the list is a failure, not an empty list', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    productsAre([PRODUCT])
     fetchStaffPurchases.mockRejectedValue(new Error('500'))
-    const wrapper = mount(StaffGiftsView)
+    const wrapper = mountGifts()
     await flushPromises()
     expect(wrapper.find('.gifts__list').text()).toContain('common.error')
     expect(wrapper.find('.gifts__list').text()).not.toContain('staff.gifts.listEmpty')
     wrapper.unmount()
   })
 
-  it('sends the recipient, the product and the number of parts, and then lists the gift', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+  it('chooses the only offer of a one-offer project by itself and hides the offer picker', async () => {
+    productsAre([PRODUCT, TWO_A, TWO_B])
+    purchasesAre([], [])
+    const wrapper = mountGifts()
+    await flushPromises()
+    // One project picker, one entry per project.
+    expect(wrapper.findAll('select')).toHaveLength(1)
+    expect(wrapper.findAll('.gifts__project option:not([disabled])').map((o) => o.text())).toEqual([
+      'Project One',
+      'Project Two',
+    ])
+    await wrapper.find('.gifts__project select').setValue('c1')
+    await flushPromises()
+    expect(wrapper.find('.gifts__offer').exists()).toBe(false)
+    // The read-only summary is there: the only offer is chosen.
+    expect(wrapper.find('.gifts__sum').exists()).toBe(true)
+    // 5 cents a lot over 25 parts.
+    expect(wrapper.find('.gifts__part-price').text()).toBe('$0.002')
+    wrapper.unmount()
+  })
+
+  it('asks for the offer when the project has several', async () => {
+    productsAre([PRODUCT, TWO_A, TWO_B])
+    purchasesAre([], [])
+    const wrapper = mountGifts()
+    await flushPromises()
+    await wrapper.find('.gifts__project select').setValue('c2')
+    await flushPromises()
+    const offer = wrapper.find('.gifts__offer')
+    expect(offer.exists()).toBe(true)
+    expect(offer.findAll('option:not([disabled])').map((o) => o.text())).toEqual(['Small', 'Large'])
+    // Nothing is summed until the offer is chosen.
+    expect(wrapper.find('.gifts__sum').exists()).toBe(false)
+    await offer.find('select').setValue('prod-2b')
+    await flushPromises()
+    expect(wrapper.find('.gifts__sum').exists()).toBe(true)
+    // 5 cents a lot over 10 parts.
+    expect(wrapper.find('.gifts__part-price').text()).toBe('$0.005')
+    wrapper.unmount()
+  })
+
+  it('turns the parts into lots and shows the parts, the lots and the total', async () => {
+    productsAre([PRODUCT])
+    purchasesAre([], [])
+    const wrapper = mountGifts()
+    await flushPromises()
+    await wrapper.find('.gifts__project select').setValue('c1')
+    await flushPromises()
+    await wrapper.find('input[inputmode="numeric"]').setValue('250')
+    const sum = wrapper.find('.gifts__sum')
+    expect(sum.text()).toContain('250')
+    expect(sum.find('.gifts__lots').text()).toBe('Lots: 10')
+    // 10 lots at 5 cents.
+    expect(wrapper.find('.gifts__total').text()).toBe('$0.50')
+    expect(wrapper.find('.ds-field__error').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('refuses parts that are not whole lots and names the two nearest valid counts', async () => {
+    productsAre([PRODUCT])
+    purchasesAre([], [])
+    const wrapper = mountGifts()
+    await flushPromises()
+    await wrapper.find('.gifts__project select').setValue('c1')
+    await flushPromises()
+    const input = wrapper.find('input[inputmode="numeric"]')
+    await input.setValue('260')
+    expect(wrapper.text()).toContain('lots of 25: 250 or 275')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+    await input.setValue('10')
+    expect(wrapper.text()).toContain('lots of 25: at least 25')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('sends the recipient, the product and the parts as whole lots, and then lists the gift', async () => {
+    productsAre([PRODUCT])
     purchasesAre([], [])
     grantGift.mockImplementation(async () => {
       // From now on the purchases hold the gift.
       purchasesAre([giftRow('g1', 'pending_acceptance')], [giftRow('g1', 'pending_acceptance')])
       return { id: 'g1' } as never
     })
-    const wrapper = mount(StaffGiftsView, { attachTo: document.body })
+    const wrapper = mountGifts({ attachTo: document.body })
     await flushPromises()
 
     // The recipient is chosen in the picker; stand in for its selection.
@@ -373,7 +531,8 @@ describe('gifts', () => {
       last_name: 'Lovelace',
       email: 'ada@example.com',
     })
-    await wrapper.find('select').setValue('prod-1')
+    await wrapper.find('.gifts__project select').setValue('c1')
+    await flushPromises()
     await wrapper.find('input[inputmode="numeric"]').setValue('250')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -385,7 +544,8 @@ describe('gifts', () => {
     confirm.click()
     await flushPromises()
 
-    expect(grantGift).toHaveBeenCalledWith({ user_id: 'u1', product_id: 'prod-1', units: 250 })
+    // 250 parts of 25 a lot: the server is sent 10 lots.
+    expect(grantGift).toHaveBeenCalledWith({ user_id: 'u1', product_id: 'prod-1', units: 10 })
     // The list is read again from the purchases after the grant.
     expect(wrapper.find('.gifts__list').text()).toContain('Ada Lovelace')
     expect(wrapper.find('.gifts__list .ds-row__trail .ds-button').exists()).toBe(true)
@@ -393,9 +553,9 @@ describe('gifts', () => {
   })
 
   it('does not enable the grant button until the form is whole', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    productsAre([PRODUCT])
     purchasesAre([], [])
-    const wrapper = mount(StaffGiftsView)
+    const wrapper = mountGifts()
     await flushPromises()
     const submit = wrapper.find('button[type="submit"]')
     expect(submit.attributes('disabled')).toBeDefined()

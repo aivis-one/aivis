@@ -153,3 +153,50 @@ export function formatPartsCount(
   if (sharesPerOption === null) return '—'
   return formatNumber(partsOf(lots, sharesPerOption), locale)
 }
+
+/**
+ * Whole parts entered by staff, turned into the lots the server counts. A gift is
+ * given in whole lots only: `lots` is set when the parts make whole lots, else
+ * `below` and `above` are the two nearest counts of parts that do (`below` is 0
+ * when fewer parts than one lot were entered -- there is no valid count under it).
+ */
+export function lotsForParts(
+  parts: number,
+  sharesPerOption: number,
+): { lots: number } | { below: number; above: number } {
+  const whole = Math.floor(parts / sharesPerOption)
+  if (whole * sharesPerOption === parts && whole >= 1) return { lots: whole }
+  return { below: whole * sharesPerOption, above: (whole + 1) * sharesPerOption }
+}
+
+/**
+ * The exact price of one part: the lot's cents over its parts, written to as many
+ * decimals as it needs (two at least, eight at most) -- 10 cents over 25 parts is
+ * 0.004 USD, 5 cents over 8 parts is 0.00625 USD. A price that does not end within
+ * eight decimals is rounded to eight and marked with "≈".
+ */
+export function formatPartPriceExact(
+  lotPriceCents: number,
+  sharesPerOption: number,
+  locale: string,
+): string {
+  const cents = BigInt(Math.round(lotPriceCents))
+  const per = BigInt(Math.max(1, Math.round(sharesPerOption)))
+  let digits = 2
+  let exact = false
+  for (; digits <= 8; digits++) {
+    // cents x 10^(digits-2) is the price in units of 10^-digits USD times `per`.
+    if ((cents * 10n ** BigInt(digits - 2)) % per === 0n) {
+      exact = true
+      break
+    }
+  }
+  if (!exact) digits = 8
+  const text = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(lotPriceCents / sharesPerOption / 100)
+  return exact ? text : `≈ ${text}`
+}

@@ -14,10 +14,12 @@ import {
   firstLine,
   formatAveragePartPrice,
   formatPartPrice,
+  formatPartPriceExact,
   formatPartsCount,
   formatUsd,
   formatUsdCents,
   instalmentLines,
+  lotsForParts,
   partsOf,
   valuationCents,
 } from '@/utils/parts'
@@ -132,5 +134,25 @@ describe('the portfolio and history figures', () => {
     // 250,000 parts at 0.004 USD is 1,000.00 USD, the lots' own money.
     expect(formatUsdCents(lots * lotCents, 'en')).toBe('$1,000.00')
     expect(parts * 0.004).toBeCloseTo((lots * lotCents) / 100, 10)
+  })
+})
+
+describe('a gift entered in parts', () => {
+  it('turns whole lots of parts into lots', () => {
+    expect(lotsForParts(250, 25)).toEqual({ lots: 10 })
+    expect(lotsForParts(25, 25)).toEqual({ lots: 1 })
+  })
+
+  it('refuses parts that are not whole lots and names the two nearest valid counts', () => {
+    expect(lotsForParts(260, 25)).toEqual({ below: 250, above: 275 })
+    // Fewer parts than one lot: nothing valid below.
+    expect(lotsForParts(10, 25)).toEqual({ below: 0, above: 25 })
+  })
+
+  it('writes the price of one part to the decimals it needs', () => {
+    expect(formatPartPriceExact(10, 25, 'en')).toBe('$0.004')
+    expect(formatPartPriceExact(5, 8, 'en')).toBe('$0.00625')
+    expect(formatPartPriceExact(500, 1, 'en')).toBe('$5.00')
+    expect(formatPartPriceExact(10, 3, 'en')).toBe('≈ $0.03333333')
   })
 })

@@ -5,8 +5,13 @@
 //
 // The staff action that gives a gift of the company: parts of a project handed
 // to a person from the list of the deed of gift, after that person has passed
-// the paid identity check. The staff member picks the person, picks the
-// project's product and enters the number of parts; the cabinet stores the
+// the paid identity check. The staff member picks the person and the project
+// (and the project's offer, when it has more than one) and enters the number
+// of PARTS of the project. The server counts lots (a lot holds the project's
+// `shares_per_option` parts, read from the project), so the screen turns the
+// parts into lots, takes only a whole number of lots and names the two nearest
+// valid counts of parts otherwise; it shows the price of one part and the total
+// of the gift. The list below shows each gift in parts too. The cabinet stores the
 // gift as waiting for acceptance and forms the gift certificate. NOTHING IS
 // CREDITED until the person presses "accept the gift" in their own cabinet --
 // until then the gift can be cancelled here.
@@ -26,7 +31,7 @@
 // carries its cancel; every gift of every date is in Finance > Purchases.
 // =============================================================================
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Gift } from '@/components/ui/icons'
 import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CSelect } from '@/components/ui'
@@ -37,10 +42,12 @@ import { cancelGift, fetchStaffPurchases, grantGift } from '@/api/admin'
 import { listProducts } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
-import { formatDate, formatNumber, formatPrice } from '@/utils/format'
+import { formatDate, formatNumber } from '@/utils/format'
+import { formatPartPriceExact, formatPartsCount, formatUsdCents, lotsForParts } from '@/utils/parts'
 import type { StaffPurchaseItem } from '@/api/generated'
 import type { PublicProductResponse, UserListItem } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
+import { useSharesPerOption } from '@/composables/useSharesPerOption'
 
 const { t, locale } = useI18n()
 const { showToast } = useToast()
@@ -63,29 +70,112 @@ async function loadProducts(): Promise<void> {
   }
 }
 
-const productOptions = computed(() =>
-  products.value.map((p) => ({ value: p.id, label: `${p.company_name} — ${p.name}` })),
-)
+// The projects, from the products on offer: one entry per project.
+const projectOptions = computed(() => {
+  const byId = new Map<string, string>()
+  for (const p of products.value) {
+    if (!byId.has(p.company_id)) byId.set(p.company_id, p.company_name)
+  }
+  return [...byId.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+})
 
 // -- The form ---------------------------------------------------------------
 
 const recipientId = ref('')
 const recipient = ref<UserListItem | null>(null)
+const projectId = ref('')
 const productId = ref('')
-const unitsText = ref('')
+const partsText = ref('')
 
-const selectedProduct = computed(() => products.value.find((p) => p.id === productId.value) ?? null)
+const projectProducts = computed(() =>
+  products.value.filter((p) => p.company_id === projectId.value),
+)
 
-// A whole number of parts, at least one.
-const units = computed<number | null>(() => {
-  const text = unitsText.value.trim()
-  if (!/^\d+$/.test(text)) return null
-  const n = Number(text)
-  return Number.isSafeInteger(n) && n >= 1 && n <= 1_000_000_000 ? n : null
+// The project's offers: a picker only when the project has more than one.
+const offerOptions = computed(() =>
+  projectProducts.value.map((p) => ({ value: p.id, label: p.name })),
+)
+const showOfferPicker = computed(() => projectProducts.value.length > 1)
+
+const selectedProject = computed(
+  () => projectOptions.value.find((o) => o.value === projectId.value) ?? null,
+)
+const selectedProduct = computed(
+  () => projectProducts.value.find((p) => p.id === productId.value) ?? null,
+)
+
+// The project's parts per lot is read from the project (the product does not carry it).
+const { ensure: ensureParts, partsPerLot } = useSharesPerOption()
+const perLotLoading = ref(false)
+
+// A project with one offer has it chosen by itself; a project with several waits for the pick.
+watch(projectId, async (id) => {
+  const list = products.value.filter((p) => p.company_id === id)
+  productId.value = list.length === 1 ? list[0].id : ''
+  if (!id) return
+  perLotLoading.value = true
+  try {
+    await ensureParts([id])
+  } finally {
+    perLotLoading.value = false
+  }
 })
 
+// The project's parts per lot; null while unknown.
+const perLot = computed(() => partsPerLot(projectId.value))
+
+// A whole number of parts, at least one.
+const parts = computed<number | null>(() => {
+  const text = partsText.value.trim()
+  if (!/^\d+$/.test(text)) return null
+  const n = Number(text)
+  return Number.isSafeInteger(n) && n >= 1 ? n : null
+})
+
+// The parts made into the lots the server counts, or the two nearest valid counts of parts.
+const conversion = computed(() => {
+  if (parts.value === null || perLot.value === null) return null
+  return lotsForParts(parts.value, perLot.value)
+})
+
+const MAX_LOTS = 1_000_000_000
+const units = computed<number | null>(() => {
+  const c = conversion.value
+  return c && 'lots' in c && c.lots <= MAX_LOTS ? c.lots : null
+})
+
+const partsError = computed<string | undefined>(() => {
+  if (partsText.value.trim() === '') return undefined
+  if (parts.value === null) return t('staff.gifts.partsError')
+  const c = conversion.value
+  if (!c || !perLot.value) return undefined
+  if ('lots' in c) return c.lots > MAX_LOTS ? t('staff.gifts.partsError') : undefined
+  const per = formatNumber(perLot.value, locale.value)
+  const above = formatNumber(c.above, locale.value)
+  if (c.below === 0) return t('staff.gifts.partsTooFew', { per, above })
+  return t('staff.gifts.partsNotWhole', {
+    per,
+    below: formatNumber(c.below, locale.value),
+    above,
+  })
+})
+
+const partPrice = computed(() =>
+  selectedProduct.value && perLot.value
+    ? formatPartPriceExact(selectedProduct.value.price_per_unit_cents, perLot.value, locale.value)
+    : '',
+)
+
+const totalCents = computed(() =>
+  selectedProduct.value && units.value !== null
+    ? units.value * selectedProduct.value.price_per_unit_cents
+    : null,
+)
+
 const canSubmit = computed(
-  () => recipientId.value !== '' && productId.value !== '' && units.value !== null,
+  () => recipientId.value !== '' && selectedProduct.value !== null && units.value !== null,
 )
 
 function onRecipient(user: UserListItem | null): void {
@@ -122,7 +212,10 @@ async function loadGifts(): Promise<void> {
     for (const row of [...waiting.items, ...recent.items]) {
       if (row.kind === 'gift') byId.set(row.id, row)
     }
-    gifts.value = [...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const list = [...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    // A gift counts lots; the list shows its parts, with the project's parts per lot.
+    await ensureParts(list.map((g) => g.company_id))
+    gifts.value = list
   } catch {
     giftsError.value = true
   } finally {
@@ -143,14 +236,15 @@ async function handleGrant(): Promise<void> {
   if (!canSubmit.value || units.value === null || !selectedProduct.value) return
   granting.value = true
   try {
+    // The server counts lots: the parts entered, made into whole lots.
     await grantGift({
       user_id: recipientId.value,
-      product_id: productId.value,
+      product_id: selectedProduct.value.id,
       units: units.value,
     })
     showToast(t('staff.gifts.granted'), 'success')
     showConfirm.value = false
-    unitsText.value = ''
+    partsText.value = ''
     await loadGifts()
   } catch (err) {
     showToast(serverReason(err, 'staff.gifts.grantError'), 'error')
@@ -225,27 +319,58 @@ onMounted(() => {
       />
 
       <CSelect
-        v-model="productId"
-        :label="t('staff.gifts.product')"
-        :placeholder="t('staff.gifts.productPlaceholder')"
-        :options="productOptions"
+        v-model="projectId"
+        class="gifts__project"
+        :label="t('staff.gifts.project')"
+        :placeholder="t('staff.gifts.projectPlaceholder')"
+        :options="projectOptions"
       />
-      <p v-if="selectedProduct" class="ds-field__hint">
-        {{
-          t('staff.gifts.priceNote', {
-            price: formatPrice(selectedProduct.price_per_unit_cents, 'USD'),
-          })
-        }}
+
+      <!-- The project's offer: asked only when the project has more than one -->
+      <CSelect
+        v-if="showOfferPicker"
+        v-model="productId"
+        class="gifts__offer"
+        :label="t('staff.gifts.offer')"
+        :placeholder="t('staff.gifts.offerPlaceholder')"
+        :options="offerOptions"
+      />
+
+      <p v-if="projectId && !perLotLoading && perLot === null" class="ds-field__hint" role="alert">
+        {{ t('staff.gifts.perLotError') }}
       </p>
 
       <CInput
-        v-model="unitsText"
+        v-model="partsText"
         inputmode="numeric"
         autocomplete="off"
-        :label="t('staff.gifts.units')"
-        :placeholder="t('staff.gifts.unitsPlaceholder')"
-        :error="unitsText.trim() !== '' && units === null ? t('staff.gifts.unitsError') : undefined"
+        :label="t('staff.gifts.parts')"
+        :placeholder="t('staff.gifts.partsPlaceholder')"
+        :error="partsError"
       />
+
+      <!-- What the gift is, read-only: parts, lots, the price of one part, the total -->
+      <dl v-if="selectedProduct && perLot !== null" class="ds-kv gifts__sum">
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.parts') }}</dt>
+          <dd>
+            {{ parts !== null ? formatNumber(parts, locale) : '—' }}
+            <span v-if="units !== null" class="ds-note ds-note--xs gifts__lots">
+              {{ t('staff.gifts.lots', { n: formatNumber(units, locale) }) }}
+            </span>
+          </dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.partPrice') }}</dt>
+          <dd class="gifts__part-price">{{ partPrice }}</dd>
+        </div>
+        <div class="ds-kv__row ds-kv__row--total">
+          <dt>{{ t('staff.gifts.total') }}</dt>
+          <dd class="gifts__total">
+            {{ totalCents !== null ? formatUsdCents(totalCents, locale) : '—' }}
+          </dd>
+        </div>
+      </dl>
 
       <div>
         <CButton type="submit" variant="primary" size="sm" inline :disabled="!canSubmit">
@@ -275,7 +400,11 @@ onMounted(() => {
           <span class="ds-row__body">
             <span class="ds-row__title">
               {{ giftRecipient(row) }} &mdash;
-              {{ t('staff.gifts.partsCount', { n: formatNumber(row.units, locale) }) }}
+              {{
+                t('staff.gifts.partsCount', {
+                  n: formatPartsCount(row.units, partsPerLot(row.company_id), locale),
+                })
+              }}
             </span>
             <span class="ds-row__meta">
               {{ formatDate(row.created_at, locale) }} &bull; {{ row.company_name }} &mdash;
@@ -304,18 +433,30 @@ onMounted(() => {
       <p class="ds-dialog__text">
         {{ t('staff.gifts.confirmBody') }}
       </p>
-      <dl v-if="selectedProduct && units !== null" class="ds-kv">
+      <dl v-if="selectedProduct && units !== null && parts !== null" class="ds-kv">
         <div class="ds-kv__row">
           <dt>{{ t('staff.gifts.recipient') }}</dt>
           <dd>{{ recipientName(recipient) }}</dd>
         </div>
         <div class="ds-kv__row">
-          <dt>{{ t('staff.gifts.product') }}</dt>
-          <dd>{{ selectedProduct.company_name }} — {{ selectedProduct.name }}</dd>
+          <dt>{{ t('staff.gifts.project') }}</dt>
+          <dd>{{ selectedProject?.label }}</dd>
+        </div>
+        <div v-if="showOfferPicker" class="ds-kv__row">
+          <dt>{{ t('staff.gifts.offer') }}</dt>
+          <dd>{{ selectedProduct.name }}</dd>
         </div>
         <div class="ds-kv__row">
-          <dt>{{ t('staff.gifts.units') }}</dt>
-          <dd>{{ formatNumber(units, locale) }}</dd>
+          <dt>{{ t('staff.gifts.parts') }}</dt>
+          <dd>{{ formatNumber(parts, locale) }}</dd>
+        </div>
+        <div class="ds-kv__row">
+          <dt>{{ t('staff.gifts.partPrice') }}</dt>
+          <dd>{{ partPrice }}</dd>
+        </div>
+        <div v-if="totalCents !== null" class="ds-kv__row ds-kv__row--total">
+          <dt>{{ t('staff.gifts.total') }}</dt>
+          <dd>{{ formatUsdCents(totalCents, locale) }}</dd>
         </div>
       </dl>
       <div class="ds-dialog__actions">
@@ -343,6 +484,10 @@ onMounted(() => {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   max-inline-size: var(--maxw-prose);
+}
+
+.gifts__lots {
+  display: block;
 }
 
 .gifts__list {
