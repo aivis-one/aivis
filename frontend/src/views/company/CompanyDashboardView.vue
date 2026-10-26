@@ -39,8 +39,6 @@ import { formatDateTime, formatNumber, formatPrice, formatSignedPrice } from '@/
 import { tOrRaw } from '@/utils/i18n'
 import { useThemedLogo } from '@/composables/useThemedLogo'
 
-// Passed to the tile's note as {percent}, which no locale's note text carries, so it prints nowhere; the tile shows a constant zero until its content is chosen.
-
 const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
 const dashboardStore = useCompanyDashboardStore()
