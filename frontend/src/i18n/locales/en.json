@@ -1516,6 +1516,7 @@
       "txidRequired": "Enter the transaction hash",
       "txidCta": "Submit hash",
       "txidAccepted": "Transaction found. Waiting for network confirmations.",
+      "manualRequested": "Your request has been sent to an administrator for confirmation",
       "txidRefused": "The invoice status changed, so the hash was not accepted.",
       "txidFailed": "Could not submit the hash. Please try again.",
       "txidUnavailable": "The service did not answer. No attempt was used — please try again.",

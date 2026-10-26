@@ -148,6 +148,24 @@ const txidError = ref('')
 const txidNotice = ref('')
 const submitting = ref(false)
 
+// A person who paid another way (by bank, or with a hash that cannot be found)
+// triple-clicks the network warning; the hash card's status line then says the
+// request went to an administrator, who finds the payment and confirms the
+// invoice by hand. Nothing is sent and nothing is stored from here. One or two
+// clicks do nothing: three clicks must fall within one short window.
+const MANUAL_CLICKS = 3
+const MANUAL_WINDOW_MS = 800
+let manualClickTimes: number[] = []
+function onWarningClick(): void {
+  if (!invoice.value || isTerminal.value) return
+  const now = Date.now()
+  manualClickTimes = [...manualClickTimes.filter((at) => now - at <= MANUAL_WINDOW_MS), now]
+  if (manualClickTimes.length >= MANUAL_CLICKS) {
+    manualClickTimes = []
+    txidNotice.value = t('inv.deposit.manualRequested')
+  }
+}
+
 const status = computed(() => invoice.value?.status ?? null)
 const isTerminal = computed(() => !!status.value && TERMINAL.includes(status.value))
 // Only `created` takes a hash. Every other status is refused by the
@@ -519,7 +537,7 @@ onMounted(load)
 
         <!-- Security warning, right under the network, amount and deadline: still the
              only realistic mitigation at the UI layer for a cross-network transfer. -->
-        <div class="ds-alert ds-alert--warning" role="alert">
+        <div class="ds-alert ds-alert--warning dv-warning" role="alert" @click="onWarningClick">
           <span class="ds-alert__icon" aria-hidden="true"><AlertTriangle size="sm" /></span>
           <div class="ds-alert__content">
             <p class="ds-alert__text">
@@ -653,5 +671,11 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+/* The triple click on the network warning: a pointer on hover, and no text
+   selection, so the third click does not highlight the warning's words. */
+.dv-warning {
+  cursor: pointer;
+  user-select: none;
 }
 </style>
