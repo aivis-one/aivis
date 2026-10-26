@@ -1829,7 +1829,7 @@ case_seed() {
     # Bootstrap is NOT seeding and is not run from here: the platform
     # user, the platform templates and the legal documents are what the
     # product needs to exist, they are installed by install_aivis.sh,
-    # and re-running them is not part of "make me a demo".
+    # and re-running them is not part of seeding the projects.
     #
     # AIVIS_SEED_DEMO=1 is the explicit opt-in on a production contour.
     # It is deliberately not a flag on the command line: a variable has
@@ -1840,14 +1840,15 @@ case_seed() {
     app_env=$(grep "^APP_ENV=" "$COMPOSE_DIR/backend/.env" 2>/dev/null | cut -d= -f2- | tr -d '"')
 
     if [ "$app_env" = "production" ] && [ -z "${AIVIS_SEED_DEMO:-}" ]; then
-        echo -e "${RED}✗ Refusing to seed demo data on APP_ENV=production${NC}"
+        echo -e "${RED}✗ Refusing to seed on APP_ENV=production${NC}"
         echo ""
-        echo "The seed creates demo people and demo projects on the"
-        echo "storefront. On a production contour that is fake accounts and"
-        echo "fake offers next to real ones."
+        echo "The seed lays the house's projects (SANKORD and NUTREEX) and"
+        echo "its own test accounts, with test money and test purchases, on"
+        echo "the storefront. On a production contour the test accounts and"
+        echo "their purchases sit next to real ones."
         echo ""
-        echo "If this box really is a stand that merely calls itself"
-        echo "production, opt in explicitly:"
+        echo "If this box is meant to carry them (the house's own box is),"
+        echo "opt in explicitly:"
         echo "    AIVIS_SEED_DEMO=1 aivis seed"
         return 1
     fi
@@ -2730,7 +2731,7 @@ case "$CMD" in
         echo "  db dump                                   — Create SQL dump"
         echo "  db restore <file>                         — Restore from dump"
         echo "  db migrate                                — Run Alembic migrations"
-        echo "  seed                                      — Seed demo data from the default profile"
+        echo "  seed                                      — Seed the projects and the test accounts from the default profile"
         echo "  seed --list                               — List available seed profiles"
         echo "  seed --profile <name>                     — Seed from a named profile"
         echo "  seed --reset                              — Delete this profile's rows, then seed again"

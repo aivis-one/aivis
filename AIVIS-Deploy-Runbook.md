@@ -413,10 +413,13 @@ no request at all*, not a 401.
   accounts seeded"** (T-72). Both steps and the scripts behind them are gone. After an install the
   database holds bootstrap only: the Platform user, the legal documents and the platform default
   templates. An empty storefront and no test logins are the expected result, not a failure.
-- **Demo data is a separate, deliberate command.** `aivis seed` creates the first
-  admin, support staff, a demo company with products, an agent and a few investors from
-  `backend/scripts/seed_profiles/default.json`. It refuses outright on `APP_ENV=production` (which
-  this install sets) unless `AIVIS_SEED_DEMO=1` is exported — don't export that on a real cutover.
+- **The projects and the test accounts are a separate, deliberate command.** `aivis seed` lays the
+  projects SANKORD and NUTREEX (texts in English and Russian, four portfolios and three instalment
+  plans each, roadmaps) and the house's test accounts with their starting picture (a support
+  operator, an agent, investors with deposits, purchases, an instalment and a gift) from
+  `backend/scripts/seed_profiles/default.json`; it acts as the box's own admin and creates none. It
+  refuses outright on `APP_ENV=production` (which this install sets) unless `AIVIS_SEED_DEMO=1` is
+  exported — export it only on a box that is meant to carry the test accounts.
 - **No `needrestart` dialogs should appear at all.** If one does anyway, `NEEDRESTART_MODE=a` didn't
   take effect — check `env | grep NEEDRESTART` before doing anything else; something about how the
   script was invoked (e.g. running individual sections by hand instead of the whole file) likely

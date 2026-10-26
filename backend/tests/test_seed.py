@@ -44,7 +44,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import shutil
 import uuid
@@ -65,7 +64,7 @@ from app.core.events.service import (
 )
 from app.modules.staff.models import StaffProfile
 from app.modules.users.models import OnboardingStep, User, UserRole
-from tests.helpers import create_admin_user
+from tests.helpers import create_admin_user, create_staff_user
 
 pytestmark = pytest.mark.asyncio
 
@@ -651,7 +650,10 @@ async def test_a_stand_without_an_admin_is_refused_before_any_write(
 # These talk to the real storage of the test environment (RustFS), like
 # test_project_media.py: the seed uploads through the services.
 
-_DEMO_DIR = Path(seed.__file__).resolve().parent / "templates" / "projects" / "demo"
+# A small project of the tests' own (pictures, a deck, two roadmap items, a
+# Russian cover variant). The shipped seed carries none of it.
+_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_DEMO_DIR = _FIXTURES / "seed_project"
 
 
 async def _objects(prefix: str = "companies/") -> set[str]:
@@ -672,11 +674,10 @@ async def _company_of(db_session: Any, marker: str) -> Any:
 
 
 def _demo_project(**overrides: Any) -> dict[str, Any]:
-    """The shipped demo project entry, for a profile of the test's own."""
-    shipped = json.loads(
-        (seed.PROFILES_DIR / "default.json").read_text(encoding="utf-8")
+    """The tests' own project entry, for a profile of the test's own."""
+    project = json.loads(
+        (_FIXTURES / "seed_project.json").read_text(encoding="utf-8")
     )
-    project = copy.deepcopy(shipped["companies"][0])
     project["email_local"] = f"demo-{uuid.uuid4().hex[:8]}"
     project.update(overrides)
     return project
@@ -685,117 +686,156 @@ def _demo_project(**overrides: Any) -> dict[str, Any]:
 async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The profile the stand runs, seeded WHOLE: project, files, investors.
+    """The profile the stand runs, seeded WHOLE: SANKORD and NUTREEX with
+    their files, the support operator, the agent and the investors with
+    their starting picture -- then a second run, then a reset.
 
-    Until H37 this was refused on principle -- "parsing only -- seeding it
-    here would put its fixed e-mail addresses into the shared test
-    database and collide with the next run". That was right while the
-    domain was written in the profile: every run would have created the
-    same <local>@example.com addresses. H37 moved the domain to
-    FRONTEND_BASE_URL, so a test pins a host of its own and the shipped
-    addresses no longer collide; the marker is the test's own for the same
-    reason.
-
-    And the refusal cost exactly what this test exists for: the shipped
-    profile could never seed (company_pct 1.0 refused by create_company,
-    and ensure_pool tripped on get_active_pool raising), and nothing
-    noticed for two months because nothing ran it.
-
-    H38 changed two of its numbers, by design: the shipped project now
-    carries media/ru/cover.png, so the run uploads one language variant
-    and the project's prefix holds eight objects, not seven; and the
-    Russian texts of the profile, which H37 dropped, are now in the rows'
-    translations. Asserted here as exact values, not loosened.
+    The host is pinned to one of the test's own and the marker is the
+    test's own, so the shipped addresses collide with no other run.
+    Asserted as exact values, not loosened.
     """
+    from sqlalchemy import func
+
+    from app.modules.companies.models import CompanyProfile, CompanyRoadmapItem
+    from app.modules.installments.models import InstallmentPlan, InstallmentTranche
+    from app.modules.ledgers.models import PassiveLedger
+    from app.modules.ledgers.service import get_active_balance
+    from app.modules.purchases.models import Purchase
+
     tag = uuid.uuid4().hex[:8]
     monkeypatch.setattr(
         seed_settings, "frontend_base_url", f"https://{tag}.{SEED_HOST}"
     )
     profile = seed.load_profile("default")
-    # This test counts the rows of the demo project; the shipped profile's
-    # other projects have their own unit tests.
-    profile["companies"] = [c for c in profile["companies"] if c["key"] == "demo"]
     profile["marker"] = f"pytest_default_{tag}"
 
     stats = await seed.seed_profile(db_session, profile)
     await db_session.commit()
-    assert stats["companies"] == 1
-    assert stats["investors"] == 5
-    assert stats["purchases"] > 0
-    assert stats["pictures"] == 3
-    assert stats["attachments"] == 1
-    assert stats["roadmap_items"] == 2
-    assert stats["picture_variants"] == 1
+    assert stats["staff"] == 1 and stats["agents"] == 1
+    assert stats["companies"] == 2
+    assert stats["investors"] == 3
+    assert stats["purchases"] == 2, "test04 at once, test02 on NUTREEX"
+    assert stats["instalments"] == 1 and stats["gifts"] == 1
+    assert stats["pictures"] == 3, "SANKORD's logo, dark logo and cover"
+    assert stats["picture_variants"] == 1, "SANKORD's Russian cover"
+    assert stats["attachments"] == 0
+    assert stats["roadmap_items"] == 26 + 6
 
-    (company,) = await _company_of(db_session, profile["marker"])
-    prefix = f"companies/{company.id}/"
-    assert company.logo_storage_key and company.logo_dark_storage_key
-    assert company.cover_storage_key
+    companies = {
+        c.name: c
+        for c in await _company_of(db_session, profile["marker"])
+    }
+    assert set(companies) == {"SANKORD", "NUTREEX"}
+    sankord, nutreex = companies["SANKORD"], companies["NUTREEX"]
+    prefix = f"companies/{sankord.id}/"
     objects = await _objects(prefix)
-    # logo, dark logo, cover, its Russian variant, product cover, the
-    # deck, two roadmap covers
+    # logo, dark logo, cover, its Russian variant, four product covers
     assert len(objects) == 8
-    assert {company.logo_storage_key, company.cover_storage_key} <= objects
-    ru_cover = company.media_variants["ru"]["cover"]
-    assert ru_cover == f"{prefix}media/ru/cover.png" and ru_cover in objects
-    assert company.name == "Demo Project"
-    assert company.translations["ru"]["name"] == "Демо-проект"
+    assert sankord.media_variants["ru"]["cover"] == f"{prefix}media/ru/cover.png"
+    assert await _objects(f"companies/{nutreex.id}/") == set(), "no picture yet"
+    assert nutreex.shares_per_option == 100 and sankord.shares_per_option == 25
+    assert sankord.translations["ru"]["description"].startswith("Операционка")
 
-    from app.modules.companies.models import CompanyAttachment, CompanyRoadmapItem
-    from app.modules.products.models import Product, ProductInstallment
-
-    products = (
-        await db_session.execute(select(Product).where(Product.company_id == company.id))
-    ).scalars().all()
-    assert sorted(p.name for p in products) == ["Growth package", "Starter package"]
-    assert sorted(p.translations["ru"]["name"] for p in products) == [
-        "Пакет роста",
-        "Стартовый пакет",
-    ]
-    assert all(p.status == "active" for p in products)
-    installments = (
+    # The roadmaps: SANKORD's 17 completed items are dated, the rest are not.
+    items = (
         await db_session.execute(
-            select(ProductInstallment).where(
-                ProductInstallment.product_id.in_([p.id for p in products])
+            select(CompanyRoadmapItem).where(
+                CompanyRoadmapItem.company_id.in_([sankord.id, nutreex.id])
             )
         )
     ).scalars().all()
-    assert [i.name for i in installments] == ["Two payments"]
-    items = (
+    by_company = {
+        cid: [i for i in items if i.company_id == cid]
+        for cid in (sankord.id, nutreex.id)
+    }
+    assert len(by_company[sankord.id]) == 26 and len(by_company[nutreex.id]) == 6
+    assert sum(1 for i in by_company[sankord.id] if i.status == "completed") == 17
+    assert all(i.target_date is None for i in by_company[nutreex.id])
+
+    users = {
+        u.profile["last_name"]: u
+        for u in await _seeded_users(db_session, profile["marker"])
+        if u.profile.get("first_name") == "Test"
+    }
+    assert set(users) == {"One", "Two", "Three", "Four", "Five"}
+    assert users["One"].role == UserRole.STAFF
+    assert users["Three"].role == UserRole.AGENT
+    assert users["Four"].referred_by == users["Three"].id
+    assert users["Five"].referred_by == users["Three"].id
+
+    async def _lots(user: User, company_id: Any) -> int:
+        stmt = select(func.coalesce(func.sum(Purchase.units), 0)).where(
+            Purchase.investor_id == user.id,
+            Purchase.company_id == company_id,
+            Purchase.status == "active",
+        )
+        return int((await db_session.execute(stmt)).scalar_one())
+
+    # test04: 1,000 USD at once with the 5 percent bonus; 200 USD left.
+    assert await _lots(users["Four"], sankord.id) == 10_500
+    assert (await get_active_balance(db_session, users["Four"].id))["confirmed"] == 20_000
+    # test05: the first payment of the 6-month plan, 167 USD left.
+    assert await _lots(users["Five"], sankord.id) == 200
+    assert (await get_active_balance(db_session, users["Five"].id))["confirmed"] == 16_700
+    plan = (
         await db_session.execute(
-            select(CompanyRoadmapItem).where(CompanyRoadmapItem.company_id == company.id)
+            select(InstallmentPlan).where(InstallmentPlan.investor_id == users["Five"].id)
+        )
+    ).scalar_one()
+    tranches = (
+        await db_session.execute(
+            select(InstallmentTranche).where(InstallmentTranche.plan_id == plan.id)
         )
     ).scalars().all()
-    assert all(i.cover_storage_key for i in items) and len(items) == 2
+    assert sorted(t.status for t in tranches) == ["paid"] + ["scheduled"] * 5
+    # test02: the accepted gift on SANKORD, a bought portfolio on NUTREEX.
+    assert await _lots(users["Two"], sankord.id) == 2_000
+    assert await _lots(users["Two"], nutreex.id) == 2_000
+    assert (await get_active_balance(db_session, users["Two"].id))["confirmed"] == 0
+    # test01 and test03 hold no money; test03 earned 10 percent of
+    # 1,000.00 USD and of the 33.00 USD first payment.
+    assert (await get_active_balance(db_session, users["One"].id))["confirmed"] == 0
+    assert (await get_active_balance(db_session, users["Three"].id))["confirmed"] == 0
+    earned = (
+        await db_session.execute(
+            select(func.coalesce(func.sum(PassiveLedger.amount_cents), 0)).where(
+                PassiveLedger.user_id == users["Three"].id
+            )
+        )
+    ).scalar_one()
+    assert earned == 10_000 + 330
 
     # REPEAT: the second run writes nothing.
     again = await seed.seed_profile(db_session, profile)
     await db_session.commit()
     for key in (
-        "pictures", "picture_variants", "attachments", "roadmap_items", "purchases"
+        "pictures", "picture_variants", "attachments", "roadmap_items",
+        "purchases", "instalments", "gifts",
     ):
         assert again[key] == 0, key
     assert await _objects(prefix) == objects
-    count = (
-        await db_session.execute(
-            select(func.count()).select_from(CompanyAttachment).where(
-                CompanyAttachment.company_id == company.id
-            )
-        )
-    ).scalar_one()
-    assert count == 1
 
-    # Reset: the rows, then -- after the commit -- the objects.
+    # Reset: instalments and gifts included, then -- after the commit --
+    # the objects.
     ids = await seed.seeded_company_ids(db_session, profile["marker"])
-    assert ids == [company.id]
+    assert set(ids) == {sankord.id, nutreex.id}
     counts = await seed.reset_seed_data(db_session, profile["marker"])
     await db_session.commit()
-    assert counts["attachments"] == 1 and counts["roadmap_items"] == 2
-    assert counts["users"] == 6
+    assert counts["instalment_plans"] == 1
+    assert counts["purchases"] >= 5
+    assert counts["roadmap_items"] == 32 and counts["companies"] == 2
+    assert counts["users"] == 7, "five accounts and two project owners"
     purged = await seed.purge_seeded_objects(ids)
     assert purged == {"objects": 8, "failed": 0}
     assert await _objects(prefix) == set()
     assert await _seeded_users(db_session, profile["marker"]) == []
+    assert (
+        await db_session.execute(
+            select(func.count()).select_from(CompanyProfile).where(
+                CompanyProfile.id.in_(ids)
+            )
+        )
+    ).scalar_one() == 0
 
 
 async def test_every_seeded_account_has_its_own_password_and_none_is_shown(
@@ -846,16 +886,20 @@ async def test_every_seeded_account_has_its_own_password_and_none_is_shown(
 
 
 async def test_a_profile_without_staff_runs_beside_a_live_admin(
-    stand: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
+    client: AsyncClient, db_session: Any, stand: User, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
 ) -> None:
     """EMPTINESS: no staff[] -> no live-staff check, no flag needed. With
-    staff[], the same stand refuses, and says the admin is staff too."""
+    staff[], a stand that has somebody else's staff member refuses; the
+    admin the run acts as does not count."""
     monkeypatch.setattr(seed, "PROFILES_DIR", tmp_path)
     plain = _profile(staff=[])
     (tmp_path / "plain.json").write_text(json.dumps(plain), encoding="utf-8")
     with_staff = _profile()
     (tmp_path / "staffed.json").write_text(json.dumps(with_staff), encoding="utf-8")
+    # The admin the run acts as is never "live staff" to it (the seed declares
+    # it); somebody else's staff member is, so the stand has one.
+    await create_staff_user(client, db_session)
 
     def _args(name: str) -> argparse.Namespace:
         return argparse.Namespace(
@@ -868,7 +912,7 @@ async def test_a_profile_without_staff_runs_beside_a_live_admin(
     assert await seed._run_profile(_args("staffed")) == 2
     message = capsys.readouterr().out
     assert "--allow-live-staff" in message
-    assert "admin is staff too" in message
+    assert "declares it itself" in message
 
 
 @pytest.mark.parametrize(

@@ -91,7 +91,7 @@
 # -----------------------------------------------------------------------------
 # THE E-MAIL DOMAIN IS THE BOX'S (H37 P-130)
 #
-# A profile names local parts only (`test01`, `demo`). The domain is the
+# A profile names local parts only (`test01`, `sankord`). The domain is the
 # host of FRONTEND_BASE_URL -- the same source the letters read
 # (core/email_vars.py) -- so a seeded address is <local>@<this box>, and
 # no deployment address is written into the repository. A host that
@@ -101,7 +101,7 @@
 # PROFILES
 #
 # A profile is one JSON file in scripts/seed_profiles/. It describes WHAT
-# to seed; this file describes HOW. Adding a demo means adding a JSON
+# to seed; this file describes HOW. Adding a project or an account means adding a JSON
 # file, not editing Python.
 #
 # NO RELATIVE DATES, AND THIS IS DELIBERATE. The reference implementation
@@ -158,6 +158,23 @@
 # folder is NOT re-uploaded over an existing one, and the translations of
 # a row that already exists are not rewritten; --reset is how a project
 # is laid down afresh.
+#
+# -----------------------------------------------------------------------------
+# THE STARTING PICTURE AND SUPPORT
+#
+# An investor's `portfolio` is a deposit and the steps `purchases` (a
+# product at once, or with a `plan` its first instalment) and `gifts`
+# (parts the stand's admin grants from the project's reserve and the
+# investor accepts); see ensure_portfolio. Products are named by the
+# project's key and their English name, so a profile names nothing the
+# database does not hold.
+#
+# SUPPORT: any active staff member may claim a ticket in the product, and
+# comms serves the support section from its declared roster -- an EMPTY
+# roster is served by every operator, a roster with members only by them.
+# The seed declares the operators it makes (create_staff) and, with the
+# first of them, the admin it acts as (ensure_staff), so the admin keeps
+# claiming whatever comms held before this run.
 #
 # -----------------------------------------------------------------------------
 # LIVE PEOPLE ARE NEVER TOUCHED BY --reset
@@ -241,12 +258,12 @@ from app.core.i18n import (  # noqa: E402
     is_language_code,
     normalize_translations,
 )
+from app.core.logging import setup_logging  # noqa: E402
 from app.core.storage import (  # noqa: E402
     StorageError,
     delete_object,
     list_objects,
 )
-from app.core.logging import setup_logging  # noqa: E402
 from app.modules.agent_applications.models import AgentApplication  # noqa: E402
 from app.modules.agent_applications.service import (  # noqa: E402
     submit_application,
@@ -299,6 +316,11 @@ from app.modules.documents.models import (  # noqa: E402
     DocumentStatus,
 )
 from app.modules.documents.service import sign_document  # noqa: E402
+from app.modules.installments.models import (  # noqa: E402
+    InstallmentPlan,
+    InstallmentTranche,
+)
+from app.modules.installments.service import create_plan  # noqa: E402
 from app.modules.kyc.models import KYCApplication  # noqa: E402
 from app.modules.kyc.service import decide_by_user  # noqa: E402
 from app.modules.ledgers.models import (  # noqa: E402
@@ -317,6 +339,9 @@ from app.modules.pools.service import (  # noqa: E402
     create_pool,
     get_active_pool_or_none,
 )
+from app.modules.processors.validators import (  # noqa: E402
+    validate_purchase_config,
+)
 from app.modules.products.constants import (  # noqa: E402
     ProductStatus,
     validate_plan_config,
@@ -326,14 +351,19 @@ from app.modules.products.schemas import (  # noqa: E402
     CreateInstallmentRequest,
     CreateProductRequest,
 )
-from app.modules.processors.validators import (  # noqa: E402
-    validate_purchase_config,
-)
 from app.modules.products.service import (  # noqa: E402
     create_installment,
     create_product,
     set_product_cover,
     update_product_status,
+)
+from app.modules.purchases.constants import (  # noqa: E402
+    PurchaseLegalBasis,
+    PurchaseStatus,
+)
+from app.modules.purchases.gift_service import (  # noqa: E402
+    accept_gift,
+    grant_gift,
 )
 from app.modules.purchases.models import Purchase  # noqa: E402
 from app.modules.purchases.service import execute_purchase  # noqa: E402
@@ -497,6 +527,15 @@ def _text(value: Any, where: str) -> str:
     return text
 
 
+def _plain_name(value: Any, where: str) -> str:
+    """The name of an installment plan: a string, or a {"en": ..., "ru": ...}
+    text of which only the English is kept -- a plan has no translations
+    column, and the cabinet names a plan by its months."""
+    if isinstance(value, str):
+        return value
+    return _text(value, where)
+
+
 def _optional_text(spec: dict[str, Any], field: str, where: str) -> str | None:
     if field not in spec or spec[field] is None:
         return None
@@ -646,11 +685,26 @@ def _variants_of(spec: dict[str, Any], relative: str) -> dict[str, Path]:
     return _picture_variants(spec, spec["key"]).get(common, {})
 
 
+def _local_of(spec: dict[str, Any]) -> str | None:
+    """The local part of an account's address.
+
+    A person is named by `email_local`. A project's package carries a full
+    `email` instead: the local part of that is the account, and the domain
+    is the box's, as for every other seeded address -- a package names who
+    the project is, never where the box lives. (sync_project_package.py
+    writes the profile's entry with `email_local` already.)
+    """
+    local = spec.get("email_local")
+    if local is None and isinstance(spec.get("email"), str):
+        local = spec["email"].split("@", 1)[0]
+    return local if isinstance(local, str) and local else None
+
+
 def _check_address(spec: dict[str, Any], where: str) -> str:
     """The seeded address of one account, as the services would validate it."""
-    local = spec.get("email_local")
-    if not isinstance(local, str) or not local:
-        raise SeedRefusedError(f"{where} has no `email_local`")
+    local = _local_of(spec)
+    if local is None:
+        raise SeedRefusedError(f"{where} has no `email_local` (or `email`)")
     try:
         return str(_EMAIL.validate_python(_email(local)))
     except ValueError as exc:
@@ -737,7 +791,14 @@ def _check_company(spec: dict[str, Any], where: str) -> None:
                 validate_purchase_config(product["purchase_config"])
             for j, installment in enumerate(product.get("installments", [])):
                 try:
-                    plan = CreateInstallmentRequest.model_validate(installment)
+                    plan = CreateInstallmentRequest.model_validate(
+                        {
+                            **installment,
+                            "name": _plain_name(
+                                installment.get("name"), f"{pwhere}.installments[{j}].name"
+                            ),
+                        }
+                    )
                 except ValueError as exc:
                     raise SeedRefusedError(
                         f"{pwhere}.installments[{j}]: {exc}"
@@ -829,6 +890,78 @@ def _roadmap_request(item: dict[str, Any], where: str) -> CreateRoadmapItemReque
         raise SeedRefusedError(f"{where}: {exc}") from exc
 
 
+def _check_portfolio(
+    profile: dict[str, Any], portfolio: dict[str, Any], where: str
+) -> None:
+    """One investor's starting picture, checked before any write.
+
+    `deposit_cents` is a whole number >= 0. `purchases` is a list of
+    {"company": key, "product": English name, "plan": instalment name
+    (optional)} -- one purchase at once, or the first payment of a plan.
+    `gifts` is a list of {"company", "product", "lots" (optional, the
+    package by default)} -- parts the stand's admin grants from the
+    project's reserve, which the investor then accepts. Every name must
+    exist in the profile, and the deposit must pay for every purchase and
+    first payment, so a refusal never comes half-way through the run.
+    """
+    deposit = portfolio.get("deposit_cents", 0)
+    if not isinstance(deposit, int) or isinstance(deposit, bool) or deposit < 0:
+        raise SeedRefusedError(f"{where}.deposit_cents must be a whole number >= 0")
+
+    companies = {c.get("key"): c for c in profile.get("companies", [])}
+    needed = 0
+    for field in ("purchases", "gifts"):
+        items = portfolio.get(field, [])
+        if not isinstance(items, list):
+            raise SeedRefusedError(
+                f"{where}.{field} must be a list of steps, not {items!r} "
+                f"(a count of purchases is the old form)"
+            )
+        for k, item in enumerate(items):
+            iwhere = f"{where}.{field}[{k}]"
+            if not isinstance(item, dict):
+                raise SeedRefusedError(f"{iwhere} must be an object")
+            company = companies.get(item.get("company"))
+            if company is None:
+                raise SeedRefusedError(
+                    f"{iwhere}.company {item.get('company')!r} names no project "
+                    f"in `companies`"
+                )
+            products = {
+                _text(p.get("name"), f"{iwhere}.product"): p
+                for p in company.get("products", [])
+            }
+            product = products.get(item.get("product"))
+            if product is None:
+                raise SeedRefusedError(
+                    f"{iwhere}.product {item.get('product')!r} names no product "
+                    f"of project {item.get('company')!r}"
+                )
+            if field == "gifts":
+                lots = item.get("lots", product["package_size"])
+                if not isinstance(lots, int) or isinstance(lots, bool) or lots <= 0:
+                    raise SeedRefusedError(f"{iwhere}.lots must be a whole number > 0")
+                continue
+            plan = item.get("plan")
+            if plan is None:
+                needed += product["package_size"] * company["price_per_unit_cents"]
+                continue
+            plans = {
+                _plain_name(i.get("name"), f"{iwhere}.plan"): i
+                for i in product.get("installments", [])
+            }
+            if plan not in plans:
+                raise SeedRefusedError(
+                    f"{iwhere}.plan {plan!r} names no instalment of that product"
+                )
+            needed += plans[plan]["plan_config"]["tranches"][0]["amount_cents"]
+    if needed > deposit:
+        raise SeedRefusedError(
+            f"{where}: the deposit of {deposit} cents does not cover the "
+            f"{needed} cents its purchases and first payments cost"
+        )
+
+
 def validate_profile(profile: dict[str, Any]) -> None:
     """Every refusal a profile can earn, before the first write.
 
@@ -865,12 +998,7 @@ def validate_profile(profile: dict[str, Any]) -> None:
                 f"investors[{i}].referred_by_agent {referrer!r} names no agent "
                 f"in `agents`"
             )
-        for field in ("deposit_cents", "purchases"):
-            value = (spec.get("portfolio") or {}).get(field, 0)
-            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-                raise SeedRefusedError(
-                    f"investors[{i}].portfolio.{field} must be a whole number >= 0"
-                )
+        _check_portfolio(profile, spec.get("portfolio") or {}, f"investors[{i}].portfolio")
 
     companies = profile.get("companies", [])
     if not isinstance(companies, list):
@@ -889,7 +1017,11 @@ def validate_profile(profile: dict[str, Any]) -> None:
 
 
 async def assert_no_live_staff(
-    session: AsyncSession, marker: str, *, allow_live_staff: bool
+    session: AsyncSession,
+    marker: str,
+    *,
+    allow_live_staff: bool,
+    admin: User | None = None,
 ) -> None:
     """Refuse the run if somebody else's staff are on duty.
 
@@ -907,6 +1039,10 @@ async def assert_no_live_staff(
         )
         .limit(5)
     )
+    if admin is not None:
+        # The admin the run acts as is declared by the seed itself
+        # (ensure_staff), so it cannot be taken off the queue by it.
+        stmt = stmt.where(User.id != admin.id)
     foreign = list((await session.execute(stmt)).scalars())
     if not foreign:
         return
@@ -922,12 +1058,12 @@ async def assert_no_live_staff(
         "This profile declares staff, and this stand has active staff "
         "profiles that this seed did not create (for example "
         + ", ".join(str(i) for i in foreign[:3])
-        + "). The live admin the seed runs under is one of them: an admin "
-        "is staff too. Declaring seeded operators for the support section "
-        "would stop every operator that is NOT declared -- the admin "
-        "included -- from serving that section, and whether the live ones "
-        "are declared is a fact that lives in comms, not here, so it "
-        "cannot be checked. Nothing has been written. Either re-run with "
+        + "). The admin the run acts as is not counted: the seed declares "
+        "it itself with the first operator it makes. Declaring seeded "
+        "operators for the support section would stop every operator that "
+        "is NOT declared from serving that section, and whether the other "
+        "live ones are declared is a fact that lives in comms, not here, so "
+        "it cannot be checked. Nothing has been written. Either re-run with "
         "--allow-live-staff if you know those people are declared (or "
         "that this stand is yours to change), or drop `staff` from the "
         "profile."
@@ -1086,7 +1222,7 @@ async def ensure_user(
     person the seed never created.
     """
     marker = profile["marker"]
-    email = _email(spec["email_local"])
+    email = _email(_local_of(spec) or "")
 
     existing = await find_user_by_email(session, email)
     if existing is not None:
@@ -1118,7 +1254,7 @@ async def ensure_user(
     # register_email now emits a comms notification_request into the
     # outbox instead, inside this session. On a box with no comms
     # address the emitter is gated off and writes nothing at all; on a
-    # linked box the seeded demo users WILL be sent their verification
+    # linked box the seeded users WILL be sent their verification
     # code, which is what a seeded user asking for one should get.
 
     user.profile = {
@@ -1152,6 +1288,17 @@ async def ensure_staff(
         return user
 
     await create_staff(user.id, admin, session)
+    # THE ADMIN IS DECLARED WITH THE FIRST OPERATOR THE SEED MAKES. A support
+    # section with no declared member is served by every operator; the moment
+    # one is declared, only the declared serve. The admin was declared when
+    # it was promoted -- if comms was configured then, which this run cannot
+    # read -- and if it was not, declaring test01 alone would take the admin
+    # off the queue. Declaring it again is a no-op where it is already a
+    # member (comms answers by outcome) and the one thing that keeps "every
+    # worker on support or admin takes the card himself" true where it was
+    # not. Written only when this run makes the operator, so a re-run adds
+    # no second row; reset un-declares the seeded operators only.
+    await emit_support_membership(session, user_id=admin.id)
     await session.refresh(user)
     return user
 
@@ -1169,7 +1316,7 @@ async def ensure_company(
 ) -> CompanyProfile:
     """Create the company account and its profile through the service."""
     marker = profile["marker"]
-    email = _email(spec["email_local"])
+    email = _email(_local_of(spec) or "")
 
     existing_user = await find_user_by_email(session, email)
     if existing_user is not None:
@@ -1207,7 +1354,7 @@ async def ensure_company(
     )
 
     # create_company writes status=HIDDEN, and a hidden company is not
-    # on the storefront and cannot be bought from. The demo needs it
+    # on the storefront and cannot be bought from. The storefront needs it
     # visible, so the status moves through the same state machine a
     # staff member would drive from the admin panel.
     await _activate_company(session, company, admin)
@@ -1309,15 +1456,16 @@ async def ensure_product(
         )
 
     for installment in spec.get("installments", []):
+        plan_name = _plain_name(installment["name"], "installment.name")
         exists_stmt = select(ProductInstallment.id).where(
             ProductInstallment.product_id == product.id,
-            ProductInstallment.name == installment["name"],
+            ProductInstallment.name == plan_name,
             ProductInstallment.is_deleted.is_(False),
         )
         if (await session.execute(exists_stmt)).first() is None:
             await create_installment(
                 product.id,
-                installment["name"],
+                plan_name,
                 installment["plan_config"],
                 admin,
                 session,
@@ -1551,13 +1699,152 @@ async def ensure_agent(
 # ---------------------------------------------------------------------------
 
 
+async def _find_product(
+    session: AsyncSession, profile: dict[str, Any], company_key: str, name: str
+) -> Product:
+    """A product of a profile's project, found by the project's key and the
+    product's English name -- the same keys the run made it under."""
+    spec = next(c for c in profile["companies"] if c["key"] == company_key)
+    owner = await find_user_by_email(session, _email(_local_of(spec) or ""))
+    if owner is None:
+        raise SeedRefusedError(f"Project {company_key!r} has no owner account")
+    company = (
+        await session.execute(
+            select(CompanyProfile).where(CompanyProfile.user_id == owner.id)
+        )
+    ).scalar_one_or_none()
+    product = None
+    if company is not None:
+        product = (
+            await session.execute(
+                select(Product).where(
+                    Product.company_id == company.id, Product.name == name
+                )
+            )
+        ).scalar_one_or_none()
+    if product is None:
+        raise SeedRefusedError(f"Project {company_key!r} has no product {name!r}")
+    return product
+
+
 async def ensure_portfolio(
+    session: AsyncSession,
+    user: User,
+    spec: dict[str, Any],
+    profile: dict[str, Any],
+    admin: User,
+) -> dict[str, int]:
+    """One investor's starting picture: money, then the steps of the spec.
+
+    Every step goes through the application's own path and is found again
+    on its own natural key, so a second run changes nothing:
+
+      - deposit_cents: by balance floor, as before;
+      - gifts: the admin grants (gift_service.grant_gift, from the
+        project's reserve, no money) and the investor accepts
+        (accept_gift) -- the one gift this product has; a gift left
+        pending by a run that died is accepted by the next;
+      - purchases: a sale (execute_purchase) found by (investor, product,
+        legal basis sale), or, with a `plan`, an instalment plan
+        (create_plan) found by (investor, product, plan template); the
+        first payment is taken inline and the rest is the scheduler's.
+
+    A profile's purchases never mix one product at once and on a plan for
+    the same investor: the tranche payments are sale rows of that product.
+    """
+    stats = {"deposited_cents": 0, "purchases": 0, "instalments": 0, "gifts": 0}
+
+    target = int(spec.get("deposit_cents", 0))
+    if target > 0:
+        balance = await get_active_balance(session, user.id)
+        confirmed = balance["confirmed"]
+        if confirmed < target:
+            await record_active_ledger(
+                session,
+                user_id=user.id,
+                amount_cents=target - confirmed,
+                status=LedgerStatus.CONFIRMED,
+                reason="deposit:seed",
+            )
+            stats["deposited_cents"] = target - confirmed
+
+    for item in spec.get("gifts", []):
+        product = await _find_product(session, profile, item["company"], item["product"])
+        gift = (
+            await session.execute(
+                select(Purchase).where(
+                    Purchase.investor_id == user.id,
+                    Purchase.product_id == product.id,
+                    Purchase.legal_basis == PurchaseLegalBasis.GIFT,
+                    Purchase.source_purchase_id.is_(None),
+                )
+            )
+        ).scalars().first()
+        if gift is None:
+            gift = await grant_gift(
+                staff=admin,
+                user_id=user.id,
+                product_id=product.id,
+                units=item.get("lots", product.package_size),
+                session=session,
+            )
+            stats["gifts"] += 1
+        if gift.status == PurchaseStatus.PENDING_ACCEPTANCE:
+            await accept_gift(gift.id, user, session)
+
+    for item in spec.get("purchases", []):
+        product = await _find_product(session, profile, item["company"], item["product"])
+        plan_name = item.get("plan")
+        if plan_name is None:
+            made = (
+                await session.execute(
+                    select(Purchase.id).where(
+                        Purchase.investor_id == user.id,
+                        Purchase.product_id == product.id,
+                        Purchase.legal_basis == PurchaseLegalBasis.SALE,
+                        Purchase.source_purchase_id.is_(None),
+                    )
+                )
+            ).first()
+            if made is None:
+                await execute_purchase(product.id, user, session)
+                stats["purchases"] += 1
+            continue
+        template = (
+            await session.execute(
+                select(ProductInstallment).where(
+                    ProductInstallment.product_id == product.id,
+                    ProductInstallment.name == plan_name,
+                    ProductInstallment.is_deleted.is_(False),
+                )
+            )
+        ).scalar_one_or_none()
+        if template is None:
+            raise SeedRefusedError(
+                f"Product {product.name!r} has no instalment {plan_name!r}"
+            )
+        made = (
+            await session.execute(
+                select(InstallmentPlan.id).where(
+                    InstallmentPlan.investor_id == user.id,
+                    InstallmentPlan.product_installment_id == template.id,
+                )
+            )
+        ).first()
+        if made is None:
+            await create_plan(product.id, template.id, user, session)
+            stats["instalments"] += 1
+
+    return stats
+
+
+async def ensure_portfolio_count(
     session: AsyncSession,
     user: User,
     spec: dict[str, Any],
     products: list[Product],
 ) -> dict[str, int]:
-    """Give one investor money and a few purchases.
+    """Give one LIVE investor money and a few purchases (`aivis seed-portfolio`).
 
     The deposit is idempotent by balance floor, the way the script this
     replaces did it. The purchases are made idempotent differently and
@@ -1635,6 +1922,7 @@ async def reset_seed_data(
         "companies": 0,
         "products": 0,
         "purchases": 0,
+        "instalment_plans": 0,
         "attachments": 0,
         "roadmap_items": 0,
         "templates": 0,
@@ -1668,6 +1956,26 @@ async def reset_seed_data(
             Product.company_id.in_(company_ids)
         )
         product_ids = list((await session.execute(product_stmt)).scalars())
+
+    # -- 3a. Instalment plans: their tranches point at purchases (RESTRICT),
+    # so tranches and plans go before the purchases. --
+    plan_ids = list(
+        (
+            await session.execute(
+                select(InstallmentPlan.id).where(
+                    InstallmentPlan.investor_id.in_(user_ids)
+                )
+            )
+        ).scalars()
+    )
+    if plan_ids:
+        await session.execute(
+            delete(InstallmentTranche).where(InstallmentTranche.plan_id.in_(plan_ids))
+        )
+        await session.execute(
+            delete(InstallmentPlan).where(InstallmentPlan.id.in_(plan_ids))
+        )
+        counts["instalment_plans"] = len(plan_ids)
 
     # -- 3. Rows that point at purchases, then the purchases. --
     purchase_stmt = select(Purchase.id).where(
@@ -1854,6 +2162,8 @@ async def seed_profile(
         "agents": 0,
         "investors": 0,
         "purchases": 0,
+        "instalments": 0,
+        "gifts": 0,
     }
 
     for spec in profile.get("staff", []):
@@ -1941,11 +2251,16 @@ async def seed_profile(
         portfolio = spec.get("portfolio")
         if portfolio:
             result = await ensure_portfolio(
-                session, investor, portfolio, products
+                session, investor, portfolio, profile, admin
             )
             stats["purchases"] += result["purchases"]
+            stats["instalments"] += result["instalments"]
+            stats["gifts"] += result["gifts"]
 
-    info(f"investors: {stats['investors']}, purchases: {stats['purchases']}")
+    info(
+        f"investors: {stats['investors']}, purchases: {stats['purchases']}, "
+        f"instalments: {stats['instalments']}, gifts: {stats['gifts']}"
+    )
     logger.info("seed_profile_applied", marker=marker, **stats)
     return stats
 
@@ -1966,7 +2281,10 @@ async def _run_profile(args: argparse.Namespace) -> int:
                 admin = await require_admin(session)
                 if profile.get("staff"):
                     await assert_no_live_staff(
-                        session, marker, allow_live_staff=args.allow_live_staff
+                        session,
+                        marker,
+                        allow_live_staff=args.allow_live_staff,
+                        admin=admin,
                     )
 
             if args.dry_run:
@@ -2033,7 +2351,7 @@ async def _run_portfolio(args: argparse.Namespace) -> int:
             )
             products = list((await session.execute(product_stmt)).scalars())
 
-            stats = await ensure_portfolio(
+            stats = await ensure_portfolio_count(
                 session,
                 user,
                 {

@@ -35,7 +35,6 @@
 #                for one slot only, the others falling back; `en` as a key
 # =============================================================================
 
-import copy
 import json
 import shutil
 import uuid
@@ -757,7 +756,8 @@ async def test_documents_name_the_project_in_the_templates_language(
 #    shipped-profile test)
 # ---------------------------------------------------------------------------
 
-_DEMO_DIR = seed.PROJECTS_DIR / "demo"
+_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_DEMO_DIR = _FIXTURES / "seed_project"
 
 
 def _seed_profile(project: dict) -> dict:
@@ -765,8 +765,7 @@ def _seed_profile(project: dict) -> dict:
 
 
 def _shipped_project() -> dict:
-    shipped = json.loads((seed.PROFILES_DIR / "default.json").read_text(encoding="utf-8"))
-    project = copy.deepcopy(shipped["companies"][0])
+    project = json.loads((_FIXTURES / "seed_project.json").read_text(encoding="utf-8"))
     project["email_local"] = f"demo-{_tag()}"
     return project
 

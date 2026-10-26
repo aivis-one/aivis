@@ -2,8 +2,8 @@
 # AIVIS.ONE Backend -- unit tests for the SANKORD entry of the seed profile
 # =============================================================================
 #
-# WHAT THESE TESTS ARE FOR. The default seed profile carries a second
-# project, SANKORD: its texts in English and Russian, four portfolio
+# WHAT THESE TESTS ARE FOR. The default seed profile carries a project,
+# SANKORD (NUTREEX has its own file): its texts in English and Russian, four portfolio
 # products with their bonus tiers and instalment plans, a roadmap and its
 # pictures. They read the profile and the project folder as files and
 # assert the mapping, so they need no database. What only a database can
@@ -42,6 +42,12 @@ def _has_cyrillic(text: str) -> bool:
 
 def test_the_account_and_the_project_economics(sankord: dict[str, Any]) -> None:
     assert sankord["email_local"] == "sankord"
+    assert seed._local_of(sankord) == "sankord"
+    assert (sankord["first_name"], sankord["last_name"], sankord["country"]) == (
+        "SANKORD",
+        "Team",
+        "GE",
+    )
     assert sankord["name"] == {"en": "SANKORD", "ru": "SANKORD"}
     # A lot is 25 parts at 10 cents: a part is 0.4 cent.
     assert sankord["price_per_unit_cents"] == 10
@@ -107,7 +113,13 @@ def test_every_product_has_three_instalment_plans_that_add_up(
     for product in sankord["products"]:
         total = product["package_size"] * price
         plans = product["installments"]
-        assert [p["name"] for p in plans] == ["6 months", "12 months", "24 months"]
+        assert [p["name"]["en"] for p in plans] == ["6 months", "12 months", "24 months"]
+        # a plan keeps its English name only: the seed stores a string
+        assert [seed._plain_name(p["name"], "plan") for p in plans] == [
+            "6 months",
+            "12 months",
+            "24 months",
+        ]
         for plan in plans:
             tranches = plan["plan_config"]["tranches"]
             assert sum(t["amount_cents"] for t in tranches) == total
@@ -195,4 +207,4 @@ def test_the_whole_shipped_profile_passes_the_pre_write_checks(
     not depend on the stand's environment."""
     monkeypatch.setattr(seed.settings, "frontend_base_url", "https://stand.example.com")
     seed.validate_profile(profile)
-    assert [c["key"] for c in profile["companies"]] == ["demo", "sankord"]
+    assert [c["key"] for c in profile["companies"]] == ["sankord", "nutreex"]

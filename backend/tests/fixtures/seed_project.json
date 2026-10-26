@@ -1,0 +1,120 @@
+{
+  "key": "demo",
+  "email_local": "demo",
+  "first_name": "Demo",
+  "last_name": "Owner",
+  "country": "NL",
+  "name": {
+    "en": "Demo Project",
+    "ru": "Демо-проект"
+  },
+  "description": {
+    "en": "A demo project laid down by the seed: logo, cover, a presentation and a roadmap.",
+    "ru": "Демо-проект, созданный засевом: логотип, обложка, презентация и роадмап."
+  },
+  "price_per_unit_cents": 250,
+  "total_supply": 1000000,
+  "shares_per_option": 1,
+  "distribution_config": {
+    "company_pct": 0.83,
+    "agent_levels": [
+      0.1,
+      0.03,
+      0.01
+    ]
+  },
+  "pool": {
+    "equity_percent": 10
+  },
+  "logo": "media/logo.png",
+  "logo_dark": "media/logo-dark.png",
+  "cover": "media/cover.png",
+  "products": [
+    {
+      "name": {
+        "en": "Starter package",
+        "ru": "Стартовый пакет"
+      },
+      "description": {
+        "en": "Ten options. The entry ticket.",
+        "ru": "Десять опционов. Входной билет."
+      },
+      "package_size": 10,
+      "cover": "media/product.png",
+      "purchase_config": {
+        "bonuses": []
+      }
+    },
+    {
+      "name": {
+        "en": "Growth package",
+        "ru": "Пакет роста"
+      },
+      "description": {
+        "en": "One hundred options, payable in two parts.",
+        "ru": "Сто опционов, оплата в две части."
+      },
+      "package_size": 100,
+      "installments": [
+        {
+          "name": "Two payments",
+          "plan_config": {
+            "tranches": [
+              {
+                "amount_cents": 12500,
+                "units_percent": 50
+              },
+              {
+                "amount_cents": 12500,
+                "units_percent": 50
+              }
+            ],
+            "bonus_units": 0,
+            "agent_bonus_units": 0
+          }
+        }
+      ]
+    }
+  ],
+  "attachments": [
+    {
+      "file": "documents/en/marketing/presentations/deck.pdf",
+      "meta": {
+        "title": "Demo Project presentation",
+        "category": "marketing/presentations",
+        "language": "en",
+        "is_published": true,
+        "is_public": true,
+        "order": 0
+      }
+    }
+  ],
+  "roadmap": [
+    {
+      "key": "launch",
+      "title": {
+        "en": "Platform launch",
+        "ru": "Запуск платформы"
+      },
+      "description": {
+        "en": "The project opened to its first investors.",
+        "ru": "Проект открылся первым инвесторам."
+      },
+      "kind": "milestone",
+      "status": "completed",
+      "target_date": "2026-09-01",
+      "cover": "roadmap/launch.png"
+    },
+    {
+      "key": "first-sale",
+      "title": {
+        "en": "First thousand parts sold",
+        "ru": "Продана первая тысяча частей"
+      },
+      "kind": "milestone",
+      "status": "planned",
+      "target_date": "2026-12-01",
+      "cover": "roadmap/first-sale.png"
+    }
+  ]
+}
