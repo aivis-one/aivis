@@ -1356,6 +1356,9 @@
       "pool": {
         "equity_percent": 25
       },
+      "logo": "media/logo.png",
+      "logo_dark": "media/logo-dark.png",
+      "cover": "media/cover.png",
       "products": [
         {
           "name": {
@@ -1575,7 +1578,8 @@
                 "agent_bonus_units": 0
               }
             }
-          ]
+          ],
+          "cover": "media/product.png"
         },
         {
           "name": {
@@ -1802,7 +1806,8 @@
                 "agent_bonus_units": 0
               }
             }
-          ]
+          ],
+          "cover": "media/product.png"
         },
         {
           "name": {
@@ -2029,7 +2034,8 @@
                 "agent_bonus_units": 0
               }
             }
-          ]
+          ],
+          "cover": "media/product.png"
         },
         {
           "name": {
@@ -2256,7 +2262,8 @@
                 "agent_bonus_units": 0
               }
             }
-          ]
+          ],
+          "cover": "media/product.png"
         }
       ],
       "roadmap": [

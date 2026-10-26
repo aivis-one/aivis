@@ -86,7 +86,7 @@ def test_four_portfolios_with_the_same_prices_and_tiers_as_the_platform(
         assert product["description"]["en"].strip()
         assert "NUTREEX" in product["description"]["en"]
         assert _has_cyrillic(product["description"]["ru"])
-        assert "cover" not in product, "no picture exists yet"
+        assert product["cover"] == "media/product.png"
         total = product["package_size"] * price
         plans = product["installments"]
         assert [p["name"]["en"] for p in plans] == ["6 months", "12 months", "24 months"]
@@ -109,10 +109,12 @@ def test_six_roadmap_items_without_dates_in_both_languages(
         assert _has_cyrillic(item["description"]["ru"])
 
 
-def test_no_picture_is_named_and_none_is_needed(nutreex: dict[str, Any]) -> None:
+def test_the_media_exist_and_the_cover_has_a_russian_variant(nutreex: dict[str, Any]) -> None:
     for slot in ("logo", "logo_dark", "cover"):
-        assert slot not in nutreex
-    assert not any((_FOLDER / "media").glob("*")) if (_FOLDER / "media").is_dir() else True
+        assert (_FOLDER / nutreex[slot]).is_file(), slot
+    for product in nutreex["products"]:
+        assert (_FOLDER / product["cover"]).is_file()
+    assert (_FOLDER / "media" / "ru" / "cover.png").is_file()
 
 
 def test_texts_go_to_the_base_columns_and_the_translations(
