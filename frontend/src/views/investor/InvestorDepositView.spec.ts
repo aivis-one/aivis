@@ -29,6 +29,8 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/api/payments', () => api)
 
+import en from '@/i18n/locales/en.json'
+import ru from '@/i18n/locales/ru.json'
 import InvestorDepositView from './InvestorDepositView.vue'
 
 const OPEN = {
@@ -101,5 +103,14 @@ describe('InvestorDepositView, the triple click on the network warning', () => {
     const line = w.findAll('[role="status"]').filter((n) => n.text() === LINE)
     expect(line).toHaveLength(1)
     expect(Object.values(api).map((f) => f.mock.calls.length)).toEqual(calls)
+  })
+})
+
+describe('InvestorDepositView, the words of the line', () => {
+  it('carries the same words in Russian and English', () => {
+    expect(ru.inv.deposit.manualRequested).toBe('Заявка отправлена на подтверждение администратору')
+    expect(en.inv.deposit.manualRequested).toBe(
+      'Your request has been sent to an administrator for confirmation',
+    )
   })
 })
