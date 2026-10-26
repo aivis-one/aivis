@@ -227,6 +227,28 @@ async def test_the_invoice_read_keeps_the_request_across_a_reload(
     assert credited.json()["manually_credited"] is True
 
 
+@pytest.mark.asyncio
+async def test_a_reload_keeps_the_request_of_an_expired_invoice(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    invoice, token = await _client_invoice(
+        client, db_session, status="expired", expires_in=-timedelta(hours=2)
+    )
+
+    async def remote(_service_id: UUID) -> dict[str, Any]:
+        return {"status": "expired", "attempts_remaining": 3}
+
+    monkeypatch.setattr(payments_client, "get_invoice", remote)
+    current = "/api/v1/payments/invoices/current"
+    params = {"network": "USDT-TRC20"}
+    none_yet = await client.get(current, params=params, headers=auth_headers(token))
+    assert none_yet.json() is None
+    await client.post(_request_url(invoice.id), headers=auth_headers(token))
+    after = await client.get(current, params=params, headers=auth_headers(token))
+    assert after.json()["id"] == str(invoice.id)
+    assert after.json()["manual_requested_at"] is not None
+
+
 # --- the staff side ------------------------------------------------------------------
 
 

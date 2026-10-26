@@ -40,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import payments_client
 from app.core.exceptions import NotFoundError
-from app.modules.payments.manual_requests import manual_state
+from app.modules.payments.manual_requests import manual_state, open_request_condition
 from app.modules.payments.models import CryptoInvoice, Payment
 from app.modules.payments.schemas import InvoiceResponse, TxidResultResponse
 
@@ -295,6 +295,8 @@ async def current_invoice(
     user_id: UUID,
     network: str,
     session: AsyncSession,
+    *,
+    include_requested: bool = False,
 ) -> InvoiceResponse | None:
     """The user's open invoice on this network, refreshed, or None.
 
@@ -330,16 +332,36 @@ async def current_invoice(
     result = await session.execute(stmt)
     invoice = result.scalar_one_or_none()
 
-    if invoice is None:
+    if invoice is not None:
+        remote = await payments_client.get_invoice(invoice.service_invoice_id)
+        _cache_status(invoice, remote)
+        if invoice.status not in _TERMINAL_STATUSES:
+            return await _render(invoice, remote, session)
+
+    if not include_requested:
         return None
 
-    remote = await payments_client.get_invoice(invoice.service_invoice_id)
-    _cache_status(invoice, remote)
-
-    if invoice.status in _TERMINAL_STATUSES:
+    # No open invoice: the newest one on this network whose client asked for a
+    # manual confirmation that is not credited yet (expired or stalled
+    # included), so a reload keeps the waiting line until the administrator
+    # confirms. open_invoice never asks for it, so it still creates a new one.
+    requested = (
+        await session.execute(
+            select(CryptoInvoice)
+            .where(
+                CryptoInvoice.user_id == user_id,
+                CryptoInvoice.network == network,
+                open_request_condition(),
+            )
+            .order_by(CryptoInvoice.created_at.desc(), CryptoInvoice.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if requested is None:
         return None
-
-    return await _render(invoice, remote, session)
+    remote = await payments_client.get_invoice(requested.service_invoice_id)
+    _cache_status(requested, remote)
+    return await _render(requested, remote, session)
 
 
 async def open_invoice(

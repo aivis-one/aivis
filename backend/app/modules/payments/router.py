@@ -122,7 +122,7 @@ async def get_current_invoice(
     including resolving a row cached as `created` into `expired`. A
     reader session would discard that and the next call would ask again.
     """
-    return await current_invoice(user.id, network, session)
+    return await current_invoice(user.id, network, session, include_requested=True)
 
 
 @router.get(
