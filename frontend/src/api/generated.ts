@@ -921,7 +921,7 @@ export interface NotificationItemOut {
   created_at: string
 }
 
-/** POST /api/v1/auth/password-reset/confirm -- request body. `new_password` reuses EmailRegisterRequest.password's exact constraints (min 8 / max 128 chars) -- password strength rules live in one place, not duplicated per endpoint. */
+/** POST /api/v1/auth/password-reset/confirm -- request body. `new_password` is a NewPassword (users/schemas.py), the same rule as EmailRegisterRequest.password -- the password rule lives in one place, not duplicated per endpoint. */
 export interface PasswordResetConfirmRequest {
   token: string
   new_password: string
@@ -1404,6 +1404,11 @@ export interface SessionListResponse {
   items: SessionItemResponse[]
 }
 
+/** POST /api/v1/users/me/password -- the first password of an account. The password only: the confirmation field is the screen's check, not the server's. */
+export interface SetPasswordRequest {
+  password: string
+}
+
 /** An operator closing an OPEN ticket one of four ways (H40 item 4). `open` is not here: back to work is its own route (reopen), with its own rule for spam. comms' `closed` is not a status of ours at all -- nothing moves a ticket's thread there (comms would tell the person). */
 export interface SetTicketStatusIn {
   status: 'resolved' | 'rejected' | 'duplicate' | 'spam'
@@ -1845,12 +1850,13 @@ export interface UserListResponse {
   per_page: number
 }
 
-/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. two_factor_enabled (TASK-38): extracted from credentials.totp.enabled via User.two_factor_enabled -- same from_attributes mechanism as `email`. Lets any UserResponse consumer (Settings screens in particular, see components/shared/TwoFactorSection.vue) know whether 2FA is currently on without a dedicated status endpoint. iter 2.6c B6: `staff_profile` is populated by the service layer when `role == "staff"` -- it carries the staff profile id, is_active flag, and the EFFECTIVE permission matrix (defaults merged with per-staff overrides). For non-staff users the field is null. The frontend Staff Platform tab keys off this field to gate the whole surface. */
+/** User representation in API responses. Excludes credentials (sensitive: password hashes, tokens). Profile is returned as-is from JSONB. Email is extracted from credentials via User.email property. two_factor_enabled (TASK-38): extracted from credentials.totp.enabled via User.two_factor_enabled -- same from_attributes mechanism as `email`. Lets any UserResponse consumer (Settings screens in particular, see components/shared/TwoFactorSection.vue) know whether 2FA is currently on without a dedicated status endpoint. password_required (H44): User.password_required -- the e-mail is confirmed and there is no password. Computed here, on the server, and nowhere else: the frontend router holds the account on the password screen while it is true and does not repeat the formula. iter 2.6c B6: `staff_profile` is populated by the service layer when `role == "staff"` -- it carries the staff profile id, is_active flag, and the EFFECTIVE permission matrix (defaults merged with per-staff overrides). For non-staff users the field is null. The frontend Staff Platform tab keys off this field to gate the whole surface. */
 export interface UserResponse {
   id: string
   role: string
   email?: string | null
   two_factor_enabled?: boolean
+  password_required?: boolean
   is_active: boolean
   onboarding_step: string
   kyc_status: string
