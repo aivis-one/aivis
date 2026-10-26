@@ -20,6 +20,8 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 1.4. A purchase of units in the index project "AIVIS Projects Index" is a purchase under this agreement and is governed also by the Index Rules, which say what a unit is. In that project the Parts are called units. What the Index Rules state of the index -- what a unit is and the income it gives, the number of units, the price of a unit, the bonus fund, the use of the money paid for units, and the buy-out and closing of a project in the index -- applies to that project in place of clauses 1.2, 2.4, 3.1, 3.4, 3.6, 6.1 to 6.3 and 6.5, of the first sentence of clause 5.8 and of the second to fourth sentences of clause 5.9.
 
+1.5. This agreement runs for as long as the Company holds the exclusive right to the project whose Parts the Buyer holds.
+
 ## 2. The register entry {#ba-h2}
 
 2.1. The Company keeps in the Cabinet a register of the IP of each project: who holds which Parts of the exclusive right and how the project's distributable profit is distributed. The register is a digital system in which the exclusive right to the project is expressed in Parts.
@@ -36,7 +38,7 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 3.2. Gross receipts are all money received from customers for the project's product, before any deduction. The distributable profit is counted only on the sales of the project's product. The money from selling Parts is never gross receipts and does not enter the distributable profit.
 
-3.3. The direct costs are these, and no others: payment-system and bank fees; hosting, servers and AI models that directly serve the project's product; third-party licences inside the product; taxes on the project's revenue, such as VAT; direct support of the product's customers. There are no other deductions. In particular, the development, salaries and marketing of the project are not deductions.
+3.3. The direct costs are these, and no others: payment-system and bank fees; hosting, servers and AI models that directly serve the project's product; third-party licences inside the product; taxes on the project's revenue, such as VAT; direct support of the product's customers. There are no other deductions. In particular, the development, salaries and marketing of the project are not deductions. The Holder may ask support for the detail of a quarter's direct costs by this list.
 
 3.4. The Holder's income equals the project's distributable profit x his Parts / 1,000,000,000. The Company takes no commission: it earns from the project only as the holder of its own Parts.
 
@@ -46,7 +48,7 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 ## 4. Changes to the terms {#ba-h4}
 
-4.1. Any change to what this agreement promises about the distributable profit, the closed list of direct costs and the payment calendar applies to Parts already sold only with the Holder's consent.
+4.1. Any change to what this agreement promises about the distributable profit, the closed list of direct costs and the payment calendar applies to Parts already sold only with the Holder's consent, except a change in the Holder's favour (a cost removed from the closed list, a payment made earlier), which needs no consent.
 
 4.2. The distributable profit, the closed list of direct costs and the absence of a commission are shown to the Buyer before the purchase.
 
@@ -69,6 +71,8 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 5.8. The money from selling Parts goes to the budget of that project by its roadmap and business-financial model, less the selling cost. The Company has no sales department of its own; sales are made by agent-integrators, whose commissions are the selling cost, paid from the money for the Parts and disclosed to the Buyer before the purchase.
 
 5.9. The Company stays the one debtor of the Buyer whatever happens to a project's IP. The Company may sell a project's IP only after it has bought back the share in the right of every Holder of that project, at a price not below the value of the share on the revaluation of the project made at the decision to sell. Every Holder is told in the Cabinet 30 days before the sale, and the price is paid to his account in the Cabinet at the end of that notice. The buy-out binds every Holder: on such a sale each Holder's share in the right passes to the Company at that price, and the Holder is paid for it.
+
+5.10. A Part is the Buyer's share in the exclusive right and not a debt of the Company: if the Company becomes insolvent, the Holder's share in the right stays outside the Company's estate. The profit accrued to the Holder and not yet paid is held on the separate account of the project (clause 5.2), and the Holder's claim to it is an ordinary claim against the Company.
 
 ## 6. The price and bonus Parts {#ba-h6}
 
@@ -104,6 +108,8 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 8.2. On withdrawal the full price goes back to the Buyer's single account in the Cabinet, and the bonus Parts of that purchase are cancelled. On the Buyer's request, support refunds the account out by the means by which he paid, less the network fee for USDT. The Buyer agrees to this refund to his account.
 
+8.3. The Company refunds a withdrawal within 14 days of the withdrawal. The refund goes first to the Buyer's single account in the Cabinet, with his express consent given in clause 8.2, and then, on his request, out by the means by which he paid, less the network fee for USDT.
+
 ## 9. Management of the right, no partnership, no vote {#ba-h9}
 
 9.1. The Holder is a co-owner of the exclusive right in the amount of his Parts. By this agreement the Holder passes to the Company the management of the right: licensing it, running the product, protecting the right and, after the buy-out of clause 5.9, selling the project's IP. The consent of each Holder is not required for these acts of the Company.
@@ -114,9 +120,11 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 ## 10. The share {#ba-h10}
 
-10.1. A share passes only by inheritance, or to the Company by the buy-out of clause 5.9. Nothing else can be done with the share. Transfer of a share between Holders and a secondary market belong to version 2.0.
+10.1. A share passes only by inheritance, to the Company by the buy-out of clause 5.9, or to the Company under clause 10.3. Nothing else can be done with the share. Transfer of a share between Holders and a secondary market belong to version 2.0.
 
 10.2. The Company promises no buy-back at the Holder's request; the buy-out of clause 5.9 is made only before a sale of a project's IP.
+
+10.3. On the death of a Holder his share passes to his heir. The heir may claim the share within 10 years of the Holder's death; until then the accruals on the share are held on the deceased Holder's account in the Cabinet. If no heir has claimed the share within those 10 years, it passes to the Company at the project's last valuation, and the price is held for the heir as the law requires.
 
 ## 11. Taxes {#ba-h11}
 
@@ -136,4 +144,4 @@ the natural person whose verification (KYC) is passed and who accepts this agree
 
 13.1. The English text of this agreement prevails over its text in any other language.
 
-13.2. A change to this agreement applies to Parts already sold only as clause 4 allows, that is with the Holder's consent.
+13.2. A change to this agreement applies to Parts already sold only as clause 4 allows, that is with the Holder's consent, or without it where clause 4.1 allows a change in his favour.

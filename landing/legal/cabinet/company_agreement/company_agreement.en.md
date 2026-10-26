@@ -24,7 +24,7 @@ the company for which the Company's staff have opened an account in the Cabinet 
 
 2.1. The project has 1,000,000,000 parts, all together 100 percent of the project's exclusive right. The number is fixed and no part is ever added.
 
-2.2. The parts are divided as follows: 25 percent for sale, 10 percent index fund, 14 percent bonus fund, and 51 percent reserve and the Company's own. The Project Account shows this division and does not change it.
+2.2. The parts are divided as follows: 25 percent for sale, 10 percent index fund, 14 percent bonus fund, and 51 percent the Company's own share, which it keeps as co-owner. The Project Account shows this division and does not change it.
 
 ## 3. The price of a part {#ca-h3}
 

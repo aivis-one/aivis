@@ -70,9 +70,11 @@ the natural person whose verification (KYC) is passed, whose application the Com
 
 6.4. The volume of a purchase withdrawn within the 14 days, or whose payment is reversed, is left out of the pools.
 
+6.5. If two agent-integrators tie exactly at the 20th place of the monthly pool or the 10th place of the quarterly pool, support settles the tie by hand.
+
 ## 7. Bonus Parts {#ai-h7}
 
-7.1. On a one-time purchase by a buyer of his first level (clause 4.2), one who registered by his own link, the Agent-Integrator receives bonus Parts by the amount of that purchase: 5 percent from 200 USD, 10 percent from 1,000 USD, 15 percent from 5,000 USD and 20 percent from 25,000 USD.
+7.1. On a one-time purchase by a buyer of his first level (clause 4.2), one who registered by his own link, the Agent-Integrator receives bonus Parts by the amount of that purchase: 5 percent from 200 USD, 10 percent from 1,000 USD, 15 percent from 5,000 USD and 20 percent from 25,000 USD. On an instalment purchase the bonus Parts are credited after its last payment, calculated on the amount paid.
 
 7.2. The Company's support credits the bonus Parts by hand from the bonus fund of the project, 14 percent of its Parts, after the 14 days in which the buyer may withdraw from the purchase.
 

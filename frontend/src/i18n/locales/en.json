@@ -2220,10 +2220,6 @@
         "title": "Balance",
         "frozen": "On hold"
       },
-      "pool": {
-        "title": "Distributable profit",
-        "note": "The project's gross receipts from sales of its product less the direct costs of the closed list. This screen does not calculate it and shows zero; until the project's product sells, the distributable profit is zero."
-      },
       "metrics": {
         "revenue": "Sales of parts",
         "optionsSold": "Parts sold",

@@ -40,6 +40,8 @@
 
 4.6. The Company records every payment in the Cabinet with its amount, currency, time and means, the references the payment service gives, and, for USDT, the address from which it was sent.
 
+4.7. Support credits a buyer's balance by hand only to an account whose verification is passed, and records the reason for the credit and the payment reference.
+
 ## 5. Payments by the Company {#aml-h5}
 
 5.1. A payout of money needs a passed verification. An agent-integrator whose verification is withdrawn is paid nothing until he passes it again, and his accruals are kept.

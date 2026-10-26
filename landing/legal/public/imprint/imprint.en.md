@@ -6,7 +6,7 @@
 
 1.2. **Brand:** AIVIS.ONE.
 
-1.3. **Product:** SANKORD, a product of the company.
+1.3. **Projects:** the projects of the Company listed in the Cabinet's catalogue.
 
 1.4. **Cabinet:** {company.name} runs the cabinet at {site.domain}{site.path.app}/ and is the seller in it.
 

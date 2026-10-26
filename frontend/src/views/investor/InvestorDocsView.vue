@@ -119,8 +119,8 @@ const SAFE_TOKEN = /^[a-z0-9_-]{1,64}$/i
 // ---------------------------------------------------------------------------
 
 // Every legal document a buyer reads in the cabinet, in display order.
-// The AML policy is the staff's; the licence agreement and the company
-// agreement are not a buyer's.
+// The AML policy is the staff's; the company
+// agreement is not a buyer's.
 const BUYER_READ_TYPES: readonly string[] = [
   'cabinet_terms',
   'privacy_policy',

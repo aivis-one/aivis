@@ -139,6 +139,6 @@ We handle the following data, grouped by where you meet us. Each group names the
 
 ## 12. Visitors and users in the EU and the UK {#p-h-visitors-and-users-in-the-eu-and-the-uk}
 
-12.1. This site and the Cabinet are written in English and in Russian for readers worldwide and for Russian speakers outside Russia. Whether they are aimed at the EU or the UK, and so whether the GDPR or the UK GDPR applies to them, is not settled. We have not appointed a representative in the EU or the UK.
+12.1. This site and the Cabinet are written in English and in Russian for readers worldwide and for Russian speakers outside Russia. In version 1.0 our services do not target the EU or the UK, so the GDPR and the UK GDPR do not apply to them, and we have not appointed a representative in the EU or the UK.
 
 12.2. If the GDPR or the UK GDPR applies to you anyway, the same practice holds. Our grounds are the performance of our agreement with you, our legal obligations, and our legitimate interest in running a secure site and Cabinet, in knowing who we sell to and in answering messages. You have the rights of access, correction, erasure, restriction, portability and objection, and you may complain to your national data protection authority (in the UK, the Information Commissioner's Office).

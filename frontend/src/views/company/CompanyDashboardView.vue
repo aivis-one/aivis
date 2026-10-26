@@ -3,16 +3,15 @@
 // AIVIS.ONE Frontend -- CompanyDashboardView (the project account's Home tab)
 // =============================================================================
 //
-// What the project sees first: the balance, the project's pool, three figures
+// What the project sees first: the balance, three figures
 // and the recent operations. Every block is a link to the screen that holds its
 // detail (the balance, the operations, the analytics, the products), and every
 // block stands on its own: a failed request removes only the blocks it feeds
 // and leaves a retry in their place.
 //
-// THE POOL. The project's pool is a fixed 10 percent of the gross receipts
-// from sales of the project's product. The money buyers pay for parts is
-// never gross receipts, and the Cabinet records no sale of a product in 1.0,
-// so the pool is zero until the product sells.
+// THE DISTRIBUTABLE-PROFIT TILE. Hidden in version 1.0 and it returns in version
+// 2.0: the screen does not calculate the project's distributable profit, so it
+// shows no figure for it.
 // =============================================================================
 
 import { computed, onMounted } from 'vue'
@@ -41,7 +40,6 @@ import { tOrRaw } from '@/utils/i18n'
 import { useThemedLogo } from '@/composables/useThemedLogo'
 
 // Passed to the tile's note as {percent}, which no locale's note text carries, so it prints nowhere; the tile shows a constant zero until its content is chosen.
-const POOL_PERCENT = 10
 
 const { t, locale } = useI18n()
 const profileStore = useCompanyProfileStore()
@@ -77,9 +75,6 @@ const hasFrozen = computed<boolean>(() => passiveFrozen.value > 0)
 const partSales = computed<number>(() => summary.value?.total_revenue_cents ?? 0)
 const partsSold = computed<number>(() => summary.value?.total_options_sold ?? 0)
 const productsCount = computed<number>(() => summary.value?.products_count ?? 0)
-
-/** The project's pool: 10 percent of the product's gross receipts. None is recorded in 1.0, so zero. */
-const poolCents = computed<number>(() => 0)
 
 const recentTransactions = computed<CompanyTransactionResponse[]>(
   () => summary.value?.recent_transactions ?? [],
@@ -149,7 +144,7 @@ onMounted(() => {
   </CEmptyState>
 
   <template v-else>
-    <!-- Five figures, each a link to the screen that holds its detail; they wait as pending figures -->
+    <!-- Four figures, each a link to the screen that holds its detail; they wait as pending figures -->
     <div class="ds-stats">
       <!-- Balance -> the balance screen -->
       <CStatCard
@@ -166,16 +161,8 @@ onMounted(() => {
         <template #icon><Wallet /></template>
       </CStatCard>
 
-      <!-- The pool tile: a constant zero (poolCents) until its content is chosen -->
-      <CStatCard
-        :label="t('comp.dashboard.pool.title')"
-        :value="formatPrice(poolCents)"
-        :sub="t('comp.dashboard.pool.note', { percent: POOL_PERCENT })"
-        :pending="summaryLoading"
-        to="/company/analytics"
-      >
-        <template #icon><Layers /></template>
-      </CStatCard>
+      <!-- The distributable-profit tile is hidden in version 1.0 and returns in version 2.0:
+           the figure is not calculated by this screen, so the screen does not show it. -->
 
       <CStatCard
         :label="t('comp.dashboard.metrics.revenue')"

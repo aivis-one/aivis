@@ -12,6 +12,8 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 1.3. A part is not a share or equity in the Company, not an option and not a fund. By the buyer agreement you pass the management of the right to the Company: licensing it, running the product, protecting the right and, after the buy-out, selling the project's IP. You have no vote.
 
+1.4. The buyer agreement runs for as long as the Company holds the exclusive right to the project. If a holder dies, his heir may claim the share within 10 years of the death; until then the accruals are held on the deceased holder's account. A share not claimed within those 10 years passes to the Company at the project's last valuation, and the price is held for the heir as the law requires.
+
 ## 2. The distributable profit {#pp-h2}
 
 2.1. The holders and the Company, as co-owners, share a project's distributable profit in proportion to their parts. The distributable profit is the project's gross receipts less the project's direct costs from a closed list: payment-system and bank fees; hosting, servers and AI models that directly serve the project's product; third-party licences inside the product; taxes on the project's revenue, such as VAT; direct support of the product's customers. There are no other deductions. The Company takes no commission: it earns from the project only as the holder of its own parts.
@@ -20,7 +22,7 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 2.3. Example, with figures chosen for illustration only. Gross receipts of 100,000 for a quarter and direct costs by the list of 20,000: the distributable profit is 80,000, and 1 percent of the parts receives 800.
 
-2.4. If the direct costs of a quarter exceed the gross receipts, the distributable profit of that quarter is zero: you bear no loss, and the loss is not carried forward to a later quarter. Development, salaries and marketing of the project are not deductions. A change to what this sheet promises about the profit, the closed list of direct costs or the payment calendar applies to parts already sold only with the holder's consent.
+2.4. If the direct costs of a quarter exceed the gross receipts, the distributable profit of that quarter is zero: you bear no loss, and the loss is not carried forward to a later quarter. Development, salaries and marketing of the project are not deductions. A change to what this sheet promises about the profit, the closed list of direct costs or the payment calendar applies to parts already sold only with the holder's consent. A change in the holder's favour (a cost removed from the list, a payment made earlier) needs no consent, and the holder may ask support for the detail of a quarter's costs.
 
 ## 3. The risks {#pp-h3}
 
@@ -48,6 +50,8 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 6.2. The Company may sell a project's IP only after it has bought back every holder's share in the right. Before the buy-out the project is revalued at the decision, and you are told in the Cabinet 30 days before the sale. The buy-out binds every holder, you included: your share then passes to the Company at a price not below its value on that fresh revaluation, and you are paid for it, to your account in the Cabinet, at the end of the notice.
 
+6.3. Your part is your share in the right, not a debt of the Company: if the Company becomes insolvent, your share stays outside the Company's estate. The profit accrued to you and not yet paid is held on the project's separate account, and your claim to it is an ordinary claim against the Company.
+
 ## 7. The index {#pp-h7}
 
 7.1. The index is the averaged choice across the projects it holds.
@@ -58,7 +62,7 @@ This sheet is shown to you before you buy. Read it before you accept the buyer a
 
 8.1. Every buyer is treated as a consumer.
 
-8.2. You may withdraw within 14 days of the purchase, through support. On withdrawal the full price goes back to your single account in the Cabinet, and the bonus parts of that purchase are cancelled; you agree to this refund to your account. On your request, support refunds the account out by the means by which you paid, less the network fee for USDT. A part joins the distribution of the profit only when the money paid for it can no longer be recalled, that is after those 14 days.
+8.2. You may withdraw within 14 days of the purchase, through support. On withdrawal the full price goes back to your single account in the Cabinet, and the bonus parts of that purchase are cancelled; you agree to this refund to your account. On your request, support refunds the account out by the means by which you paid, less the network fee for USDT. A part joins the distribution of the profit only when the money paid for it can no longer be recalled, that is after those 14 days. The Company refunds a withdrawal within 14 days of it, first to your account in the Cabinet with your express consent.
 
 8.3. Disputes go to the state courts of Georgia in Tbilisi, unless mandatory law where you live gives you the right to go to another forum, and your protection as a consumer at your home is kept.
 

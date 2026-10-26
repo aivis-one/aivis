@@ -10,7 +10,7 @@ These rules describe the index project "AIVIS Projects Index" of **{company.name
 
 1.3. A part of the Index is called a unit (the "Unit"). The Index has 10,000,000,000 Units, for 100 places of projects. The number is fixed and no Unit is ever added.
 
-1.4. 70 percent of the Units are for sale and 30 percent form the bonus fund of the Index. The Index has no reserve. Bonus Units come from the bonus fund of the Index; the bonus funds of the projects do not serve the Index.
+1.4. 70 percent of the Units are for sale and 30 percent form the bonus fund of the Index. The Index has no reserve. Bonus Units come from the bonus fund of the Index; the bonus funds of the projects do not serve the Index. The bonus Units given to buyers and those given to agent-integrators together take at most 28 of the 30 percent.
 
 1.5. The Company holds every Unit not yet sold or given, and the income of those Units is directed to developing the projects.
 
