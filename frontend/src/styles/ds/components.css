@@ -959,6 +959,8 @@ button.ds-stat__link { appearance: none; margin: 0; padding: 0; border: 0; backg
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font-body);
+  max-inline-size: 100vw;
+  overflow-x: clip;
 }
 .ds-shell--framed { min-block-size: 0; block-size: 100%; }
 .ds-shell[data-tier="rail"],
@@ -1760,6 +1762,8 @@ button.ds-navitem:active { background: var(--primary-subtle); }
 
 /* the sub-navigation of a hub: links between child screens, the Tabs look, sticky under the header */
 .ds-subnav {
+  min-inline-size: 0;
+  max-inline-size: 100%;
   position: sticky;
   inset-block-start: var(--_header-h);
   z-index: var(--z-sticky);
@@ -2627,7 +2631,7 @@ button.ds-navitem:active { background: var(--primary-subtle); }
 .ds-dialog__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .ds-dialog__title { margin: 0; font-family: var(--font-display); font-size: var(--fs-h4); font-weight: 700; line-height: var(--lh-snug); letter-spacing: var(--tracking-tight); color: var(--text-primary); overflow-wrap: anywhere; }
 .ds-dialog__title:has(> .ds-icon) { display: flex; align-items: center; gap: var(--space-2); }
-.ds-dialog__body { display: grid; flex: 1; align-content: start; gap: var(--space-3); min-block-size: 0; overflow-y: auto; padding: calc(var(--focus-width) + var(--focus-offset)); margin: calc((var(--focus-width) + var(--focus-offset)) * -1); font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-primary); overflow-wrap: anywhere; }
+.ds-dialog__body { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; align-content: start; gap: var(--space-3); min-block-size: 0; overflow-y: auto; padding: calc(var(--focus-width) + var(--focus-offset)); margin: calc((var(--focus-width) + var(--focus-offset)) * -1); font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-primary); overflow-wrap: anywhere; }
 .ds-dialog__body > * { margin-block: 0; }
 .ds-dialog__text { color: var(--text-secondary); }
 .ds-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }

@@ -232,6 +232,7 @@ onMounted(loadQueue)
 /* The frame's main pads the screen and sets its measure; the screen only stacks its parts. */
 .staff-apps {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 </style>

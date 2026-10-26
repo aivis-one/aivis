@@ -389,12 +389,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .staff-pay {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-content: start;
 }
 
 .staff-pay__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 

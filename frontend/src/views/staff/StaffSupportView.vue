@@ -281,6 +281,7 @@ onMounted(load)
 <style scoped>
 .ssup {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-content: start;
   min-inline-size: 0;
@@ -293,6 +294,7 @@ onMounted(load)
 }
 .ssup__filters {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   margin: 0;
   padding: 0;

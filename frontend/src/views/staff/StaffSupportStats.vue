@@ -188,6 +188,7 @@ function errorMessage(): string {
 <style scoped>
 .sstat {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   min-inline-size: 0;
 }

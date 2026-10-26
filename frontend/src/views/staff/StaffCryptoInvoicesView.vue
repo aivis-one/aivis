@@ -284,12 +284,14 @@ onMounted(() => void load())
 <style scoped>
 .staff-inv {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-content: start;
 }
 
 .staff-inv__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 </style>

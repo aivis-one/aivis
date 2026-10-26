@@ -181,11 +181,13 @@ const version = __APP_VERSION__
 <style scoped>
 .staff-settings {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
 }
 
 .staff-settings__profile {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: var(--space-2);
   text-align: center;
@@ -193,6 +195,7 @@ const version = __APP_VERSION__
 
 .staff-settings__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 </style>

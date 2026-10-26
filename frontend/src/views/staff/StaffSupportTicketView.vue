@@ -610,6 +610,7 @@ watch(
 <style scoped>
 .stck {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-content: start;
   min-inline-size: 0;
@@ -643,6 +644,7 @@ watch(
 }
 .stck__rating {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1);
   padding: var(--space-3);
   border: 1px solid var(--border-default);

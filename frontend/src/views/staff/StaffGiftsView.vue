@@ -333,18 +333,21 @@ onMounted(() => {
 <style scoped>
 .gifts {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-content: start;
 }
 
 .gifts__form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   max-inline-size: var(--maxw-prose);
 }
 
 .gifts__list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 

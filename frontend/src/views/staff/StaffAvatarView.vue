@@ -61,11 +61,13 @@ async function handleStart(): Promise<void> {
 <style scoped>
 .staff-avatar {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
 }
 
 .staff-avatar__form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: start;
   gap: var(--space-3);
 }

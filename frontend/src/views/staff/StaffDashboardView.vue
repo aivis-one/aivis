@@ -195,11 +195,13 @@ onMounted(reload)
 <style scoped>
 .staff-dash {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
 .staff-dash__overview {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 </style>
