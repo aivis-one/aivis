@@ -1,7 +1,47 @@
-/* AIVIS.ONE course template. Loads after aivis-tokens.css and never changes it.
+/* AIVIS.ONE course template. Loads after the design system's fonts.css, tokens.css and
+   tokens-dark.css (design-system/) and never changes them.
    Colours, font families, spacing and radius come from the tokens. Type sizes are
    multiples of the token sizes. The desktop slide is drawn at a fixed 1280 x 720
    and scaled to the window; the phone layout is the same markup, reflowed. */
+
+/* ---------- base: the reset, the type and the shared scaffold (the design system ships tokens, no base) ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-height) + var(--space-4)); }
+body {
+  font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal);
+  color: var(--text-primary); background: var(--bg-page);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); color: var(--text-primary); }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+code { font-family: var(--font-mono); font-size: 0.9em; }
+::selection { background: var(--azure-200); color: var(--azure-900); }
+[data-theme="dark"] ::selection { background: var(--azure-700); color: var(--azure-50); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--space-5); }
+.icon { display: inline-block; vertical-align: middle; }
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-display); font-weight: 800; letter-spacing: var(--tracking-tight); font-size: var(--fs-h4);
+  color: var(--text-primary);
+}
+.brand img { width: 30px; height: 30px; display: block; }
+.brand a { color: inherit; }
+.brand a:hover { text-decoration: none; }
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  height: var(--control-height-md); padding: 0 14px;
+  border: 1px solid var(--border-default); border-radius: var(--radius-pill);
+  background: var(--bg-surface); color: var(--text-primary);
+  font-family: var(--font-body); font-weight: 600; font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: border-color var(--motion-quick), box-shadow var(--motion-quick);
+}
+.theme-toggle:hover { border-color: var(--border-strong); box-shadow: var(--shadow-1); }
 
 :root {
   --stage-w: 1280px;
@@ -22,7 +62,8 @@ html, body { height: 100%; }
 body { overflow: hidden; }
 img { display: block; max-width: 100%; }
 button { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* the one focus ring of the design system: --focus-ring at --focus-width and --focus-offset, no halo */
+:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 
 /* ---------- frame ---------- */
 .deck {
@@ -59,7 +100,7 @@ button { font: inherit; color: inherit; }
 }
 .lang__btn::-webkit-details-marker { display: none; }
 .lang__btn:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
-.lang[open] .lang__btn { border-color: var(--primary); box-shadow: var(--shadow-focus); }
+.lang[open] .lang__btn { border-color: var(--primary); }
 .lang__list {
   position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + var(--space-2)); z-index: 70;
   list-style: none; margin: 0; min-width: 180px; padding: var(--space-2);

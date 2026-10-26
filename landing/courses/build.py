@@ -40,6 +40,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SITE_DIR = HERE.parent / "site"
+DS_DIR = HERE.parent.parent / "design-system"
 PLACEHOLDER = re.compile(r"\{\{(t:|a:|@)([^{}]*)\}\}")
 HASH_MARK = "# courses-hashes:"
 
@@ -252,13 +253,18 @@ def main(argv):
     courses = load_courses(locales)
 
     sh = HERE / "_shared"
-    fonts_css = read(sh / "aivis-fonts.css")
+    # fonts and tokens are the design system's own files (../../design-system/), read at every build;
+    # Noto Sans Arabic is left out: no language of the site is written in Arabic script
+    fonts_css = "\n".join(line.replace("url('./", "url('/assets/fonts/")
+                          for line in read(DS_DIR / "fonts" / "fonts.css").splitlines()
+                          if "noto-sans-arabic" not in line)
     for f in re.findall(r"url\('/assets/fonts/([^']+)'\)", fonts_css):
         if not (dist / "assets" / "fonts" / f).is_file():
             sys.exit("FAIL: font /assets/fonts/%s is not in %s (the site build ships it)" % (f, dist))
     shared = {
         "boot": read(sh / "theme-boot.js"),
-        "style": "\n".join([fonts_css, read(sh / "aivis-tokens.css"), read(sh / "course.css")]),
+        "style": "\n".join([fonts_css, read(DS_DIR / "tokens" / "tokens.css"), read(DS_DIR / "tokens" / "tokens-dark.css"),
+                            read(sh / "course.css")]),
         "script": read(sh / "course.js"),
         # the skip link's text is the landing's own (content/<locale>.json `nav.skip`), reused, not restated
         "skip": {loc: json.loads(read(args.site.parent / (loc + ".json")))["t"]["nav.skip"] for loc in locales},
