@@ -12,7 +12,7 @@
 //
 // A gift that the recipient has not accepted yet carries Cancel, so a gift can
 // be cancelled after the page it was granted from is closed. An active purchase
-// carries Reverse for a member who may review payments: a reason is required,
+// that is not an installment tranche carries Reverse for a member who may review payments: a reason is required,
 // the server takes the whole purchase back and returns its parts to the pool.
 //
 // GET  /api/v1/staff/purchases   (financial_operations; ?status= ?company_id= ?buyer_id= ?page= ?per_page=)
@@ -183,9 +183,9 @@ const reverseReason = ref('')
 const reverseLoading = ref(false)
 const reverseError = ref('')
 
-/** An active purchase of a member who may review payments. */
+/** An active purchase of a member who may review payments; an installment tranche is refused by the server, so it is not offered. */
 function reversible(row: StaffPurchaseItem): boolean {
-  return canReverse.value && row.status === 'active'
+  return canReverse.value && row.status === 'active' && row.legal_basis !== 'installment_tranche'
 }
 
 function openReverse(row: StaffPurchaseItem): void {

@@ -265,6 +265,15 @@ describe('the reverse of an active purchase', () => {
     plain.unmount()
   })
 
+  it('is not offered on an installment tranche', async () => {
+    answer([{ ...row('tranche', 'installment', 'active'), legal_basis: 'installment_tranche' }])
+    signInAs(['financial_operations', 'payment_review'])
+    const wrapper = mount(StaffPurchasesView)
+    await flushPromises()
+    expect(wrapper.find('.purch__reverse').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('refuses an empty reason and sends nothing', async () => {
     answer([row('paid', 'paid', 'active')])
     signInAs(['financial_operations', 'payment_review'])

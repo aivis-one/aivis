@@ -700,7 +700,12 @@ async function handlePromote(): Promise<void> {
 // card sends translation_edit on with it), and a tick that clears a right of an
 // administrator takes the mark away. Both are asked first, with a warning.
 type AdminChange = 'grant' | 'remove' | 'make'
-const adminAsk = ref<{ change: AdminChange; key?: PermissionKey; value?: boolean } | null>(null)
+const adminAsk = ref<{
+  change: AdminChange
+  key?: PermissionKey
+  value?: boolean
+  preset?: PermissionPreset
+} | null>(null)
 const ownCard = computed(
   () => detailUser.value != null && detailUser.value.id === authStore.user?.id,
 )
@@ -750,6 +755,7 @@ async function confirmAdminAsk(): Promise<void> {
   adminAsk.value = null
   if (!ask) return
   if (ask.change === 'make') await makeAdministrator()
+  else if (ask.preset) await sendPreset(ask.preset)
   else if (ask.key !== undefined && ask.value !== undefined)
     await sendPermission(ask.key, ask.value)
 }
@@ -757,6 +763,15 @@ async function confirmAdminAsk(): Promise<void> {
 // One press of a preset marks its set: the member holds exactly those rights
 // afterwards (utils/staffRights.ts says why it replaces rather than adds).
 async function applyPreset(preset: PermissionPreset): Promise<void> {
+  if (!detailUser.value?.staff_profile || !isAdmin.value) return
+  if (holdsEveryPermission(detailUser.value.staff_profile.permissions)) {
+    adminAsk.value = { change: 'remove', preset }
+    return
+  }
+  await sendPreset(preset)
+}
+
+async function sendPreset(preset: PermissionPreset): Promise<void> {
   if (!detailUser.value?.staff_profile || !isAdmin.value) return
   try {
     const updated = await updatePermissions(detailUser.value.staff_profile.id, presetPatch(preset))

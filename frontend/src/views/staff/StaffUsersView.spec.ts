@@ -196,6 +196,14 @@ describe("the user card follows the viewer's rights", () => {
     ) as HTMLButtonElement
     finance.click()
     await flushPromises()
+    // The card holds every right, so the press asks the remove warning first.
+    expect(updatePermissions).not.toHaveBeenCalled()
+    ;(
+      Array.from(document.body.querySelectorAll('.ds-dialog__panel button')).find((b) =>
+        (b.textContent ?? '').includes('common.confirm'),
+      ) as HTMLButtonElement
+    ).click()
+    await flushPromises()
     expect(updatePermissions).toHaveBeenCalledTimes(1)
     const [profileId, body] = updatePermissions.mock.calls[0] as [string, Record<string, boolean>]
     expect(profileId).toBe('p1')
@@ -335,6 +343,33 @@ describe('the administrator mark on the rights card', () => {
     press('common.cancel')
     await flushPromises()
     expect(updatePermissions).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('a preset pressed on an administrator opens the remove warning and sends nothing until confirmed', async () => {
+    updatePermissions.mockResolvedValue({
+      id: 'p1',
+      permissions: permissions(['payment_review', 'financial_operations']),
+      is_active: true,
+    } as never)
+    const wrapper = await mountWithUser('staff', {
+      id: 'p1',
+      permissions: permissions([...PERMISSION_KEYS]),
+      is_active: true,
+    })
+    press('staff.rights.presets.finance')
+    await flushPromises()
+    expect(bodyText()).toContain('staff.userDetail.removeAdminWarning')
+    expect(updatePermissions).not.toHaveBeenCalled()
+    press('common.confirm')
+    await flushPromises()
+    expect(updatePermissions).toHaveBeenCalledTimes(1)
+    const [, body] = updatePermissions.mock.calls[0] as [string, Record<string, boolean>]
+    expect(
+      Object.keys(body)
+        .filter((k) => body[k])
+        .sort(),
+    ).toEqual(['financial_operations', 'payment_review'])
     wrapper.unmount()
   })
 

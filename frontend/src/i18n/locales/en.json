@@ -1239,8 +1239,7 @@
       "cancel": "Cancel the gift",
       "cancelled": "The gift is cancelled",
       "cancelError": "The gift could not be cancelled",
-      "sessionTitle": "Just granted",
-      "listPointer": "The gifts waiting for acceptance and the gifts among the newest purchases. Every gift of every date is in Finance > Purchases.",
+      "listPointer": "Up to a hundred gifts waiting for acceptance and the gifts among the newest hundred purchases. Every gift of every date is in Finance > Purchases.",
       "partsCount": "{n} parts",
       "statuses": {
         "pending_acceptance": "Waiting for acceptance",

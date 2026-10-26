@@ -21,7 +21,7 @@
 //
 // THE LIST OF GIFTS LASTS. It is read from the purchases (GET /api/v1/staff/purchases),
 // so it is still there after a reload: the gifts that wait for acceptance (the server
-// filters them by status) and the gifts among the newest hundred purchases (the server
+// filters them by status, the newest hundred) and the gifts among the newest hundred purchases (the server
 // has no filter by kind, so the screen picks them out). A gift waiting for acceptance
 // carries its cancel; every gift of every date is in Finance > Purchases.
 // =============================================================================
