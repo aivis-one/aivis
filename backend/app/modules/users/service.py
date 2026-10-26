@@ -448,8 +448,8 @@ async def set_first_password(
          their whole stale column back); re-reading after the commit (it
          cannot stop a later overwrite).
 
-    Does NOT commit -- the router commits before it answers (users/router.py,
-    P-01's second exception).
+    Does NOT commit -- get_db_session commits before the answer leaves
+    (core/database.py, H46).
 
     Raises:
         ConflictError: the account has a password (password_already_set),

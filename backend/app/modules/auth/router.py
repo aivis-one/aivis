@@ -138,10 +138,11 @@
 #   Resolution happens in service -- router just forwards.
 #
 # COMMIT RULE (P-01):
-#   Routers never call session.commit() -- get_db_session commits after
-#   yield -- except POST /telegram/link/confirm, which commits a claim
-#   before ending the row's other sessions, and POST /users/me/password
-#   (users/router.py, H44), which commits before it answers.
+#   Routers never call session.commit() -- get_db_session commits once,
+#   before the response is sent (core/database.py, H46) -- except POST
+#   /telegram/link/confirm: the one place in the product that commits
+#   mid-route, to ORDER the claim's commit before end_other_sessions in
+#   Redis, an action outside the transaction (see there).
 # =============================================================================
 
 import structlog
@@ -697,9 +698,10 @@ async def auth_telegram_link_confirm(
         # The claim ended the row's sessions inside its transaction, but a
         # session opened by the unproven holder before the commit (his
         # password still worked until then) would survive it. Commit now,
-        # for exactly this -- one of the two places a router commits, the
-        # other is users/router.py's POST /me/password -- and end every
-        # session of the row except the prover's new one.
+        # for exactly this -- the one place a router commits (core/
+        # database.py): the commit must come BEFORE end_other_sessions,
+        # which acts outside the transaction -- and end every session of
+        # the row except the prover's new one.
         await session.commit()
         await end_other_sessions(user.id, token)
     # Reload before serialising: the link touched the row after its last

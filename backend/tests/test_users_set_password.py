@@ -581,9 +581,11 @@ async def _call_raw(token: str, payload: dict, on_start: Any) -> list[int]:
 async def test_the_password_is_committed_when_the_answer_starts(
     client: AsyncClient,
 ) -> None:
-    """get_db_session commits only after the response is sent; this route
-    commits itself first (users/router.py, P-01's second exception). Read
-    from another session at http.response.start, the row has the hash."""
+    """The password is committed before the answer leaves: get_db_session
+    commits when the endpoint returns, before the response is sent
+    (core/database.py, H46; until H46 this route committed by hand for it).
+    Read from another session at http.response.start, the row has the
+    hash."""
     body, _tg_id = await _passwordless(client)
     seen: list[bool] = []
 
