@@ -14,7 +14,7 @@ Placeholders in template.html (one regex pass, so inserted text is never re-scan
     {{t:KEY}}        content value, inserted as HTML as it is (the accepted text, with its own <b>, <span class="grad"> ...)
     {{a:KEY}}        content value as plain text, HTML-escaped (attributes, title)
     {{@href:/p/}}    the page address of /p/ in this page's language;  {{@abs:/p/}} the same with the site origin (base_url)
-    {{@skip}} {{@lang}} {{@lang_name}} {{@lang_cur}} {{@lang_items}} {{@description}} {{@alternates}} {{@boot}} {{@style}} {{@script}}
+    {{@skip}} {{@lang}} {{@lang_name}} {{@lang_cur}} {{@lang_items}} {{@description}} {{@alternates}} {{@boot}} {{@style}} {{@script}} {{@sprite}}
                      built here: <html lang>, the language control (a list of plain links with hreflang), the description
                      meta (none when meta.desc is empty), canonical + hreflang links, the inline theme script, the inline
                      stylesheet (fonts + tokens + course.css + the course's extra.css), the inline course script.
@@ -112,6 +112,18 @@ def encode_emails(text):
     return "".join(p if i % 2 else EMAIL.sub(lambda m: m.group(0).replace("@", "&#64;"), p) for i, p in enumerate(parts))
 
 
+def sprite_for(tpl):
+    """The design system's symbols (design-system/components/icons/icons.svg) for every #i-key the template uses."""
+    src = read(DS_DIR / "components" / "icons" / "icons.svg")
+    out = []
+    for key in sorted(set(re.findall(r'href="#i-([a-z0-9-]+)"', tpl))):
+        m = re.search(r'<symbol id="i-%s".*?</symbol>' % re.escape(key), src, re.S)
+        if not m:
+            sys.exit("FAIL: icon '%s' is not in the design system sprite" % key)
+        out.append(m.group(0))
+    return "\n".join(out)
+
+
 def render(slug, tpl, content, loc, locales, default, site, shared):
     c = content[loc]
     base = (site.get("base_url") or "").rstrip("/")
@@ -143,6 +155,7 @@ def render(slug, tpl, content, loc, locales, default, site, shared):
         "boot": shared["boot"],
         "style": shared["style"] + "\n" + shared["extra"][slug],
         "script": shared["script"],
+        "sprite": shared["sprite"][slug],
     }
 
     def sub(m):
@@ -269,6 +282,8 @@ def main(argv):
         # the skip link's text is the landing's own (content/<locale>.json `nav.skip`), reused, not restated
         "skip": {loc: json.loads(read(args.site.parent / (loc + ".json")))["t"]["nav.skip"] for loc in locales},
         "extra": {d.name: read(d / "extra.css") if (d / "extra.css").is_file() else "" for d, _, _ in courses},
+        # the icons of each deck: the design system's P1 symbols for the keys its template uses, never a copy kept here
+        "sprite": {d.name: sprite_for(tpl) for d, tpl, _ in courses},
     }
     for k in ("boot", "script"):
         if "</script" in shared[k].lower():
