@@ -57,6 +57,9 @@ function _systemPrefersDark(): boolean {
 }
 
 const current = ref<ThemeMode>(_readStored())
+// The theme the host app (Telegram) is showing, followed only while the person has
+// made no choice of their own ('auto'). Never stored: it is the host's, not theirs.
+const hostTheme = ref<EffectiveTheme | null>(null)
 // Tracks the OS-level scheme only. Updated by the media query listener
 // below; consumed by `effective` when current === 'auto'.
 const systemDark = ref<boolean>(_systemPrefersDark())
@@ -103,7 +106,8 @@ function _apply(mode: ThemeMode): void {
     } catch {
       // noop
     }
-    html.removeAttribute('data-theme')
+    if (hostTheme.value) html.setAttribute('data-theme', hostTheme.value)
+    else html.removeAttribute('data-theme')
   } else {
     try {
       window.localStorage.setItem(STORAGE_KEY, mode)
@@ -126,6 +130,16 @@ export function useTheme() {
   }
 
   /**
+   * Follow the theme of the host app (Telegram), or stop with null. Only the
+   * 'auto' choice follows it: a light or dark the person picked stays, and
+   * nothing is written to the storage.
+   */
+  function followHost(theme: EffectiveTheme | null): void {
+    hostTheme.value = theme
+    if (current.value === 'auto') _apply('auto')
+  }
+
+  /**
    * The concrete theme actually being rendered right now. Differs
    * from `current` only when current === 'auto', in which case we
    * resolve via prefers-color-scheme. Useful for code that needs to
@@ -134,8 +148,9 @@ export function useTheme() {
   const effective = computed<EffectiveTheme>(() => {
     if (current.value === 'light') return 'light'
     if (current.value === 'dark') return 'dark'
+    if (hostTheme.value) return hostTheme.value
     return systemDark.value ? 'dark' : 'light'
   })
 
-  return { current, effective, set }
+  return { current, effective, set, followHost }
 }

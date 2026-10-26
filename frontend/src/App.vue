@@ -58,6 +58,7 @@ import { AlertTriangle } from '@/components/ui/icons'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import { useRoleRefresh } from '@/composables/useRoleRefresh'
+import { useTelegramChrome } from '@/composables/useTelegramChrome'
 import AuthShell from '@/components/layout/AuthShell.vue'
 import LoadingView from '@/views/auth/LoadingView.vue'
 import KycRequiredPrompt from '@/components/shared/KycRequiredPrompt.vue'
@@ -69,6 +70,10 @@ const { initAuth, retryAuth, isReady, isStandalone, authError } = useAuth()
 
 // An approved applicant moves to the integrator cabinet without signing in again.
 useRoleRefresh()
+
+// Inside Telegram: its Back button on pages below a tab root, and its colour scheme.
+// Nothing happens in a plain browser.
+useTelegramChrome()
 
 onMounted(() => {
   initAuth()

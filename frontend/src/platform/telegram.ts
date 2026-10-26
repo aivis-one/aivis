@@ -41,6 +41,18 @@ export const telegramPlatform: Platform = {
     return wa.colorScheme || 'light'
   },
 
+  onThemeChanged(cb: (theme: 'light' | 'dark') => void): () => void {
+    try {
+      const wa = getWebApp()
+      const handler = (): void => cb(wa.colorScheme === 'dark' ? 'dark' : 'light')
+      wa.onEvent('themeChanged', handler)
+      return () => wa.offEvent('themeChanged', handler)
+    } catch {
+      // An old client without events: the theme is read once and not followed.
+      return () => undefined
+    }
+  },
+
   hapticFeedback(style: HapticStyle): void {
     try {
       const wa = getWebApp()

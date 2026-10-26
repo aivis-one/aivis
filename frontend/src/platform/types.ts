@@ -3,8 +3,8 @@
 // =============================================================================
 //
 // Common interface for Telegram WebApp and Standalone (browser) modes.
-// 9 methods: init, getInitData, getTheme, hapticFeedback, showBackButton,
-// hideBackButton, close, getStorageDriver, getStartParam.
+// 10 methods: init, getInitData, getTheme, onThemeChanged, hapticFeedback,
+// showBackButton, hideBackButton, close, getStorageDriver, getStartParam.
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -20,6 +20,8 @@ export interface Platform {
   init(): Promise<void>
   getInitData(): string | null
   getTheme(): 'light' | 'dark'
+  /** Calls back when the host changes its theme; returns the function that stops it. */
+  onThemeChanged(cb: (theme: 'light' | 'dark') => void): () => void
   hapticFeedback(style: HapticStyle): void
   showBackButton(cb: () => void): void
   hideBackButton(): void
@@ -61,6 +63,8 @@ export interface TelegramWebApp {
     }
   }
   colorScheme: 'light' | 'dark'
+  onEvent(event: string, cb: () => void): void
+  offEvent(event: string, cb: () => void): void
   BackButton: TelegramBackButton
   HapticFeedback: TelegramHapticFeedback
 }

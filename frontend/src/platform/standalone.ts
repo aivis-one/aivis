@@ -27,6 +27,11 @@ export const standalonePlatform: Platform = {
     return 'light'
   },
 
+  onThemeChanged(_cb: (theme: 'light' | 'dark') => void): () => void {
+    // The browser's own colour scheme is followed by useTheme.
+    return () => undefined
+  },
+
   hapticFeedback(_style: HapticStyle): void {
     // Haptic feedback not available in browser.
   },
