@@ -6,9 +6,9 @@
 # English and Russian, the terms of its lot, four portfolio products with
 # bonus tiers and instalment plans, and six roadmap items without dates.
 # They read the profile and the project folder as files, so they need no
-# database. The pictures of NUTREEX do not exist yet: the profile names
-# none, the folder holds none, and the seed loads the project without them;
-# they arrive by sync_project_package.py and the next seed run.
+# database. The pictures of NUTREEX (logo, dark logo, English and Russian
+# covers, product picture) come from its package by sync_project_package.py;
+# the profile names them and the folder holds them.
 # =============================================================================
 
 from __future__ import annotations
