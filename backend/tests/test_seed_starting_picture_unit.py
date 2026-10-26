@@ -154,6 +154,16 @@ def test_the_old_count_of_purchases_is_refused_by_name(profile: dict[str, Any]) 
         ),
         ({"gifts": [{"company": "sankord", "product": "Portfolio 200 USD", "lots": 0}]}, "lots must be"),
         ({"gifts": ["x"]}, "must be an object"),
+        (
+            {
+                "deposit_cents": 200_000,
+                "purchases": [
+                    {"company": "sankord", "product": "Portfolio 200 USD"},
+                    {"company": "sankord", "product": "Portfolio 200 USD", "plan": "6 months"},
+                ],
+            },
+            "a product bought at once and on a plan by one investor",
+        ),
     ],
 )
 def test_a_bad_starting_picture_is_refused_before_any_write(

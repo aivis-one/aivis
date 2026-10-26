@@ -415,7 +415,7 @@ no request at all*, not a 401.
   templates. An empty storefront and no test logins are the expected result, not a failure.
 - **The projects and the test accounts are a separate, deliberate command.** `aivis seed` lays the
   projects SANKORD and NUTREEX (texts in English and Russian, four portfolios and three instalment
-  plans each, roadmaps) and the house's test accounts with their starting picture (a support
+  plans each, roadmaps) and the platform's test accounts with their starting picture (a support
   operator, an agent, investors with deposits, purchases, an instalment and a gift) from
   `backend/scripts/seed_profiles/default.json`; it acts as the box's own admin and creates none. It
   refuses outright on `APP_ENV=production` (which this install sets) unless `AIVIS_SEED_DEMO=1` is

@@ -1,10 +1,10 @@
 {
-  "description": "The house's two projects, SANKORD and NUTREEX, and its own test accounts with their starting picture",
+  "description": "The platform's two projects, SANKORD and NUTREEX, and its own test accounts with their starting picture",
   "marker": "default",
   "_notes": [
     "WHAT THIS PROFILE IS FOR: after `aivis seed` the storefront shows SANKORD and",
     "NUTREEX with their texts in English and Russian, economics, four portfolios",
-    "each, three instalment plans each and their roadmaps, and the house's test",
+    "each, three instalment plans each and their roadmaps, and the platform's test",
     "accounts can be entered through the admin's avatar mode. The same profile runs",
     "on a test box and on a production box, test accounts always included.",
     "",
@@ -13,8 +13,8 @@
     "acts as the stand's live admin, made by `aivis bootstrap-admin <email>`, and",
     "refuses a stand without one. The admin is never created or changed here.",
     "",
-    "PROJECTS: each entry of `companies` is a project's package as the house keeps",
-    "it (company.json) plus its account's first name, last name and country, and",
+    "PROJECTS: each entry of `companies` is a project's package (company.json)",
+    "plus its account's first name, last name and country, and",
     "has a folder scripts/templates/projects/<key>/ holding its pictures; both",
     "arrive by `python scripts/sync_project_package.py <package> --owner ...`,",
     "which compares the copy byte for byte with `--check`. Texts a screen shows",

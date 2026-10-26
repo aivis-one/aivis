@@ -262,6 +262,35 @@ async def test_every_seeded_staff_member_is_declared_to_the_section(
     ) == len(staff_ids)
 
 
+async def test_the_admin_the_seed_acts_as_is_declared_with_the_first_operator(
+    db_session: Any, stand: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The seed declares the acting admin to the support section with the
+    operator it makes, once: one section_membership_changed event naming the
+    admin, member true, when comms is configured."""
+    monkeypatch.setattr(seed_settings, "comms_api_url", "http://comms.test")
+    monkeypatch.setattr(seed_settings, "comms_service_token", "test-token")
+
+    profile = _profile()
+    await seed.seed_profile(db_session, profile)
+    await db_session.flush()
+
+    rows = list(
+        (
+            await db_session.execute(
+                select(OutboxEvent).where(
+                    OutboxEvent.event_type == EVENT_SECTION_MEMBERSHIP_CHANGED
+                )
+            )
+        ).scalars()
+    )
+    admin_events = [
+        r for r in rows if (r.payload or {}).get("operator_id") == str(stand.id)
+    ]
+    assert len(admin_events) == 1
+    assert admin_events[0].payload["member"] is True
+
+
 # ---------------------------------------------------------------------------
 # REPEAT -- a second run changes nothing
 # ---------------------------------------------------------------------------
@@ -814,6 +843,9 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     ):
         assert again[key] == 0, key
     assert await _objects(prefix) == objects
+    assert (await get_active_balance(db_session, users["Four"].id))["confirmed"] == 20_000
+    assert (await get_active_balance(db_session, users["Five"].id))["confirmed"] == 16_700
+    assert (await get_active_balance(db_session, users["Two"].id))["confirmed"] == 0
 
     # Reset: instalments and gifts included, then -- after the commit --
     # the objects.

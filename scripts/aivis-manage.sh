@@ -1842,12 +1842,12 @@ case_seed() {
     if [ "$app_env" = "production" ] && [ -z "${AIVIS_SEED_DEMO:-}" ]; then
         echo -e "${RED}✗ Refusing to seed on APP_ENV=production${NC}"
         echo ""
-        echo "The seed lays the house's projects (SANKORD and NUTREEX) and"
+        echo "The seed lays the platform's projects (SANKORD and NUTREEX) and"
         echo "its own test accounts, with test money and test purchases, on"
         echo "the storefront. On a production contour the test accounts and"
         echo "their purchases sit next to real ones."
         echo ""
-        echo "If this box is meant to carry them (the house's own box is),"
+        echo "If this box is meant to carry them (the platform's own test box is),"
         echo "opt in explicitly:"
         echo "    AIVIS_SEED_DEMO=1 aivis seed"
         return 1

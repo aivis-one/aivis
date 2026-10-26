@@ -21,7 +21,7 @@
 #          package's `email` becomes the entry's `email_local` (its local
 #          part): the product's code names no deployment address, and the
 #          seed writes <local part>@<host of FRONTEND_BASE_URL> anyway.
-#   check: compares the same two things byte for byte and exits 1 on any
+#   check: compares the template files byte for byte and the profile entry as parsed JSON (the owner's three fields excluded) and exits 1 on any
 #          difference, naming each; writes nothing.
 #
 # WHY A COPY AND A CHECK. The package is the master. A project whose pictures
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("package", type=Path, help="the package folder (company.json and template/)")
     parser.add_argument("--profile", default="default", help="profile name (default: default)")
     parser.add_argument("--owner", nargs=3, metavar=("FIRST", "LAST", "COUNTRY"))
-    parser.add_argument("--check", action="store_true", help="compare byte for byte, write nothing")
+    parser.add_argument("--check", action="store_true", help="compare (files byte for byte, the entry as parsed JSON), write nothing")
     args = parser.parse_args(argv)
     try:
         problems = sync(

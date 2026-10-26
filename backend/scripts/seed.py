@@ -910,6 +910,7 @@ def _check_portfolio(
 
     companies = {c.get("key"): c for c in profile.get("companies", [])}
     needed = 0
+    kinds: set[tuple[Any, Any, bool]] = set()
     for field in ("purchases", "gifts"):
         items = portfolio.get(field, [])
         if not isinstance(items, list):
@@ -943,6 +944,11 @@ def _check_portfolio(
                     raise SeedRefusedError(f"{iwhere}.lots must be a whole number > 0")
                 continue
             plan = item.get("plan")
+            kinds.add((item.get("company"), item.get("product"), plan is None))
+            if (item.get("company"), item.get("product"), plan is not None) in kinds:
+                raise SeedRefusedError(
+                    f"{iwhere}: a product bought at once and on a plan by one investor"
+                )
             if plan is None:
                 needed += product["package_size"] * company["price_per_unit_cents"]
                 continue
@@ -1756,17 +1762,27 @@ async def ensure_portfolio(
 
     target = int(spec.get("deposit_cents", 0))
     if target > 0:
-        balance = await get_active_balance(session, user.id)
-        confirmed = balance["confirmed"]
-        if confirmed < target:
+        # The deposit is idempotent on THIS seed's own rows, not on the
+        # balance: a purchase or a tranche is a negative CONFIRMED row, so a
+        # balance floor would hand the money out again on every run.
+        seeded = (
+            await session.execute(
+                select(func.coalesce(func.sum(ActiveLedger.amount_cents), 0)).where(
+                    ActiveLedger.user_id == user.id,
+                    ActiveLedger.reason == "deposit:seed",
+                    ActiveLedger.status != LedgerStatus.REVERSED,
+                )
+            )
+        ).scalar_one()
+        if seeded < target:
             await record_active_ledger(
                 session,
                 user_id=user.id,
-                amount_cents=target - confirmed,
+                amount_cents=target - seeded,
                 status=LedgerStatus.CONFIRMED,
                 reason="deposit:seed",
             )
-            stats["deposited_cents"] = target - confirmed
+            stats["deposited_cents"] = target - seeded
 
     for item in spec.get("gifts", []):
         product = await _find_product(session, profile, item["company"], item["product"])
