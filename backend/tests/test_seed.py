@@ -769,8 +769,8 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     assert stats["investors"] == 3
     assert stats["purchases"] == 2, "test04 at once, test02 on NUTREEX"
     assert stats["instalments"] == 1 and stats["gifts"] == 1
-    assert stats["pictures"] == 3, "SANKORD's logo, dark logo and cover"
-    assert stats["picture_variants"] == 1, "SANKORD's Russian cover"
+    assert stats["pictures"] == 6, "each project's logo, dark logo and cover"
+    assert stats["picture_variants"] == 2, "each project's Russian cover"
     assert stats["attachments"] == 0
     assert stats["roadmap_items"] == 26 + 6
 
@@ -785,7 +785,8 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     # logo, dark logo, cover, its Russian variant, four product covers
     assert len(objects) == 8
     assert sankord.media_variants["ru"]["cover"] == f"{prefix}media/ru/cover.png"
-    assert await _objects(f"companies/{nutreex.id}/") == set(), "no picture yet"
+    # NUTREEX the same: logo, dark logo, cover, its Russian variant, four product covers
+    assert len(await _objects(f"companies/{nutreex.id}/")) == 8
     assert nutreex.shares_per_option == 100 and sankord.shares_per_option == 25
     assert sankord.translations["ru"]["description"].startswith("Операционка")
 
@@ -882,8 +883,9 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
     assert counts["roadmap_items"] == 32 and counts["companies"] == 2
     assert counts["users"] == 7, "five accounts and two project owners"
     purged = await seed.purge_seeded_objects(ids)
-    assert purged == {"objects": 8, "failed": 0}
+    assert purged == {"objects": 16, "failed": 0}
     assert await _objects(prefix) == set()
+    assert await _objects(f"companies/{nutreex.id}/") == set()
     assert await _seeded_users(db_session, profile["marker"]) == []
     assert (
         await db_session.execute(
@@ -897,6 +899,7 @@ async def test_the_shipped_default_profile_seeds_resets_and_seeds_again(
 async def test_every_seeded_account_has_its_own_password_and_none_is_shown(
     db_session: Any,
     stand: User,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
@@ -914,6 +917,9 @@ async def test_every_seeded_account_has_its_own_password_and_none_is_shown(
         return value
 
     monkeypatch.setattr(seed, "_random_password", _spy)
+    root = tmp_path / "projects"
+    shutil.copytree(_DEMO_DIR, root / "demo")
+    monkeypatch.setattr(seed, "PROJECTS_DIR", root)
     profile = _profile(
         staff=[],
         companies=[_demo_project()],
@@ -1091,12 +1097,15 @@ async def test_a_reset_survives_an_object_it_cannot_delete(
 
 
 async def test_two_roadmap_items_with_one_title_are_not_guessed_between(
-    db_session: Any, stand: User
+    db_session: Any, stand: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A second item with the seeded title, made by hand, makes the next
     run refuse rather than pick one."""
     from app.modules.companies.service import create_roadmap_item
 
+    root = tmp_path / "projects"
+    shutil.copytree(_DEMO_DIR, root / "demo")
+    monkeypatch.setattr(seed, "PROJECTS_DIR", root)
     profile = _profile(staff=[], companies=[_demo_project()])
     await seed.seed_profile(db_session, profile)
     await db_session.commit()
