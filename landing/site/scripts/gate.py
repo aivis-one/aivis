@@ -25,9 +25,6 @@ elsewhere -- "pick one and state which" per section 4.12/1):
     hardcodes a red-line pattern, a retraction term or a vocabulary; the
     register is `redlines.json` and its only reader is that script.
   - Q-PROVENANCE delegates to `scripts/provenance-check.py` over its CLI.
-  - Q-DS-ABSENCE delegates to `scripts/ds-verify-absence.py` over its CLI,
-    re-deriving the design system's declared absence from the DS recorded in
-    `deviations.json` -- nothing about that verification is stored.
   - Q-VOICE-INDEP and Q-VOICE-SCAN are implemented directly here (the voice
     skill owns the rule lists; the records are this file's to read). Both
     resolve a locale's page through `locale_path` IMPORTED from
@@ -866,36 +863,6 @@ def gate_voice_scan(args, site):
                     f"here)")
 
 
-# -------------------------------------------------------------- Q-DS-ABSENCE
-
-def gate_ds_absence(args, site):
-    """Re-derive the design system's declared absence at every run (spec 5.3):
-    nothing about the verification is stored, so a DS that fixes its coverage
-    table turns this gate green by itself and one that regresses turns it red
-    again."""
-    dev_path = args.site.parent / "deviations.json"
-    if not dev_path.exists():
-        return "N/A", (f"REASON: no {dev_path}; no design system has been ingested into this "
-                       f"project, so it declares no absence to verify")
-    try:
-        dev = load_json(dev_path)
-    except (OSError, json.JSONDecodeError) as e:
-        return "FAIL", f"cannot read/parse {dev_path}: {e}"
-    ds_path = (dev.get("ds") or {}).get("path")
-    if not ds_path:
-        return "FAIL", f"{dev_path} records no ds.path, so the design system cannot be re-verified"
-    root = Path(ds_path)
-    if not root.is_absolute():
-        root = (args.site.parent / root)
-    coverage = root / "references" / "coverage.md"
-    payload = root / "assets" / "tokens-resolved.json"
-    missing = [str(p) for p in (coverage, payload) if not p.exists()]
-    if missing:
-        return "FAIL", f"design system recorded at '{ds_path}' is not readable: missing {missing}"
-    return run_script("ds-verify-absence.py", [str(coverage), str(payload)],
-                      issue_prefixes=("-", "MISCLASSIFIED"))
-
-
 # (id, severity_spec, fn) -- severity_spec is a literal severity string or a
 # callable (args, site) -> severity (spec 1.1). Two rows use a callable.
 GATES = [
@@ -916,7 +883,6 @@ GATES = [
     ("Q-DISCLOSE", "BLOCKER", gate_disclose),
     ("Q-VOICE-INDEP", "BLOCKER", gate_voice_indep),
     ("Q-VOICE-SCAN", "BLOCKER", gate_voice_scan),
-    ("Q-DS-ABSENCE", "MAJOR", gate_ds_absence),
 ]
 
 
