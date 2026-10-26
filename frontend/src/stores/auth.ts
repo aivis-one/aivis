@@ -173,6 +173,24 @@ export const useAuthStore = defineStore('auth', () => {
     void setLocale(response.user.language)
   }
 
+  /**
+   * A login response carries no staff_profile (only GET /users/me builds
+   * it), so a staff member who signs in would see every right as false and
+   * a menu without Finance or Platform. After a staff sign-in the profile is
+   * read once more before the caller moves on. A failed read keeps the
+   * sign-in: the session is real, the next /users/me read fills the rights.
+   */
+  async function _completeSession(response: AuthResponse): Promise<void> {
+    _setSession(response)
+    if (response.user?.role !== 'staff') return
+    try {
+      const me = await api.get<UserResponse>('/api/v1/users/me')
+      if (me && me.id === response.user.id) user.value = me
+    } catch {
+      // Keep the session from the login response.
+    }
+  }
+
   function _clearSession(): void {
     // Clear `loading` first. If a login / register / restoreSession
     // is mid-flight and a 401 fires the unauthorized callback, the
@@ -222,7 +240,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.mfa_required) {
         return { mfaRequired: true, mfaToken: response.mfa_token as string }
       }
-      _setSession(response as AuthResponse)
+      await _completeSession(response as AuthResponse)
       // iter 2.6 batch 2: clear the one-shot referral code on
       // successful sign-in. Closes the hygiene gap where a visitor
       // who followed a referral link but then signed into an existing
@@ -254,7 +272,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const response = await verifyTwoFactorLogin({ mfa_token: mfaToken, code })
-      _setSession(response)
+      await _completeSession(response)
       telegramMfaToken.value = null
       sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
@@ -332,7 +350,7 @@ export const useAuthStore = defineStore('auth', () => {
         telegramLinkToken.value = null
         return { mfaRequired: true, mfaToken: response.mfa_token as string }
       }
-      _setSession(response as AuthResponse)
+      await _completeSession(response as AuthResponse)
       telegramLinkToken.value = null
       telegramMfaToken.value = null
       // Same cleanup as the email register path: the referral code is one-shot.
@@ -389,7 +407,7 @@ export const useAuthStore = defineStore('auth', () => {
         code,
         second_code: secondCode || null,
       })
-      _setSession(response)
+      await _completeSession(response)
       telegramLinkToken.value = null
       sessionStorage.removeItem(REFERRAL_KEY)
     } finally {
