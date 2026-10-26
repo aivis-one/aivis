@@ -687,7 +687,10 @@
         "profile_complete": "Profile filled in",
         "role_selected": "Documents to accept",
         "onboarding_complete": "Onboarding complete"
-      }
+      },
+      "linksTitle": "Money and purchases",
+      "actAs": "Act as this user",
+      "actAsConfirm": "Open the cabinet as this user? Every action you take is the user's own, and the audit records that it was you."
     },
     "platform": {
       "tabs": {

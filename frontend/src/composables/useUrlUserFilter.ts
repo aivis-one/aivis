@@ -30,7 +30,9 @@ export function searchForUser(search: string, userId: string, key: string): stri
 }
 
 export function useUrlUserFilter(key: string): Ref<string> {
-  const chosen = ref(typeof window === 'undefined' ? '' : userFromSearch(window.location.search, key))
+  const chosen = ref(
+    typeof window === 'undefined' ? '' : userFromSearch(window.location.search, key),
+  )
   watch(chosen, (value) => {
     if (typeof window === 'undefined') return
     const search = searchForUser(window.location.search, value, key)

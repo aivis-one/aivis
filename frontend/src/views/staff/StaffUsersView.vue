@@ -54,9 +54,9 @@
 // =============================================================================
 
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Check, FileText } from '@/components/ui/icons'
+import { Check, FileText, Ghost } from '@/components/ui/icons'
 import {
   CAvatar,
   CBadge,
@@ -82,6 +82,7 @@ import type { PermissionPreset } from '@/utils/staffRights'
 import { ApiResponseError } from '@/api/client'
 import { useToast } from '@/composables/useToast'
 import { useStaffPermissions } from '@/composables/useStaffPermissions'
+import { useAvatar } from '@/composables/useAvatar'
 import { useAuthStore } from '@/stores/auth'
 import {
   fetchUsers,
@@ -161,6 +162,46 @@ const authStore = useAuthStore()
 const canDoKycApprove = canDo('kyc_approve')
 // Blocking and unblocking need user_block; the buttons are not drawn without it.
 const canBlock = canDo('user_block')
+
+// -- From the card to the person's money and into their cabinet --
+//
+// Payments and withdrawals are read with payment_review, purchases with
+// financial_operations; the lists open already narrowed to the person (the
+// address names them, see composables/useUrlUserFilter.ts). "Act as this user"
+// starts the avatar mode and needs avatar_mode; the server refuses a staff or
+// platform target, so the card does not offer it for one.
+const canSeePayments = canDo('payment_review')
+const canSeePurchases = canDo('financial_operations')
+const canAct = canDo('avatar_mode')
+const router = useRouter()
+const { loading: avatarLoading, startAvatarSession } = useAvatar()
+const showActAsModal = ref(false)
+
+/** A person who has money in the product: not a staff member, not the platform. */
+const hasMoneyView = computed(
+  () => detailUser.value != null && !['staff', 'platform'].includes(detailUser.value.role),
+)
+const showMoneyLinks = computed(
+  () => hasMoneyView.value && (canSeePayments.value || canSeePurchases.value),
+)
+const canActAs = computed(
+  () => hasMoneyView.value && canAct.value && detailUser.value?.id !== authStore.user?.id,
+)
+
+function openList(path: string, param: 'user_id' | 'buyer_id'): void {
+  if (!detailUser.value) return
+  const query = { [param]: detailUser.value.id }
+  showDetail.value = false
+  void router.push({ path, query })
+}
+
+async function handleActAs(): Promise<void> {
+  if (!detailUser.value) return
+  const id = detailUser.value.id
+  showActAsModal.value = false
+  showDetail.value = false
+  await startAvatarSession(id)
+}
 
 // Names the screen shows for what the server sends as tokens: a role is
 // spoken as a person would (buyer, integrator, project, staff), a status as
@@ -1082,6 +1123,43 @@ onMounted(loadUsers)
           </div>
         </section>
 
+        <!-- From the card to the person's money and purchases: the lists open
+             already narrowed to them. -->
+        <section v-if="showMoneyLinks" class="detail__section">
+          <h3 class="detail__subtitle">
+            {{ t('staff.userDetail.linksTitle') }}
+          </h3>
+          <div class="ds-chip-row">
+            <CButton
+              v-if="canSeePayments"
+              variant="secondary"
+              size="sm"
+              inline
+              @click="openList('/staff/finance/payments', 'user_id')"
+            >
+              {{ t('staff.hub.finance.payments') }}
+            </CButton>
+            <CButton
+              v-if="canSeePayments"
+              variant="secondary"
+              size="sm"
+              inline
+              @click="openList('/staff/finance/withdrawals', 'user_id')"
+            >
+              {{ t('staff.hub.finance.withdrawals') }}
+            </CButton>
+            <CButton
+              v-if="canSeePurchases"
+              variant="secondary"
+              size="sm"
+              inline
+              @click="openList('/staff/finance/purchases', 'buyer_id')"
+            >
+              {{ t('staff.hub.finance.purchases') }}
+            </CButton>
+          </div>
+        </section>
+
         <!-- Staff rights (if staff). The administrator marks them: four
              preset buttons mark a whole set with one press, the ticks below
              mark single rights. A member who is not the administrator has no
@@ -1129,6 +1207,16 @@ onMounted(loadUsers)
 
         <!-- Actions -->
         <div class="ds-dialog__actions">
+          <CButton
+            v-if="canActAs"
+            variant="secondary"
+            size="sm"
+            inline
+            :loading="avatarLoading"
+            @click="showActAsModal = true"
+          >
+            <Ghost size="sm" /> {{ t('staff.userDetail.actAs') }}
+          </CButton>
           <CButton
             v-if="canBlock && detailUser.is_active && detailUser.role !== 'staff'"
             variant="danger"
@@ -1181,6 +1269,25 @@ onMounted(loadUsers)
           </CButton>
         </div>
       </template>
+    </CModal>
+
+    <!-- Act as this user: the avatar mode -->
+    <CModal
+      :open="showActAsModal"
+      :title="t('staff.userDetail.actAs')"
+      @close="showActAsModal = false"
+    >
+      <p class="ds-dialog__text">
+        {{ t('staff.userDetail.actAsConfirm') }}
+      </p>
+      <div class="ds-dialog__actions">
+        <CButton variant="outline" size="sm" inline @click="showActAsModal = false">
+          {{ t('common.cancel') }}
+        </CButton>
+        <CButton variant="primary" size="sm" inline :loading="avatarLoading" @click="handleActAs">
+          {{ t('staff.avatar.start') }}
+        </CButton>
+      </div>
     </CModal>
 
     <!-- Block confirmation -->
