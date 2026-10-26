@@ -1222,12 +1222,12 @@ def at(s):
     return esc(s).replace("@", "&#64;")
 
 
-def tile_link(href, icon, caption, cls="icon icon--soc", rel="me noopener"):
-    """ONE captioned icon tile for every footer icon (networks, the founder's contacts, the app): the same box, the
-    same colour, the caption under the box is the link's visible and accessible name."""
-    return ('<a class="social__link" href="%s" rel="%s"><span class="social__a" aria-hidden="true">%s</span>'
-            '<span class="social__cap">%s</span></a>'
-            % (href, rel, ic("soc-" + icon, cls + " icon--soc-" + esc(icon)), at(caption)))
+def tile_link(href, icon, label, cls="icon icon--soc", rel="me noopener"):
+    """ONE icon-only tile for every footer icon (networks, the founder's contacts, the app), the design system's
+    Icon tile in its icon-only form (K57): the same box, the same colour, no caption; the name is the link's
+    aria-label and its title, word for word."""
+    return ('<a class="social__a" href="%s" rel="%s" title="%s" aria-label="%s">%s</a>'
+            % (href, rel, at(label), at(label), ic("soc-" + icon, cls + " icon--soc-" + esc(icon))))
 
 
 _FLAG_GE_PETAL = ('<path d="M-0.7032-2.046a5.4 5.4 0 0 0 1.4064 0 10.4 10.4 0 0 0 0 4.092 5.4 5.4 0 0 0-1.4064 0 10.4 10.4 0 0 0 0-4.092z"/>'
@@ -1246,7 +1246,8 @@ def r_home_footer(sec, c, site):
     """The footer (footer.md section 3): the single contentinfo, a
     direct child of body. TOP the information (brand, sections, legal); BELOW it ONE contacts block with three
     groups side by side, the company networks, "write to the founder" and the Telegram app; then the legal strip.
-    Every icon is the same captioned tile (.social__link, its box .social__a) with a currentColor glyph of its own size."""
+    The three groups read start edge, middle, end edge (the design system's group row, K57). Every icon is the same icon-only
+    tile (.social__a, its name in aria-label and title) with a currentColor glyph of its own size."""
     sid = sec["id"]
     g = lambda k: c.get("%s.%s" % (sid, k))
     loc = c.locale
