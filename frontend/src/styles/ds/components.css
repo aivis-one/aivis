@@ -3191,3 +3191,11 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
   .ds-themetoggle, .ds-langswitch__button, .ds-siteheader__tool, .ds-sitedrawer__close, .ds-sitedrawer__row, .ds-langswitch__option,
   .ds-siteheader__link, .ds-sitedrawer__link, .ds-sitedrawer__lang, .ds-sitefooter__link { transition: none; }
 }
+
+/* ===== K07 Card, addition: at night the elevated card keeps the hairline edge (--border-subtle), since its shadow does not show on the night page ===== */
+[data-theme="dark"] .ds-card--elevated { border-color: var(--border-subtle); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) .ds-card--elevated { border-color: var(--border-subtle); } }
+
+/* ===== K59, K60, K62 pressed: the links of the header, the drawer and the language list sink to --bg-inset; a footer link takes --primary-active ===== */
+.ds-siteheader__link:active, .ds-sitedrawer__link:active, .ds-sitedrawer__row:active, .ds-sitedrawer__lang:active, .ds-langswitch__option:active { background: var(--bg-inset); }
+.ds-sitefooter__link:active { color: var(--primary-active); }

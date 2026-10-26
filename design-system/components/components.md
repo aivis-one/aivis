@@ -486,3 +486,11 @@ Markup: `markup/theme-toggle.html`. `button.ds-themetoggle[data-ds-theme-toggle]
 ## K62 Language switch
 
 Markup: `markup/language-switch.html`. `details.ds-langswitch`: `summary.ds-langswitch__button` is the round tool with the current code (`--font-mono`, `--fs-xs`, 700), named "Language: <name>"; `ul.ds-langswitch__list` opens under it at the end edge (`--bg-surface`, `--border-default`, `--radius-card`, `--shadow-3`, `--z-menu`, fading in by `--motion-quick`), one `a.ds-langswitch__option` per language (`.ds-langswitch__code` and the name; hreflang and lang; the current one `aria-current="true"`, `--primary-subtle-text` on `--primary-subtle`). Open, the button's edge turns `--primary`. It works without script; `components.js` closes it on a click outside, on Escape and when the focus leaves it. The languages come from the product's shared setting.
+
+## K07 Card, addition: the elevated card at night
+
+At night the elevated card (`ds-card--elevated`) keeps the hairline edge `--border-subtle`: its shadow does not show on the night page ground, and without an edge the card would blur into a subtle section.
+
+## K59, K60, K62: the pressed state
+
+Pressed, the links of the header, the drawer rows and pills and the options of the language list sink to `--bg-inset`; a footer link takes `--primary-active`.
