@@ -372,7 +372,8 @@ section.block { padding-block: var(--space-section-md); border-top: 0; }
 .social__a, .contact__ic { display: grid; place-items: center; inline-size: var(--touch-min); block-size: var(--touch-min); border-radius: var(--radius-control); background: var(--bg-subtle); border: 1px solid var(--border-subtle); color: var(--text-primary); transition: background var(--motion-quick), color var(--motion-quick), border-color var(--motion-quick), transform var(--motion-quick); }
 a.social__a:hover, a.contact:hover .contact__ic { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); text-decoration: none; }
 a.social__a:hover { transform: translateY(-1px); }
-a.social__a:active { background: var(--primary-active); border-color: var(--primary-active); }.icon--fill { stroke: none; }
+a.social__a:active { background: var(--primary-active); border-color: var(--primary-active); }
+.icon--fill { stroke: none; }
 /* brand glyphs are filled shapes (the DS .icon stroke would thicken them); each glyph has its own size so the six read as one weight (2x checked) */
 .icon--soc { inline-size: 20px; block-size: 20px; stroke: none; }
 .icon--soc-x { inline-size: 18px; block-size: 18px; }
@@ -394,7 +395,7 @@ a.social__a:active { background: var(--primary-active); border-color: var(--prim
   .foot__brand { grid-area: brand; }
   .foot__nav--site { grid-area: site; }
   .foot__nav--legal { grid-area: legal; }
-  .foot__contacts { grid-template-columns: 1fr auto 1fr; column-gap: var(--space-5); }
+  .foot__contacts { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: var(--space-5); }
   .foot__contacts > :nth-child(2) { justify-self: center; }
   .foot__contacts > :nth-child(3) { justify-self: end; }
   .foot__contacts .social { flex-wrap: nowrap; }

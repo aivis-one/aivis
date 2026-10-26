@@ -2983,7 +2983,7 @@ button.ds-timeline__title:focus-visible { outline: var(--focus-width) solid var(
 .ds-icongroup { display: grid; gap: var(--space-3); justify-items: start; align-content: start; }
 .ds-icongroup > :first-child { margin: 0; }
 @media (min-width: 640px) {
-  .ds-icongroups { grid-template-columns: 1fr auto 1fr; column-gap: var(--space-5); }
+  .ds-icongroups { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: var(--space-5); }
   .ds-icongroups > :nth-child(2) { justify-self: center; }
   .ds-icongroups > :nth-child(3) { justify-self: end; }
   .ds-icongroups .ds-icontiles { flex-wrap: nowrap; }

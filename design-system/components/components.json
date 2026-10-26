@@ -2741,7 +2741,7 @@
    "row": "ul.ds-icontiles: tiles side by side, wrapping",
    "single": "a.ds-icontile on its own",
    "icon": "ul.ds-icontiles[data-variant=\"icon\"]: no caption, the name in aria-label and title, one equal --space-2 gap, the row at the start under its heading",
-   "groups": "div.ds-icongroups: two or three .ds-icongroup (heading, then an icon-only row), stacked under 640, from 640 one line 1fr auto 1fr -- start edge, middle, end edge"
+   "groups": "div.ds-icongroups: two or three .ds-icongroup (heading, then an icon-only row), stacked under 640, from 640 one line minmax(0, 1fr) auto minmax(0, 1fr) -- start edge, middle, end edge"
   },
   "sizes": [
    "one size; the box is --touch-min square"
