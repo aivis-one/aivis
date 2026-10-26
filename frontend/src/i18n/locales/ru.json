@@ -1703,7 +1703,6 @@
       "status": {
         "planned": "Запланировано",
         "in_progress": "В процессе",
-        "done": "Выполнено",
         "completed": "Выполнено",
         "cancelled": "Отменено"
       },
