@@ -19,8 +19,11 @@
 // by hand; the screen says so above the form, and the server refuses only what
 // it can know (an inactive or unverified recipient, an inactive product).
 //
-// A gift just granted is listed here with its cancel while it waits; every gift
-// of every date, cancel included, is in Finance > Purchases (GET /api/v1/staff/purchases).
+// THE LIST OF GIFTS LASTS. It is read from the purchases (GET /api/v1/staff/purchases),
+// so it is still there after a reload: the gifts that wait for acceptance (the server
+// filters them by status) and the gifts among the newest hundred purchases (the server
+// has no filter by kind, so the screen picks them out). A gift waiting for acceptance
+// carries its cancel; every gift of every date is in Finance > Purchases.
 // =============================================================================
 
 import { computed, onMounted, ref } from 'vue'
@@ -30,12 +33,12 @@ import { CBadge, CButton, CEmptyState, CInput, CLoader, CModal, CSelect } from '
 import CAlert from '@/components/ui/CAlert.vue'
 import UserPicker from '@/components/staff/UserPicker.vue'
 import { ApiResponseError } from '@/api/client'
-import { cancelGift, grantGift } from '@/api/admin'
+import { cancelGift, fetchStaffPurchases, grantGift } from '@/api/admin'
 import { listProducts } from '@/api/products'
 import { useToast } from '@/composables/useToast'
 import { tOrRaw } from '@/utils/i18n'
-import { formatNumber, formatPrice } from '@/utils/format'
-import type { PurchaseResponse } from '@/api/generated'
+import { formatDate, formatNumber, formatPrice } from '@/utils/format'
+import type { StaffPurchaseItem } from '@/api/generated'
 import type { PublicProductResponse, UserListItem } from '@/api/types'
 import { useReloadOnLocale } from '@/composables/useReloadOnLocale'
 
@@ -100,12 +103,36 @@ function recipientName(user: UserListItem | null): string {
 const showConfirm = ref(false)
 const granting = ref(false)
 
-interface GrantedGift {
-  gift: PurchaseResponse
-  recipient: string
-  product: string
+// -- The list of gifts, read from the purchases ---------------------------------
+
+const LIST_WINDOW = 100
+const gifts = ref<StaffPurchaseItem[]>([])
+const giftsLoading = ref(true)
+const giftsError = ref(false)
+
+async function loadGifts(): Promise<void> {
+  giftsLoading.value = true
+  giftsError.value = false
+  try {
+    const [waiting, recent] = await Promise.all([
+      fetchStaffPurchases({ status: 'pending_acceptance', per_page: LIST_WINDOW }),
+      fetchStaffPurchases({ per_page: LIST_WINDOW }),
+    ])
+    const byId = new Map<string, StaffPurchaseItem>()
+    for (const row of [...waiting.items, ...recent.items]) {
+      if (row.kind === 'gift') byId.set(row.id, row)
+    }
+    gifts.value = [...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  } catch {
+    giftsError.value = true
+  } finally {
+    giftsLoading.value = false
+  }
 }
-const granted = ref<GrantedGift[]>([])
+
+function giftRecipient(row: StaffPurchaseItem): string {
+  return row.buyer_name || row.buyer_email || row.buyer_id.slice(0, 8)
+}
 
 function serverReason(err: unknown, fallbackKey: string): string {
   if (err instanceof ApiResponseError && err.detail) return err.detail
@@ -116,19 +143,15 @@ async function handleGrant(): Promise<void> {
   if (!canSubmit.value || units.value === null || !selectedProduct.value) return
   granting.value = true
   try {
-    const gift = await grantGift({
+    await grantGift({
       user_id: recipientId.value,
       product_id: productId.value,
       units: units.value,
     })
-    granted.value.unshift({
-      gift,
-      recipient: recipientName(recipient.value),
-      product: `${selectedProduct.value.company_name} — ${selectedProduct.value.name}`,
-    })
     showToast(t('staff.gifts.granted'), 'success')
     showConfirm.value = false
     unitsText.value = ''
+    await loadGifts()
   } catch (err) {
     showToast(serverReason(err, 'staff.gifts.grantError'), 'error')
     showConfirm.value = false
@@ -141,12 +164,13 @@ async function handleGrant(): Promise<void> {
 
 const cancellingId = ref<string | null>(null)
 
-async function handleCancel(entry: GrantedGift): Promise<void> {
+async function handleCancel(row: StaffPurchaseItem): Promise<void> {
   if (cancellingId.value) return
-  cancellingId.value = entry.gift.id
+  cancellingId.value = row.id
   try {
-    entry.gift = await cancelGift(entry.gift.id)
+    await cancelGift(row.id)
     showToast(t('staff.gifts.cancelled'), 'success')
+    await loadGifts()
   } catch (err) {
     showToast(serverReason(err, 'staff.gifts.cancelError'), 'error')
   } finally {
@@ -168,7 +192,10 @@ function statusVariant(status: string) {
 // H38: project data is in the reader's language -- re-read it on a switch.
 useReloadOnLocale(() => loadProducts())
 
-onMounted(loadProducts)
+onMounted(() => {
+  void loadProducts()
+  void loadGifts()
+})
 </script>
 
 <template>
@@ -227,34 +254,43 @@ onMounted(loadProducts)
       </div>
     </form>
 
-    <!-- The gifts granted in this session (K23 rows) -->
-    <section v-if="granted.length" class="gifts__list" :aria-label="t('staff.gifts.sessionTitle')">
+    <!-- The gifts: read from the purchases, so the list is still here after a reload (K23 rows) -->
+    <section class="gifts__list" :aria-label="t('staff.gifts.listTitle')">
       <h2 class="ds-section-title">
-        {{ t('staff.gifts.sessionTitle') }}
+        {{ t('staff.gifts.listTitle') }}
       </h2>
       <p class="ds-note gifts__list-note">{{ t('staff.gifts.listPointer') }}</p>
-      <ul class="ds-rows">
-        <li v-for="entry in granted" :key="entry.gift.id" class="ds-row">
+      <CLoader v-if="giftsLoading" centered />
+      <CEmptyState v-else-if="giftsError" tone="danger" :title="t('common.error')">
+        <template #actions>
+          <CButton variant="secondary" size="sm" inline @click="loadGifts">
+            {{ t('common.retry') }}
+          </CButton>
+        </template>
+      </CEmptyState>
+      <p v-else-if="!gifts.length" class="ds-note">{{ t('staff.gifts.listEmpty') }}</p>
+      <ul v-else class="ds-rows">
+        <li v-for="row in gifts" :key="row.id" class="ds-row">
           <span class="ds-row__lead"><Gift size="sm" /></span>
           <span class="ds-row__body">
             <span class="ds-row__title">
-              {{ entry.recipient }} &mdash;
-              {{ t('staff.gifts.partsCount', { n: formatNumber(entry.gift.units, locale) }) }}
+              {{ giftRecipient(row) }} &mdash;
+              {{ t('staff.gifts.partsCount', { n: formatNumber(row.units, locale) }) }}
             </span>
-            <span class="ds-row__meta">{{ entry.product }}</span>
+            <span class="ds-row__meta">
+              {{ formatDate(row.created_at, locale) }} &bull; {{ row.company_name }} &mdash;
+              {{ row.product_name }}
+            </span>
           </span>
           <span class="ds-row__trail">
-            <CBadge
-              :variant="statusVariant(entry.gift.status)"
-              :text="statusLabel(entry.gift.status)"
-            />
+            <CBadge :variant="statusVariant(row.status)" :text="statusLabel(row.status)" />
             <button
-              v-if="entry.gift.status === 'pending_acceptance'"
+              v-if="row.status === 'pending_acceptance'"
               type="button"
               class="ds-button ds-button--secondary"
               data-size="sm"
-              :disabled="cancellingId === entry.gift.id"
-              @click="handleCancel(entry)"
+              :disabled="cancellingId === row.id"
+              @click="handleCancel(row)"
             >
               <span>{{ t('staff.gifts.cancel') }}</span>
             </button>

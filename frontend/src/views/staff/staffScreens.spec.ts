@@ -30,6 +30,7 @@ vi.mock('@/api/admin', () => ({
   fetchUsers: vi.fn(async () => ({ items: [], total: 0, page: 1, per_page: 8 })),
   grantGift: vi.fn(),
   cancelGift: vi.fn(),
+  fetchStaffPurchases: vi.fn(),
 }))
 vi.mock('@/api/products', () => ({ listProducts: vi.fn() }))
 
@@ -46,6 +47,8 @@ const fetchWithdrawalsStaff = vi.mocked(admin.fetchWithdrawalsStaff)
 const fetchAgentApplications = vi.mocked(admin.fetchAgentApplications)
 const fetchConsistency = vi.mocked(admin.fetchConsistency)
 const grantGift = vi.mocked(admin.grantGift)
+const cancelGift = vi.mocked(admin.cancelGift)
+const fetchStaffPurchases = vi.mocked(admin.fetchStaffPurchases)
 const listProducts = vi.mocked(products.listProducts)
 
 beforeEach(() => {
@@ -264,20 +267,99 @@ describe('gifts', () => {
     company_name: 'Project One',
   }
 
-  it('sends the recipient, the product and the number of parts, and then lists the gift', async () => {
-    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
-    grantGift.mockResolvedValue({
-      id: 'g1',
-      investor_id: 'u1',
-      product_id: 'prod-1',
+  function giftRow(id: string, status: string, kind = 'gift', created = '2026-10-23T10:00:00Z') {
+    return {
+      id,
+      created_at: created,
+      buyer_id: `buyer-${id}`,
+      buyer_email: 'ada@example.com',
+      buyer_name: 'Ada Lovelace',
       company_id: 'c1',
-      legal_basis: 'gift',
+      company_name: 'Project One',
+      product_id: 'prod-1',
+      product_name: 'Package',
       units: 250,
       paid_cents: 0,
-      price_per_unit_cents: 5,
+      kind,
+      legal_basis: 'gift',
+      status,
+    }
+  }
+
+  function purchasesAre(waiting: unknown[], recent: unknown[]) {
+    fetchStaffPurchases.mockImplementation(async (params) => {
+      const items = params?.status === 'pending_acceptance' ? waiting : recent
+      return { items, total: items.length, page: 1, per_page: 100 } as never
+    })
+  }
+
+  it('lists the gifts from the purchases: waiting ones from the server filter, accepted ones picked out of the newest', async () => {
+    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    purchasesAre(
+      [giftRow('w1', 'pending_acceptance')],
+      [
+        giftRow('w1', 'pending_acceptance'),
+        giftRow('a1', 'active', 'gift', '2026-10-22T10:00:00Z'),
+        giftRow('p1', 'active', 'paid'),
+      ],
+    )
+    const wrapper = mount(StaffGiftsView)
+    await flushPromises()
+    expect(fetchStaffPurchases).toHaveBeenCalledWith({
       status: 'pending_acceptance',
-      created_at: '2026-10-23T10:00:00Z',
-    } as never)
+      per_page: 100,
+    })
+    // The waiting gift once, the accepted gift, and no paid purchase.
+    expect(wrapper.findAll('.gifts__list .ds-row')).toHaveLength(2)
+    // Only the waiting gift carries a cancel.
+    expect(wrapper.findAll('.gifts__list .ds-button')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('shows the same list on a second visit (a reload does not lose it)', async () => {
+    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    purchasesAre([giftRow('w1', 'pending_acceptance')], [giftRow('w1', 'pending_acceptance')])
+    const first = mount(StaffGiftsView)
+    await flushPromises()
+    first.unmount()
+    const second = mount(StaffGiftsView)
+    await flushPromises()
+    expect(second.findAll('.gifts__list .ds-row')).toHaveLength(1)
+    second.unmount()
+  })
+
+  it('cancels a waiting gift and reads the list again', async () => {
+    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    purchasesAre([giftRow('w1', 'pending_acceptance')], [giftRow('w1', 'pending_acceptance')])
+    cancelGift.mockResolvedValue({} as never)
+    const wrapper = mount(StaffGiftsView)
+    await flushPromises()
+    const before = fetchStaffPurchases.mock.calls.length
+    await wrapper.find('.gifts__list .ds-button').trigger('click')
+    await flushPromises()
+    expect(cancelGift).toHaveBeenCalledWith('w1')
+    expect(fetchStaffPurchases.mock.calls.length).toBeGreaterThan(before)
+    wrapper.unmount()
+  })
+
+  it('says a failed read of the list is a failure, not an empty list', async () => {
+    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    fetchStaffPurchases.mockRejectedValue(new Error('500'))
+    const wrapper = mount(StaffGiftsView)
+    await flushPromises()
+    expect(wrapper.find('.gifts__list').text()).toContain('common.error')
+    expect(wrapper.find('.gifts__list').text()).not.toContain('staff.gifts.listEmpty')
+    wrapper.unmount()
+  })
+
+  it('sends the recipient, the product and the number of parts, and then lists the gift', async () => {
+    listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    purchasesAre([], [])
+    grantGift.mockImplementation(async () => {
+      // From now on the purchases hold the gift.
+      purchasesAre([giftRow('g1', 'pending_acceptance')], [giftRow('g1', 'pending_acceptance')])
+      return { id: 'g1' } as never
+    })
     const wrapper = mount(StaffGiftsView, { attachTo: document.body })
     await flushPromises()
 
@@ -304,6 +386,7 @@ describe('gifts', () => {
     await flushPromises()
 
     expect(grantGift).toHaveBeenCalledWith({ user_id: 'u1', product_id: 'prod-1', units: 250 })
+    // The list is read again from the purchases after the grant.
     expect(wrapper.find('.gifts__list').text()).toContain('Ada Lovelace')
     expect(wrapper.find('.gifts__list .ds-row__trail .ds-button').exists()).toBe(true)
     wrapper.unmount()
@@ -311,6 +394,7 @@ describe('gifts', () => {
 
   it('does not enable the grant button until the form is whole', async () => {
     listProducts.mockResolvedValue({ items: [PRODUCT], total: 1, page: 1, per_page: 100 } as never)
+    purchasesAre([], [])
     const wrapper = mount(StaffGiftsView)
     await flushPromises()
     const submit = wrapper.find('button[type="submit"]')
