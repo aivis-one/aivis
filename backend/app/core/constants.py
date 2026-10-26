@@ -68,6 +68,11 @@ class LedgerReason:
     # for keying a reason by an internal id.
     DEPOSIT_CRYPTO_INVOICE: str = "deposit:crypto:invoice:{invoice_id}"
     DEPOSIT_BANK: str = "deposit:bank:{payment_id}"
+    # A deposit an administrator confirmed by hand for a crypto invoice
+    # (staff Finance > Payments > Invoices). Keyed by the Payment it
+    # wrote, like DEPOSIT_BANK; the "deposit:" prefix keeps it inside the
+    # deposit family the semaphores filter by.
+    DEPOSIT_MANUAL: str = "deposit:manual:{payment_id}"
 
     # ------------------------------------------------------------------
     # Purchases (active_ledger: -amount)

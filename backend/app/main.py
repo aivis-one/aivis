@@ -199,6 +199,9 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.payments.confirmation import run_confirmation_batch
 from app.modules.payments.router import router as payments_router
 from app.modules.payments.staff_router import router as staff_payments_router
+from app.modules.payments.crypto_invoices_staff_router import (
+    router as staff_crypto_invoices_router,
+)
 from app.modules.pools.router import router as staff_pools_router
 from app.modules.portfolio.router import router as portfolio_router
 from app.modules.posts.company_router import router as company_posts_router
@@ -674,6 +677,7 @@ app.include_router(staff_pools_router)
 app.include_router(company_dashboard_router)
 app.include_router(payments_router)
 app.include_router(staff_payments_router)
+app.include_router(staff_crypto_invoices_router)
 app.include_router(purchases_router)
 app.include_router(gift_router)
 app.include_router(staff_purchases_router)

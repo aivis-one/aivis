@@ -257,3 +257,59 @@ class StaffPaymentListResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# ---------------------------------------------------------------------------
+# Crypto invoices -- staff list and manual confirmation
+# ---------------------------------------------------------------------------
+
+
+class StaffCryptoInvoiceItem(BaseModel):
+    """One crypto invoice for the staff Invoices view."""
+
+    id: UUID
+    user_id: UUID
+    user_email: str | None
+    user_name: str | None
+    network: str
+    amount_cents: int
+    # The cached service status; it decides nothing.
+    status: str
+    created_at: datetime
+    expires_at: datetime
+    credited: bool
+    # "manual" | "service" | None (not credited)
+    credited_by: str | None = None
+    payment_id: UUID | None = None
+
+
+class StaffCryptoInvoiceListResponse(BaseModel):
+    """Paged staff list of crypto invoices."""
+
+    items: list[StaffCryptoInvoiceItem]
+    total: int
+    page: int
+    per_page: int
+
+
+class ConfirmCryptoInvoiceRequest(BaseModel):
+    """Body of the manual confirmation of a crypto invoice."""
+
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _strip_reason(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("reason must be at least 3 characters")
+        return value
+
+
+class ConfirmCryptoInvoiceResponse(BaseModel):
+    """The deposit written by a manual confirmation."""
+
+    invoice_id: UUID
+    payment_id: UUID
+    user_id: UUID
+    amount_cents: int
