@@ -1581,6 +1581,31 @@ export interface TelegramLinkEmailResponse {
   code_ttl_minutes: number
 }
 
+/** GET /api/v1/auth/telegram/web -- whether the website sign-in is on. The login and registration screens show the Telegram button only when `available` is true: both keys are set on this box (config.py). */
+export interface TelegramWebAvailability {
+  available: boolean
+}
+
+/** POST /api/v1/auth/telegram/web/complete -- the return from Telegram. */
+export interface TelegramWebCompleteRequest {
+  code: string
+  state: string
+  mark: string
+}
+
+/** POST /api/v1/auth/telegram/web/start -- request body. */
+export interface TelegramWebStartRequest {
+  mark: string
+  referral_code?: string | null
+  language?: 'en' | 'ru' | 'ar' | 'de' | null
+}
+
+/** Where to send the browser, and the state its return will carry. */
+export interface TelegramWebStartResponse {
+  url: string
+  state: string
+}
+
 /** Single template with full body for staff inspection (R2 §4.5). Adds: - html_content: utf-8 decoded body of <storage_prefix>/template.html fetched from MinIO at request time. Read-through the Redis HTML cache (R2 §4.10) so the staff inspect flow shares cache warmth with the renderer. - storage_prefix: the MinIO folder path for this template. Useful when staff wants to jump into MinIO Web UI to see the asset files alongside the parsed HTML. */
 export interface TemplateDetailResponse {
   id: string
