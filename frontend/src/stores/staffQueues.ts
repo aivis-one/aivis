@@ -78,6 +78,15 @@ export const QUEUES: readonly QueueSpec[] = [
 /** How many support rows one read looks at; more than this shows as "N+". */
 const SUPPORT_WINDOW = 100
 
+/** The server's `users_by_role` as whole numbers; a value that is not a number is dropped. */
+function countsByRole(raw: Record<string, unknown> | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const [role, count] of Object.entries(raw ?? {})) {
+    if (typeof count === 'number' && Number.isFinite(count)) out[role] = count
+  }
+  return out
+}
+
 function blank(): QueueState {
   return { status: 'loading', count: 0, more: false }
 }
@@ -93,12 +102,22 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
     } as Record<QueueKey, QueueState>,
     /** All users of the platform (a figure, not a queue). */
     users: { status: 'loading', count: 0 } as { status: QueueStatus; count: number },
+    /**
+     * The administrator's two extra figures from the same read of the statistics:
+     * the users by role and the avatar sessions open now.
+     */
+    overview: { status: 'loading', byRole: {}, avatarSessions: 0 } as {
+      status: QueueStatus
+      byRole: Record<string, number>
+      avatarSessions: number
+    },
   }),
 
   getters: {
     /** True when any read failed. */
     anyFailed: (state): boolean =>
       state.users.status === 'error' ||
+      state.overview.status === 'error' ||
       Object.values(state.queues).some((q) => q.status === 'error'),
   },
 
@@ -116,6 +135,7 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
         if (allowed(q)) this.queues[q.key] = blank()
       }
       this.users = { status: 'loading', count: 0 }
+      this.overview = { status: 'loading', byRole: {}, avatarSessions: 0 }
 
       const reads: Promise<void>[] = []
 
@@ -126,6 +146,11 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
           try {
             const stats = await fetchDashboardStats()
             this.users = { status: 'ready', count: stats.total_users }
+            this.overview = {
+              status: 'ready',
+              byRole: countsByRole(stats.users_by_role),
+              avatarSessions: Number(stats.active_avatar_sessions) || 0,
+            }
             if (wants('kyc')) {
               this.queues.kyc = { status: 'ready', count: stats.pending_kyc_count, more: false }
             }
@@ -138,6 +163,7 @@ export const useStaffQueuesStore = defineStore('staffQueues', {
             }
           } catch {
             this.users = { status: 'error', count: 0 }
+            this.overview = { status: 'error', byRole: {}, avatarSessions: 0 }
             if (wants('kyc')) this.queues.kyc = { status: 'error', count: 0, more: false }
             if (wants('topups')) this.queues.topups = { status: 'error', count: 0, more: false }
           }

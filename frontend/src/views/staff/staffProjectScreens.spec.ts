@@ -132,9 +132,50 @@ describe('the staff Home', () => {
     signInAs([...PERMISSION_KEYS])
     const wrapper = mount(StaffDashboardView)
     await flushPromises()
-    expect(wrapper.findAll('.ds-stat')).toHaveLength(6)
-    const values = wrapper.findAll('.ds-stat__value').map((v) => v.text())
+    expect(wrapper.findAll('.staff-dash > .ds-stats .ds-stat')).toHaveLength(6)
+    const values = wrapper.findAll('.staff-dash > .ds-stats .ds-stat__value').map((v) => v.text())
     expect(values).toEqual(['12', '3', '0', '0', '0', '0'])
+    wrapper.unmount()
+  })
+
+  it('shows the administrator the users by role and the avatar sessions open now', async () => {
+    okReads()
+    fetchDashboardStats.mockResolvedValue({
+      total_users: 12,
+      users_by_role: { staff: 2, investor: 8, agent: 1, company: 1 },
+      pending_kyc_count: 3,
+      active_avatar_sessions: 4,
+      frozen_payments_count: 0,
+    } as never)
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffDashboardView)
+    await flushPromises()
+    const overview = wrapper.find('.staff-dash__overview')
+    expect(overview.exists()).toBe(true)
+    const labels = overview.findAll('.ds-stat__label').map((l) => l.text())
+    const values = overview.findAll('.ds-stat__value').map((v) => v.text())
+    // The roles in the order of the user list's chips, then the avatar sessions.
+    expect(labels).toEqual(['investor', 'agent', 'company', 'staff', 'staff.home.avatarSessions'])
+    expect(values).toEqual(['8', '1', '1', '2', '4'])
+    wrapper.unmount()
+  })
+
+  it('does not show those figures to a member who is not the administrator', async () => {
+    okReads()
+    signInAs(['kyc_approve'])
+    const wrapper = mount(StaffDashboardView)
+    await flushPromises()
+    expect(wrapper.find('.staff-dash__overview').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('draws no role figures when the statistics fail', async () => {
+    okReads()
+    fetchDashboardStats.mockRejectedValue(new Error('down'))
+    signInAs([...PERMISSION_KEYS])
+    const wrapper = mount(StaffDashboardView)
+    await flushPromises()
+    expect(wrapper.find('.staff-dash__overview').exists()).toBe(false)
     wrapper.unmount()
   })
 

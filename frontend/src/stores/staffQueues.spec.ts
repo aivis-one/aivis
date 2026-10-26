@@ -85,6 +85,25 @@ describe('the staff Home counters', () => {
     expect(store.anyFailed).toBe(false)
   })
 
+  it('keeps the users by role and the open avatar sessions of the same read', async () => {
+    mockAllOk()
+    fetchDashboardStats.mockResolvedValue({
+      total_users: 7,
+      users_by_role: { investor: 5, staff: 2, odd: 'x' },
+      pending_kyc_count: 3,
+      active_avatar_sessions: 2,
+      frozen_payments_count: 2,
+    } as never)
+    const store = useStaffQueuesStore()
+    await store.loadAll(ALL)
+    // A value that is not a number is dropped, not drawn.
+    expect(store.overview).toEqual({
+      status: 'ready',
+      byRole: { investor: 5, staff: 2 },
+      avatarSessions: 2,
+    })
+  })
+
   it('shows a real zero as a zero (the read succeeded)', async () => {
     mockAllOk()
     fetchAgentApplications.mockResolvedValue({ items: [], total: 0, page: 1, per_page: 1 } as never)

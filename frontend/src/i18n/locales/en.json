@@ -1063,7 +1063,9 @@
         "support": "Support requests nobody has taken"
       },
       "loadFailed": "Could not load",
-      "someFailed": "Some counters could not be loaded. A dash is not a zero."
+      "someFailed": "Some counters could not be loaded. A dash is not a zero.",
+      "byRole": "Users by role",
+      "avatarSessions": "Avatar sessions open now"
     },
     "roles": {
       "investor": "Buyer",

@@ -12,6 +12,9 @@
 // review payments sees no top-up or withdrawal counter (stores/staffQueues.ts
 // does not read them either).
 //
+// THE ADMINISTRATOR ALSO SEES two figures the statistics carry: the users by role
+// and the avatar sessions open now (the same read as the user count).
+//
 // A FAILED READ SHOWS AS A FAILURE. A card whose read failed says so in its
 // own words and keeps a dash where the number would be; it never shows a zero
 // that would read as "nothing is waiting". One retry button re-reads all.
@@ -26,12 +29,14 @@ import {
   UserCheck,
   Banknote,
   MessageCircle,
+  Ghost,
 } from '@/components/ui/icons'
 import type { Component } from 'vue'
 import { CStatCard, CLoader, CButton, CBadge } from '@/components/ui'
 import CAlert from '@/components/ui/CAlert.vue'
 import { useScreenHeader } from '@/components/layout/screenHeader'
 import { useStaffRights } from '@/composables/useStaffRights'
+import { tOrRaw } from '@/utils/i18n'
 import { QUEUES, useStaffQueuesStore } from '@/stores/staffQueues'
 import type { QueueKey, QueueSpec } from '@/stores/staffQueues'
 
@@ -66,6 +71,25 @@ const loading = computed<boolean>(
     queues.users.status === 'loading' ||
     visibleQueues.value.some((q) => queues.queues[q.key].status === 'loading'),
 )
+
+// The roles in the order the user list's chips show them, then any other the server sends.
+const ROLE_ORDER = ['investor', 'agent', 'company', 'staff', 'platform']
+
+/** The users by role, drawn for the administrator once the statistics were read. */
+const roleTiles = computed(() => {
+  if (!current().admin || queues.overview.status !== 'ready') return []
+  const byRole = queues.overview.byRole
+  const known = ROLE_ORDER.filter((role) => role in byRole)
+  const others = Object.keys(byRole)
+    .filter((role) => !ROLE_ORDER.includes(role))
+    .sort()
+  return [...known, ...others].map((role) => ({
+    role,
+    label: tOrRaw(t, `staff.roles.${role}`, role),
+    value: String(byRole[role]),
+  }))
+})
+const showOverview = computed(() => current().admin && queues.overview.status === 'ready')
 
 function valueOf(key: QueueKey): string {
   const q = queues.queues[key]
@@ -135,6 +159,35 @@ onMounted(reload)
           </template>
         </CStatCard>
       </div>
+
+      <!-- The administrator's figures: users by role, avatar sessions open now -->
+      <section
+        v-if="showOverview"
+        class="staff-dash__overview"
+        :aria-label="t('staff.home.byRole')"
+      >
+        <h2 class="ds-section-title">{{ t('staff.home.byRole') }}</h2>
+        <div class="ds-stats">
+          <CStatCard
+            v-for="tile in roleTiles"
+            :key="tile.role"
+            :value="tile.value"
+            :label="tile.label"
+          >
+            <template #icon>
+              <span class="ds-lead"><Users /></span>
+            </template>
+          </CStatCard>
+          <CStatCard
+            :value="String(queues.overview.avatarSessions)"
+            :label="t('staff.home.avatarSessions')"
+          >
+            <template #icon>
+              <span class="ds-lead" data-tone="accent"><Ghost /></span>
+            </template>
+          </CStatCard>
+        </div>
+      </section>
     </template>
   </div>
 </template>
@@ -143,5 +196,10 @@ onMounted(reload)
 .staff-dash {
   display: grid;
   gap: var(--space-4);
+}
+
+.staff-dash__overview {
+  display: grid;
+  gap: var(--space-3);
 }
 </style>
